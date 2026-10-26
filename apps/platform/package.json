@@ -14,14 +14,14 @@
     "@lupinum/ginko-server": "workspace:*",
     "@lupinum/ginko-studio": "workspace:*",
     "convex": "catalog:",
-    "nuxt": "4.6.0",
-    "vue": "3.5.43"
+    "nuxt": "4.6.2",
+    "vue": "3.5.44"
   },
   "devDependencies": {
     "@lupinum/ginko": "workspace:*",
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.64.1",
     "@types/node": "^24.19.1",
     "typescript": "6.0.3",
-    "vue-tsc": "3.1.5"
+    "vue-tsc": "3.3.13"
   }
 }

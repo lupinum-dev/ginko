@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import { historyText } from '../convex/lib/history'
+import { tick } from './clock'
 import { errorOf, firstPage, opId, people, setup, upload } from './setup'
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
@@ -252,12 +253,13 @@ describe('entries.trash', () => {
   // Wrong behaviour caught: the trash shows a live entry, hides who removed it, or promises a purge date other than retention's.
   it('lists a removed entry with purgeAt and who removed it, and no live one', async () => {
     const s = await studioSetup()
+    const removedAt = tick()
     await s.remove(s.entries['menu-frittaten']!)
     const trash = await s.as.owner.query(api.entries.trash, { site, paginationOpts: firstPage })
     expect(trash.isDone).toBe(true)
     expect(trash.page).toEqual([expect.objectContaining({
       entry: s.entries['menu-frittaten'], brick: 'menu', brickLabel: 'Speisekarte', label: 'Frittatensuppe', lifeRev: 2,
-      deletedAt: NOW, purgeAt: NOW + 30 * DAY, deletedBy: { actor: people.owner, email: 'wirtin@example.com' }, mayRestore: true,
+      deletedAt: removedAt, purgeAt: removedAt + 30 * DAY, deletedBy: { actor: people.owner, email: 'wirtin@example.com' }, mayRestore: true,
     })])
     expect((await s.as.owner.query(api.entries.trash, { site, brick: 'events', paginationOpts: firstPage })).page).toEqual([])
     expect((await errorOf(s.as.owner.query(api.entries.trash, { site, brick: 'contact', paginationOpts: firstPage }))).code).toBe('INVALID')
