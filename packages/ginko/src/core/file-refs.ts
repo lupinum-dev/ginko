@@ -184,12 +184,16 @@ export function fileRefUses(nodes: readonly Json[], components: ComponentRegistr
   return out
 }
 
+/** A share from 0 to 1 as a CSS percentage with one decimal. */
+const percent = (share: number) => `${Math.round(Math.min(1, Math.max(0, share)) * 1000) / 10}%`
+
 /**
  * The bundle with every `$file.<id>` of its Markdown trees resolved through `files` (the bundle's ready uploads):
  * - `img`: the file's URL, its pixel size, a `srcset` of its variants and the original, and the library description
  *   of the bundle's language when the image has none of its own (`effectiveAlt`).
  * - a component image prop: the URL; for `src` also the file's `width` and `height` when the author set neither (and
- *   the component declares both), and an empty `alt` (when it declares one) from the library.
+ *   the component declares both), an empty `alt` (when it declares one) from the library, the `srcset` of its variants
+ *   and its focus point as `focal` (an `object-position`, such as `50% 20%`).
  * - a link: the file's URL.
  * An unknown or not yet ready file loses its URL and gets `data-broken: true`, like a route link that cannot be resolved.
  */
@@ -212,12 +216,10 @@ export function resolveFileRefs(bundle: Bundle, schema: Pick<Schema, 'components
       if (use.kind === 'link') continue
       const declared = use.kind === 'prop' ? components?.[use.node[0]]?.props ?? {} : undefined
       const library = effectiveAlt(undefined, file.alt, bundle.locale)
+      const srcset = file.width && file.variants?.length ? [...file.variants.map((v) => `${v.url} ${v.width}w`), `${file.url} ${file.width}w`].join(', ') : undefined
       if (use.kind === 'img') {
         if (file.width && file.height) Object.assign(props, { width: file.width, height: file.height })
-        if (file.width && file.variants?.length) {
-          props.srcset = [...file.variants.map((v) => `${v.url} ${v.width}w`), `${file.url} ${file.width}w`].join(', ')
-          props.sizes = '100vw'
-        }
+        if (srcset) Object.assign(props, { srcset, sizes: '100vw' })
         if (!String(props.alt ?? '').trim() && library) props.alt = library
       } else if (use.prop === 'src' && declared) {
         // Only both together: one size of the author's with one of the file's would distort the picture.
@@ -225,6 +227,9 @@ export function resolveFileRefs(bundle: Bundle, schema: Pick<Schema, 'components
           Object.assign(props, { width: file.width, height: file.height })
         }
         if ('alt' in declared && !String(props.alt ?? '').trim() && library) props.alt = library
+        // The component picks its own `sizes`: it knows how wide it shows the picture.
+        if (srcset) props.srcset = srcset
+        if (file.focus) props.focal = `${percent(file.focus.x)} ${percent(file.focus.y)}`
       }
     }
     return copy

@@ -126,6 +126,15 @@ function isGlobalAttribute(key: string): boolean {
 /** Attributes that hold an address; their value must pass `isSafeHref` (`srcset`: each address in it). */
 export const URL_PROPS: ReadonlySet<string> = new Set(['href', 'src', 'srcset', 'action', 'formaction', 'poster', 'xlink:href'])
 
+/**
+ * What the platform adds to a component whose `src` is a library image (`resolveFileRefs`), so the component can show
+ * it like a picture in the text: the smaller copies (`srcset`) and the focus point as an `object-position` (`focal`).
+ */
+const IMAGE_EXTRAS: Record<string, ValueCheck> = {
+  srcset: (value) => safeAddress('srcset', value),
+  focal: matching(/^\d{1,3}(\.\d+)?% \d{1,3}(\.\d+)?%$/),
+}
+
 function safeAddress(key: string, value: unknown): boolean {
   if (typeof value !== 'string') return false
   if (key !== 'srcset') return isSafeHref(value)
@@ -163,6 +172,9 @@ export function attributeProblem(tag: string, name: string, value: unknown, regi
   const bound = name.startsWith(':')
   const key = bound ? name.slice(1) : name
   const declared = registry !== undefined && Object.hasOwn(registry, tag) ? registry[tag]!.props : undefined
+  if (declared !== undefined && !Object.hasOwn(declared, key) && Object.hasOwn(IMAGE_EXTRAS, key) && Object.hasOwn(declared, 'src') && declared.src!.type === 'image') {
+    return !bound && IMAGE_EXTRAS[key]!(value) ? undefined : 'blocked'
+  }
   // A declared prop of type image holds an address whatever its name (a card's `image`).
   const address = URL_PROPS.has(key) || (declared !== undefined && Object.hasOwn(declared, key) && declared[key]!.type === 'image')
   if (bound && (address || (typeof value === 'string' && !isJson(value)))) return 'blocked'

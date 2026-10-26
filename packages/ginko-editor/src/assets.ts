@@ -9,6 +9,8 @@ export interface UploadDetails {
   url: string; name: string; size: number; width: number | null; height: number | null
   /** The library's description per language: it applies wherever a field has none of its own. */
   alt?: Record<string, string>
+  /** The focus point set in Files (0..1 from the top left): a crop keeps it in view. */
+  focus?: { x: number; y: number }
   /** In the trash: a field keeps showing it, but a text may not name it (the save refuses), so a text shows it as missing. */
   trashed?: true
 }
