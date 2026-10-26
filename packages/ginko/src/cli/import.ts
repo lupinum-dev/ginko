@@ -42,6 +42,59 @@ export interface ImportInput {
   batchBytes?: number
   /** Waits between the tries of a local import (RETRY_WAITS_MS). Default: a timer; tests do not wait. */
   sleep?: (ms: number) => Promise<void>
+  /** Wait until the imported images are processed (default true). `--no-wait` sets false: the import returns at once. */
+  wait?: boolean
+  /** Longest wait for the images in ms. Default WAIT_TIMEOUT_MS (`--wait-timeout <seconds>`). */
+  waitTimeoutMs?: number
+  /** Time between two looks at the images in ms. Default WAIT_POLL_MS. */
+  pollMs?: number
+}
+
+export const WAIT_TIMEOUT_MS = 600_000
+export const WAIT_POLL_MS = 2_000
+/** Upload IDs per `seed:importUploads` call: the IDs travel as a command-line argument. */
+const UPLOAD_IDS = 500
+
+/**
+ * Waits until none of the imported originals is processing (seed:importUploads), then says honestly what is usable.
+ * Throws a CliError that lists each failed or unfinished file and what to do next; returns when all are ready.
+ */
+export async function waitForUploads(input: Pick<ImportInput, 'run' | 'log' | 'sleep' | 'waitTimeoutMs' | 'pollMs' | 'again'>, site: string, ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const { run, log } = input
+  const sleep = input.sleep ?? ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)))
+  const timeout = input.waitTimeoutMs ?? WAIT_TIMEOUT_MS
+  const started = Date.now()
+  let lastReady = -1
+  for (;;) {
+    let ready = 0
+    let processing = 0
+    const failed: { name: string; error: string }[] = []
+    for (let i = 0; i < ids.length; i += UPLOAD_IDS) {
+      const part = await run('seed:importUploads', { site, ids: ids.slice(i, i + UPLOAD_IDS) })
+      if (!isObject(part) || typeof part.ready !== 'number' || typeof part.processing !== 'number' || !Array.isArray(part.failedFiles)) {
+        throw new CliError('The platform did not return the state of the images.')
+      }
+      ready += part.ready
+      processing += part.processing
+      for (const file of part.failedFiles) if (isObject(file) && typeof file.name === 'string') failed.push({ name: file.name, error: typeof file.error === 'string' ? file.error : 'errors.uploadFailed' })
+    }
+    if (ready !== lastReady) log(`Processing images: ${ready}/${ids.length} ready`)
+    lastReady = ready
+    const timedOut = processing > 0 && Date.now() - started >= timeout
+    if (processing === 0 || timedOut) {
+      if (failed.length === 0 && processing === 0) return
+      const lines = failed.map((file) => `  ✗ ${file.name}: ${file.error}`)
+      if (processing > 0) lines.push(`  ✗ ${processing} ${processing === 1 ? 'image is' : 'images are'} still processing after ${Math.round(timeout / 1000)} s.`)
+      const again = input.again ? ` (${input.again})` : ''
+      throw new CliError([
+        `${ready} of ${ids.length} images are ready; ${failed.length + processing} are not usable:`,
+        ...lines,
+        `Run the import again${again}, or upload these files again in the Studio (Files). Raise the wait with --wait-timeout <seconds> if the images only need more time.`,
+      ].join('\n'))
+    }
+    await sleep(input.pollMs ?? WAIT_POLL_MS)
+  }
 }
 
 /**
@@ -280,16 +333,22 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
     storedBatches.push({ id: await input.upload(url, bytes, 'application/json'), count: batch.count })
   }
 
-  if (input.prod) return fill(input, data, site, storedBatches)
-  // From the clear on, a failure leaves the local site partly imported. After a passing problem, running the same
-  // command again finishes it: it stores the batches again, clears what is left and imports everything.
+  // The wait is outside the try below: a failed image is no reason to import everything again by itself, and the
+  // hosted site stays open for import until it is over (importSite closes it afterwards).
+  let filled: Awaited<ReturnType<typeof fill>>
   try {
-    return await fill(input, data, site, storedBatches)
+    filled = await fill(input, data, site, storedBatches)
   } catch (error) {
+    if (input.prod) throw error
     const reason = error instanceof Error ? error.message : String(error)
     const again = passing(reason) ? `\nRun the same command again to finish${input.again ? `: ${input.again}` : '.'}` : ''
     throw new CliError(`${reason}\nThe local site is only partly imported.${again}`, error instanceof CliError ? error.code : undefined)
   }
+  if (filled.uploads.length > 0) {
+    if (input.wait === false) log('Images are being processed; they appear on the site in a moment.')
+    else await waitForUploads(input, site, filled.uploads)
+  }
+  return { entries: filled.entries, files: filled.files }
 }
 
 /**
@@ -301,7 +360,7 @@ function passing(reason: string): boolean {
 }
 
 /** Steps 4 to 6: clear the local site, import the stored batches, rewrite the references between entries. */
-async function fill(input: ImportInput, data: SiteExport, site: string, storedBatches: { id: string; count: number }[]): Promise<{ entries: number; files: number }> {
+async function fill(input: ImportInput, data: SiteExport, site: string, storedBatches: { id: string; count: number }[]): Promise<{ entries: number; files: number; uploads: string[] }> {
   const { run, log } = input
 
   // 4. Clear. Each call removes a bounded part. Never on the hosted platform: it is empty by rule.
@@ -310,6 +369,7 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
   // 5. Import the stored batches; each answers with the new ID of every entry, as [exported ID, new ID] pairs.
   let done = 0
   const ids = new Map<string, string>()
+  const uploads = new Set<string>()
   let warnings = 0
   let firstWarning: string | undefined
   for (const batch of storedBatches) {
@@ -317,6 +377,7 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
     if (isObject(result) && Array.isArray(result.ids)) {
       for (const pair of result.ids as unknown[]) if (Array.isArray(pair) && typeof pair[0] === 'string' && typeof pair[1] === 'string') ids.set(pair[0], pair[1])
     }
+    if (isObject(result) && Array.isArray(result.uploads)) for (const id of result.uploads) if (typeof id === 'string') uploads.add(id)
     if (isObject(result) && typeof result.warnings === 'number') warnings += result.warnings
     if (isObject(result) && isObject(result.firstWarning)) firstWarning ??= warningText(result.firstWarning)
     done += batch.count
@@ -327,7 +388,6 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
     log(`${warnings === 1 ? '1 entry holds' : `${warnings} entries hold`} values the Studio would refuse today${first}. They were imported as they were; fix them in the Studio.`)
   }
   // Originals (local:files-export) go through the upload pipeline after their batch; the bundle serves only ready files.
-  if (data.files.some((file) => file.original)) log('Images are being processed; they appear on the site in a moment.')
 
   // 6. References between entries still name the exported IDs. Each part of the pairs goes once through all entries.
   const parts: { from: string; to: string }[][] = []
@@ -352,7 +412,7 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
     }
   }
   if (parts.length > 0) log(`References updated in ${changed.size} entries.`)
-  return { entries: data.entries.length, files: data.files.length }
+  return { entries: data.entries.length, files: data.files.length, uploads: [...uploads] }
 }
 
 /** Removes the site's content; each call removes a bounded part. */

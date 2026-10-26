@@ -38,11 +38,16 @@ Commands:
 Options:
   --site <slug>     ops:import: the site on the platform
   --prod            ops:import: required; confirms that production is meant
+  --no-wait         import, ops:import: return without waiting for the images to be processed
+  --wait-timeout <seconds>  import, ops:import: longest wait for the images (default 600)
   --reset           ops:import: replace the site's content (demo platform only)
   --config <file>   Path to the site's ginko.config.ts, required by local:dev; packages/ginko-server is searched from there
                     (without it: from the current folder)
   -h, --help        Show this help
 `
+
+/** `--no-wait` and `--wait-timeout <seconds>` as importSite options. */
+const waiting = (args: Args) => ({ wait: !args.flags.has('--no-wait'), ...(args.waitTimeout === undefined ? {} : { waitTimeoutMs: args.waitTimeout * 1000 }) })
 
 export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCode> {
   const upload = (url: string, bytes: Uint8Array<ArrayBuffer>, mime: string) => postFile(deps.fetch, url, bytes, mime)
@@ -62,21 +67,24 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
       },
       import: {
         folder: 'required',
+        flags: ['--no-wait'],
+        waitTimeout: true,
         async run(args) {
           const run = local(args)
-          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log, again: `pnpm local:import ${args.folder!}` })
+          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log, ...waiting(args), again: `pnpm local:import ${args.folder!}` })
           return { dir: args.folder, ...done }
         },
       },
       'ops:import': {
         folder: 'required',
         site: true,
-        flags: ['--prod', '--reset'],
+        flags: ['--prod', '--reset', '--no-wait'],
+        waitTimeout: true,
         async run(args) {
           if (!args.flags.has('--prod')) throw new CliError('ops:import writes to the hosted platform. Add --prod to confirm.', 'USAGE')
           if (!args.site) throw new CliError('ops:import needs --site <slug>.', 'USAGE')
           const run = connectProd(process.cwd(), 'ops:import')
-          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log, prod: true, reset: args.flags.has('--reset'), site: args.site })
+          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log, ...waiting(args), prod: true, reset: args.flags.has('--reset'), site: args.site })
           return { dir: args.folder, site: args.site, ...done }
         },
       },
