@@ -1,7 +1,7 @@
 // The one text format (V1.md rule 1): a Markdown string in comark syntax, stored as is in Git files,
 // in the platform, in the editor and in agent tools. The bundle carries the parsed tree, so sites
 // render it without a parser. Pure: runs in Node, in the browser and in Convex.
-import type { ComarkPlugin, Node } from 'comark'
+import type { ComarkPlugin, MarkdownExitPlugin, Node } from 'comark'
 import { defineComarkPlugin, parseMarkdown as parseComark } from 'comark'
 import alert from 'comark/plugins/alert'
 import attributes from 'comark/plugins/attributes'
@@ -67,7 +67,7 @@ const anyValue: ValueCheck = () => true
 const oneOf = (values: readonly string[]): ValueCheck => (value) => typeof value === 'string' && values.includes(value)
 const matching = (pattern: RegExp): ValueCheck => (value) => typeof value === 'string' && pattern.test(value)
 
-/** Heading ids: comark's, ours (headingAnchors) or `{#id}`. Not `__…`, the prefix of Nuxt's own ids (`__nuxt`, `__NUXT_DATA__`). */
+/** Heading ids: ours (headingAnchors) or `{#id}`. Not `__…`, the prefix of Nuxt's own ids (`__nuxt`, `__NUXT_DATA__`). */
 const heading = { id: (value: unknown) => typeof value === 'string' && !value.startsWith('__') }
 /** The ids of the footnotes plugin: `fnref-1` on the reference, `fn-1` on the note. */
 const footnoteId = matching(/^fn(ref)?-[\w-]+$/)
@@ -243,7 +243,7 @@ export async function parseMarkdown(text: string, options: ParseOptions = {}): P
     toc({ depth: 2, searchDepth: 3 }),
   ]
   // autoClose is for streaming: it appends `*` or `::` to text that looks unfinished, which would change stored text.
-  const tree = await parseComark(text, { registerDefaultPlugins: false, autoClose: false, plugins })
+  const tree = await parseComark(text, { registerDefaultPlugins: false, autoClose: false, headingIds: false, plugins })
   // JSON round-trip: the value goes into a JSON bundle, so drop anything that is not plain data.
   const value: MarkdownTree = JSON.parse(JSON.stringify({ nodes: tree.nodes, toc: (tree.meta as { toc?: MarkdownToc }).toc, summary }))
   return { frontmatter: tree.frontmatter as Record<string, unknown>, value, body, problems: problems.map((p) => p.message), problemMessages: problems, ...(hidden ? { hidden: true } : {}) }
@@ -288,14 +288,16 @@ const MORE_MARKER = '<!-- more -->'
 
 /**
  * The text before a `<!-- more -->` line is the summary (excerpt). Raw HTML is never parsed, so comark's
- * own `summary` plugin (which looks for an HTML block) never finds it; the marker is a paragraph of plain text here.
- * The marker is removed from the tree. Runs after footnotes, so references in the summary are already converted.
+ * own `summary` plugin (which looks for an HTML block) never finds it; the marker is a paragraph that holds only
+ * a comment node (`[null, {}, ' more ']`). The marker is removed from the tree. Runs after footnotes, so references
+ * in the summary are already converted.
  */
 function moreMarker(set: (nodes: Node[]) => void) {
+  const isMarker = (node: Node | undefined) => Array.isArray(node) && node[0] === null && node.length === 3 && node[2] === ' more '
   return defineComarkPlugin(() => ({
     name: 'ginko-more',
     post(state) {
-      const at = state.tree.nodes.findIndex((n) => typeof n !== 'string' && n[0] === 'p' && n.length === 3 && n[2] === MORE_MARKER)
+      const at = state.tree.nodes.findIndex((n) => typeof n !== 'string' && n[0] === 'p' && n.length === 3 && isMarker(n[2]))
       if (at === -1) return
       set(state.tree.nodes.slice(0, at))
       state.tree.nodes.splice(at, 1)
@@ -312,15 +314,14 @@ function moreMarker(set: (nodes: Node[]) => void) {
 function referenceDefinitions(onDrop: () => void) {
   return defineComarkPlugin(() => ({
     name: 'ginko-references',
-    markdownItPlugins: [(md) => {
-      // comark types `md` with markdown-it's types, which are not installed here: the state is typed by what this reads.
-      md.core.ruler.push('ginko-references', (state: { tokens: Array<{ type: string }> }) => {
+    markdownItPlugins: [((md) => {
+      md.core.ruler.push('ginko-references', (state) => {
         const kept = state.tokens.filter((token) => token.type !== 'reference')
         if (kept.length === state.tokens.length) return
         state.tokens = kept
         onDrop()
       })
-    }],
+    }) satisfies MarkdownExitPlugin],
   }))()
 }
 
@@ -431,22 +432,22 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
   }))()
 }
 
-/** comark's heading slug (comark/dist/internal/parse/token-processor.js `slugify`): drops every non-`\w` character. */
-function comarkSlug(text: string): string {
+/** A heading slug: lower case, spaces to `-`, every non-`\w` character dropped; a leading digit gets `_`. */
+function asciiSlug(text: string): string {
   const slug = text.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '').replace(/-{2,}/g, '-').replace(/^-+|-+$/g, '')
   return /^\d/.test(slug) ? `_${slug}` : slug
 }
 
-/** The same slug, with German umlauts spelled out (ä → ae, ß → ss) and other accents removed (é → e). */
+/** The slug of a heading's text, with German umlauts spelled out (ä → ae, ß → ss) and other accents removed (é → e). */
 function letterSlug(text: string): string {
   const spelled = text.replace(/[äöüÄÖÜß]/g, (c) => ({ ä: 'ae', ö: 'oe', ü: 'ue', Ä: 'Ae', Ö: 'Oe', Ü: 'Ue', ß: 'ss' })[c] ?? c)
-  return comarkSlug(spelled.normalize('NFD').replace(/\p{M}/gu, ''))
+  return asciiSlug(spelled.normalize('NFD').replace(/\p{M}/gu, ''))
 }
 
-/** Text of a node; `br` and `html_inline` do not count (comark reads heading text the same way for the slug). */
 /** The text of a component that has none of its own, such as a fact (facts.ts): a string replaces the node, undefined keeps it. */
 export type TextResolver = (tag: string, props: Readonly<Record<string, unknown>> | undefined) => string | undefined
 
+/** Text of a node; comments, `br`, `html_inline` and `pre` do not count (heading ids and summaries read it this way). */
 function textOf(node: Node, blocks = false, resolve?: TextResolver): string {
   if (typeof node === 'string') return node
   const [tag, props, ...children] = node
@@ -457,20 +458,19 @@ function textOf(node: Node, blocks = false, resolve?: TextResolver): string {
 }
 
 /**
- * comark makes heading ids that lose every non-ASCII letter ("Empfänger" → "empfnger"). This pass,
- * before `toc`, gives the same ids with the letters kept. It repeats comark's rules (a heading id is
- * prefixed with its h2+ parent's id; a repeated id gets "-1", "-2") once with comark's slug and once
- * with `letterSlug`, and replaces an id only where it is still comark's own. So an explicit `{#id}`,
- * or a heading whose text comark reads differently (an inline component), keeps its id.
+ * The ids of headings without a `{#id}` (comark makes none: `headingIds: false`). An id is the heading's `letterSlug`,
+ * prefixed with its h2+ parent's id; a repeated id gets "-1", "-2". These are the anchors sites have linked to since
+ * comark 0.7, whose ids Ginko rewrote this way, so they must not change.
  */
 // A factory, not a module-level plugin: core is imported by every page, and a call at load time would
 // keep comark in the browser bundle although pages never parse.
 const headingAnchors = defineComarkPlugin(() => ({
   name: 'heading-anchors',
   post(state) {
-    const runs = [comarkSlug, letterSlug].map((slug) => ({ slug, stack: [] as { level: number; id: string }[], counts: new Map<string, number>() }))
-    const idsOf = (text: string, level: number) => runs.map(({ slug, stack, counts }) => {
-      let id = slug(text)
+    const stack: { level: number; id: string }[] = []
+    const counts = new Map<string, number>()
+    const idOf = (text: string, level: number) => {
+      let id = letterSlug(text)
       while (stack.length > 0 && stack[stack.length - 1]!.level >= level) stack.pop()
       const parent = stack[stack.length - 1]
       if (parent && parent.level >= 2) id = `${parent.id}-${id}`
@@ -478,14 +478,14 @@ const headingAnchors = defineComarkPlugin(() => ({
       const count = counts.get(id) ?? 0
       counts.set(id, count + 1)
       return count === 0 ? id : `${id}-${count}`
-    })
+    }
     const visit = (node: Node) => {
       if (typeof node === 'string' || node[0] === null) return
       const [tag, props, ...children] = node
       const level = /^h([1-6])$/.exec(tag)?.[1]
       if (level) {
-        const [comarkId, letterId] = idsOf(textOf(node), Number(level))
-        if (props.id === comarkId) props.id = letterId
+        const id = idOf(textOf(node), Number(level))
+        if (props.id === undefined && id) props.id = id
         return
       }
       children.forEach(visit)
