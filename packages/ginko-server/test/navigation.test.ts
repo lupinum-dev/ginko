@@ -130,6 +130,29 @@ describe('navigation.move', () => {
     expect(await errorOf(s.as.owner.mutation(api.entries.move, { site: 'restaurant', opId: opId(), entry: s.ids.auth!, direction: 'up' }))).toMatchObject({ code: 'INVALID', key: 'errors.moveInNavigationTree' })
   })
 
+  // Wrong behaviour caught: with drafts on, a move of a page that has unpublished text waits with that text, the text
+  // goes online with the move, or publishing the text later puts the page back where it was.
+  it('moves a page with unpublished text live at once; the text stays unpublished and its publish keeps the new place', async () => {
+    const s = await docsSite(PAGES)
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, docs: { ...schema.bricks.docs!, drafts: true } as typeof docsBrick } } })
+    })
+    const saved = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.ids.paging!, baseRev: 1, fields: { title: { de: 'Blättern' } } })
+    expect(saved).toMatchObject({ pending: true })
+    // The place never waits: only the tree moves a page, and it goes online at once.
+    expect(await errorOf(s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.ids.paging!, baseRev: await s.rev('paging'), fields: { parent: s.ids.setup! } }))).toMatchObject({ key: 'errors.moveInNavigationTree' })
+    await s.move('paging', { parent: 'setup', after: 'install' })
+    const page = async () => s.t.run(async (ctx) => ({ entry: (await ctx.db.get(s.ids.paging!))!, pending: await ctx.db.query('pendingChanges').withIndex('by_entry', (q) => q.eq('entry', s.ids.paging!)).unique() }))
+    const moved = await page()
+    expect([moved.entry.data.parent, moved.entry.data.title]).toEqual([s.ids.setup, { de: 'paging' }])
+    expect(Object.keys(moved.pending!.fields)).toEqual(['title'])
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.ids.paging!, lifeRev: 1 })
+    const published = await page()
+    expect([published.entry.data.parent, published.entry.data.title, published.pending]).toEqual([s.ids.setup, { de: 'Blättern' }, null])
+    expect(await s.shape()).toEqual(['-/Start: intro', '-/Start: setup(install paging)', '-/Anleitungen: auth(keys)'])
+  })
+
   // Wrong behaviour caught: a page put inside its own subpage vanishes from the website's navigation (a cycle).
   it('refuses a place inside the page or its subpages and writes nothing', async () => {
     const s = await docsSite(PAGES)

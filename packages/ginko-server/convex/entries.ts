@@ -180,6 +180,8 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   // Changes still waiting after drafts were turned off keep waiting too, so the person can publish or discard them.
   const held = await pendingOf(ctx, entry._id)
   const toPending = keepsPending(schema, entry) || held !== null
+  // A navigation tree's place goes online at once and only through the tree (navigation.move): never into pending changes.
+  if (toPending && isNavTree(entry.brick, schema.bricks[entry.brick]!) && ['parent', 'section', 'tab'].some((k) => Object.hasOwn(args.fields, k))) fail('INVALID', 'errors.moveInNavigationTree')
   const shown = overlay(entry, held)
   const before = shown.data
   const data: Data = { ...before }
