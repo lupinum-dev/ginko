@@ -31,6 +31,7 @@ export const purge = internalMutation({
     await sweep(BATCH, (n) => ctx.db.query('uploads').withIndex('by_site', (q) => q.eq('site', id)).take(n), (row: Doc<'uploads'>) => purgeUpload(ctx, row))
     await sweep(BATCH, (n) => ctx.db.query('fileRefs').withIndex('by_site_holder', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('folders').withIndex('by_site_parent', (q) => q.eq('site', id)).take(n))
+    await sweep(BATCH, (n) => ctx.db.query('revBumps').withIndex('by_site', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('uploadTickets').withIndex('by_site', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('pendingChanges').withIndex('by_site', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', id)).take(n))

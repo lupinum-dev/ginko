@@ -146,6 +146,7 @@ describe('delete site', () => {
       const row = (await ctx.db.get(file))!
       await ctx.db.insert('fileRefs', { site: s.site, file, holder: 'change', holderId: 'x' })
       await ctx.db.insert('migrationsApplied', { site: s.site, id: 'm1', brick: 'menu', fills: 'x', fingerprint: 'f', schemaRev: 1 })
+      await ctx.db.insert('revBumps', { site: s.site })
       await ctx.db.insert('reminders', { site: s.site, brick: 'lunch', week: '2026-W41', user: 'u-wirtin', at: Date.now() })
       return [row.storageId, processed, variant]
     })
