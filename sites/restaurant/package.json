@@ -3,11 +3,11 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@fontsource/alegreya": "5.2.8",
-    "@fontsource/alegreya-sans": "5.2.8",
+    "@fontsource/alegreya": "5.3.0",
+    "@fontsource/alegreya-sans": "5.3.0",
     "@lupinum/ginko": "workspace:*",
-    "nuxt": "4.6.0",
-    "vue": "3.5.43",
+    "nuxt": "4.6.2",
+    "vue": "3.5.44",
     "@lupinum/ginko-preset-gastro": "workspace:*"
   },
   "scripts": {
@@ -18,6 +18,6 @@
   },
   "devDependencies": {
     "typescript": "6.0.3",
-    "vue-tsc": "3.1.5"
+    "vue-tsc": "3.3.13"
   }
 }

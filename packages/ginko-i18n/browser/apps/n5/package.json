@@ -1,3 +1,3 @@
 { "name": "app-n5", "private": true, "type": "module",
   "scripts": { "dev": "nuxt dev", "build": "nuxt build", "generate": "nuxt generate" },
-  "dependencies": { "nuxt": "npm:nuxt-nightly@5.0.0-2610102328-1438bbb", "vue": "^3.5.22", "@lupinum/ginko-i18n": "workspace:*" } }
+  "dependencies": { "nuxt": "npm:nuxt-nightly@5.0.0-2610102328-1438bbb", "vue": "^3.5.44", "@lupinum/ginko-i18n": "workspace:*" } }

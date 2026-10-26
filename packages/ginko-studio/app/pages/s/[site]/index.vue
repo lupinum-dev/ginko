@@ -251,7 +251,7 @@ provide(TODAY, reactive({
 </script>
 
 <template>
-  <div class="@container mx-auto w-full max-w-[1400px] px-4 pt-4 pb-10 min-[900px]:px-8 min-[900px]:pt-7 min-[900px]:pb-12">
+  <div class="@container w-full max-w-[1400px] px-4 pt-4 pb-10 min-[900px]:px-8 min-[900px]:pt-7 min-[900px]:pb-12">
     <header class="mb-4 grid gap-1 @[680px]:mb-5">
       <div class="flex flex-wrap items-baseline gap-x-3">
         <h1 class="text-[1.375rem] font-semibold tracking-tight">{{ t('nav.quick') }}</h1>

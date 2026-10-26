@@ -146,8 +146,9 @@ export async function prepareLocalBackend(backendDir: string, command: string, l
     BCN_AUTH_PROXY_IP_SECRET: () => local.BCN_AUTH_PROXY_IP_SECRET || secret(),
   }
   // The backend's values after this function: what `env list` showed plus what is set below. No `env get` per name:
-  // every Convex CLI call costs a second or two on each start.
-  const values = parseEnvText(await convex('env', 'list'))
+  // every Convex CLI call costs a second or two on each start. Convex 1.48+ lists only the names when it detects an AI
+  // agent; without --include-values the secrets would look empty and be replaced, which signs everyone out.
+  const values = parseEnvText(await convex('env', 'list', '--include-values'))
   for (const [name, value] of Object.entries(wanted)) {
     // The platform reads GINKO_LOCAL inside Convex (SPEC 5.3): a backend with another value must not keep it.
     if (name === 'GINKO_LOCAL' ? values[name] === '1' : values[name] !== undefined) continue

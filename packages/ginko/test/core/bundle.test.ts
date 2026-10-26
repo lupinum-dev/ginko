@@ -389,14 +389,15 @@ it('withMarkdownRefs: a platform text becomes only its ref and word count in pag
 })
 
 // Wrong behaviour caught: a picture of the Files library inside a text (`$file.<id>`) reaches the site as that literal
-// reference, so the browser shows a broken image; a file that is gone keeps an address that cannot load.
-it('servedBundle resolves $file references in texts to the file, its size, variants and library description', async () => {
+// reference, so the browser shows a broken image; a file that is gone keeps an address that cannot load; a figure
+// loads the full 2400 px file on a phone and crops away the focus point set in Files.
+it('servedBundle resolves $file references in texts to the file, its size, variants, focus point and library description', async () => {
   const s = base()
   const legal = s.bricks.legal!
   ;(legal.fields.imprint as { profile: string }).profile = 'page'
   s.components = { figure: { kind: 'block', label: 'Bild', describe: 'Ein Bild', props: { src: f.image('Bild'), alt: f.text('Beschreibung', { optional: true }), width: f.text('Breite', { optional: true }), height: f.text('Höhe', { optional: true }) } } }
   const files = new Map<string, FileInfo>([
-    ['f1', { url: 'https://cdn.example/f1.webp', name: 'hund.jpg', size: 9, width: 2400, height: 1600, variants: [{ width: 480, url: 'https://cdn.example/f1-480.webp' }], alt: { de: 'Ein Hund' } }],
+    ['f1', { url: 'https://cdn.example/f1.webp', name: 'hund.jpg', size: 9, width: 2400, height: 1600, focus: { x: 0.25, y: 0.1234 }, variants: [{ width: 480, url: 'https://cdn.example/f1-480.webp' }], alt: { de: 'Ein Hund' } }],
     ['f2', { url: 'https://cdn.example/karte.pdf', name: 'karte.pdf', size: 3 }],
   ])
   const text = '![]($file.f1)\n\n![Eigenes]($file.gone)\n\n[Karte]($file.f2)\n\n::figure{src="$file.f1"}\n::\n'
@@ -409,6 +410,6 @@ it('servedBundle resolves $file references in texts to the file, its size, varia
     ['p', {}, ['img', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600, srcset: 'https://cdn.example/f1-480.webp 480w, https://cdn.example/f1.webp 2400w', sizes: '100vw' }]],
     ['p', {}, ['img', { alt: 'Eigenes', 'data-broken': true }]],
     ['p', {}, ['a', { href: 'https://cdn.example/karte.pdf' }, 'Karte']],
-    ['figure', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600 }],
+    ['figure', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600, srcset: 'https://cdn.example/f1-480.webp 480w, https://cdn.example/f1.webp 2400w', focal: '25% 12.3%' }],
   ])
 })

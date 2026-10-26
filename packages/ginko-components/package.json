@@ -69,10 +69,10 @@
   "devDependencies": {
     "@lupinum/ginko": "workspace:*",
     "@lupinum/ginko-i18n": "workspace:*",
-    "@nuxt/schema": "4.6.0",
-    "@vue/server-renderer": "3.5.43",
-    "nuxt": "4.6.0",
-    "vue": "3.5.43",
-    "vue-tsc": "^3.1.5"
+    "@nuxt/schema": "4.6.2",
+    "@vue/server-renderer": "3.5.44",
+    "nuxt": "4.6.2",
+    "vue": "3.5.44",
+    "vue-tsc": "^3.3.13"
   }
 }

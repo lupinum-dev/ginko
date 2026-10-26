@@ -109,3 +109,17 @@ Hosted production needs Matthias's OK at each step, in this order:
   schema has `status: { hours: true }` together with a live collection of the hour-plan shape. Then the branch returns
   no keys for `{ hours: true }`; delete it, this entry and the shape lookup's mention in the doc comment.
 - **Tracking issue:** none yet.
+
+## The figure's edge choice `focus` (retired prop and its CSS)
+
+- **Why:** a figure now keeps the focus point of its library picture in view (D57), so the editor no longer offers
+  the figure's own `focus` (`top`, `bottom`, `left`, `right`). Texts written before still have it; refusing it would
+  make them fail the check when they are saved again.
+- **Introduced:** 26 October 2026.
+- **Compatibility code:** the `focus` prop with `retired: true` in `packages/ginko-components/src/registry-media.ts`,
+  the `focus` prop of `Figure.vue` (`data-focus`) and the four `data-focus` rules in `src/runtime/media.css`.
+- **Dependents:** stored Markdown texts with `::figure{… focus="…"}` on any platform, and files sites that use it.
+- **Removal condition:** a query over hosted production and the demo platform finds no entry text with a figure
+  that has `focus=`, and the next major version of the published packages (removing a prop is breaking for files
+  sites). Then delete the prop, the attribute, the four rules and this entry.
+- **Tracking issue:** none yet.

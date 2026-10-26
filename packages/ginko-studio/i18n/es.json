@@ -215,7 +215,11 @@
       "desktop": "Escritorio",
       "phone": "Móvil",
       "open": "Abrir",
-      "ended": "El sitio web ya no muestra esto: se mostró hasta el {date}. Con una fecha posterior vuelve a aparecer."
+      "ended": "El sitio web ya no muestra esto: se mostró hasta el {date}. Con una fecha posterior vuelve a aparecer.",
+      "resize": "Ancho del formulario y la vista previa",
+      "tablet": "Tableta",
+      "laptop": "Portátil",
+      "actualSize": "Tamaño real"
     },
     "remove": {
       "title": "Eliminar entrada",

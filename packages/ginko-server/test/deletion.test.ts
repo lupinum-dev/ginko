@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, components, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import schema from '../convex/schema'
+import { tick } from './clock'
 import { errorOf, firstPage, opId, setup, upload } from './setup'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -98,8 +99,9 @@ describe('delete site', () => {
     expect(wrong.code).toBe('INVALID')
     expect(await open()).toMatchObject({ studio: 'open' })
 
+    const now = tick()
     const { at } = await s.as.owner.mutation(api.sites.startDeletion, { site: 'restaurant', confirm: 'restaurant' })
-    expect(at).toBe(Date.now() + 7 * DAY)
+    expect(at).toBe(now + 7 * DAY)
     const unknown = (await s.t.fetch('/bundle/nope?format=3&locale=de')).status
     expect(await open()).toEqual({ studio: 'closed', cook: 'closed', bundle: unknown, push: false, agent: false })
     // Only the owner can see the deletion and cancel it.
