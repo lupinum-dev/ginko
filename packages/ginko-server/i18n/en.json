@@ -223,7 +223,12 @@
     "importTooLarge": "An import takes at most {max} items. Split it into several calls.",
     "uploadUrlNotAllowed": "Only public https addresses can be fetched.",
     "uploadFetchFailed": "The file could not be fetched from {url} (status {status}).",
-    "createNeedsCollection": "“{brick}” is a single brick: change it with ginko_write."
+    "createNeedsCollection": "“{brick}” is a single brick: change it with ginko_write.",
+    "notANavigationTree": "This area has no navigation tree.",
+    "placeInsideItself": "A page can’t go inside itself or one of its subpages.",
+    "placeGone": "That place no longer exists: someone moved or removed a page meanwhile.",
+    "placeInvalid": "The page can’t go there.",
+    "headingOnSubpage": "A subpage follows its parent page and has no heading of its own."
   },
   "history": {
     "changedSingle": "{label}: {fields} changed",
@@ -269,7 +274,15 @@
     "staleApproverNotAllowed": "The approver is no longer allowed to approve this.",
     "staleNoLonger": "This is no longer possible.",
     "staleRefused": "{why} Please propose the change again.",
-    "stateField": "Status"
+    "stateField": "Status",
+    "placed": "“{title}” moved in the navigation",
+    "headingHandedOver": "“{title}” now starts the heading (“{from}” moved away)",
+    "sectionRenamed": "Section “{from}” renamed to “{to}”",
+    "tabRenamed": "Tab “{from}” renamed to “{to}”",
+    "sectionStarted": "Section “{name}” started",
+    "tabStarted": "Tab “{name}” started",
+    "sectionRemoved": "Section heading “{name}” removed",
+    "tabRemoved": "Tab “{name}” removed"
   },
   "publicness": {
     "deleted": "The entry was removed. You can restore it until {until, date, long}, then it is deleted for good.",

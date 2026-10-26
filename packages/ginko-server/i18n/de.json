@@ -223,7 +223,12 @@
     "importTooLarge": "Ein Import nimmt höchstens {max} Einträge. Teilen Sie ihn auf mehrere Aufrufe auf.",
     "uploadUrlNotAllowed": "Nur öffentliche https-Adressen können geladen werden.",
     "uploadFetchFailed": "Die Datei konnte nicht von {url} geladen werden (Status {status}).",
-    "createNeedsCollection": "„{brick}“ ist ein einzelner Baustein: ändern Sie ihn mit ginko_write."
+    "createNeedsCollection": "„{brick}“ ist ein einzelner Baustein: ändern Sie ihn mit ginko_write.",
+    "notANavigationTree": "Dieser Bereich hat keinen Navigationsbaum.",
+    "placeInsideItself": "Eine Seite kann nicht in sich selbst oder eine ihrer Unterseiten.",
+    "placeGone": "Diese Stelle gibt es nicht mehr: Inzwischen hat jemand eine Seite verschoben oder entfernt.",
+    "placeInvalid": "Die Seite kann dort nicht hin.",
+    "headingOnSubpage": "Eine Unterseite folgt ihrer übergeordneten Seite und hat keine eigene Überschrift."
   },
   "history": {
     "changedSingle": "{label}: {fields} geändert",
@@ -269,7 +274,15 @@
     "staleApproverNotAllowed": "Der Genehmiger darf das nicht mehr freigeben.",
     "staleNoLonger": "Das geht nicht mehr.",
     "staleRefused": "{why} Bitte schlage die Änderung neu vor.",
-    "stateField": "Status"
+    "stateField": "Status",
+    "placed": "„{title}“ in der Navigation verschoben",
+    "headingHandedOver": "„{title}“ beginnt jetzt die Überschrift („{from}“ verschoben)",
+    "sectionRenamed": "Abschnitt „{from}“ in „{to}“ umbenannt",
+    "tabRenamed": "Reiter „{from}“ in „{to}“ umbenannt",
+    "sectionStarted": "Abschnitt „{name}“ begonnen",
+    "tabStarted": "Reiter „{name}“ begonnen",
+    "sectionRemoved": "Abschnittsüberschrift „{name}“ entfernt",
+    "tabRemoved": "Reiter „{name}“ entfernt"
   },
   "publicness": {
     "deleted": "Der Eintrag wurde entfernt. Er lässt sich bis zum {until, date, long} wiederherstellen, danach wird er endgültig gelöscht.",

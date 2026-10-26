@@ -223,7 +223,12 @@
     "importTooLarge": "Una importación admite como máximo {max} elementos. Divídala en varias llamadas.",
     "uploadUrlNotAllowed": "Solo se pueden descargar direcciones https públicas.",
     "uploadFetchFailed": "No se pudo descargar el archivo de {url} (estado {status}).",
-    "createNeedsCollection": "“{brick}” es un bloque único: cámbielo con ginko_write."
+    "createNeedsCollection": "“{brick}” es un bloque único: cámbielo con ginko_write.",
+    "notANavigationTree": "Esta área no tiene árbol de navegación.",
+    "placeInsideItself": "Una página no puede ir dentro de sí misma ni de una de sus subpáginas.",
+    "placeGone": "Ese lugar ya no existe: alguien movió o eliminó una página mientras tanto.",
+    "placeInvalid": "La página no puede ir ahí.",
+    "headingOnSubpage": "Una subpágina sigue a su página superior y no tiene título propio."
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",
@@ -269,7 +274,15 @@
     "staleApproverNotAllowed": "Quien aprueba ya no tiene permiso para aprobar esto.",
     "staleNoLonger": "Esto ya no es posible.",
     "staleRefused": "{why} Propón el cambio de nuevo.",
-    "stateField": "Estado"
+    "stateField": "Estado",
+    "placed": "“{title}” movida en la navegación",
+    "headingHandedOver": "“{title}” abre ahora el título (“{from}” se movió)",
+    "sectionRenamed": "Sección “{from}” renombrada a “{to}”",
+    "tabRenamed": "Pestaña “{from}” renombrada a “{to}”",
+    "sectionStarted": "Sección “{name}” creada",
+    "tabStarted": "Pestaña “{name}” creada",
+    "sectionRemoved": "Título de sección “{name}” eliminado",
+    "tabRemoved": "Pestaña “{name}” eliminada"
   },
   "publicness": {
     "deleted": "La entrada se eliminó. Puedes restaurarla hasta el {until, date, long}; después se borra definitivamente.",
