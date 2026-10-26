@@ -119,7 +119,7 @@ const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.va
 // The wide top bar shows with the site; pages teleport their actions into it while it does.
 providePanelBar(() => !blocked.value)
 /** The frame of the signed-out, no-access and not-loaded messages: the page frame's width and padding (StudioPage). */
-const BLOCKED = 'mx-auto grid w-full max-w-[1200px] justify-items-start gap-3 px-4 pt-4 min-[900px]:px-8 min-[900px]:pt-7'
+const BLOCKED = 'grid w-full max-w-[1200px] justify-items-start gap-3 px-4 pt-4 min-[900px]:px-8 min-[900px]:pt-7'
 </script>
 
 <template>
@@ -151,7 +151,7 @@ const BLOCKED = 'mx-auto grid w-full max-w-[1200px] justify-items-start gap-3 px
     <div class="min-w-0 flex-1 min-[900px]:flex min-[900px]:min-h-[calc(100dvh-1.5rem)] min-[900px]:flex-col min-[900px]:overflow-clip min-[900px]:rounded-xl min-[900px]:border min-[900px]:bg-card min-[900px]:shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
       <header v-if="!blocked" class="sticky top-0 z-20 hidden h-14 items-center gap-2 border-b bg-card/95 pr-3 pl-5 backdrop-blur-sm min-[900px]:flex">
         <div id="studio-lead" class="flex items-center empty:hidden" />
-        <nav :aria-label="t('nav.crumbs')" class="min-w-0 flex-1">
+        <nav :aria-label="t('nav.crumbs')" class="min-w-0 flex-1 overflow-x-clip">
           <ol class="flex min-w-0 items-center gap-1 text-sm">
             <li class="flex min-w-0 shrink-0 items-center">
               <NuxtLink :to="base" class="truncate rounded-md px-1 py-0.5 text-muted-foreground no-underline hover:text-foreground">{{ siteName }}</NuxtLink>
@@ -163,7 +163,7 @@ const BLOCKED = 'mx-auto grid w-full max-w-[1200px] justify-items-start gap-3 px
             </li>
           </ol>
         </nav>
-        <div id="studio-actions" class="flex flex-none items-center gap-2 empty:hidden" />
+        <div id="studio-actions" class="flex min-w-0 items-center gap-2 empty:hidden" />
         <Button type="button" variant="ghost" class="h-9 gap-2 px-2.5 font-normal text-muted-foreground min-[1280px]:w-52 min-[1280px]:justify-start min-[1280px]:border min-[1280px]:bg-background" :aria-label="t('basics.search.label')" @click="paletteOpen = true">
           <SearchIcon aria-hidden="true" /><span class="hidden min-[1280px]:inline">{{ t('basics.search.button') }}</span><kbd class="ml-auto hidden rounded border bg-muted px-1.5 font-sans text-[11px] min-[1280px]:inline">{{ shortcut }}</kbd>
         </Button>

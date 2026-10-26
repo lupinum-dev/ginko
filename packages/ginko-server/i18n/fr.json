@@ -229,7 +229,9 @@
     "placeInsideItself": "Une page ne peut pas aller dans elle-même ni dans une de ses sous-pages.",
     "placeGone": "Cet emplacement n’existe plus : quelqu’un a déplacé ou retiré une page entre-temps.",
     "placeInvalid": "La page ne peut pas aller là.",
-    "headingOnSubpage": "Une sous-page suit sa page parente et n’a pas de titre à elle."
+    "headingOnSubpage": "Une sous-page suit sa page parente et n’a pas de titre à elle.",
+    "noUnpublishedChanges": "Il n’y a pas de modifications non publiées ici.",
+    "liveChangedMeanwhile": "La version en ligne a été modifiée entre-temps. Abandonnez les modifications non publiées et refaites-les."
   },
   "history": {
     "changedSingle": "{label} : modification de {fields}",
@@ -283,7 +285,16 @@
     "sectionStarted": "Section « {name} » commencée",
     "tabStarted": "Onglet « {name} » commencé",
     "sectionRemoved": "Titre de section « {name} » retiré",
-    "tabRemoved": "Onglet « {name} » retiré"
+    "tabRemoved": "Onglet « {name} » retiré",
+    "publishChangesProposal": "Publier les modifications de « {title} » : {fields}",
+    "publishChangesProposalScheduled": "Publier les modifications de « {title} » ({fields}), en ligne à partir du {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "publishedChanges": "Modifications de « {title} » publiées : {fields}",
+    "publishedChangesDue": "Modifications de « {title} » publiées (comme prévu) : {fields}",
+    "publishedChangesLate": "Modifications de « {title} » publiées tout de suite (l’heure prévue était déjà passée au moment de l’approbation) : {fields}",
+    "changesScheduled": "Modifications de « {title} » : en ligne à partir du {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "changesUnscheduled": "Modifications de « {title} » : programmation annulée",
+    "changesDiscarded": "Modifications non publiées de « {title} » abandonnées",
+    "changesPublishStopped": "Les modifications de « {title} » ne sont pas passées en ligne : {why}"
   },
   "publicness": {
     "deleted": "L’entrée a été supprimée. Vous pouvez la restaurer jusqu’au {until, date, long} ; elle sera ensuite supprimée définitivement.",

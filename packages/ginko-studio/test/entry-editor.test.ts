@@ -4,7 +4,7 @@
 // writes and the field components are replaced.
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
-import { expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { collection, defineSite, f, single } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
@@ -316,11 +316,16 @@ test('Ctrl+S in the form saves a change once, and an unchanged form not at all',
 // showed only "G…"; or it stayed up there after the editor closed.
 test('while the editor is open the toast sits above its save bar, and goes back down when it closes', async () => {
   const Toaster = defineComponent({ name: 'Toaster', props: ['offset', 'mobileOffset'], render: () => null })
-  // happy-dom lays nothing out: its observer reports the save bar 72px high, as a browser would.
+  // happy-dom lays nothing out: its observer reports the save bar 72px high, as a browser would (both boxes, since
+  // the editor also measures its own content width).
   const observer = window.ResizeObserver
   window.ResizeObserver = class {
     constructor(private report: ResizeObserverCallback) {}
-    observe(el: Element) { queueMicrotask(() => this.report([{ borderBoxSize: [{ inlineSize: 600, blockSize: el.classList.contains('bar') ? 72 : 0 }] }] as never, this as never)) }
+    observe(el: Element) {
+      const blockSize = el.classList.contains('bar') ? 72 : 0
+      const box = [{ inlineSize: 600, blockSize }]
+      queueMicrotask(() => this.report([{ target: el, borderBoxSize: box, contentBoxSize: box, contentRect: { width: 600, height: blockSize } }] as never, this as never))
+    }
     unobserve() {}
     disconnect() {}
   } as never
@@ -558,4 +563,75 @@ test('Alles bearbeiten on the English tab says a cleared title takes the entry o
   } finally {
     vi.stubGlobal('useRoute', () => ({ query: {} }))
   }
+})
+
+// Save without publishing: on a live entry of a collection with drafts, Speichern keeps the changes unpublished.
+describe('the footer of a live entry with unpublished changes', () => {
+  const plain = serializeSchema(defineSite({
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    pages: { home: { de: '/' } },
+    bricks: { hours: collection({ label: 'Zeiten', max: 50, order: 'manual', fields: { title: f.text('Titel') } }) },
+  }))
+  const pass = { template: '<div><slot /></div>' }
+  const stubs = {
+    EntryFields: true, PreviewPane: true, NuxtLink: true, DropdownMenu: pass, DropdownMenuTrigger: pass, DropdownMenuContent: pass,
+    DropdownMenuItem: { emits: ['select'], template: '<button type="button" @click="$emit(\'select\')"><slot /></button>' },
+  }
+  const site = { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }
+  const at = Date.parse('2026-11-02T08:00:00Z')
+  const entryOf = (extra: Record<string, unknown> = {}) => ({ _id: 'e1', brick: 'blog', kind: 'item' as const, order: 1, data: { title: { de: 'Herbstfest' } }, rev: 3, fieldRevs: {}, lifeRev: 1, prints: {}, ...extra })
+  const buttons = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('button').map((b) => b.text())
+
+  // Wrong behaviour caught: the page says "Online" while saved changes wait, offers no way to publish or discard them
+  // (also when they were saved before the collection turned drafts off), or offers publishing on a collection without
+  // drafts, where Speichern is already live.
+  test.each([
+    { name: 'live, nothing waiting', key: 'blog', entry: entryOf(), status: 'Online', save: 'Speichern', publish: false, discard: false },
+    { name: 'live with unpublished changes', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true },
+    { name: 'unpublished changes planned', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'], publishAt: at } }), status: 'Änderungen online ab', save: 'Speichern', publish: 'Zeitplan ändern …', discard: true },
+    { name: 'a draft', key: 'blog', entry: entryOf({ state: 'draft' }), status: 'Entwurf', save: 'Entwurf speichern', publish: 'Veröffentlichen …', discard: false },
+    { name: 'no drafts in the collection', key: 'hours', entry: entryOf({ brick: 'hours' }), status: undefined, save: 'Speichern', publish: false, discard: false },
+    // Saved before the collection turned drafts off: they still wait, so they can still be published or discarded.
+    { name: 'changes left waiting after drafts were turned off', key: 'hours', entry: entryOf({ brick: 'hours', pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true },
+  ])('$name', async ({ key, entry, status, save, publish, discard }) => {
+    const s = key === 'hours' ? plain : schema
+    const wrapper = mount(EntryEditor, { props: { site, schema: s, brickKey: key, brick: s.bricks[key]!, entry, canRemove: false }, global: { stubs } })
+    await flushPromises()
+    const badge = wrapper.find('[data-slot="badge"]')
+    if (status) expect(badge.text()).toContain(status)
+    else expect(badge.exists()).toBe(false)
+    expect(buttons(wrapper)).toContain(save)
+    if (publish) expect(buttons(wrapper)).toContain(publish)
+    else expect(buttons(wrapper).some((b) => b.startsWith('Veröffentlichen') || b.startsWith('Zeitplan'))).toBe(false)
+    expect(buttons(wrapper).includes('Änderungen verwerfen …')).toBe(discard)
+  })
+
+  // Wrong behaviour caught: Veröffentlichen takes the page offline (the draft path) or puts live a version the person
+  // never saw; Verwerfen throws the changes away without asking.
+  test('publish sends the saved changes with the rev the form saw; discard asks first', async () => {
+    const publishChanges = vi.fn(async () => ({}))
+    const publishEntry = vi.fn(async () => ({}))
+    const discardChanges = vi.fn(async () => ({}))
+    vi.stubGlobal('useOps', () => ({ publishChanges, publishEntry, discardChanges }))
+    try {
+      const entry = entryOf({ pending: { since: at, at, fields: ['title'] } })
+      const wrapper = mount(EntryEditor, { props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false }, global: { stubs } })
+      await flushPromises()
+      const click = async (text: string) => { await wrapper.findAll('button').find((b) => b.text() === text)!.trigger('click'); await flushPromises() }
+
+      await click('Veröffentlichen …')
+      expect(wrapper.get('#publish-title').text()).toBe('Wann sollen die Änderungen an „Herbstfest“ online gehen?')
+      await click('Jetzt veröffentlichen')
+      expect(publishChanges).toHaveBeenCalledWith('e1', 1, 3, expect.objectContaining({ at: undefined }))
+      expect(publishEntry).not.toHaveBeenCalled()
+
+      await click('Änderungen verwerfen …')
+      expect(discardChanges).not.toHaveBeenCalled()
+      expect(wrapper.text()).toContain('Die unveröffentlichten Änderungen an „Herbstfest“ gehen verloren.')
+      await click('Verwerfen')
+      expect(discardChanges).toHaveBeenCalledWith('e1', 3, undefined)
+    } finally {
+      vi.stubGlobal('useOps', () => ({}))
+    }
+  })
 })

@@ -1,13 +1,13 @@
 <!-- The frame of a site page (design A): the title row (the h1 is the view's nav word, D26) with the page's actions on
      the right, an optional lede, the content, and an optional right column from 1100px (stacked under the content
-     below). One width and one padding for every page, so sibling pages line up. `wide` is for grids (Files). -->
+     below). One left edge, width and padding for every page, so sibling pages line up and nothing jumps between tabs. `wide` is for grids (Files). -->
 <script setup lang="ts">
 defineProps<{ title: string; lede?: string; wide?: boolean }>()
 defineSlots<{ default(): unknown; actions?(): unknown; lede?(): unknown; aside?(): unknown }>()
 </script>
 
 <template>
-  <div :class="['mx-auto w-full px-4 pt-4 pb-10 min-[900px]:px-8 min-[900px]:pt-7 min-[900px]:pb-12', wide ? 'max-w-[1440px]' : 'max-w-[1200px]']">
+  <div :class="['w-full px-4 pt-4 pb-10 min-[900px]:px-8 min-[900px]:pt-7 min-[900px]:pb-12', wide ? 'max-w-[1440px]' : 'max-w-[1200px]']">
     <header class="mb-6 flex flex-wrap items-start gap-x-4 gap-y-3">
       <!-- At least 14rem (or the whole row): wide actions wrap under the title instead of squeezing it on a phone. -->
       <div class="min-w-[min(100%,14rem)] flex-1">

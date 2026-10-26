@@ -24,6 +24,7 @@ import ConflictPanel from './ConflictPanel.vue'
 import EntryRemoveDialog from './EntryRemoveDialog.vue'
 import EntryPublishPanel from './EntryPublishPanel.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
+import SplitHandle from './SplitHandle.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
@@ -261,6 +262,28 @@ const areaList = useAreaList()
 watch([bar, showPreview], ([wide, open]) => areaList.foldFor(wide && open), { immediate: true })
 onBeforeUnmount(() => areaList.foldFor(false))
 const split = computed(() => bar.value && showPreview.value)
+// The form's width next to the preview: dragged with the handle, remembered per browser. The form keeps at least
+// 24rem and the preview at least 22rem; without a choice the form takes 40rem (or less on a narrow panel).
+const SPLIT_WIDTH = 'ginko:preview-split'
+const FORM_MIN = 384
+const PREVIEW_MIN = 352
+const FORM_DEFAULT = 640
+const editorEl = ref<HTMLElement | null>(null)
+const { width: editorWidth } = useElementSize(editorEl)
+const chosenWidth = ref<number>()
+onMounted(() => {
+  try { const w = Number(localStorage.getItem(SPLIT_WIDTH)); if (w > 0) chosenWidth.value = w } catch { /* no choice yet */ }
+})
+const formMax = computed(() => Math.max(FORM_MIN, editorWidth.value - PREVIEW_MIN))
+const formWidth = computed(() => Math.min(formMax.value, Math.max(FORM_MIN, chosenWidth.value ?? FORM_DEFAULT)))
+function resizeForm(width: number) {
+  chosenWidth.value = Math.min(formMax.value, Math.max(FORM_MIN, width))
+  try { localStorage.setItem(SPLIT_WIDTH, String(Math.round(chosenWidth.value))) } catch { /* not remembered */ }
+}
+function resetForm() {
+  chosenWidth.value = undefined
+  try { localStorage.removeItem(SPLIT_WIDTH) } catch { /* nothing stored */ }
+}
 // Before sideMode: with the panel bar already shown (a move within the Studio), the tab watcher below reads it during setup.
 // Drafts (SPEC 15): only collections that ask for them. A draft is saved without going online;
 // "Veröffentlichen …" puts it online now or at a time; a live entry can be taken back to a draft.
@@ -269,13 +292,30 @@ const drafts = computed(() => props.brick.kind === 'collection' && props.brick.d
 const state = computed(() => props.entry?.state ?? 'live')
 // A draft stays a draft when the collection later turns drafts off (SPEC 15), so it can still be published.
 const isDraft = computed(() => (props.entry ? state.value === 'draft' : drafts.value))
+/**
+ * Save without publishing: on a live entry of a collection with drafts, Speichern keeps the changes unpublished;
+ * Veröffentlichen puts them live (now or later), Verwerfen goes back to the version on the website. Changes saved
+ * before the collection turned drafts off keep waiting (the server saves into them), so they stay publishable here.
+ */
+const pending = computed(() => (state.value === 'live' ? props.entry?.pending : undefined))
+const keepsChanges = computed(() => !!props.entry && state.value === 'live' && (drafts.value || !!pending.value))
+/** The planned time of a scheduled draft, or of a live entry's unpublished changes. */
+const scheduledAt = computed(() => props.entry?.publishAt ?? pending.value?.publishAt)
+/** "Veröffentlichen …": a draft, or unpublished changes (saved, or typed and saved on the way). */
+const publishable = computed(() => isDraft.value || (keepsChanges.value && (!!pending.value || dirty.value)))
 const statusText = computed(() => {
-  if (!props.entry || (!drafts.value && state.value === 'live')) return ''
+  if (!props.entry || (!drafts.value && state.value === 'live' && !pending.value)) return ''
+  if (pending.value) {
+    return pending.value.publishAt
+      ? t('entry.status.changesFrom', { when: whenText(pending.value.publishAt, timeZone.value, format) })
+      : t('entry.status.changes')
+  }
   if (state.value === 'live') return t('entry.status.online')
   return props.entry.publishAt
     ? t('entry.status.onlineFrom', { when: whenText(props.entry.publishAt, timeZone.value, format) })
     : t('entry.status.draft')
 })
+const statusVariant = computed(() => (pending.value || (state.value !== 'live' && props.entry?.publishAt) ? 'warning' : state.value === 'live' ? 'success' : 'soft'))
 /** The right column's status card: for entries that can be drafts, or that have a status to show. */
 const statusCard = computed(() => !!statusText.value || drafts.value)
 const wideSide = useMediaQuery('(min-width: 1280px)')
@@ -445,6 +485,7 @@ watch(() => props.entry?._id, () => {
 
 /** The status card's line under the badge: what a draft or a scheduled entry means for the website. */
 const statusNote = computed(() => {
+  if (pending.value) return pending.value.publishAt ? t('entry.side.changesScheduledNote') : t('entry.side.changesNote')
   if (!props.entry || state.value === 'live') return ''
   return props.entry.publishAt ? t('entry.side.scheduledNote') : t('entry.side.draftNote')
 })
@@ -462,7 +503,7 @@ const HOUR = 60 * 60 * 1000
 
 function openPublish() {
   const now = Date.now()
-  const scheduled = props.entry?.publishAt
+  const scheduled = scheduledAt.value
   when.value = scheduled ? 'later' : 'now'
   // A suggestion for "Online ab": tomorrow 9:00 at the site, or the time already planned.
   at.value = scheduled ? msToZoned(scheduled, timeZone.value) : `${msToZoned(now + 24 * HOUR, timeZone.value).slice(0, 10)}T09:00`
@@ -494,6 +535,12 @@ async function doPublish() {
     }
     // Unsaved input goes into the draft first; saving does not change lifeRev.
     if (dirty.value && !(await form.save())) return
+    if (keepsChanges.value) {
+      // The rev the form last saved or read: a newer save of someone else refuses the publish.
+      await ops.publishChanges(props.entry._id, props.entry.lifeRev, form.baseRev.value, { at: ms, task: publishTask.value, timeZone: timeZone.value, main: main.value })
+      publishing.value = false
+      return
+    }
     await ops.publishEntry(props.entry._id, props.entry.lifeRev, { at: ms, task: publishTask.value, timeZone: timeZone.value, main: main.value })
     publishing.value = false
   } catch (error) {
@@ -509,6 +556,8 @@ async function doUnpublish() {
   publishBusy.value = true
   publishError.value = ''
   try {
+    // The server takes one step back per call: a planned time of unpublished changes goes first, then the entry.
+    if (pending.value?.publishAt !== undefined) await ops.clearChangesSchedule(props.entry._id, props.entry.lifeRev, publishTask.value)
     await ops.unpublishEntry(props.entry._id, props.entry.lifeRev, { task: publishTask.value, timeZone: timeZone.value, wasLive: state.value === 'live', at: props.entry.publishAt, main: main.value })
     askUnpublish.value = false
     publishing.value = false
@@ -518,6 +567,47 @@ async function doUnpublish() {
     publishBusy.value = false
   }
 }
+
+/** "Zeitplan aufheben" in the publish panel: a scheduled draft stays a draft, planned changes stay saved and the entry online. */
+async function doClearSchedule() {
+  if (!pending.value?.publishAt || !props.entry) return doUnpublish()
+  publishBusy.value = true
+  publishError.value = ''
+  try {
+    await ops.clearChangesSchedule(props.entry._id, props.entry.lifeRev, publishTask.value)
+    publishing.value = false
+  } catch (error) {
+    publishError.value = opErrorOf(error).message
+  } finally {
+    publishBusy.value = false
+  }
+}
+
+const askDiscard = ref(false)
+const discardBusy = ref(false)
+const discardError = ref('')
+/** Verwerfen: unsaved input goes too, then the saved changes; the form shows the website's version again. */
+async function doDiscard() {
+  if (!props.entry) return
+  discardBusy.value = true
+  discardError.value = ''
+  try {
+    form.discard()
+    await ops.discardChanges(props.entry._id, props.entry.rev, props.tasks?.save)
+    askDiscard.value = false
+    savedOnce.value = false
+  } catch (error) {
+    discardError.value = opErrorOf(error).message
+  } finally {
+    discardBusy.value = false
+  }
+}
+/** After a save: "Gespeichert", or for unpublished changes that they are not online yet. */
+const savedText = computed(() => (pending.value ? t('entry.savedNotLive') : t('entry.saved')))
+const publishQuestionText = computed(() => {
+  if (!keepsChanges.value) return publishQuestion(props.brick, draft.value, main.value, t)
+  return t('entry.publish.changesWhen', { title: title.value })
+})
 
 // A new entry has no address yet: the preview gives it the one the server will make from its title (draftSlugs), so
 // the site finds it on its own page. Read after the typing pause, so the page does not reload on every key.
@@ -579,7 +669,7 @@ const fileIds = computed(() => previewFileIds(draft.value, (previewEntries.value
 const { data: fileInfo } = useConvexQuery(api.uploads.urls, () => (showPreview.value && fileIds.value.length ? { site: props.site.slug, ids: fileIds.value } : 'skip'))
 function files(id: string) {
   const f = fileInfo.value?.[id]
-  return f ? { url: f.url, name: f.name, size: f.size, alt: f.alt, ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}) } : undefined
+  return f ? { url: f.url, name: f.name, size: f.size, alt: f.alt, ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}), ...(f.focus ? { focus: f.focus } : {}) } : undefined
 }
 
 // The save bar sits at the bottom: while this editor is open, the layout hides the phone tab bar and the toast sits
@@ -594,7 +684,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
 </script>
 
 <template>
-  <div :class="['editor', split && 'is-split']" @keydown="onFormKey">
+  <div ref="editorEl" :class="['editor', split && 'is-split']" :style="split ? { '--form-width': `${formWidth}px` } : undefined" @keydown="onFormKey">
     <form
       :id="formId" ref="formEl" novalidate
       :class="['entry-form grid gap-x-10 gap-y-6', sideMode && 'has-side', split && 'px-8 pt-7 pb-12']"
@@ -605,7 +695,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
               <h1 class="text-xl font-semibold tracking-tight min-[900px]:text-[1.375rem]">{{ title }}</h1>
-              <Badge v-if="bar && !sideMode && statusText" :variant="state === 'live' ? 'success' : entry?.publishAt ? 'warning' : 'soft'">{{ statusText }}</Badge>
+              <Badge v-if="bar && !sideMode && statusText" :variant="statusVariant">{{ statusText }}</Badge>
             </div>
             <DropdownMenu v-if="entry && !removed">
               <DropdownMenuTrigger as-child>
@@ -616,13 +706,14 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
                 <DropdownMenuItem as-child class="min-h-9 pointer-coarse:min-h-11">
                   <NuxtLink :to="`/s/${site.slug}/history?entry=${entry._id}`">{{ t('basics.history.ofEntry') }}</NuxtLink>
                 </DropdownMenuItem>
+                <DropdownMenuItem v-if="pending && !readOnly" class="min-h-9 pointer-coarse:min-h-11" @select="askDiscard = true">{{ t('entry.discard.menu') }}</DropdownMenuItem>
                 <DropdownMenuItem v-if="canRemove && brick.kind === 'collection'" variant="destructive" class="min-h-9 pointer-coarse:min-h-11" @select="askRemove = true">{{ t('entry.removeEntry') }}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
           <!-- Phones and the one-column desktop form: the status under the title. The right column has its own card. -->
           <div v-if="statusText && !sideMode && !(bar && state === 'live')" class="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <Badge v-if="!bar" :variant="state === 'live' ? 'success' : entry?.publishAt ? 'warning' : 'soft'" class="text-sm">{{ statusText }}</Badge>
+            <Badge v-if="!bar" :variant="statusVariant" class="text-sm">{{ statusText }}</Badge>
             <Popover v-if="entry && state !== 'live'" v-model:open="whyOpen">
               <PopoverTrigger as-child>
                 <Button type="button" variant="link" class="h-9 px-0 pointer-coarse:h-11">{{ t('basics.why.link') }}</Button>
@@ -640,12 +731,22 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           <p v-for="line in translationState" :key="line" class="text-sm text-muted-foreground" data-slot="translation-state">{{ line }}</p>
         </header>
 
+        <!-- Verwerfen asks first: the unpublished changes cannot come back. -->
+        <div v-if="askDiscard && pending" class="grid gap-2.5 rounded-lg border bg-sidebar p-3.5" role="group" aria-labelledby="discard-warning">
+          <p id="discard-warning">{{ t('entry.discard.warning', { title }) }}</p>
+          <div class="flex flex-wrap gap-2">
+            <Button type="button" variant="destructive" :disabled="discardBusy" @click="doDiscard">{{ t('entry.discard.button') }}</Button>
+            <Button type="button" variant="outline" @click="askDiscard = false">{{ t('entry.cancel') }}</Button>
+          </div>
+          <p v-if="discardError" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ discardError }}</p>
+        </div>
+
         <!-- Wide screens without the right column: publishing under the header (the top bar has no room for the panel). -->
         <template v-if="bar && !sideMode">
           <EntryPublishPanel
-            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestion(brick, draft, main, t)"
-            :time-zone="timeZone" :scheduled="!!entry?.publishAt" :busy="publishBusy || busy" :error="publishError"
-            @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
+            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
+            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
+            @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
           />
           <div v-if="askUnpublish" class="grid gap-2.5 rounded-lg border bg-sidebar p-3.5">
             <p>{{ t('entry.unpublish.warning', { title }) }}</p>
@@ -711,10 +812,10 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           <template v-if="!bar">
             <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
             <Button v-if="!readOnly" type="submit" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'entry-shrunk' : undefined" :aria-disabled="saveBlocked ? 'true' : undefined">{{ saveLabel }}</Button>
-            <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
+            <Button v-if="publishable && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ scheduledAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
             <template v-if="!readOnly">
               <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
-              <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>
+              <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ savedText }}</span>
               <!-- While a save runs the button says what happens; text typed meanwhile is "Nicht gespeichert" once it ends. -->
               <span v-else-if="dirty && !busy" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
             </template>
@@ -729,9 +830,9 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
               <p v-if="publishError && askUnpublish" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ publishError }}</p>
             </template>
             <EntryPublishPanel
-              v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestion(brick, draft, main, t)"
-              :time-zone="timeZone" :scheduled="!!entry?.publishAt" :busy="publishBusy || busy" :error="publishError"
-              @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
+              v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
+              :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
+              @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
             />
           </template>
         </div>
@@ -743,7 +844,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <section v-if="statusCard" class="grid gap-3 rounded-xl border bg-card p-4">
           <div class="flex items-center justify-between gap-2">
             <h2 class="text-sm font-semibold">{{ t('entry.side.status') }}</h2>
-            <Badge v-if="statusText" :variant="state === 'live' ? 'success' : entry?.publishAt ? 'warning' : 'soft'">{{ statusText }}</Badge>
+            <Badge v-if="statusText" :variant="statusVariant">{{ statusText }}</Badge>
           </div>
           <p v-if="statusNote" class="text-[13px] text-muted-foreground">{{ statusNote }}</p>
           <Popover v-if="entry && state !== 'live'" v-model:open="whyOpen">
@@ -758,12 +859,12 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
             </PopoverContent>
           </Popover>
           <EntryPublishPanel
-            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestion(brick, draft, main, t)"
-            :time-zone="timeZone" :scheduled="!!entry?.publishAt" :busy="publishBusy || busy" :error="publishError"
-            @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
+            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
+            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
+            @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
           />
           <div v-else-if="!removed" class="flex flex-wrap gap-2">
-            <Button v-if="isDraft" type="button" variant="outline" size="sm" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
+            <Button v-if="publishable" type="button" variant="outline" size="sm" :disabled="busy" @click="openPublish">{{ scheduledAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
             <Button v-if="drafts && entry && state === 'live' && !askUnpublish" type="button" variant="ghost" size="sm" class="text-muted-foreground" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
           </div>
           <div v-if="askUnpublish" class="grid gap-2.5 border-t pt-3">
@@ -788,15 +889,15 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
 
     <!-- Wide screens: the save state, Preview and Save in the panel's top bar. Save submits the form by its id. -->
     <Teleport v-if="bar" to="#studio-actions">
-      <span v-if="!readOnly" class="text-sm font-medium" aria-live="polite">
+      <span v-if="!readOnly" class="min-w-0 truncate text-sm font-medium" aria-live="polite">
         <span v-if="!dirty && waiting" class="text-warning">{{ t('history.waiting') }}</span>
-        <span v-else-if="!dirty && savedOnce" class="text-success">{{ t('entry.saved') }}</span>
+        <span v-else-if="!dirty && savedOnce" class="text-success">{{ savedText }}</span>
         <span v-else-if="dirty && !busy" class="inline-flex items-center gap-1.5 text-warning"><span class="size-1.5 rounded-full bg-warning" aria-hidden="true" />{{ t('entry.unsaved') }}</span>
       </span>
       <Button type="button" :variant="showPreview ? 'secondary' : 'ghost'" class="h-9 gap-2 px-3" :aria-pressed="showPreview" @click="togglePreview">
         <component :is="showPreview ? EyeOffIcon : EyeIcon" aria-hidden="true" />{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}
       </Button>
-      <Button v-if="isDraft && !publishing && !removed && !sideMode" type="button" variant="outline" class="h-9" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
+      <Button v-if="publishable && !publishing && !removed && !sideMode" type="button" variant="outline" class="h-9" :disabled="busy" @click="openPublish">{{ scheduledAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
       <Button v-if="drafts && entry && state === 'live' && !removed && !sideMode && !askUnpublish" type="button" variant="ghost" class="h-9 text-muted-foreground" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
       <Button v-if="!readOnly" type="submit" :form="formId" class="h-9" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'entry-shrunk' : undefined" :aria-disabled="saveBlocked ? 'true' : undefined">{{ saveLabel }}</Button>
     </Teleport>
@@ -804,6 +905,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
     <!-- The destructive action sits in "Mehr", away from Speichern and Vorschau; the question stays. -->
     <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" :draft="entry?.state === 'draft'" @confirm="remove" @close-auto-focus="focusMore" />
 
+    <SplitHandle v-if="split" class="split-col" :value="formWidth" :min="FORM_MIN" :max="formMax" :label="t('entry.preview.resize')" @change="resizeForm" @reset="resetForm" />
     <PreviewPane
       v-if="showPreview"
       class="preview-col"
@@ -824,17 +926,16 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
 </template>
 
 <style scoped>
-/* One column: the form keeps a readable width, centred like every page frame (StudioPage). With the right column:
-   form and an 18rem column. */
-.entry-form { max-width: 45rem; margin-inline: auto; }
+/* One column: the form keeps a readable width, on the left edge like every page frame (StudioPage). With the right
+   column: form and an 18rem column. */
+.entry-form { max-width: 45rem; }
 .entry-form.has-side { max-width: 72rem; grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; }
 .editor > .preview-col { margin-top: 1.5rem; height: 80dvh; }
 /* Wide screens with the preview open: form and preview share the panel, the preview flush with its edges. */
 @media (min-width: 900px) {
-  .editor.is-split { display: grid; grid-template-columns: minmax(24rem, 40rem) minmax(0, 1fr); align-items: start; }
-  /* No auto margins here: in a grid cell they shrink the form to its content. */
-  .editor.is-split .entry-form { max-width: none; margin-inline: 0; }
-  .editor.is-split > .preview-col {
+  .editor.is-split { display: grid; grid-template-columns: var(--form-width) auto minmax(0, 1fr); align-items: start; }
+  .editor.is-split .entry-form { max-width: none; }
+  .editor.is-split > :is(.preview-col, .split-col) {
     margin-top: 0; position: sticky; top: var(--studio-header-height);
     height: calc(100dvh - var(--studio-header-height) - 0.75rem);
   }

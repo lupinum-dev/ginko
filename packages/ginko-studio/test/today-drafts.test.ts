@@ -11,7 +11,7 @@ import TodayDrafts from '../app/components/TodayDrafts.vue'
 const { computed, reactive } = vue
 Object.entries({ computed, reactive, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 vi.stubGlobal('useToast', () => ({ show: () => {} }))
-const ops = { publishEntry: vi.fn(async () => ({})) }
+const ops = { publishEntry: vi.fn(async () => ({})), publishChanges: vi.fn(async () => ({})) }
 vi.stubGlobal('useOps', () => ops)
 
 const schema = serializeSchema(defineSite({
@@ -90,4 +90,19 @@ describe('the step of a row', () => {
     await button.trigger('click')
     expect(ops.publishEntry).toHaveBeenCalledWith('a', 3, { task: 'posts.write', timeZone: 'Europe/Vienna', main: 'de' })
   })
+})
+
+// Wrong behaviour caught: a live page with saved, unpublished changes is forgotten (not listed), listed for staff who did
+// not save it, or its button takes the page offline by the draft path instead of publishing the changes.
+test('a live entry with unpublished changes is listed with its own line and publishes the changes', async () => {
+  const changed = entry('p', 'Über uns', { state: undefined, since: undefined, rev: 7, pending: { since: BASE + HOUR, at: BASE + HOUR, fields: ['title'], own: true } })
+  const other = entry('q', 'Kontakt', { state: undefined, since: undefined, pending: { since: BASE, at: BASE, fields: ['title'] } })
+  expect(titles(mountDrafts([changed, other], { isManager: false }))).toEqual(['Über uns'])
+  const wrapper = mountDrafts([changed, other], { isManager: true })
+  expect(titles(wrapper)).toEqual(['Über uns', 'Kontakt'])
+  expect(wrapper.get('li').text()).toBe('Über unsUnveröffentlichte Änderungen seit Mi., 14. Okt., 10:00Veröffentlichen')
+  ops.publishEntry.mockClear()
+  await wrapper.get('li button').trigger('click')
+  expect(ops.publishChanges).toHaveBeenCalledWith('p', 3, 7, expect.anything())
+  expect(ops.publishEntry).not.toHaveBeenCalled()
 })

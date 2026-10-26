@@ -229,7 +229,9 @@
     "placeInsideItself": "A page can’t go inside itself or one of its subpages.",
     "placeGone": "That place no longer exists: someone moved or removed a page meanwhile.",
     "placeInvalid": "The page can’t go there.",
-    "headingOnSubpage": "A subpage follows its parent page and has no heading of its own."
+    "headingOnSubpage": "A subpage follows its parent page and has no heading of its own.",
+    "noUnpublishedChanges": "There are no unpublished changes here.",
+    "liveChangedMeanwhile": "The online version has changed in the meantime. Discard the unpublished changes and make them again."
   },
   "history": {
     "changedSingle": "{label}: {fields} changed",
@@ -283,7 +285,16 @@
     "sectionStarted": "Section “{name}” started",
     "tabStarted": "Tab “{name}” started",
     "sectionRemoved": "Section heading “{name}” removed",
-    "tabRemoved": "Tab “{name}” removed"
+    "tabRemoved": "Tab “{name}” removed",
+    "publishChangesProposal": "Publish changes to “{title}”: {fields}",
+    "publishChangesProposalScheduled": "Publish changes to “{title}” ({fields}), online from {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "publishedChanges": "Changes to “{title}” published: {fields}",
+    "publishedChangesDue": "Changes to “{title}” published (as scheduled): {fields}",
+    "publishedChangesLate": "Changes to “{title}” published at once (the planned time had already passed at approval): {fields}",
+    "changesScheduled": "Changes to “{title}”: online from {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "changesUnscheduled": "Changes to “{title}”: schedule cancelled",
+    "changesDiscarded": "Unpublished changes to “{title}” discarded",
+    "changesPublishStopped": "Changes to “{title}” did not go online: {why}"
   },
   "publicness": {
     "deleted": "The entry was removed. You can restore it until {until, date, long}, then it is deleted for good.",

@@ -56,9 +56,9 @@ export function componentMode(tag: string, registry: ComponentRegistry | undefin
   return 'live'
 }
 
-/** The prop fields of a component in registry order. Types a form cannot show are left out. */
+/** The prop fields of a component in registry order. Retired props and types a form cannot show are left out. */
 export function propFields(def: Pick<ComponentDef, 'props'>): Array<[key: string, field: PropField]> {
-  return Object.entries(def.props ?? {}).filter((entry): entry is [string, PropField] => ['text', 'longtext', 'number', 'boolean', 'choice', 'choices', 'image', 'ref'].includes(entry[1].type))
+  return Object.entries(def.props ?? {}).filter((entry): entry is [string, PropField] => !entry[1].retired && ['text', 'longtext', 'number', 'boolean', 'choice', 'choices', 'image', 'ref'].includes(entry[1].type))
 }
 
 /** The raw value: the key or its bound form `:key`. */

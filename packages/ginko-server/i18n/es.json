@@ -229,7 +229,9 @@
     "placeInsideItself": "Una página no puede ir dentro de sí misma ni de una de sus subpáginas.",
     "placeGone": "Ese lugar ya no existe: alguien movió o eliminó una página mientras tanto.",
     "placeInvalid": "La página no puede ir ahí.",
-    "headingOnSubpage": "Una subpágina sigue a su página superior y no tiene título propio."
+    "headingOnSubpage": "Una subpágina sigue a su página superior y no tiene título propio.",
+    "noUnpublishedChanges": "Aquí no hay cambios sin publicar.",
+    "liveChangedMeanwhile": "La versión publicada ha cambiado mientras tanto. Descarta los cambios sin publicar y vuelve a hacerlos."
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",
@@ -283,7 +285,16 @@
     "sectionStarted": "Sección “{name}” creada",
     "tabStarted": "Pestaña “{name}” creada",
     "sectionRemoved": "Título de sección “{name}” eliminado",
-    "tabRemoved": "Pestaña “{name}” eliminada"
+    "tabRemoved": "Pestaña “{name}” eliminada",
+    "publishChangesProposal": "Publicar cambios en “{title}”: {fields}",
+    "publishChangesProposalScheduled": "Publicar cambios en “{title}” ({fields}), en línea desde {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "publishedChanges": "Cambios en “{title}” publicados: {fields}",
+    "publishedChangesDue": "Cambios en “{title}” publicados (programado): {fields}",
+    "publishedChangesLate": "Cambios en “{title}” publicados de inmediato (la hora programada ya había pasado al aprobarlo): {fields}",
+    "changesScheduled": "Cambios en “{title}”: en línea desde {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "changesUnscheduled": "Cambios en “{title}”: programación cancelada",
+    "changesDiscarded": "Cambios sin publicar en “{title}” descartados",
+    "changesPublishStopped": "Los cambios en “{title}” no se publicaron: {why}"
   },
   "publicness": {
     "deleted": "La entrada se eliminó. Puedes restaurarla hasta el {until, date, long}; después se borra definitivamente.",

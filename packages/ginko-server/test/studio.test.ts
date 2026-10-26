@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import { historyText } from '../convex/lib/history'
+import { tick } from './clock'
 import { errorOf, firstPage, opId, people, setup, upload } from './setup'
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
@@ -252,12 +253,13 @@ describe('entries.trash', () => {
   // Wrong behaviour caught: the trash shows a live entry, hides who removed it, or promises a purge date other than retention's.
   it('lists a removed entry with purgeAt and who removed it, and no live one', async () => {
     const s = await studioSetup()
+    const removedAt = tick()
     await s.remove(s.entries['menu-frittaten']!)
     const trash = await s.as.owner.query(api.entries.trash, { site, paginationOpts: firstPage })
     expect(trash.isDone).toBe(true)
     expect(trash.page).toEqual([expect.objectContaining({
       entry: s.entries['menu-frittaten'], brick: 'menu', brickLabel: 'Speisekarte', label: 'Frittatensuppe', lifeRev: 2,
-      deletedAt: NOW, purgeAt: NOW + 30 * DAY, deletedBy: { actor: people.owner, email: 'wirtin@example.com' }, mayRestore: true,
+      deletedAt: removedAt, purgeAt: removedAt + 30 * DAY, deletedBy: { actor: people.owner, email: 'wirtin@example.com' }, mayRestore: true,
     })])
     expect((await s.as.owner.query(api.entries.trash, { site, brick: 'events', paginationOpts: firstPage })).page).toEqual([])
     expect((await errorOf(s.as.owner.query(api.entries.trash, { site, brick: 'contact', paginationOpts: firstPage }))).code).toBe('INVALID')
@@ -482,6 +484,25 @@ describe('the address of a page in another language', () => {
     const hare = await s.createEvent('Hasenwoche')
     await saveEnglish(hare.entry, 1, { title: { en: 'Hare week' } })
     expect(await slugOf(hare.entry)).toEqual({ de: 'hasenwoche', en: 'hasenwoche' })
+  })
+})
+
+describe('the address of a page in another language, with drafts', () => {
+  // Wrong behaviour caught: the English address made from a title saved as an unpublished change is lost, or moves
+  // online before the change is published.
+  it('waits with the saved title and moves when the changes are published', async () => {
+    const s = await studioSetup({ drafts: true })
+    const slugRows = (entry: Id<'entries'>) => s.t.run(async (ctx) =>
+      (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).map((r) => `${r.locale}:${r.slug}`).sort())
+    const wild = await s.createEvent('Wildwoche')
+    await s.as.owner.mutation(api.entries.publish, { site, opId: opId(), entry: wild.entry, lifeRev: 1 })
+    const rev = (await s.row(wild.entry))!.rev
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: wild.entry, baseRev: rev, locale: 'en', fields: { title: { en: 'Game week' } } })
+    expect(await slugRows(wild.entry)).toEqual(['de:wildwoche', 'en:wildwoche'])
+    expect((await s.as.owner.query(api.entries.get, { site, entry: wild.entry }))!.data.slug).toEqual({ de: 'wildwoche', en: 'game-week' })
+    await s.as.owner.mutation(api.entries.publish, { site, opId: opId(), entry: wild.entry, lifeRev: 2 })
+    expect(await slugRows(wild.entry)).toEqual(['de:wildwoche', 'en:game-week'])
+    expect((await s.row(wild.entry))!.data.slug).toEqual({ de: 'wildwoche', en: 'game-week' })
   })
 })
 

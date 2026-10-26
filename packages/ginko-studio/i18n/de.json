@@ -141,7 +141,9 @@
     "status": {
       "online": "Online",
       "onlineFrom": "Online ab {when}",
-      "draft": "Entwurf"
+      "draft": "Entwurf",
+      "changes": "Unveröffentlichte Änderungen",
+      "changesFrom": "Änderungen online ab {when}"
     },
     "save": {
       "waiting": "Wartet auf Verbindung …",
@@ -196,7 +198,8 @@
       "go": "Veröffentlichen",
       "review": "Zur Prüfung senden",
       "asDraft": "Als Entwurf speichern",
-      "laterOpen": "Später veröffentlichen"
+      "laterOpen": "Später veröffentlichen",
+      "changesWhen": "Wann sollen die Änderungen an „{title}“ online gehen?"
     },
     "unpublish": {
       "button": "Zurückziehen",
@@ -215,7 +218,11 @@
       "desktop": "Desktop",
       "phone": "Handy",
       "open": "Öffnen",
-      "ended": "Die Website zeigt das nicht mehr: Es war bis zum {date} zu sehen. Mit einem späteren Datum ist es wieder zu sehen."
+      "ended": "Die Website zeigt das nicht mehr: Es war bis zum {date} zu sehen. Mit einem späteren Datum ist es wieder zu sehen.",
+      "resize": "Breite von Formular und Vorschau",
+      "tablet": "Tablet",
+      "laptop": "Laptop",
+      "actualSize": "Originalgröße"
     },
     "remove": {
       "title": "Eintrag entfernen",
@@ -230,7 +237,10 @@
     "discard": {
       "question": "Änderungen verwerfen?",
       "confirm": "Verwerfen",
-      "keepEditing": "Weiter bearbeiten"
+      "keepEditing": "Weiter bearbeiten",
+      "menu": "Änderungen verwerfen …",
+      "warning": "Die unveröffentlichten Änderungen an „{title}“ gehen verloren. Auf der Website bleibt alles, wie es ist.",
+      "button": "Verwerfen"
     },
     "gone": {
       "text": "Jemand hat diesen Eintrag entfernt. Deine Änderungen sind noch da.",
@@ -279,8 +289,11 @@
       "label": "Details",
       "status": "Status",
       "draftNote": "Noch nicht auf der Website. Veröffentliche es, wenn es fertig ist.",
-      "scheduledNote": "Es geht zu diesem Zeitpunkt von selbst online."
-    }
+      "scheduledNote": "Es geht zu diesem Zeitpunkt von selbst online.",
+      "changesNote": "Gespeichert, aber noch nicht auf der Website. Dort steht die vorige Fassung, bis du veröffentlichst.",
+      "changesScheduledNote": "Die Änderungen gehen zu diesem Zeitpunkt von selbst online."
+    },
+    "savedNotLive": "Gespeichert, noch nicht online"
   },
   "site": {
     "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",
@@ -591,7 +604,9 @@
     "drafts": {
       "since": "Entwurf seit {date}",
       "goesLive": "Geht online {date}",
-      "all": "Alle Entwürfe in Inhalte"
+      "all": "Alle Entwürfe in Inhalte",
+      "changesSince": "Unveröffentlichte Änderungen seit {date}",
+      "changesGoLive": "Änderungen gehen online {date}"
     }
   },
   "editor": {
@@ -920,7 +935,13 @@
     },
     "purged": "„{title}“ endgültig gelöscht.",
     "draftCreated": "Als Entwurf gespeichert.",
-    "scheduledGoesLive": "Geplant. Geht online {date}."
+    "scheduledGoesLive": "Geplant. Geht online {date}.",
+    "changesSaved": "Gespeichert. Noch nicht auf der Website: Veröffentliche die Änderungen, wenn sie fertig sind.",
+    "savedLikeLive": "Gespeichert. Es gleicht wieder der Fassung auf der Website.",
+    "changesPublished": "Änderungen veröffentlicht.",
+    "changesScheduled": "Geplant: Änderungen online ab {time}.",
+    "changesScheduleCleared": "Zeitplan aufgehoben. Die Änderungen bleiben gespeichert, aber noch nicht online.",
+    "changesDiscarded": "Änderungen verworfen. Es gilt wieder die Fassung auf der Website."
   },
   "review": {
     "title": "{site} · Prüfen",

@@ -229,7 +229,9 @@
     "placeInsideItself": "Eine Seite kann nicht in sich selbst oder eine ihrer Unterseiten.",
     "placeGone": "Diese Stelle gibt es nicht mehr: Inzwischen hat jemand eine Seite verschoben oder entfernt.",
     "placeInvalid": "Die Seite kann dort nicht hin.",
-    "headingOnSubpage": "Eine Unterseite folgt ihrer übergeordneten Seite und hat keine eigene Überschrift."
+    "headingOnSubpage": "Eine Unterseite folgt ihrer übergeordneten Seite und hat keine eigene Überschrift.",
+    "noUnpublishedChanges": "Hier gibt es keine unveröffentlichten Änderungen.",
+    "liveChangedMeanwhile": "Die Online-Fassung wurde inzwischen geändert. Verwirf die unveröffentlichten Änderungen und mach sie neu."
   },
   "history": {
     "changedSingle": "{label}: {fields} geändert",
@@ -283,7 +285,16 @@
     "sectionStarted": "Abschnitt „{name}“ begonnen",
     "tabStarted": "Reiter „{name}“ begonnen",
     "sectionRemoved": "Abschnittsüberschrift „{name}“ entfernt",
-    "tabRemoved": "Reiter „{name}“ entfernt"
+    "tabRemoved": "Reiter „{name}“ entfernt",
+    "publishChangesProposal": "Änderungen an „{title}“ veröffentlichen: {fields}",
+    "publishChangesProposalScheduled": "Änderungen an „{title}“ veröffentlichen ({fields}), online ab {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "publishedChanges": "Änderungen an „{title}“ veröffentlicht: {fields}",
+    "publishedChangesDue": "Änderungen an „{title}“ veröffentlicht (geplant): {fields}",
+    "publishedChangesLate": "Änderungen an „{title}“ sofort veröffentlicht (die geplante Zeit war bei der Freigabe schon vorbei): {fields}",
+    "changesScheduled": "Änderungen an „{title}“: online ab {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "changesUnscheduled": "Änderungen an „{title}“: Zeitplan aufgehoben",
+    "changesDiscarded": "Unveröffentlichte Änderungen an „{title}“ verworfen",
+    "changesPublishStopped": "Änderungen an „{title}“ gingen nicht online: {why}"
   },
   "publicness": {
     "deleted": "Der Eintrag wurde entfernt. Er lässt sich bis zum {until, date, long} wiederherstellen, danach wird er endgültig gelöscht.",

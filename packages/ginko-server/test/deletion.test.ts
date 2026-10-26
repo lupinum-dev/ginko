@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, components, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import schema from '../convex/schema'
+import { tick } from './clock'
 import { errorOf, firstPage, opId, setup, upload } from './setup'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -98,8 +99,9 @@ describe('delete site', () => {
     expect(wrong.code).toBe('INVALID')
     expect(await open()).toMatchObject({ studio: 'open' })
 
+    const now = tick()
     const { at } = await s.as.owner.mutation(api.sites.startDeletion, { site: 'restaurant', confirm: 'restaurant' })
-    expect(at).toBe(Date.now() + 7 * DAY)
+    expect(at).toBe(now + 7 * DAY)
     const unknown = (await s.t.fetch('/bundle/nope?format=3&locale=de')).status
     expect(await open()).toEqual({ studio: 'closed', cook: 'closed', bundle: unknown, push: false, agent: false })
     // Only the owner can see the deletion and cancel it.
@@ -160,6 +162,8 @@ describe('delete site', () => {
     })
     await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.entries['menu-saibling']!, baseRev: 2, fields: { price: { amount: 1600 } } })
     await s.as.owner.mutation(api.proposals.createRelease, { site: 'restaurant', name: 'R' })
+    // After the saves above: a save of an entry with unpublished changes adds to them instead of making a proposal.
+    await s.t.run((ctx) => ctx.db.insert('pendingChanges', { site: s.site, entry: s.entries['menu-saibling']! as Id<'entries'>, brick: 'menu', fields: {}, prints: {}, revs: {}, by: 'u-wirtin', since: Date.now(), at: Date.now() }))
     await s.as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'neu@example.com', role: 'staff', grants: [] })
     await s.as.owner.mutation(api.release.createPushKey, { site: 'restaurant', label: 'ci', scopes: ['release'] })
     await s.as.owner.mutation(api.agent.createKey, { site: 'restaurant', label: 'ai' })

@@ -98,7 +98,11 @@ export const PLAIN_TAGS: ReadonlySet<string> = new Set([
 const TAG = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
 
 const PROP = /^[a-z][a-zA-Z0-9]*$/
-/** Prop names a renderer acts on: comark mounts the component an `as` names, and Vue writes these DOM properties as markup. */
+/**
+ * Prop names a renderer acts on: comark mounts the component an `as` names, and Vue writes these DOM properties as
+ * markup. A name ending in `Html` (`descriptionHtml`) is refused too: by convention a component writes it with
+ * `v-html`, which would put an editor's text on the page as markup.
+ */
 const RESERVED_PROPS: ReadonlySet<string> = new Set(['as', 'innerHTML', 'outerHTML', 'innerText', 'outerText', 'textContent'])
 const PROP_TYPES = new Set<Field['type']>(['text', 'longtext', 'number', 'boolean', 'choice', 'choices', 'image', 'ref'])
 
@@ -118,7 +122,7 @@ export function componentProblems(registry: ComponentRegistry, main: string): st
       if (problem) problems.push(problem)
     }
     for (const [name, prop] of Object.entries(def.props ?? {})) {
-      if (!PROP.test(name) || /^on/i.test(name) || RESERVED_PROPS.has(name)) problems.push(`${at}: Invalid property name “${name}”.`)
+      if (!PROP.test(name) || /^on/i.test(name) || /html$/i.test(name) || RESERVED_PROPS.has(name)) problems.push(`${at}: Invalid property name “${name}”.`)
       if (!PROP_TYPES.has(prop?.type)) problems.push(`${at}: Property “${name}” cannot have the type “${String(prop?.type)}” (allowed: ${[...PROP_TYPES].join(', ')}).`)
     }
     for (const key of ['children', 'parents'] as const) {
