@@ -85,6 +85,8 @@ export function studioExtensions({ slashItems, slash, openLink, bus, problems, f
     if (slashItems().length) {
       extensions.push(Extension.create({
         name: 'ginkoSlash',
+        // While open, the menu takes Enter and the arrows before every key rule of the text (a table cell's Enter too).
+        priority: 1100,
         addProseMirrorPlugins() {
           return [Suggestion<SlashItem, SlashItem>({
             editor: this.editor,

@@ -1,8 +1,10 @@
 // Row and column commands for the table at the cursor, limited to what a GFM table can hold: exactly one header row
 // on top, at least one column, one alignment per column. The Studio draws them as the table bar.
-import type { Editor } from '@tiptap/core'
-import type { EditorState } from '@tiptap/pm/state'
-import { moveTableColumn, moveTableRow, selectedRect, type TableRect } from '@tiptap/pm/tables'
+import { Extension, type Editor } from '@tiptap/core'
+import type { Node as PmNode } from '@tiptap/pm/model'
+import { Plugin, PluginKey, type EditorState } from '@tiptap/pm/state'
+import { moveTableColumn, moveTableRow, selectedRect, TableMap, type TableRect } from '@tiptap/pm/tables'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 export type ColumnAlign = 'left' | 'center' | 'right'
 
@@ -32,13 +34,70 @@ export function alignOf(props: unknown): ColumnAlign | undefined {
   return typeof style === 'string' ? (ALIGN.exec(style)?.[1] as ColumnAlign | undefined) : undefined
 }
 
+/** A column's alignment is its header cell's: GFM keeps one per column, and a new row's cells have none of their own. */
+const alignAt = (table: PmNode, map: TableMap, column: number) => alignOf(table.nodeAt(map.map[column]!)?.attrs.props)
+
+/** Whether the cursor is in a table cell (a header cell too). */
+export function inTableCell(state: EditorState): boolean {
+  const { $from } = state.selection
+  for (let d = $from.depth; d > 0; d--) {
+    const role = $from.node(d).type.spec.tableRole
+    if (role === 'cell' || role === 'header_cell') return true
+  }
+  return false
+}
+
 /** Where the cursor is in its table, or undefined outside one. */
 export function tableAt(state: EditorState): TableAt | undefined {
   const rect = rectOf(state)
   if (!rect) return undefined
-  const cell = rect.table.nodeAt(rect.map.map[rect.top * rect.map.width + rect.left]!)
-  return { row: rect.top, column: rect.left, rows: rect.map.height, columns: rect.map.width, align: alignOf(cell?.attrs.props) }
+  return { row: rect.top, column: rect.left, rows: rect.map.height, columns: rect.map.width, align: alignAt(rect.table, rect.map, rect.left) }
 }
+
+function alignDecorations(doc: PmNode): DecorationSet {
+  const shown: Decoration[] = []
+  doc.descendants((node, pos) => {
+    if (node.type.spec.tableRole !== 'table') return !node.isTextblock
+    const map = TableMap.get(node)
+    for (let column = 0; column < map.width; column++) {
+      const align = alignAt(node, map, column)
+      if (!align) continue
+      for (const offset of new Set(map.map.filter((_, i) => i % map.width === column))) {
+        const from = pos + 1 + offset
+        shown.push(Decoration.node(from, from + node.nodeAt(offset)!.nodeSize, { style: `text-align:${align}` }))
+      }
+    }
+    return false
+  })
+  return DecorationSet.create(doc, shown)
+}
+
+/**
+ * A GFM cell holds one line. Enter and Shift+Enter in a cell do nothing: a second paragraph or a line break saved as
+ * spaces, so the cell's two lines became one. Tab goes on to the next cell.
+ */
+export const TableKeys = Extension.create({
+  name: 'ginkoTableKeys',
+  priority: 1000,
+  addKeyboardShortcuts() {
+    const stay = () => inTableCell(this.editor.state)
+    return { 'Enter': stay, 'Shift-Enter': stay, 'Mod-Enter': stay }
+  },
+})
+
+const alignKey = new PluginKey<DecorationSet>('ginkoTableAlign')
+
+/** Shows every column's alignment on all its cells, so the editor aligns as the site does. Display only; not saved. */
+export const TableAlign = Extension.create({
+  name: 'ginkoTableAlign',
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      key: alignKey,
+      state: { init: (_, state) => alignDecorations(state.doc), apply: (tr, old) => (tr.docChanged ? alignDecorations(tr.doc) : old) },
+      props: { decorations: (state) => alignKey.getState(state) },
+    })]
+  },
+})
 
 export type TableCommand =
   | 'addRowBefore' | 'addRowAfter' | 'addColumnBefore' | 'addColumnAfter'

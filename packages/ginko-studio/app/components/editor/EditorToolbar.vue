@@ -1,6 +1,6 @@
 <!-- Toolbar above the text: the block menu (the "/" menu's entries behind the current block type), marks, link, picture,
-     lists, search and the Markdown switch; while the cursor is in a table, the table tools: at the end of the row when they
-     fit (so the text below does not move), else in a second row. Only what the
+     lists, search and the Markdown switch; while the cursor is in a table, the table tools at the end of the row (in the
+     row, so the text below does not move when they come): "Zeile", "Spalte" and the bin with room, else one "Tabelle" menu. Only what the
      editor's schema has is shown, so each Markdown profile gets its own set. The row fits its own width (a phone, a
      sheet, a column next to the preview): bold, italic and link always stay in it, the other tools follow in a fixed
      order as long as they fit, and the rest is in "Weitere Werkzeuge" (⋯), so every tool is reachable at every width.
@@ -14,7 +14,7 @@ import type { Editor } from '@tiptap/core'
 import { tableAt, type SlashItem } from '@lupinum/ginko-editor'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@studio/components/ui/tooltip'
+import { TooltipProvider } from '@studio/components/ui/tooltip'
 import { isCoarsePointer, useEditorTick, useModKey } from './context.ts'
 import { dockPosition, type DockPosition } from './dock.ts'
 import BlockMenu from './BlockMenu.vue'
@@ -93,28 +93,30 @@ const SELECT_WORD = 160 - 54
 const SOURCE_GAP = 8
 const SOURCE_WORD = 72
 const SPARE = 8
-// The table tools: "Zeile ▾", "Spalte ▾", the bin and a divider (German, the longest of the Studio languages).
-const TABLE = isCoarsePointer() ? 265 : 250
+// The table tools with a divider: one "Tabelle ▾" menu (an icon and its arrow), or with room "Zeile ▾", "Spalte ▾" and
+// the bin (German, the longest of the Studio languages).
+const TABLE_MENU = UNIT + 33
+const TABLE_WIDE = isCoarsePointer() ? 265 : 250
 const width = ref(Number.POSITIVE_INFINITY)
 const fit = computed(() => {
   const select = hasBlockMenu.value
   const tools = optional.value
   const cost = (x: Tool) => UNIT + (x.name === 'source' ? SOURCE_GAP : 0)
-  let room = width.value - SPARE - (select ? SELECT : 0) - (fixed.value.length + (has('link') ? 1 : 0)) * UNIT
+  let room = width.value - SPARE - (select ? SELECT : 0) - (fixed.value.length + (has('link') ? 1 : 0)) * UNIT - (inTable.value ? TABLE_MENU : 0)
   const everything = tools.reduce((sum, x) => sum + cost(x), 0)
   if (everything <= room) {
     room -= everything
-    // The table tools come before the words: in the row they keep the text from moving when the cursor enters a table.
-    const tableInRow = inTable.value && room >= TABLE
-    if (tableInRow) room -= TABLE
+    // The table's words come before the block type's: the commands are what the cursor in a table is there for.
+    const tableWide = inTable.value && room >= TABLE_WIDE - TABLE_MENU
+    if (tableWide) room -= TABLE_WIDE - TABLE_MENU
     const word = select && room >= SELECT_WORD
     if (word) room -= SELECT_WORD
-    return { row: tools, menu: [] as Tool[], selectWord: word, sourceWord: room >= SOURCE_WORD, tableInRow }
+    return { row: tools, menu: [] as Tool[], selectWord: word, sourceWord: room >= SOURCE_WORD, tableWide }
   }
   room -= UNIT
   let shown = 0
   while (shown < tools.length && room >= cost(tools[shown]!)) room -= cost(tools[shown++]!)
-  return { row: tools.slice(0, shown), menu: tools.slice(shown), selectWord: false, sourceWord: false, tableInRow: false }
+  return { row: tools.slice(0, shown), menu: tools.slice(shown), selectWord: false, sourceWord: false, tableWide: false }
 })
 const hasBlockMenu = computed(() => props.items().length > 0)
 /** Where the cursor is in a table: the table tools show. */
@@ -153,13 +155,6 @@ watch(() => props.docked, async (on, _before, onCleanup) => {
   const taller = bar.value?.offsetHeight ?? barHeight.value
   if (taller !== barHeight.value) { barHeight.value = taller; measure() }
 }, { immediate: true, flush: 'post' })
-// The table row comes and goes with the cursor: the docked bar measures its height again.
-watch(inTable, async () => {
-  if (!place.value) return
-  await nextTick()
-  barHeight.value = bar.value?.offsetHeight ?? barHeight.value
-  measure()
-}, { flush: 'post' })
 onBeforeUnmount(() => { place.value = null })
 const style = computed(() => (place.value ? { transform: `translate(${place.value.x}px, ${place.value.y}px)`, width: `${place.value.width}px` } : undefined))
 </script>
@@ -183,14 +178,10 @@ const style = computed(() => (place.value ? { transform: `translate(${place.valu
           <component :is="m.icon" aria-hidden="true" />
         </ToolToggle>
         <DropdownMenu v-if="fit.menu.length">
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <DropdownMenuTrigger as-child>
-                <Button type="button" variant="ghost" size="icon-sm" class="shrink-0" :aria-label="t('editor.toolbar.more')" @mousedown.prevent><Ellipsis aria-hidden="true" /></Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent>{{ t('editor.toolbar.more') }}</TooltipContent>
-          </Tooltip>
+          <!-- No tooltip here: a Tooltip around a menu's trigger left the menu without its anchor, off-screen. -->
+          <DropdownMenuTrigger as-child>
+            <Button type="button" variant="ghost" size="icon-sm" class="shrink-0" :aria-label="t('editor.toolbar.more')" @mousedown.prevent><Ellipsis aria-hidden="true" /></Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="end" @close-auto-focus="menuClosed">
             <template v-for="m in fit.menu" :key="m.name">
               <DropdownMenuItem v-if="m.opens && m.name !== 'find'" class="min-h-9 pointer-coarse:min-h-11" @select="fromMenu(m)">
@@ -202,10 +193,9 @@ const style = computed(() => (place.value ? { transform: `translate(${place.valu
             </template>
           </DropdownMenuContent>
         </DropdownMenu>
-        <TableBar v-if="table && fit.tableInRow" inline :editor="editor" :at="table" />
+        <TableBar v-if="table" :editor="editor" :at="table" :wide="fit.tableWide" />
         <div v-if="sourceInRow" class="ml-auto shrink-0 pl-2"><SourceToggle :pressed="false" :word="fit.sourceWord" @toggle="emit('source')" /></div>
       </div>
-      <TableBar v-if="table && !fit.tableInRow" :editor="editor" :at="table" />
     </div>
   </TooltipProvider>
 </template>

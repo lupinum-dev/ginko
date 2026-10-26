@@ -334,6 +334,31 @@ describe('the toolbar', () => {
     }
   })
 
+  // Wrong behaviour caught: in a narrow row the table tools came as a second row when the cursor entered a table, and
+  // the text below moved down by its height. They now stay in the row, as one "Tabelle" menu.
+  test('a narrow row takes the table tools as one menu, without a second row', async () => {
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private report: (entries: { contentRect: { width: number } }[]) => void) {}
+      observe() { this.report([{ contentRect: { width: 330 } }]) }
+      unobserve() {}
+      disconnect() {}
+    })
+    try {
+      const wrapper = await mounted({ text: '| A | B |\n| - | - |\n| 1 | 2 |\n' })
+      editorOf(wrapper).chain().focus().setTextSelection(4).run()
+      await flushPromises()
+      expect(wrapper.findAll('[role="toolbar"]')).toHaveLength(1)
+      expect(wrapper.findAll('[role="toolbar"] button').map((b) => b.attributes('aria-label'))).toContain('Tabelle')
+      await wrapper.get('button[aria-label="Tabelle"]').trigger('click')
+      await until(() => document.querySelectorAll('[role="menu"] [role^="menuitem"]').length > 0)
+      const items = [...document.querySelectorAll('[role="menu"] [role^="menuitem"]')].map((i) => i.textContent?.trim())
+      expect(items).toContain('Zeile darunter einfügen')
+      expect(items.at(-1)).toBe('Tabelle löschen')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   // Wrong behaviour caught: closing "Weitere Werkzeuge" without a choice (Escape) put the focus into the text, so a
   // keyboard user lost their place in the toolbar.
   test('"Weitere Werkzeuge" closed without a choice gives the focus back to its button; a chosen tool to the text', async () => {
@@ -414,6 +439,25 @@ describe('block menu', () => {
     expect(saved.startsWith('Eins\n\n::layout')).toBe(true)
   })
 
+  // Wrong behaviour caught: "Bild" from the menu made an empty line below the text for the picture, and it stayed when
+  // the picture dialog was closed without one.
+  test('a closed picture dialog leaves no empty line', async () => {
+    const wrapper = await mounted({ text: 'Eins\n' })
+    const editor = editorOf(wrapper)
+    editor.commands.focus('end')
+    const input = await openMenu(wrapper)
+    input.value = 'bild'
+    input.dispatchEvent(new Event('input'))
+    await flushPromises()
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await until(() => document.querySelector('[role="dialog"]') !== null)
+    expect(editor.state.doc.childCount).toBe(2)
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await until(() => document.querySelector('[role="dialog"]') === null)
+    expect(editor.state.doc.childCount).toBe(1)
+    expect(editor.state.selection.from).toBe(5)
+  })
+
   test('arrow keys move the choice, Escape closes without a change', async () => {
     const wrapper = await mounted({ text: 'Eins\n' })
     editorOf(wrapper).commands.focus('end')
@@ -449,26 +493,40 @@ describe('block menu', () => {
     const { state } = wrapper.findComponent(SlashMenu).props() as { state: SlashState }
     await until(() => state.open && state.items.length > 0)
     expect(state.items.map((i) => i.label)).toEqual(['Bild'])
+    // Enter still chooses in the "/" menu there (a cell's own Enter does nothing).
+    editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    await until(() => !state.open)
+    expect(editor.state.doc.textContent).not.toContain('/')
   })
 })
 
 describe('table tools', () => {
-  // Wrong behaviour caught: the bin deletes the whole table in one click. Once more was typed, Cmd+Z took back the typing
-  // first; the message's "Rückgängig" must bring the table back and keep what was typed since.
-  test('"Tabelle löschen" offers the table back, also after more typing', async () => {
-    const wrapper = await mounted({ text: 'Eins\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\nZwei\n' })
+  // Wrong behaviour caught: after Cmd+Z had brought the deleted table back, the message's "Rückgängig" still stood and
+  // brought it back a second time. The message offers the undo only until the text changes.
+  test('"Tabelle löschen" offers the table back until the text changes', async () => {
+    const text = 'Eins\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\nZwei\n'
+    const wrapper = await mounted({ text })
     const editor = editorOf(wrapper)
-    let inCell = 0
-    editor.state.doc.descendants((node, pos) => { if (!inCell && node.type.name === 'tableCell') inCell = pos + 2; return !inCell })
-    editor.chain().focus().setTextSelection(inCell).run()
-    await flushPromises()
+    const intoTable = async () => {
+      let inCell = 0
+      editor.state.doc.descendants((node, pos) => { if (!inCell && node.type.name === 'tableCell') inCell = pos + 2; return !inCell })
+      editor.chain().focus().setTextSelection(inCell).run()
+      await flushPromises()
+    }
+    const saved = async () => { await wait(350); return String(wrapper.emitted('update:modelValue')!.at(-1)![0]) }
+    await intoTable()
     vi.mocked(toast.success).mockClear()
     await wrapper.get('button[aria-label="Tabelle löschen"]').trigger('click')
-    const [text, options] = vi.mocked(toast.success).mock.calls[0]!
-    expect(text).toBe('Tabelle gelöscht.')
-    editor.chain().focus('end').insertContent('!').run()
+    const [message, options] = vi.mocked(toast.success).mock.calls[0]!
+    expect(message).toBe('Tabelle gelöscht.')
     await (options as { action: { onClick: (e: Event) => Promise<void> } }).action.onClick(new MouseEvent('click'))
-    await wait(350)
-    expect(String(wrapper.emitted('update:modelValue')!.at(-1)![0])).toBe('Eins\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\nZwei!\n')
+    expect(await saved()).toBe(text)
+    // Cmd+Z instead: the message goes.
+    await intoTable()
+    await wrapper.get('button[aria-label="Tabelle löschen"]').trigger('click')
+    vi.mocked(toast.dismiss).mockClear()
+    editor.commands.undo()
+    expect(toast.dismiss).toHaveBeenCalled()
+    expect(await saved()).toBe(text)
   })
 })

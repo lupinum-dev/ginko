@@ -546,16 +546,8 @@
     },
     "blocks": {
       "text": "Texte",
-      "h2": "Titre",
-      "h3": "Sous-titre",
-      "h4": "Petit titre",
       "bulletList": "Liste à puces",
       "orderedList": "Liste numérotée",
-      "taskList": "Liste de tâches",
-      "blockquote": "Citation",
-      "horizontalRule": "Séparateur",
-      "table": "Tableau",
-      "codeBlock": "Bloc de code",
       "textDescribe": "Un paragraphe normal"
     },
     "source": {

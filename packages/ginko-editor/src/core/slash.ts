@@ -4,10 +4,12 @@ import type { Label } from '@lupinum/ginko'
 import type { ComponentRegistry, MarkdownProfile } from '@lupinum/ginko/internal'
 import { labelOf, parseMarkdown, profileCovers, URL_PROPS } from '@lupinum/ginko/internal'
 import type { Editor, Range } from '@tiptap/core'
-import { NodeSelection, TextSelection, type EditorState } from '@tiptap/pm/state'
+import type { Node as PmNode } from '@tiptap/pm/model'
+import { NodeSelection, TextSelection, type EditorState, type SelectionBookmark } from '@tiptap/pm/state'
 import { editorMeta, missingRequired, type ComponentProps, type PropField } from './component-props.ts'
 import { toEditorDoc, type GinkoDocNode } from './convert.ts'
 import { toggleTaskList } from './extensions.ts'
+import { inTableCell } from './table.ts'
 
 export interface SlashItem {
   /** Stable key: `heading2`, `bulletList`, ... and `component:<tag>`. */
@@ -129,15 +131,6 @@ export function slashItemsAt(items: readonly SlashItem[], state: EditorState): S
   return inTableCell(state) ? items.filter((item) => item.id === 'image') : [...items]
 }
 
-function inTableCell(state: EditorState): boolean {
-  const { $from } = state.selection
-  for (let d = $from.depth; d > 0; d--) {
-    const role = $from.node(d).type.spec.tableRole
-    if (role === 'cell' || role === 'header_cell') return true
-  }
-  return false
-}
-
 /**
  * Runs `item` from a menu that does not sit in an empty line (the toolbar). An insert in a block with text goes into a
  * new empty paragraph below that block, so the text stays whole; everything else runs where the cursor is.
@@ -151,9 +144,30 @@ export function runSlashItem(editor: Editor, item: SlashItem): void | Promise<vo
     : selection instanceof NodeSelection ? selection.to
     : parent.isTextblock && (parent.type.name !== 'paragraph' || parent.content.size > 0) ? selection.$from.after() : undefined
   if (item.kind === 'insert' && below !== undefined) {
+    const back = selection.getBookmark()
     editor.chain().insertContentAt(below, { type: 'paragraph' }).setTextSelection(below + 1).run()
+    blanks.set(editor, { doc: editor.state.doc, pos: below, back })
   }
-  return item.run(editor)
+  const done = item.run(editor)
+  // The picture opens a dialog: MarkdownEditor drops the blank line when it closes without a picture.
+  if (item.id === 'image') return done
+  if (done instanceof Promise) return done.then(() => dropSlashBlank(editor))
+  dropSlashBlank(editor)
+}
+
+// The empty paragraph `runSlashItem` made for an insert, kept with the text it was made in.
+const blanks = new WeakMap<Editor, { doc: PmNode; pos: number; back: SelectionBookmark }>()
+
+/**
+ * Takes back the empty paragraph `runSlashItem` added for an insert, when the insert did not happen (a component without
+ * an example, a closed picture dialog): the text is still the one it was made in. The cursor goes back where it was.
+ */
+export function dropSlashBlank(editor: Editor): void {
+  const blank = blanks.get(editor)
+  blanks.delete(editor)
+  if (!blank || editor.isDestroyed || editor.state.doc !== blank.doc) return
+  const tr = editor.state.tr.delete(blank.pos, blank.pos + 2)
+  editor.view.dispatch(tr.setSelection(blank.back.resolve(tr.doc)))
 }
 
 export interface InsertComponentOptions {

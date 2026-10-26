@@ -546,16 +546,8 @@
     },
     "blocks": {
       "text": "Text",
-      "h2": "Überschrift",
-      "h3": "Unterüberschrift",
-      "h4": "Kleine Überschrift",
       "bulletList": "Aufzählung",
       "orderedList": "Nummerierte Liste",
-      "taskList": "Checkliste",
-      "blockquote": "Zitat",
-      "horizontalRule": "Trennlinie",
-      "table": "Tabelle",
-      "codeBlock": "Codeblock",
       "textDescribe": "Normaler Absatz"
     },
     "source": {

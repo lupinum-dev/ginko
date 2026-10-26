@@ -546,16 +546,8 @@
     },
     "blocks": {
       "text": "Text",
-      "h2": "Heading",
-      "h3": "Subheading",
-      "h4": "Small heading",
       "bulletList": "Bulleted list",
       "orderedList": "Numbered list",
-      "taskList": "Checklist",
-      "blockquote": "Quote",
-      "horizontalRule": "Divider",
-      "table": "Table",
-      "codeBlock": "Code block",
       "textDescribe": "A normal paragraph"
     },
     "source": {

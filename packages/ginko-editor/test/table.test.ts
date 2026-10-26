@@ -116,6 +116,21 @@ describe('table commands', () => {
     handle.destroy()
   })
 
+  // Wrong behaviour caught: a new row's cells have no alignment of their own, so the editor showed them left-aligned and
+  // the column menu said "Links", while the saved column stayed centred. A GFM column has one alignment: its header's.
+  test('a new row shows and reports the alignment of its column', async () => {
+    const handle = await open('| A | B |\n| :-: | - |\n| 1 | 2 |\n')
+    const { editor } = handle
+    cell(editor, 1, 0)
+    runTable(editor, 'addRowAfter')
+    cell(editor, 2, 0)
+    expect(tableAt(editor.state)).toMatchObject({ row: 2, column: 0, align: 'center' })
+    const shown = [...editor.view.dom.querySelectorAll('tr')].map((tr) => (tr.firstElementChild as HTMLElement).style.textAlign)
+    expect(shown).toEqual(['center', 'center', 'center'])
+    expect(await handle.markdown()).toBe('| A   | B   |\n| :-: | --- |\n| 1   | 2   |\n|     |     |\n')
+    handle.destroy()
+  })
+
   test('Tab goes to the next cell, Shift+Tab back, Tab in the last cell adds a row', async () => {
     const handle = await open('| A | B |\n| - | - |\n| 1 | 2 |\n')
     const { editor } = handle
@@ -128,6 +143,18 @@ describe('table commands', () => {
     cell(editor, 1, 1)
     press('Tab')
     expect(tableAt(editor.state)).toMatchObject({ row: 2, column: 0, rows: 3 })
+    handle.destroy()
+  })
+
+  // Wrong behaviour caught: Enter in a cell made a second paragraph (Shift+Enter a line break), and the save wrote both
+  // lines into the row as one, "1   x". A GFM cell holds one line.
+  test('Enter and Shift+Enter in a cell keep the cell one line', async () => {
+    const handle = await open('| A | B |\n| - | - |\n| 1 | 2 |\n')
+    const { editor } = handle
+    cell(editor, 1, 0)
+    for (const shiftKey of [false, true]) editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey, bubbles: true, cancelable: true }))
+    editor.commands.insertContent('x')
+    expect(await handle.markdown()).toBe('| A   | B   |\n| --- | --- |\n| 1x  | 2   |\n')
     handle.destroy()
   })
 })

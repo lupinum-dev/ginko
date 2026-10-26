@@ -21,7 +21,7 @@ import { fileImageView } from './file-images.ts'
 import { MoveExtension } from './move.ts'
 import { pasteExtension, type PasteOptions } from './paste.ts'
 import { SearchExtension } from './search.ts'
-import { alignOf } from './table.ts'
+import { TableAlign, TableKeys } from './table.ts'
 import { uploadPlaceholders } from './uploads.ts'
 
 export interface GinkoExtensionsOptions {
@@ -236,11 +236,6 @@ function schemaExtension(): AnyExtension {
       return [
         { types: [...BLOCKS, ...INLINES, ...MARKS], attributes: { props: rawAttr } },
         { types: ['paragraph'], attributes: { bare: { default: false, rendered: false } } },
-        // A column's alignment lives in the cells' `props` (not rendered): shown here, so the editor aligns as the site does.
-        { types: ['tableCell', 'tableHeader'], attributes: { shownAlign: { default: null, keepOnSplit: false, parseHTML: () => null, renderHTML: (attrs: Record<string, unknown>) => {
-          const align = alignOf(attrs.props)
-          return align ? { style: `text-align:${align}` } : {}
-        } } } },
         // The sample text of an inserted component: shown muted while the block is empty, never saved (see slash.ts).
         {
           types: ['paragraph', 'heading'],
@@ -411,7 +406,7 @@ export function ginkoExtensions(options: GinkoExtensionsOptions): AnyExtension[]
   if (basic) extensions.push(Alert, Raw, TaskCheckbox)
   if (rich) {
     extensions.push(
-      Table.configure({ resizable: false }), TableRow, TableHeader.extend({ content: 'block+' }), TableCell.extend({ content: 'block+' }),
+      Table.configure({ resizable: false }), TableRow, TableHeader.extend({ content: 'block+' }), TableCell.extend({ content: 'block+' }), TableAlign, TableKeys,
       (fileImages ? Image.extend({ addNodeView: () => fileImageView(fileImages) }) : Image).configure({ inline: true, allowBase64: false }),
       MathInline, codeLike('mathBlock'), codeLike('mermaid'), uploadPlaceholders(),
     )

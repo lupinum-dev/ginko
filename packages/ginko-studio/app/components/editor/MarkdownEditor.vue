@@ -9,7 +9,7 @@ import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
 import { coreMessage, effectiveAlt, effectiveMax, effectiveProfile, FACT_TAG, type Msg } from '@lupinum/ginko/internal'
 import {
-  BLOCKERS, docProblems, figureTag, FLUSHERS, GINKO_ASSETS, linkCardTag, makeFigure, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useFileImages, useGinkoEditor,
+  BLOCKERS, docProblems, dropSlashBlank, figureTag, FLUSHERS, GINKO_ASSETS, linkCardTag, makeFigure, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useFileImages, useGinkoEditor,
   type DocProblem, type SlashItem, type SourceProblem,
 } from '@lupinum/ginko-editor'
 import { GripVertical } from '@lucide/vue'
@@ -83,7 +83,13 @@ const dragHandle = canHover()
 const describePos = ref<number | null>(null)
 /** Position of an image that a new picture replaces ("Bild ersetzen"). */
 const replacePos = ref<number | null>(null)
-watch(imageOpen, (isOpen) => { if (!isOpen) { describePos.value = null; replacePos.value = null } })
+// Closed without a picture: the empty line the block menu made for it goes again.
+watch(imageOpen, (isOpen) => {
+  if (isOpen) return
+  describePos.value = null
+  replacePos.value = null
+  if (editor.value) dropSlashBlank(editor.value)
+})
 function openImage(mode: { describe?: number; replace?: number }) {
   describePos.value = mode.describe ?? null
   replacePos.value = mode.replace ?? null
