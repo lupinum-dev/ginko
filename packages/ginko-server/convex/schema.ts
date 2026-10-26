@@ -315,6 +315,8 @@ export default defineSchema({
     attempts: v.number(),
     /** Catalog key (`errors.upload…`) of the reason of the last failed processing attempt, shown to the uploader in their language. */
     error: v.optional(v.string()),
+    /** While `processing`: when the next processing run is due (ms). A row long past it lost its run (uploads.requeueStale). Missing: the creation time. */
+    runAt: v.optional(v.number()),
     folder: v.optional(v.id('folders')),
     /** Uploaded through the library, put in a folder or kept on purpose: the 7-day sweep leaves it alone. Missing means false. */
     kept: v.optional(v.boolean()),

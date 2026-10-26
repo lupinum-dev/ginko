@@ -5,6 +5,7 @@ import type { Id } from '../convex/_generated/dataModel'
 import { errorOf, postUpload, revokeSession, setup, upload } from './setup'
 import { kindOf } from '../convex/lib/files'
 import { people } from './setup'
+import { tick } from './clock'
 
 const MB = 1024 * 1024
 
@@ -180,6 +181,28 @@ describe('uploads.markReady and markFailed', () => {
     expect(await s.t.run((ctx) => ctx.db.get(id))).toMatchObject({ status: 'processing', attempts: 2 })
     await s.t.mutation(internal.uploads.markFailed, fail)
     expect(await s.t.run((ctx) => ctx.db.get(id))).toMatchObject({ status: 'failed', attempts: 3 })
+  })
+})
+
+describe('uploads.requeueStale', () => {
+  // Wrong behaviour caught: a run that ended without marking its row (a lost write, a crash, a timeout) left the upload
+  // `processing` with no run planned, so the picture stayed broken until the sweep deleted it (vulkanrot import).
+  it('queues a processing upload again whose run is long overdue, but not one whose run is still due', async () => {
+    const s = await setup()
+    const insert = async (name: string) => {
+      const storageId = await storeFile(s.t, '%PDF-1.7 echt')
+      return s.t.run((ctx) => ctx.db.insert('uploads', { site: s.site, uploader: people.cook, storageId, name, size: 13, mime: 'application/pdf', status: 'processing', attempts: 0 }))
+    }
+    const lost = await insert('alt.pdf')
+    tick(10 * 60 * 1000)
+    const fresh = await insert('neu.pdf')
+    tick(6 * 60 * 1000)
+    expect(await s.t.mutation(internal.uploads.requeueStale, {})).toBe(1)
+    const planned = await s.t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect())
+    expect(planned.filter((f) => f.name.startsWith('uploadsNode') && f.state.kind === 'pending').map((f) => f.args[0].upload)).toEqual([lost])
+    await s.t.action(internal.uploadsNode.run, { upload: lost })
+    const rows = await s.t.run(async (ctx) => [await ctx.db.get(lost), await ctx.db.get(fresh)])
+    expect(rows.map((r) => [r!.name, r!.status, r!.attempts])).toEqual([['alt.pdf', 'ready', 1], ['neu.pdf', 'processing', 0]])
   })
 })
 

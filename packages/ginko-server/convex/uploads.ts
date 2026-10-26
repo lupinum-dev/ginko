@@ -16,6 +16,8 @@ import { deleteStorage, isKeptUpload, purgeUpload } from './lib/library'
 const DAY = 24 * 60 * 60 * 1000
 export const MAX_ATTEMPTS = 3
 const RETRY_MS = 30_000
+/** Longer than an action may run (10 minutes): a `processing` row this far past its run has lost it. */
+const STALE_MS = 15 * 60 * 1000
 
 const TICKET_MS = 10 * 60 * 1000
 /** Upload tickets per person, site and hour. A busy editor uploads a few dozen files; this bounds what a script or a stolen session stores. */
@@ -176,13 +178,38 @@ export const markFailed = internalMutation({
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.upload)
     if (!row || row.status !== 'processing') return
-    const attempts = row.attempts + 1
-    if (args.permanent || attempts >= MAX_ATTEMPTS) {
-      await ctx.db.patch(row._id, { status: 'failed', attempts, error: args.key })
-      return
+    await retryOrFail(ctx, row, args.key, args.permanent)
+  },
+})
+
+async function retryOrFail(ctx: MutationCtx, row: Doc<'uploads'>, key: string, permanent: boolean) {
+  const attempts = row.attempts + 1
+  if (permanent || attempts >= MAX_ATTEMPTS) {
+    await ctx.db.patch(row._id, { status: 'failed', attempts, error: key })
+    return
+  }
+  await ctx.db.patch(row._id, { attempts, error: key, runAt: Date.now() + RETRY_MS * attempts })
+  await ctx.scheduler.runAfter(RETRY_MS * attempts, internal.uploadsNode.run, { upload: row._id })
+}
+
+/**
+ * Cron: a `processing` row whose run is long overdue lost it (the action crashed, timed out or failed to write its
+ * result); it would otherwise wait for the sweep. It counts as a failed attempt, so a file that always crashes the run
+ * ends in `failed` after MAX_ATTEMPTS.
+ */
+export const requeueStale = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const before = Date.now() - STALE_MS
+    const rows = await ctx.db.query('uploads').withIndex('by_status', (q) => q.eq('status', 'processing').lt('_creationTime', before)).take(500)
+    let queued = 0
+    for (const row of rows) {
+      if ((row.runAt ?? row._creationTime) >= before) continue
+      await retryOrFail(ctx, row, 'errors.uploadRetrying', false)
+      queued++
     }
-    await ctx.db.patch(row._id, { attempts, error: args.key })
-    await ctx.scheduler.runAfter(RETRY_MS * attempts, internal.uploadsNode.run, { upload: row._id })
+    if (queued) console.log(`uploads.requeueStale: ${queued} stuck upload(s) queued again`)
+    return queued
   },
 })
 
