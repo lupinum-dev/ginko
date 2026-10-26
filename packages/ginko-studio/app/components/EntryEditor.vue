@@ -266,16 +266,17 @@ const state = computed(() => props.entry?.state ?? 'live')
 const isDraft = computed(() => (props.entry ? state.value === 'draft' : drafts.value))
 /**
  * Save without publishing: on a live entry of a collection with drafts, Speichern keeps the changes unpublished;
- * Veröffentlichen puts them live (now or later), Verwerfen goes back to the version on the website.
+ * Veröffentlichen puts them live (now or later), Verwerfen goes back to the version on the website. Changes saved
+ * before the collection turned drafts off keep waiting (the server saves into them), so they stay publishable here.
  */
-const keepsChanges = computed(() => drafts.value && !!props.entry && state.value === 'live')
-const pending = computed(() => (keepsChanges.value ? props.entry?.pending : undefined))
+const pending = computed(() => (state.value === 'live' ? props.entry?.pending : undefined))
+const keepsChanges = computed(() => !!props.entry && state.value === 'live' && (drafts.value || !!pending.value))
 /** The planned time of a scheduled draft, or of a live entry's unpublished changes. */
 const scheduledAt = computed(() => props.entry?.publishAt ?? pending.value?.publishAt)
 /** "Veröffentlichen …": a draft, or unpublished changes (saved, or typed and saved on the way). */
 const publishable = computed(() => isDraft.value || (keepsChanges.value && (!!pending.value || dirty.value)))
 const statusText = computed(() => {
-  if (!props.entry || (!drafts.value && state.value === 'live')) return ''
+  if (!props.entry || (!drafts.value && state.value === 'live' && !pending.value)) return ''
   if (pending.value) {
     return pending.value.publishAt
       ? t('entry.status.changesFrom', { when: whenText(pending.value.publishAt, timeZone.value, format) })

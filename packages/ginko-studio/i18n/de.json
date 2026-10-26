@@ -235,7 +235,7 @@
       "confirm": "Verwerfen",
       "keepEditing": "Weiter bearbeiten",
       "menu": "Änderungen verwerfen …",
-      "warning": "Deine unveröffentlichten Änderungen an „{title}“ gehen verloren. Auf der Website bleibt alles, wie es ist.",
+      "warning": "Die unveröffentlichten Änderungen an „{title}“ gehen verloren. Auf der Website bleibt alles, wie es ist.",
       "button": "Verwerfen"
     },
     "gone": {

@@ -235,7 +235,7 @@
       "confirm": "Discard",
       "keepEditing": "Keep editing",
       "menu": "Discard changes …",
-      "warning": "Your unpublished changes to “{title}” will be lost. The website stays as it is.",
+      "warning": "The unpublished changes to “{title}” will be lost. The website stays as it is.",
       "button": "Discard"
     },
     "gone": {

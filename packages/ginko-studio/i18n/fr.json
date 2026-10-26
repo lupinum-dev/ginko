@@ -235,7 +235,7 @@
       "confirm": "Abandonner",
       "keepEditing": "Continuer à modifier",
       "menu": "Abandonner les modifications …",
-      "warning": "Vos modifications non publiées de « {title} » seront perdues. Le site reste tel qu’il est.",
+      "warning": "Les modifications non publiées de « {title} » seront perdues. Le site reste tel qu’il est.",
       "button": "Abandonner"
     },
     "gone": {

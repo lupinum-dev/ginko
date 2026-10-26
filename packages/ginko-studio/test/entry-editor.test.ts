@@ -577,14 +577,17 @@ describe('the footer of a live entry with unpublished changes', () => {
   const entryOf = (extra: Record<string, unknown> = {}) => ({ _id: 'e1', brick: 'blog', kind: 'item' as const, order: 1, data: { title: { de: 'Herbstfest' } }, rev: 3, fieldRevs: {}, lifeRev: 1, prints: {}, ...extra })
   const buttons = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('button').map((b) => b.text())
 
-  // Wrong behaviour caught: the page says "Online" while saved changes wait, offers no way to publish or discard them,
-  // or offers publishing on a collection without drafts, where Speichern is already live.
+  // Wrong behaviour caught: the page says "Online" while saved changes wait, offers no way to publish or discard them
+  // (also when they were saved before the collection turned drafts off), or offers publishing on a collection without
+  // drafts, where Speichern is already live.
   test.each([
     { name: 'live, nothing waiting', key: 'blog', entry: entryOf(), status: 'Online', save: 'Speichern', publish: false, discard: false },
     { name: 'live with unpublished changes', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true },
     { name: 'unpublished changes planned', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'], publishAt: at } }), status: 'Änderungen online ab', save: 'Speichern', publish: 'Zeitplan ändern …', discard: true },
     { name: 'a draft', key: 'blog', entry: entryOf({ state: 'draft' }), status: 'Entwurf', save: 'Entwurf speichern', publish: 'Veröffentlichen …', discard: false },
     { name: 'no drafts in the collection', key: 'hours', entry: entryOf({ brick: 'hours' }), status: undefined, save: 'Speichern', publish: false, discard: false },
+    // Saved before the collection turned drafts off: they still wait, so they can still be published or discarded.
+    { name: 'changes left waiting after drafts were turned off', key: 'hours', entry: entryOf({ brick: 'hours', pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true },
   ])('$name', async ({ key, entry, status, save, publish, discard }) => {
     const s = key === 'hours' ? plain : schema
     const wrapper = mount(EntryEditor, { props: { site, schema: s, brickKey: key, brick: s.bricks[key]!, entry, canRemove: false }, global: { stubs } })
@@ -619,7 +622,7 @@ describe('the footer of a live entry with unpublished changes', () => {
 
       await click('Änderungen verwerfen …')
       expect(discardChanges).not.toHaveBeenCalled()
-      expect(wrapper.text()).toContain('Deine unveröffentlichten Änderungen an „Herbstfest“ gehen verloren.')
+      expect(wrapper.text()).toContain('Die unveröffentlichten Änderungen an „Herbstfest“ gehen verloren.')
       await click('Verwerfen')
       expect(discardChanges).toHaveBeenCalledWith('e1', 3, undefined)
     } finally {

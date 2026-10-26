@@ -235,7 +235,7 @@
       "confirm": "Descartar",
       "keepEditing": "Seguir editando",
       "menu": "Descartar cambios …",
-      "warning": "Se perderán tus cambios sin publicar en “{title}”. El sitio web se queda como está.",
+      "warning": "Se perderán los cambios sin publicar en “{title}”. El sitio web se queda como está.",
       "button": "Descartar"
     },
     "gone": {
