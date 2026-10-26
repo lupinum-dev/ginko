@@ -54,8 +54,11 @@ export function navTabs<T extends Grouped>(roots: readonly T[]): NavTab<T>[] {
   return names.map((name) => ({ title: name, sections: runs(roots.filter((r) => (r.tab ?? names[0]) === name)) }))
 }
 
-/** One page of the collection, in stored order: its id, its `parent` (an id) and its own section and tab texts. */
-export interface OutlineRow extends GroupFields { id: string; parent?: string }
+/**
+ * One page of the collection, in stored order: its id, its `parent` (an id) and its own section and tab texts. `draft`:
+ * not on the website, so its own section and tab do nothing there; it follows the running ones.
+ */
+export interface OutlineRow extends GroupFields { id: string; parent?: string; draft?: boolean }
 export interface OutlineNode<R extends OutlineRow = OutlineRow> extends Grouped { row: R; children: OutlineNode<R>[] }
 
 /**
@@ -66,7 +69,7 @@ export function outline<R extends OutlineRow>(rows: readonly R[]): OutlineNode<R
   const nodes = rows.map((row): OutlineNode<R> => ({ row, children: [] }))
   const byId = new Map(nodes.map((n) => [n.row.id, n]))
   const roots = nestBy(nodes, (n) => (n.row.parent !== undefined ? byId.get(n.row.parent) : undefined), (n) => n.children)
-  navGroups(roots, (n) => n.row).forEach((g, i) => Object.assign(roots[i]!, g))
+  navGroups(roots, (n) => (n.row.draft ? undefined : n.row)).forEach((g, i) => Object.assign(roots[i]!, g))
   return roots
 }
 
@@ -135,14 +138,17 @@ export function placePlan(rows: readonly OutlineRow[], id: string, place: Place)
   const storedBlock = rows.map((r) => r.id).filter((x) => inBlock.has(x))
   const order = [...base.slice(0, at), ...storedBlock, ...base.slice(at)]
   const oldParent = parentOf.get(id)
-  // What every root shows today, and what the moved page should show at its new place.
-  const want = new Map<string, Grouped>(tree.map((r) => [r.row.id, { tab: r.tab, section: r.section }]))
-  if (parent === undefined) {
-    const at = node.get(anchor!)!
-    want.set(id, { tab: at.tab, section: at.section })
-  }
+  // What every root shows on the website today (live pages only: a live page under a draft is a root there), and what
+  // the moved page should show at its new place.
+  const live = (xs: readonly OutlineRow[]) => xs.filter((r) => !r.draft)
+  const want = new Map<string, Grouped>(outline(live(rows)).map((r) => [r.row.id, { tab: r.tab, section: r.section }]))
+  // The block brings no headings: a page of it that the website shows as a root (under a draft) takes the running ones.
+  for (const x of block) want.delete(x)
+  // Next to a live root: its groups. Next to a draft: the running ones there (a draft's own follow its neighbours).
+  const placeGoal = parent === undefined ? want.get(anchor!) : undefined
+  if (placeGoal) want.set(id, placeGoal)
   // Already there. (Just before the first page of the next section is another place: the first in that section.)
-  const sameGroup = parent !== undefined || (me.tab === want.get(id)!.tab && me.section === want.get(id)!.section)
+  const sameGroup = !placeGoal || (me.tab === placeGoal.tab && me.section === placeGoal.section)
   if (oldParent === parent && sameGroup && order.every((x, i) => x === rows[i]!.id)) return { order, patch: {} }
   // The stored page that holds a text, to copy its value (in every language).
   const source = (key: 'tab' | 'section', text: string) => rows.find((r) => r[key] === text)!.id
@@ -153,15 +159,20 @@ export function placePlan(rows: readonly OutlineRow[], id: string, place: Place)
   const moved = byId.get(id)!
   if (oldParent !== parent) write(id, { parent: parent ?? null })
   moved.parent = parent
-  // The page brings no group of its own: it takes the one of its place below.
-  if (moved.section) write(id, { section: null })
-  if (moved.tab) write(id, { tab: null })
-  delete moved.section
-  delete moved.tab
+  // The page brings no group of its own: it takes the one of its place below. Nor do its subpages (the website ignores a
+  // subpage's own section and tab, except while its parent is a draft, when it shows as a root).
+  for (const x of block) {
+    const page = byId.get(x)!
+    if (page.section) write(x, { section: null })
+    if (page.tab) write(x, { tab: null })
+    delete page.section
+    delete page.tab
+  }
 
-  // Walk the new roots with the website's rule and write the least that keeps each root where it should be.
+  // Walk the website's new roots and write the least that keeps each root where it should be. Drafts are not on the
+  // website: they never hold a heading after a move (the website would lose it until they are published).
   const newRows = order.map((x) => byId.get(x)!)
-  const roots = outline(newRows)
+  const roots = outline(live(newRows))
   const tidy = new Set([id, 'before' in place ? place.before : ''])
   let tab: string | undefined
   let section: string | undefined

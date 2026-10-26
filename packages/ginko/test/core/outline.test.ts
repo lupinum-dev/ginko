@@ -93,6 +93,7 @@ describe('placePlan', () => {
         if (rnd(4) === 0) r.section = pick(['A', 'B', 'C'])
         if (rnd(6) === 0) r.tab = pick(['X', 'Y'])
         if (rnd(4) === 0) r.parent = pick(rows).id
+        if (rnd(5) === 0) r.draft = true
       }
       // No stored cycles here (the website breaks them by stored order, so a move may change which page is the root).
       for (const r of rows) {
@@ -117,6 +118,7 @@ describe('placePlan', () => {
       const plan = placePlan(rows, id, place)
       if (typeof plan === 'string') continue
       const after = outline(apply(rows, plan))
+      const website = (xs: OutlineRow[]) => outline(xs.filter((r) => !r.draft))
       const all = walkOutline(after)
       const block = new Set(walkOutline([nodes.find((n) => n.row.id === id)!]).map((n) => n.row.id))
       const facts = (roots: ReturnType<typeof outline>, skip: Set<string>) => {
@@ -128,16 +130,17 @@ describe('placePlan', () => {
         roots.forEach((r) => walk(r, undefined))
         return out
       }
-      // Other pages: same parent, tab, section and relative order. (The block moves as one; its own inside does not change.)
-      const keep = block
-      expect(facts(after, keep), JSON.stringify({ rows, id, place })).toEqual(facts(tree, keep))
+      // Other pages on the website: same parent, tab, section and relative order. (The block moves as one; its own
+      // inside does not change. Drafts are not on the website, so a heading never goes to one.)
+      expect(facts(website(apply(rows, plan)), block), JSON.stringify({ rows, id, place })).toEqual(facts(website(rows), block))
       // The moved page: at its place, with the tab and section of that place.
       const moved = all.find((n) => n.row.id === id)!
       const newParent = all.find((n) => n.children.includes(moved))?.row.id
       expect(newParent, JSON.stringify({ rows, id, place })).toBe('parent' in place ? place.parent : undefined)
       if (!('parent' in place)) {
         const anchor = after.find((n) => n.row.id === ('after' in place ? place.after : place.before))!
-        expect([moved.tab, moved.section], JSON.stringify({ rows, id, place })).toEqual([anchor.tab, anchor.section])
+        // A draft takes no heading, so it cannot be the first page of a section (it shows the running one).
+        if (!('before' in place && rows.find((r) => r.id === id)!.draft)) expect([moved.tab, moved.section], JSON.stringify({ rows, id, place })).toEqual([anchor.tab, anchor.section])
         const roots = after.map((n) => n.row.id)
         expect(roots.indexOf(id) - roots.indexOf(anchor.row.id), JSON.stringify({ rows, id, place })).toBe('after' in place ? 1 : -1)
       } else {
