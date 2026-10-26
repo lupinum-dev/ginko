@@ -9,16 +9,19 @@
 .ginko-figure-trigger { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; font: inherit; }
 .ginko-figure-trigger:focus-visible { outline: 2px solid var(--primary, var(--ginko-default-primary)); outline-offset: -2px; }
 .ginko-figure img { display: block; width: 100%; height: auto; }
-.ginko-figure[data-aspect="video"] img { aspect-ratio: 16 / 9; }
-.ginko-figure[data-aspect="wide"] img { aspect-ratio: 2 / 1; }
-.ginko-figure[data-aspect="square"] img { aspect-ratio: 1; }
-.ginko-figure[data-aspect="portrait"] img { aspect-ratio: 3 / 4; }
-.ginko-figure[data-aspect] img { object-fit: cover; }
-.ginko-figure[data-fit="contain"] img { object-fit: contain; }
-.ginko-figure[data-focus="top"] img { object-position: top; }
-.ginko-figure[data-focus="bottom"] img { object-position: bottom; }
-.ginko-figure[data-focus="left"] img { object-position: left; }
-.ginko-figure[data-focus="right"] img { object-position: right; }
+/* Ratio, crop and focus apply to the picture in the text; the enlarged one in the dialog is always the whole picture. */
+.ginko-figure[data-aspect="landscape"] .ginko-figure-visual img { aspect-ratio: 4 / 3; }
+.ginko-figure[data-aspect="video"] .ginko-figure-visual img { aspect-ratio: 16 / 9; }
+.ginko-figure[data-aspect="wide"] .ginko-figure-visual img { aspect-ratio: 2 / 1; }
+.ginko-figure[data-aspect="square"] .ginko-figure-visual img { aspect-ratio: 1; }
+.ginko-figure[data-aspect="portrait"] .ginko-figure-visual img { aspect-ratio: 3 / 4; }
+.ginko-figure[data-aspect] .ginko-figure-visual img { object-fit: cover; }
+.ginko-figure[data-fit="contain"] .ginko-figure-visual img { object-fit: contain; }
+/* The older edge choice; a focus point from Files (an inline object-position) wins over it. */
+.ginko-figure[data-focus="top"] .ginko-figure-visual img { object-position: top; }
+.ginko-figure[data-focus="bottom"] .ginko-figure-visual img { object-position: bottom; }
+.ginko-figure[data-focus="left"] .ginko-figure-visual img { object-position: left; }
+.ginko-figure[data-focus="right"] .ginko-figure-visual img { object-position: right; }
 .ginko-figure-caption { margin-top: 0.5rem; color: var(--muted-foreground, var(--ginko-default-muted-foreground)); font-size: 0.875rem; line-height: 1.4; }
 @media (min-width: 56rem) {
   .ginko-figure[data-bleed] { margin-inline: -3rem; }

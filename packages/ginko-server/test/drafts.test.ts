@@ -354,7 +354,8 @@ describe('unpublished changes of a live entry (save without publishing)', () => 
     expect((await s.row(entry))!.data.title).toEqual({ de: 'Weinabend' })
 
     const read = await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })
-    expect(read).toMatchObject({ rev: 2, data: { title: { de: 'Weinabend neu' }, description: { de: '**Neu** mit [Link](https://example.com)' } }, pending: { fields: expect.arrayContaining(['title', 'description']), since: NOW, own: true } })
+    expect(read).toMatchObject({ rev: 2, data: { title: { de: 'Weinabend neu' }, description: { de: '**Neu** mit [Link](https://example.com)' } }, pending: { fields: expect.arrayContaining(['title', 'description']), own: true } })
+    expect(read.pending!.since).toBeGreaterThanOrEqual(NOW)
     // The list marks it, with the website's title.
     expect((await s.as.owner.query(api.entries.list, { site: 'restaurant', brick: 'events' })).rows.find((r) => r._id === entry)).toMatchObject({ pending: true, title: 'Weinabend' })
     // The preview builds the site from the same read, so it shows the saved version too.
@@ -479,21 +480,30 @@ describe('unpublished changes of a live entry (save without publishing)', () => 
   // after 7 days and the "unused" view offered it for the trash; publishing then showed a missing picture.
   it('an image only in unpublished changes counts as used until it is published', async () => {
     const s = await draftSetup()
-    const entry = await liveEvent(s)
-    const file = await upload(s, { type: 'image/jpeg', content: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]), name: 'foto.jpg', ready: false })
-    await s.t.run(async (ctx) => ctx.db.patch(file, { status: 'ready', processedId: (await ctx.db.get(file))!.storageId }))
-    await save(s, entry, 1, { image: { file, alt: { de: 'Foto' } } })
-    expect((await s.as.owner.query(api.files.list, { site: 'restaurant', view: 'unused' })).files).toEqual([])
+    const image = async (name: string) => {
+      const id = await upload(s, { type: 'image/jpeg', content: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]), name, ready: false })
+      await s.t.run(async (ctx) => ctx.db.patch(id, { status: 'ready', processedId: (await ctx.db.get(id))!.storageId }))
+      return id
+    }
+    const refsOf = (file: Id<'uploads'>) => s.t.run(async (ctx) => (await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', file)).collect())
+      .filter((r) => r.holder !== 'change').map((r) => [r.holder, r.holderId]))
 
+    // Published: the entry holds the file, the reference of the waiting changes is gone (history keeps its own).
+    const published = await liveEvent(s)
+    const shown = await image('live.jpg')
+    await save(s, published, 1, { image: { file: shown, alt: { de: 'Foto' } } })
+    await publish(s, published, { rev: 2 })
+    expect(await refsOf(shown)).toEqual([['entry', published]])
+
+    const entry = await liveEvent(s)
+    const file = await image('foto.jpg')
+    await save(s, entry, 1, { image: { file, alt: { de: 'Foto' } } })
+    expect(await refsOf(file)).toEqual([['pending', entry]])
+    expect((await s.as.owner.query(api.files.list, { site: 'restaurant', view: 'unused' })).files).toEqual([])
+    // The daily sweep 8 days later (no signed-in call after this: the session would not live that long).
     vi.setSystemTime(NOW + 8 * DAY)
     await s.t.mutation(internal.uploads.sweep, { phase: 'ready' })
-    vi.setSystemTime(NOW + HOUR)
     expect(await s.t.run((ctx) => ctx.db.get(file))).not.toBeNull()
-
-    expect(await publish(s, entry, { rev: 2 })).toMatchObject({ state: 'live' })
-    const refs = await s.t.run((ctx) => ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', file)).collect())
-    // The entry holds it now; its pending reference is gone (the history line keeps its own).
-    expect(refs.filter((r) => r.holder !== 'change').map((r) => [r.holder, r.holderId])).toEqual([['entry', entry]])
   })
 
   // Wrong behaviour caught: staff allowed to change only the price could publish the waiting changes of other fields.

@@ -732,8 +732,9 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
     }
   }
   if (field.default !== undefined) for (const p of checkValue(schema, field, field.default, `${path}.default`)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
-  // Retirement is per top-level field or brick (SPEC 2.5); a list column cannot be retired on its own.
-  if (!topLevel && field.retired) problems.push(`${path}: columns of a list cannot be retired one by one.`)
+  // Retirement is per top-level field or brick (SPEC 2.5); a list column cannot be retired on its own. A component's
+  // prop can: the editor no longer offers it, and texts that have it stay valid.
+  if (!topLevel && field.retired && !path.startsWith('components.')) problems.push(`${path}: columns of a list cannot be retired one by one.`)
   switch (field.type) {
     case 'text': {
       // Addresses run longer than prose (a Google Maps embed URL is often 600+ characters).

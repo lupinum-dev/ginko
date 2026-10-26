@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { componentProblems, GINKO_TOC_KEY, isStableMarkdown, markdownBlocks, parseMarkdown, serializeMarkdown } from '@lupinum/ginko/internal'
+import { checkSchema, componentProblems, GINKO_TOC_KEY, serializeSchema, isStableMarkdown, markdownBlocks, parseMarkdown, serializeMarkdown } from '@lupinum/ginko/internal'
 import { GinkoMarkdown } from '@lupinum/ginko/vue'
 import de from '../i18n/de.json'
 import en from '../i18n/en.json'
@@ -35,6 +35,13 @@ describe('registry and components', () => {
     expect(componentProblems(components, 'es')).toEqual([])
     expect(Object.keys(components).filter((tag) => !(tag in componentMap))).toEqual([])
     expect(Object.keys(componentMap).filter((tag) => !(tag in components)).sort()).toEqual(PLAIN_TAG_OVERRIDES.slice().sort())
+  })
+
+  // Wrong behaviour caught: the platform refused a site that uses these components ("Das Schema ist nicht gültig"),
+  // as it did for the figure's retired `focus` prop, while the registry check above passed.
+  test('a site with the registry passes the platform schema check', () => {
+    const site = serializeSchema({ site: 'test', name: 'Test', url: 'https://example.com', timeZone: 'UTC', locales: ['de'], currency: 'EUR', pages: {}, bricks: {}, components })
+    expect(checkSchema(site)).toEqual([])
   })
 
   test.each(Object.entries(components))('%s: example parses and renders', async (tag, def) => {
@@ -193,6 +200,20 @@ describe('registry and components', () => {
     expect(zoom).toContain('<dialog')
     expect(zoom).toContain('Das Zeichen von Ginko</figcaption>')
     expect(await render('::figure{src="/a.jpg" alt="A" zoom="false"}\n::')).not.toContain('<dialog')
+  })
+
+  // Wrong behaviour caught: the page's renderer dropped what the platform adds to a library picture (its smaller copies
+  // and focus point), so a figure loaded the full file and cropped from the middle; or it let any style through.
+  test('a figure shows a library picture with its smaller copies and keeps its focus point in a crop', async () => {
+    const tree = (focal: string, placement = 'inline') => ({ nodes: [['figure', { src: '/a.webp', alt: 'A', aspect: 'square', placement, srcset: '/a-480.webp 480w, /a.webp 2400w', focal }]], frontmatter: {}, meta: {} })
+    const html = (value: ReturnType<typeof tree>) => renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: value as never, components: lazyComponentMap, registry: components }) }))
+    const inline = await html(tree('25% 12.3%'))
+    expect(inline).toContain('srcset="/a-480.webp 480w, /a.webp 2400w" sizes="(min-width: 56rem) 48rem, 100vw"')
+    expect(inline).toContain('object-position:25% 12.3%')
+    // The enlarged picture in the dialog is the whole file, uncropped.
+    expect(inline).toMatch(/<dialog[^>]*>\s*(<!--[^>]*-->)?\s*<img src="\/a.webp" alt="A" loading/)
+    expect(await html(tree('25% 12.3%', 'end'))).toContain('sizes="(min-width: 56rem) 22rem, 100vw"')
+    expect(await html(tree('0 0; background: url(/x)'))).not.toContain('object-position')
   })
 
   test('a quiz question outside a quiz is a problem; an api-param outside an api too', async () => {

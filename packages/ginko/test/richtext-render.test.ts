@@ -40,7 +40,7 @@ describe('GinkoMarkdown (plain Vue)', () => {
   // Bug caught: without a site renderer the node became an unknown <example> element with the preview tree in an attribute.
   test('a ```md preview fence (`example`) shows its code block alone', async () => {
     const html = await render({ nodes: [['example', { preview: [['p', {}, 'Shown']] }, ['pre', { language: 'md' }, ['code', {}, 'Shown']]]] })
-    expect(html).toContain('<pre language="md"><code>Shown</code></pre>')
+    expect(html).toContain('<pre data-language="md"><code>Shown</code></pre>')
     expect(html).not.toMatch(/<example|preview=|<p>Shown/)
   })
 
@@ -92,7 +92,7 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(html).toContain('<a href="/a">a</a>')
     expect(html).toContain('<a href="https://evil.example/deal">Angebot</a><a href="https://evil.example/login">Login</a>')
     expect(html).toMatch(/<ul>\s*<li class="task-list-item">erledigt<\/li>/)
-    expect(html).toContain('<pre language="ts" class="shiki shiki-themes github-light catppuccin-mocha dark:catppuccin-mocha"><code class="language-ts"><span class="line highlight"')
+    expect(html).toContain('<pre data-language="ts" class="shiki shiki-themes github-light catppuccin-mocha dark:catppuccin-mocha"><code class="language-ts"><span class="line highlight"')
     expect(html).toMatch(/<span style="color: ?#D73A49; ?--shiki-dark: ?#CBA6F7;?">const<\/span><span> x<\/span>/)
     expect(html).toContain('<img src="/a.png" alt="A" srcset="/a-640.webp 640w, /a.png 2000w" sizes="100vw">')
     expect(html).toContain('<img src="/b.png" alt="B">')

@@ -346,7 +346,8 @@ describe('replace', () => {
     expect(await s.t.run((ctx) => ctx.db.system.get(before.storageId))).not.toBeNull()
   })
 
-  it('delivers the focus point in the bundle, and a replace takes it away', async () => {
+  // Wrong behaviour caught: the Studio preview cropped from the middle while the site kept the focus point.
+  it('delivers the focus point in the bundle and to the Studio preview, and a replace takes it away', async () => {
     const s = await setup()
     const file = await readyImage(s)
     const entry = await useImage(s, file, { de: 'Foto' })
@@ -358,6 +359,7 @@ describe('replace', () => {
 
     await s.as.owner.mutation(api.files.setFocus, { site, file, focus: { x: 0.3, y: 0.7 } })
     expect(await imageOf()).toMatchObject({ focus: { x: 0.3, y: 0.7 } })
+    expect((await s.as.owner.query(api.uploads.urls, { site, ids: [file] }))[file]).toMatchObject({ focus: { x: 0.3, y: 0.7 } })
 
     const next = await readyImage(s, 'neu.jpg', [0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])
     await s.as.owner.mutation(api.files.replace, { site, file, upload: next })

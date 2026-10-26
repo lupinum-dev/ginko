@@ -119,7 +119,7 @@ const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.va
 // The wide top bar shows with the site; pages teleport their actions into it while it does.
 providePanelBar(() => !blocked.value)
 /** The frame of the signed-out, no-access and not-loaded messages: the page frame's width and padding (StudioPage). */
-const BLOCKED = 'mx-auto grid w-full max-w-[1200px] justify-items-start gap-3 px-4 pt-4 min-[900px]:px-8 min-[900px]:pt-7'
+const BLOCKED = 'grid w-full max-w-[1200px] justify-items-start gap-3 px-4 pt-4 min-[900px]:px-8 min-[900px]:pt-7'
 </script>
 
 <template>

@@ -19,7 +19,7 @@ describe('parseFile', () => {
     const r = await parseFile('## Setup\n\n```ts {1}\nconst a = 1\n```\n\n### Details\n')
     // The renderer keeps only the classes it knows (core/markdown.ts): Shiki's must pass, also for these themes.
     const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: r.value }) }))
-    expect(html).toContain('<pre language="ts" class="shiki shiki-themes github-light catppuccin-mocha dark:catppuccin-mocha"><code class="language-ts"><span class="line highlight" style="display: inline-block"><span style="color:#D73A49;--shiki-dark:#CBA6F7">const</span>')
+    expect(html).toContain('<pre data-language="ts" data-highlights="[1]" class="shiki shiki-themes github-light catppuccin-mocha dark:catppuccin-mocha"><code class="language-ts"><span class="line highlight" style="display: inline-block"><span style="color:#D73A49;--shiki-dark:#CBA6F7">const</span>')
     expect(JSON.stringify(r.value.toc)).toContain('Details')
   })
 
