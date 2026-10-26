@@ -395,7 +395,7 @@ describe('block menu', () => {
     expect(headings()[0]).toBe('Text')
     expect(headings().length).toBeGreaterThan(1)
     // The current text style has the check mark.
-    expect(document.querySelector('[role="option"][id] .sr-only')?.textContent).toBe('(aktuell)')
+    expect(document.querySelector('[role="option"][id] .sr-only')?.textContent?.trim()).toBe('(aktuell)')
   })
 
   test('typing "spal" and Enter inserts Spalten below the current text', async () => {

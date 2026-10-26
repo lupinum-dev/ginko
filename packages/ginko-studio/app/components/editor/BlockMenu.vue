@@ -141,16 +141,18 @@ const optionId = (index: number) => `ginko-block-${index}`
           <p class="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground" aria-hidden="true">{{ g.name }}</p>
           <div
             v-for="{ item, index } in g.items" :id="optionId(index)" :key="item.id" role="option" :aria-selected="index === active" :data-active="index === active"
+            :aria-labelledby="`${optionId(index)}-label`" :aria-describedby="`${optionId(index)}-describe`"
             class="flex min-h-9 cursor-default items-start gap-2 rounded-sm px-2 py-1.5 text-sm pointer-coarse:min-h-11" :class="index === active && 'bg-accent text-accent-foreground'"
             @mousedown.prevent @pointermove="active = index" @click="choose(item)"
           >
             <component :is="iconOf(item)" class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span class="grid min-w-0 flex-1 gap-0.5">
-              <span>{{ item.label }}</span>
-              <span class="truncate text-xs text-muted-foreground">{{ item.describe }}</span>
+              <span :id="`${optionId(index)}-label`">{{ item.label }}</span>
+              <!-- The name is the label alone; the description and "current" are read after it. -->
+              <span :id="`${optionId(index)}-describe`" class="truncate text-xs text-muted-foreground">{{ item.describe }}<span v-if="item.kind === 'style' && item.id === current" class="sr-only"> {{ t('editor.blockMenu.current') }}</span></span>
             </span>
             <template v-if="item.kind === 'style' && item.id === current">
-              <Check class="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span class="sr-only">{{ t('editor.blockMenu.current') }}</span>
+              <Check class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             </template>
           </div>
         </div>

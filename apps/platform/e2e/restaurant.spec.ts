@@ -129,7 +129,7 @@ test.describe('Wirtin', () => {
     await text.click()
     await page.keyboard.type('Gemütlicher Abend')
     await page.keyboard.press('Enter')
-    await page.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await page.getByRole('button', { name: 'Blocktyp' }).click()
     await page.getByRole('option', { name: 'Unterüberschrift' }).click()
     await page.keyboard.type('Programm')
     await expect(text.getByRole('heading', { name: 'Programm' })).toBeVisible()
@@ -163,7 +163,7 @@ test.describe('Wirtin', () => {
     await page.keyboard.type('Gemütlicher Abend')
     await page.keyboard.press('Enter')
 
-    await sheet.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await sheet.getByRole('button', { name: 'Blocktyp' }).click()
     await sheet.getByRole('option', { name: 'Unterüberschrift', exact: true }).click()
     await expect(text.locator('h3')).toHaveCount(1)
 
@@ -179,7 +179,7 @@ test.describe('Wirtin', () => {
     await expect(text.getByRole('link', { name: 'Gemütlicher Abend' })).toBeVisible()
 
     // The title is typed, so closing the sheet would ask; closing a list or the link box must not.
-    await sheet.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await sheet.getByRole('button', { name: 'Blocktyp' }).click()
     await expect(sheet.getByRole('listbox')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('listbox')).toHaveCount(0)
