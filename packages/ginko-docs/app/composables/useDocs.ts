@@ -1,6 +1,7 @@
 // What is docs-specific on top of Ginko's navigation: the tree comes from `useGinkoNav`, the
 // breadcrumb chain from `useGinkoBreadcrumbs`; this adds tabs and sections from the entries' fields.
 import schema from '#ginko/schema'
+import { navTabs } from '@lupinum/ginko/internal'
 import { enrichNav, type DocNode, type DocTab } from '../lib/docsNav'
 
 export function useDocs() {
@@ -19,16 +20,10 @@ export function useDocs() {
   })
   const activeTab = computed(() => (tabs.value.length ? nodes.value.find((n) => n.path === chain.value[0]?.path)?.tab ?? tabs.value[0]!.title : undefined))
 
-  // Roots of the active tab, grouped by `section` (a section is a run of neighbours with the same one).
+  // Roots of the active tab, grouped by `section` (a section is a run of neighbours with the same one; rule: navTabs).
   const sections = computed(() => {
-    const out: { title?: string; nodes: DocNode[] }[] = []
-    for (const node of nodes.value) {
-      if (tabs.value.length && (node.tab ?? tabs.value[0]!.title) !== activeTab.value) continue
-      const last = out.at(-1)
-      if (last && last.title === node.section) last.nodes.push(node)
-      else out.push({ title: node.section, nodes: [node] })
-    }
-    return out
+    const all = navTabs(nodes.value)
+    return (all.find((t) => t.title === activeTab.value) ?? all[0]!).sections
   })
 
   // Tab (when tabs are shown), then the parent chain down to this page.
