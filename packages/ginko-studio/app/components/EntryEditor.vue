@@ -859,7 +859,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
 
     <!-- Wide screens: the save state, Preview and Save in the panel's top bar. Save submits the form by its id. -->
     <Teleport v-if="bar" to="#studio-actions">
-      <span v-if="!readOnly" class="text-sm font-medium" aria-live="polite">
+      <span v-if="!readOnly" class="min-w-0 truncate text-sm font-medium" aria-live="polite">
         <span v-if="!dirty && waiting" class="text-warning">{{ t('history.waiting') }}</span>
         <span v-else-if="!dirty && savedOnce" class="text-success">{{ savedText }}</span>
         <span v-else-if="dirty && !busy" class="inline-flex items-center gap-1.5 text-warning"><span class="size-1.5 rounded-full bg-warning" aria-hidden="true" />{{ t('entry.unsaved') }}</span>
