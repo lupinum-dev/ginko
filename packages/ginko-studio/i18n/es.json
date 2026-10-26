@@ -141,7 +141,9 @@
     "status": {
       "online": "En línea",
       "onlineFrom": "En línea a partir del {when}",
-      "draft": "Borrador"
+      "draft": "Borrador",
+      "changes": "Cambios sin publicar",
+      "changesFrom": "Cambios en línea desde {when}"
     },
     "save": {
       "waiting": "Esperando conexión…",
@@ -196,7 +198,8 @@
       "go": "Publicar",
       "review": "Enviar a revisión",
       "asDraft": "Guardar como borrador",
-      "laterOpen": "Publicar más tarde"
+      "laterOpen": "Publicar más tarde",
+      "changesWhen": "¿Cuándo deben publicarse los cambios en “{title}”?"
     },
     "unpublish": {
       "button": "Quitar de la web",
@@ -234,7 +237,10 @@
     "discard": {
       "question": "¿Descartar los cambios?",
       "confirm": "Descartar",
-      "keepEditing": "Seguir editando"
+      "keepEditing": "Seguir editando",
+      "menu": "Descartar cambios …",
+      "warning": "Se perderán los cambios sin publicar en “{title}”. El sitio web se queda como está.",
+      "button": "Descartar"
     },
     "gone": {
       "text": "Alguien eliminó esta entrada. Tus cambios siguen aquí.",
@@ -283,8 +289,11 @@
       "label": "Detalles",
       "status": "Estado",
       "draftNote": "Todavía no está en el sitio web. Publícalo cuando esté listo.",
-      "scheduledNote": "Se publica solo a esa hora."
-    }
+      "scheduledNote": "Se publica solo a esa hora.",
+      "changesNote": "Guardado, pero aún no está en el sitio web. Muestra la versión anterior hasta que publiques.",
+      "changesScheduledNote": "Los cambios se publican solos a esa hora."
+    },
+    "savedNotLive": "Guardado, aún no publicado"
   },
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",
@@ -518,7 +527,9 @@
     "drafts": {
       "since": "Borrador desde el {date}",
       "goesLive": "Se publica el {date}",
-      "all": "Todos los borradores en Contenido"
+      "all": "Todos los borradores en Contenido",
+      "changesSince": "Cambios sin publicar desde {date}",
+      "changesGoLive": "Los cambios se publican {date}"
     }
   },
   "editor": {
@@ -847,7 +858,13 @@
     },
     "purged": "Se eliminó “{title}” definitivamente.",
     "draftCreated": "Guardado como borrador.",
-    "scheduledGoesLive": "Programado. Se publica el {date}."
+    "scheduledGoesLive": "Programado. Se publica el {date}.",
+    "changesSaved": "Guardado. Aún no está en el sitio web: publica los cambios cuando estén listos.",
+    "savedLikeLive": "Guardado. Vuelve a coincidir con la versión del sitio web.",
+    "changesPublished": "Cambios publicados.",
+    "changesScheduled": "Programado: cambios en línea desde {time}.",
+    "changesScheduleCleared": "Programación cancelada. Los cambios siguen guardados, pero aún no en línea.",
+    "changesDiscarded": "Cambios descartados. Vuelve a valer la versión del sitio web."
   },
   "review": {
     "title": "{site} · Revisar",

@@ -17,6 +17,7 @@ import { historyText, msg, type HistoryMsg, type Param } from './lib/history'
 import { localeOfUser, t, type MessageKey } from './lib/i18n'
 import { queueMail, mailAvailable, siteOrigin } from './mail'
 import { labeler, namer, type Labeler } from './lib/names'
+import { pendingOf } from './lib/pending'
 import { taskOf } from './lib/policy'
 
 const PAGE_SIZE = 50
@@ -137,7 +138,7 @@ async function staleReason(ctx: QueryCtx, p: Doc<'proposals'>, touched: Touched 
   const entry = await ctx.db.get(p.entry)
   if (!entry || entry.site !== p.site) return staleBecause('history.staleEntryGone')
   if (entry.deletedAt) return staleBecause('history.staleEntryDeleted')
-  const args = p.args as { baseRev?: number; lifeRev?: number; fields?: Record<string, Json>; confirm?: string[] }
+  const args = p.args as { baseRev?: number; lifeRev?: number; rev?: number; fields?: Record<string, Json>; confirm?: string[] }
   const seen = touched.get(entry._id)
   if (p.op === 'save') {
     const roots = [...new Set([...Object.keys(args.fields ?? {}), ...(args.confirm ?? []).map(rootOf)])]
@@ -147,8 +148,14 @@ async function staleReason(ctx: QueryCtx, p: Doc<'proposals'>, touched: Touched 
     return null
   }
   if (entry.lifeRev !== args.lifeRev || seen?.life) return retry
-  if (p.op === 'publish' && (entry.state ?? 'live') !== 'draft') return staleBecause('history.staleAlreadyLive')
+  if (p.op === 'publish' && (entry.state ?? 'live') !== 'draft') {
+    // Publishing unpublished changes: they must still be the ones the author sent (the rev moves with every save).
+    if (args.rev === undefined) return staleBecause('history.staleAlreadyLive')
+    if (entry.rev !== args.rev || !(await pendingOf(ctx, entry._id))) return retry
+  }
   if (p.op === 'unpublish' && (entry.state ?? 'live') === 'draft' && entry.publishAt === undefined) return staleBecause('history.staleAlreadyDraft')
+  // Taking the time off unpublished changes (the entry stays online): only while they still have one.
+  if (p.op === 'unpublish' && (p.after as { state?: string } | undefined)?.state === 'live' && (await pendingOf(ctx, entry._id))?.publishAt === undefined) return retry
   touched.set(entry._id, { roots: seen?.roots ?? new Set(), life: true })
   return null
 }
@@ -434,7 +441,8 @@ export const get = query({
       if (typeof publishAt !== 'number') return name ? historyText(name, locale, schema) : state
       return historyText(msg('history.stateScheduled', { state: name ?? state, at: publishAt }), locale, schema)
     }
-    const diff = p.op === 'publish' || p.op === 'unpublish'
+    // Publishing unpublished changes shows their fields; any other publish or unpublish shows the state.
+    const diff = (p.op === 'publish' || p.op === 'unpublish') && before.state !== undefined
       ? [{ field: 'state', label: t(locale, 'history.stateField'), kind: 'state', before: when(before.state, before.publishAt), after: when(after.state, after.publishAt) }]
       : diffFields(brick?.fields, before, after, schema.locales[0]!)
     const names = await labeler(ctx, actor)

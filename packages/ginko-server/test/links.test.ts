@@ -50,11 +50,13 @@ describe('links in saves', () => {
     }
     const call = s.save(entry, 1, { description: { de: next } })
     if (outcome === 'refused') {
-      const error = await errorOf(call)
+      // Events keep drafts: the save waits unpublished, and publishing it is what refuses the link.
+      expect(await call).toMatchObject({ pending: true })
+      const error = await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 }))
       expect(error).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken', params: { link: '$page.unknown' } })
       expect(error.message).toContain('$page.unknown')
       const row = await s.t.run((ctx) => ctx.db.get(entry as Id<'entries'>))
-      expect(row).toMatchObject({ rev: 1, data: { description: { de: stored } } })
+      expect(row).toMatchObject({ rev: 2, data: { description: { de: stored } } })
     } else {
       expect(await call).toMatchObject({ rev: 2 })
     }

@@ -61,10 +61,15 @@ const kindOfUpload = (row: Doc<'uploads'>) => (row.mime.startsWith('image/') ? '
 
 // ---- Uses ----
 
-/** Entries (deleted ones too) whose file references name this file. */
+/**
+ * Entries (deleted ones too) whose content or unpublished changes name this file, one reference per entry: the
+ * entry's own when it has one (it carries the uses), else that of its unpublished changes.
+ */
 async function entryRefsOf(ctx: QueryCtx, file: Id<'uploads'>) {
   const refs = await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', file)).collect()
-  return refs.filter((r) => r.holder === 'entry')
+  const own = refs.filter((r) => r.holder === 'entry')
+  const shown = new Set(own.map((r) => r.holderId))
+  return [...own, ...refs.filter((r) => r.holder === 'pending' && !shown.has(r.holderId))]
 }
 
 async function usedInOf(ctx: QueryCtx, schema: Schema, refs: Doc<'fileRefs'>[], library?: Record<string, string>) {
@@ -443,8 +448,9 @@ export const setAlt = mutation({
     else delete alt[args.locale]
     await ctx.db.patch(row._id, { alt: Object.keys(alt).length ? alt : undefined })
 
-    // Holders of kind 'change' keep theirs: they are history, not shown content.
+    // Only the entry's own references carry uses; 'change' ones are history and 'pending' ones hold no uses.
     for (const ref of await entryRefsOf(ctx, row._id)) {
+      if (ref.holder !== 'entry') continue
       const id = ctx.db.normalizeId('entries', ref.holderId)
       const entry = id ? await ctx.db.get(id) : null
       const brick = entry && Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined

@@ -5,6 +5,7 @@ import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { By } from './access'
 import type { Recorded } from './history'
+import { dropPending } from './pending'
 import { dropTrees } from './trees'
 
 /** A removed entry can be restored this long, then retention deletes it for good (SPEC 12). */
@@ -56,6 +57,8 @@ export async function softRemove(ctx: MutationCtx, c: Counters, entry: Doc<'entr
   await ctx.db.patch(entry._id, { deletedAt: at, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, publishAt: undefined, publishJob: undefined, trees: undefined, treeBytes: 0 })
   await dropTrees(ctx, entry._id)
   if (entry.publishJob) await ctx.scheduler.cancel(entry.publishJob)
+  // Unpublished changes go with the entry: a restore brings back the live version.
+  for (const p of await ctx.db.query('pendingChanges').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()) await dropPending(ctx, p)
   c.entryCount -= 1
   c.bytes -= entry.bytes
   c.trashBytes += entry.bytes
@@ -86,6 +89,7 @@ export async function overflowingTrash(ctx: QueryCtx, site: Id<'sites'>, trashBy
 
 /** Deletes a removed entry for good: its slugs, file references, trees and the row. Its changes stay for a year (SPEC 12). */
 export async function purgeEntry(ctx: MutationCtx, c: Counters, row: Doc<'entries'>) {
+  for (const p of await ctx.db.query('pendingChanges').withIndex('by_entry', (q) => q.eq('entry', row._id)).collect()) await dropPending(ctx, p)
   for (const slug of await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', row._id)).collect()) await ctx.db.delete(slug._id)
   const refs = await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', 'entry').eq('holderId', row._id)).collect()
   for (const ref of refs) await ctx.db.delete(ref._id)

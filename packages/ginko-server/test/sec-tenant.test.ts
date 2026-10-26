@@ -91,6 +91,7 @@ const calls: Call[] = [
   { fn: 'entries.trashOverflow', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'entries.restore', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.publish', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
+  { fn: 'entries.discard', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry }) },
   { fn: 'entries.unpublish', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.move', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, direction: 'down' }) },
   { fn: 'entries.removed', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },

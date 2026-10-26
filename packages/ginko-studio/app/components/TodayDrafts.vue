@@ -1,4 +1,5 @@
-<!-- The drafts of one collection on Heute (TEMPLATES 7.2): staff see the drafts they made, owners and admins all of them;
+<!-- The drafts of one collection on Heute (TEMPLATES 7.2), and its live entries with unpublished changes: staff see the
+     drafts they made and the changes they saved last, owners and admins all of them;
      newest first, at most five, each with the one step that moves it on. The step follows the person's task: with
      needsApproval the draft goes to review, otherwise it goes online. -->
 <script setup lang="ts">
@@ -27,9 +28,10 @@ const ops = useOps(computed(() => props.slug))
 const { show } = useToast()
 
 const SHOWN = 5
+const since = (e: Entry) => e.since ?? e.pending?.since ?? 0
 const drafts = computed(() => props.entries
-  .filter((e) => e.state === 'draft' && !e.deleted && (props.isManager || e.own))
-  .toSorted((a, b) => (b.since ?? 0) - (a.since ?? 0)))
+  .filter((e) => !e.deleted && (e.state === 'draft' ? props.isManager || e.own : !!e.pending && (props.isManager || e.pending.own)))
+  .toSorted((a, b) => since(b) - since(a)))
 const rows = computed(() => drafts.value.slice(0, SHOWN))
 const more = computed(() => drafts.value.length > SHOWN)
 
@@ -38,7 +40,11 @@ const review = computed(() => !props.isManager && props.tasks.some((task) => tas
 /** Publishing belongs to the brick's edit and create tasks (staff need one of them). */
 const publishTask = computed(() => props.tasks.find((task) => task.kind === 'edit') ?? props.tasks.find((task) => task.kind === 'create'))
 
-const line = (e: Entry) => e.publishAt !== undefined
+const line = (e: Entry) => e.pending
+  ? e.pending.publishAt !== undefined
+    ? t('site.drafts.changesGoLive', { date: whenWeekday(e.pending.publishAt, props.timeZone, format) })
+    : t('site.drafts.changesSince', { date: whenWeekday(e.pending.since, props.timeZone, format) })
+  : e.publishAt !== undefined
   ? t('site.drafts.goesLive', { date: whenWeekday(e.publishAt, props.timeZone, format) })
   : t('site.drafts.since', { date: whenWeekday(e.since ?? 0, props.timeZone, format) })
 
@@ -47,7 +53,9 @@ const busy = reactive(new Set<string>())
 async function advance(e: Entry) {
   busy.add(e._id)
   try {
-    await ops.publishEntry(e._id, e.lifeRev, { task: publishTask.value ? taskRef(props.brickKey, publishTask.value) : undefined, timeZone: props.timeZone, main: props.main })
+    const opts = { task: publishTask.value ? taskRef(props.brickKey, publishTask.value) : undefined, timeZone: props.timeZone, main: props.main }
+    if (e.pending) await ops.publishChanges(e._id, e.lifeRev, e.rev, opts)
+    else await ops.publishEntry(e._id, e.lifeRev, opts)
   } catch (error) {
     show(opErrorOf(error).message, { tone: 'err' })
   } finally {

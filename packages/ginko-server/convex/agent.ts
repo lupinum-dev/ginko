@@ -386,7 +386,14 @@ const liveText = (liveFrom: string | undefined) => (liveFrom ? `On the website f
 /** The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. */
 function savedAs(result: Json, label: string): { text: string; result: Json } {
   if (proposed(result)) return { text: PROPOSED, result }
-  const { change, liveFrom } = result as { change?: string; liveFrom?: string }
+  const { change, liveFrom, pending } = result as { change?: string; liveFrom?: string; pending?: boolean }
+  // A published entry of a collection with drafts keeps the save as unpublished changes (lib/pending.ts).
+  if (pending !== undefined) {
+    return {
+      text: pending ? `Saved: ${label}. Not on the website yet: the change waits as an unpublished change until the person publishes it in the platform.` : `Saved: ${label}. It matches the published version again, so nothing waits to be published.`,
+      result,
+    }
+  }
   return {
     text: change ? `Done: ${label}. ${liveText(liveFrom)} To undo: ginko_undo with change ${change}.` : 'Nothing changed: the values were already like this.',
     result,
