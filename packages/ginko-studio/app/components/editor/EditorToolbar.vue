@@ -1,4 +1,5 @@
-<!-- Toolbar above the text: the block type, marks, link, picture, lists, search and the Markdown switch. Only what the
+<!-- Toolbar above the text: the block menu (the "/" menu's entries behind the current block type), marks, link, picture,
+     lists, search and the Markdown switch; while the cursor is in a table, a second row for the table. Only what the
      editor's schema has is shown, so each Markdown profile gets its own set. The row fits its own width (a phone, a
      sheet, a column next to the preview): bold, italic and link always stay in it, the other tools follow in a fixed
      order as long as they fit, and the rest is in "Weitere Werkzeuge" (⋯), so every tool is reachable at every width.
@@ -6,24 +7,29 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from '#imports'
-import {
-  Bold, Code, Ellipsis, FileCode, Heading2, Heading3, Heading4, ImagePlus, Italic, Link, List, ListChecks, ListOrdered, Minus,
-  Pilcrow, Quote, Search, SquareCode, Strikethrough, Table,
-} from '@lucide/vue'
+import { Bold, Code, Ellipsis, FileCode, ImagePlus, Italic, Link, List, ListOrdered, Search, Strikethrough } from '@lucide/vue'
 import { profileCovers, type MarkdownProfile } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
-import { isTaskItem, toggleTaskList } from '@lupinum/ginko-editor'
+import { tableAt, type SlashItem } from '@lupinum/ginko-editor'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@studio/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@studio/components/ui/tooltip'
 import { isCoarsePointer, useEditorTick, useModKey } from './context.ts'
 import { dockPosition, type DockPosition } from './dock.ts'
+import BlockMenu from './BlockMenu.vue'
 import LinkPopover from './LinkPopover.vue'
 import SourceToggle from './SourceToggle.vue'
+import TableBar from './TableBar.vue'
 import ToolToggle from './ToolToggle.vue'
 
-const props = defineProps<{ editor: Editor; profile: MarkdownProfile; /** On a phone while the editor has the focus: the bar sits above the keyboard. */ docked?: boolean }>()
+const props = defineProps<{
+  editor: Editor
+  profile: MarkdownProfile
+  /** The "/" menu's entries: the block menu offers the same ones. */
+  items: () => SlashItem[]
+  /** On a phone while the editor has the focus: the bar sits above the keyboard. */
+  docked?: boolean
+}>()
 const emit = defineEmits<{ source: [] }>()
 const linkOpen = defineModel<boolean>('linkOpen', { required: true })
 const imageOpen = defineModel<boolean>('imageOpen', { required: true })
@@ -57,42 +63,7 @@ const optional = computed(() => [
   { ...tool('source', 'Markdown', FileCode, () => emit('source'), () => false), opens: true },
 ])
 
-type Block = { value: string; label: string; icon: Component; node: string; run: () => void }
-const groups = computed<Block[][]>(() => {
-  const text: Block[] = [
-    { value: 'paragraph', label: t('editor.blocks.text'), icon: Pilcrow, node: 'paragraph', run: () => { chain().clearNodes().run() } },
-    ...([[2, Heading2], [3, Heading3], [4, Heading4]] as const).map(([level, icon]) => ({ value: `h${level}`, label: t(`editor.blocks.h${level}`), icon, node: 'heading', run: () => { chain().setHeading({ level }).run() } })),
-  ]
-  const blocks: Block[] = [
-    { value: 'bulletList', label: t('editor.blocks.bulletList'), icon: List, node: 'bulletList', run: () => { chain().toggleBulletList().run() } },
-    { value: 'orderedList', label: t('editor.blocks.orderedList'), icon: ListOrdered, node: 'orderedList', run: () => { chain().toggleOrderedList().run() } },
-    { value: 'taskList', label: t('editor.blocks.taskList'), icon: ListChecks, node: 'taskCheckbox', run: () => { toggleTaskList(props.editor) } },
-    { value: 'blockquote', label: t('editor.blocks.blockquote'), icon: Quote, node: 'blockquote', run: () => { chain().toggleBlockquote().run() } },
-    { value: 'horizontalRule', label: t('editor.blocks.horizontalRule'), icon: Minus, node: 'horizontalRule', run: () => { chain().setHorizontalRule().run() } },
-  ]
-  // A picture is an action, not a type of the current block: it has its own button (and the "/" menu).
-  const richBlocks: Block[] = [
-    { value: 'table', label: t('editor.blocks.table'), icon: Table, node: 'table', run: () => { chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() } },
-    { value: 'codeBlock', label: t('editor.blocks.codeBlock'), icon: SquareCode, node: 'codeBlock', run: () => { chain().toggleCodeBlock().run() } },
-  ]
-  return [text, blocks, richBlocks].map((group) => group.filter((b) => has(b.node))).filter((group) => group.length > 1 || (group[0] && group[0].node !== 'paragraph'))
-})
-const all = computed(() => groups.value.flat())
-const current = computed(() => {
-  void tick.value
-  const e = props.editor
-  if (e.isActive('codeBlock')) return 'codeBlock'
-  for (const level of [2, 3, 4]) if (e.isActive('heading', { level })) return `h${level}`
-  if (isTaskItem(e.state)) return 'taskList'
-  for (const value of ['bulletList', 'orderedList', 'blockquote']) if (e.isActive(value)) return value
-  return 'paragraph'
-})
-const currentBlock = computed(() => all.value.find((b) => b.value === current.value))
-function choose(value: unknown) {
-  all.value.find((b) => b.value === value)?.run()
-}
-
-// After a block type, typing goes on in the text; the list would put the focus back on its own button once it has closed.
+// After a tool from a menu, typing goes on in the text; the menu would put the focus back on its own button once it has closed.
 function backToText(event: Event) {
   event.preventDefault()
   if (!props.editor.isDestroyed) props.editor.commands.focus()
@@ -123,7 +94,7 @@ const SOURCE_WORD = 72
 const SPARE = 8
 const width = ref(Number.POSITIVE_INFINITY)
 const fit = computed(() => {
-  const select = all.value.length > 1
+  const select = hasBlockMenu.value
   const tools = optional.value
   const cost = (x: Tool) => UNIT + (x.name === 'source' ? SOURCE_GAP : 0)
   let room = width.value - SPARE - (select ? SELECT : 0) - (fixed.value.length + (has('link') ? 1 : 0)) * UNIT
@@ -139,6 +110,9 @@ const fit = computed(() => {
   while (shown < tools.length && room >= cost(tools[shown]!)) room -= cost(tools[shown++]!)
   return { row: tools.slice(0, shown), menu: tools.slice(shown), selectWord: false, sourceWord: false }
 })
+const hasBlockMenu = computed(() => props.items().length > 0)
+/** Where the cursor is in a table: the table row shows below the tools. */
+const table = computed(() => { void tick.value; return tableAt(props.editor.state) })
 const rowTools = computed(() => fit.value.row.filter((x) => x.name !== 'source'))
 const sourceInRow = computed(() => fit.value.row.some((x) => x.name === 'source'))
 
@@ -172,6 +146,13 @@ watch(() => props.docked, async (on, _before, onCleanup) => {
   const taller = bar.value?.offsetHeight ?? barHeight.value
   if (taller !== barHeight.value) { barHeight.value = taller; measure() }
 }, { immediate: true, flush: 'post' })
+// The table row comes and goes with the cursor: the docked bar measures its height again.
+watch(() => Boolean(table.value), async () => {
+  if (!place.value) return
+  await nextTick()
+  barHeight.value = bar.value?.offsetHeight ?? barHeight.value
+  measure()
+}, { flush: 'post' })
 onBeforeUnmount(() => { place.value = null })
 const style = computed(() => (place.value ? { transform: `translate(${place.value.x}px, ${place.value.y}px)`, width: `${place.value.width}px` } : undefined))
 </script>
@@ -180,60 +161,43 @@ const style = computed(() => (place.value ? { transform: `translate(${place.valu
   <TooltipProvider :delay-duration="300">
     <div v-if="place" aria-hidden="true" :style="{ height: `${barHeight}px` }" />
     <div
-      ref="bar" role="toolbar" :aria-label="t('editor.toolbar.label')" :style="style" :data-docked="place ? '' : undefined"
-      class="flex items-center gap-0.5 bg-background p-1"
+      ref="bar" :style="style" :data-docked="place ? '' : undefined" class="grid gap-1 bg-background p-1"
       :class="place ? 'fixed top-0 left-0 z-40 border-t pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgb(0_0_0/0.08)]' : 'sticky top-(--studio-header-height,0px) z-[5] rounded-t-lg border-b'"
     >
-      <Select v-if="all.length > 1" :model-value="current" @update:model-value="choose">
-        <SelectTrigger
-          size="sm" :aria-label="t('editor.toolbar.blockType')"
-          :class="['mr-1 shrink-0 border-transparent bg-transparent shadow-none hover:bg-accent dark:bg-transparent dark:hover:bg-accent [@media(pointer:coarse)]:data-[size=sm]:h-11', fit.selectWord ? 'w-40' : 'w-auto gap-1 px-2']"
-        >
-          <!-- Narrow, the icon alone; the word stays for screen readers, never cut in half. -->
-          <SelectValue>
-            <component :is="currentBlock?.icon" v-if="currentBlock" aria-hidden="true" />
-            <span :class="fit.selectWord ? 'truncate' : 'sr-only'">{{ currentBlock?.label }}</span>
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent @close-auto-focus="backToText">
-          <template v-for="(group, i) in groups" :key="i">
-            <SelectSeparator v-if="i > 0" />
-            <SelectGroup>
-              <SelectItem v-for="b in group" :key="b.value" :value="b.value"><component :is="b.icon" aria-hidden="true" />{{ b.label }}</SelectItem>
-            </SelectGroup>
-          </template>
-        </SelectContent>
-      </Select>
-      <ToolToggle v-for="m in fixed" :key="m.name" :label="m.label" :shortcut="m.shortcut" :pressed="m.pressed()" @toggle="m.run">
-        <component :is="m.icon" aria-hidden="true" />
-      </ToolToggle>
-      <LinkPopover v-if="has('link')" v-model:open="linkOpen" :editor="editor">
-        <ToolToggle :label="t('editor.marks.link')" :shortcut="`${mod()}K`" :pressed="active('link')" @toggle="linkOpen = true"><Link aria-hidden="true" /></ToolToggle>
-      </LinkPopover>
-      <ToolToggle v-for="m in rowTools" :key="m.name" :label="m.label" :shortcut="m.shortcut" :pressed="m.pressed()" @toggle="m.run">
-        <component :is="m.icon" aria-hidden="true" />
-      </ToolToggle>
-      <DropdownMenu v-if="fit.menu.length">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <DropdownMenuTrigger as-child>
-              <Button type="button" variant="ghost" size="icon-sm" class="shrink-0" :aria-label="t('editor.toolbar.more')" @mousedown.prevent><Ellipsis aria-hidden="true" /></Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('editor.toolbar.more') }}</TooltipContent>
-        </Tooltip>
-        <DropdownMenuContent align="end" @close-auto-focus="menuClosed">
-          <template v-for="m in fit.menu" :key="m.name">
-            <DropdownMenuItem v-if="m.opens && m.name !== 'find'" class="min-h-9 pointer-coarse:min-h-11" @select="fromMenu(m)">
-              <component :is="m.icon" aria-hidden="true" />{{ m.label }}
-            </DropdownMenuItem>
-            <DropdownMenuCheckboxItem v-else :model-value="m.pressed()" class="min-h-9 pointer-coarse:min-h-11" @select="fromMenu(m)">
-              <component :is="m.icon" aria-hidden="true" />{{ m.label }}
-            </DropdownMenuCheckboxItem>
-          </template>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <div v-if="sourceInRow" class="ml-auto shrink-0 pl-2"><SourceToggle :pressed="false" :word="fit.sourceWord" @toggle="emit('source')" /></div>
+      <div role="toolbar" :aria-label="t('editor.toolbar.label')" class="flex items-center gap-0.5">
+        <BlockMenu v-if="hasBlockMenu" :editor="editor" :items="items" :word="fit.selectWord" />
+        <ToolToggle v-for="m in fixed" :key="m.name" :label="m.label" :shortcut="m.shortcut" :pressed="m.pressed()" @toggle="m.run">
+          <component :is="m.icon" aria-hidden="true" />
+        </ToolToggle>
+        <LinkPopover v-if="has('link')" v-model:open="linkOpen" :editor="editor">
+          <ToolToggle :label="t('editor.marks.link')" :shortcut="`${mod()}K`" :pressed="active('link')" @toggle="linkOpen = true"><Link aria-hidden="true" /></ToolToggle>
+        </LinkPopover>
+        <ToolToggle v-for="m in rowTools" :key="m.name" :label="m.label" :shortcut="m.shortcut" :pressed="m.pressed()" @toggle="m.run">
+          <component :is="m.icon" aria-hidden="true" />
+        </ToolToggle>
+        <DropdownMenu v-if="fit.menu.length">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <DropdownMenuTrigger as-child>
+                <Button type="button" variant="ghost" size="icon-sm" class="shrink-0" :aria-label="t('editor.toolbar.more')" @mousedown.prevent><Ellipsis aria-hidden="true" /></Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>{{ t('editor.toolbar.more') }}</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="end" @close-auto-focus="menuClosed">
+            <template v-for="m in fit.menu" :key="m.name">
+              <DropdownMenuItem v-if="m.opens && m.name !== 'find'" class="min-h-9 pointer-coarse:min-h-11" @select="fromMenu(m)">
+                <component :is="m.icon" aria-hidden="true" />{{ m.label }}
+              </DropdownMenuItem>
+              <DropdownMenuCheckboxItem v-else :model-value="m.pressed()" class="min-h-9 pointer-coarse:min-h-11" @select="fromMenu(m)">
+                <component :is="m.icon" aria-hidden="true" />{{ m.label }}
+              </DropdownMenuCheckboxItem>
+            </template>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <div v-if="sourceInRow" class="ml-auto shrink-0 pl-2"><SourceToggle :pressed="false" :word="fit.sourceWord" @toggle="emit('source')" /></div>
+      </div>
+      <TableBar v-if="table" :editor="editor" :at="table" />
     </div>
   </TooltipProvider>
 </template>

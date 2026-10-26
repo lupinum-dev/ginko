@@ -11,7 +11,9 @@ import { toast } from 'vue-sonner'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { computed, reactive } from 'vue'
 import { EDITOR_COMPONENTS, EDITOR_LINK_TARGETS } from '../app/components/editor/context.ts'
+import type { SlashState } from '../app/components/editor/extensions.ts'
 import MarkdownEditor from '../app/components/editor/MarkdownEditor.vue'
+import SlashMenu from '../app/components/editor/SlashMenu.vue'
 import { REFS } from '../app/components/fields/refs.ts'
 
 vi.mock('vue-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), dismiss: vi.fn() } }))
@@ -360,5 +362,91 @@ describe('the toolbar', () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+})
+
+describe('block menu', () => {
+  async function openMenu(wrapper: Awaited<ReturnType<typeof mounted>>) {
+    // TipTap focuses the text a frame later; that focus would close the menu again.
+    await until(() => document.activeElement === wrapper.get('[role="textbox"]').element)
+    await wait(20)
+    await wrapper.get('[role="toolbar"] button[aria-label="Blocktyp"]').trigger('click')
+    await until(() => document.querySelector('input[aria-label="Suchen …"]') !== null)
+    return document.querySelector<HTMLInputElement>('input[aria-label="Suchen …"]')!
+  }
+  const shown = () => [...document.querySelectorAll('[role="listbox"] [role="option"]')].map((o) => o.querySelector('span > span')!.textContent!.trim())
+  const headings = () => [...document.querySelectorAll('[role="listbox"] [role="group"]')].map((g) => g.getAttribute('aria-label'))
+
+  // Wrong behaviour caught: components (Spalten, Callout, ...) were only in the "/" menu, which people did not find; the
+  // toolbar list had text styles only. Both lists now come from one source and must not drift apart.
+  test('it offers what the "/" menu offers, plus "Text", grouped, with the search field focused', async () => {
+    const wrapper = await mounted({ text: 'Eins\n' })
+    const editor = editorOf(wrapper)
+    editor.commands.focus('end')
+    editor.commands.insertContent({ type: 'paragraph', content: [{ type: 'text', text: '/' }] })
+    const { state } = wrapper.findComponent(SlashMenu).props() as { state: SlashState }
+    await until(() => state.open && state.items.length > 0)
+    const slash = state.items.map((i) => i.label)
+    editor.commands.keyboardShortcut('Escape')
+    const input = await openMenu(wrapper)
+    expect(document.activeElement).toBe(input)
+    expect(shown()).toEqual(['Text', ...slash])
+    expect(shown()).toContain('Spalten')
+    expect(headings()[0]).toBe('Text')
+    expect(headings().length).toBeGreaterThan(1)
+    // The current text style has the check mark.
+    expect(document.querySelector('[role="option"][id] .sr-only')?.textContent).toBe('(aktuell)')
+  })
+
+  test('typing "spal" and Enter inserts Spalten below the current text', async () => {
+    const wrapper = await mounted({ text: 'Eins\n' })
+    editorOf(wrapper).commands.focus('end')
+    const input = await openMenu(wrapper)
+    input.value = 'spal'
+    input.dispatchEvent(new Event('input'))
+    await flushPromises()
+    expect(shown()[0]).toBe('Spalten')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await until(() => document.querySelector('[role="listbox"]') === null)
+    await wait(350)
+    const saved = String(wrapper.emitted('update:modelValue')!.at(-1)![0])
+    expect(saved.startsWith('Eins\n\n::layout')).toBe(true)
+  })
+
+  test('arrow keys move the choice, Escape closes without a change', async () => {
+    const wrapper = await mounted({ text: 'Eins\n' })
+    editorOf(wrapper).commands.focus('end')
+    const input = await openMenu(wrapper)
+    const selected = () => document.querySelector('[role="option"][aria-selected="true"] span > span')!.textContent!.trim()
+    expect(selected()).toBe('Text')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    await flushPromises()
+    expect(selected()).toBe('Überschrift')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
+    await flushPromises()
+    expect(selected()).toBe(shown().at(-1))
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await until(() => document.querySelector('[role="listbox"]') === null)
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: a component or heading chosen in a table cell was written into the GFM row and broke the table.
+  test('in a table cell only the picture is offered, in both menus', async () => {
+    const wrapper = await mounted({ text: '| A | B |\n| - | - |\n|   | 2 |\n' })
+    const editor = editorOf(wrapper)
+    editor.chain().focus().setTextSelection(4).run()
+    await openMenu(wrapper)
+    expect(shown()).toEqual(['Bild'])
+    expect(document.querySelector('[role="listbox"]')!.textContent).toContain('In einer Tabellenzelle steht nur Text und Bild.')
+    document.querySelector<HTMLInputElement>('input[aria-label="Suchen …"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await until(() => document.querySelector('[role="listbox"]') === null)
+    // The empty body cell: "/" there offers the same.
+    let empty = 0
+    editor.state.doc.descendants((node, pos) => { if (!empty && node.type.name === 'tableCell' && !node.textContent) empty = pos + 2; return !empty })
+    editor.chain().focus().setTextSelection(empty).insertContent('/').run()
+    const { state } = wrapper.findComponent(SlashMenu).props() as { state: SlashState }
+    await until(() => state.open && state.items.length > 0)
+    expect(state.items.map((i) => i.label)).toEqual(['Bild'])
   })
 })

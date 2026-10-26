@@ -426,7 +426,7 @@ const frame = 'relative rounded-lg border border-input/80 bg-background dark:bor
 
     <!-- Rich text -->
     <div v-else-if="mode === 'rich' && editor" ref="frameEl" :data-invalid="invalid" :class="frame" @focusin="onFocusIn" @focusout="onFocusOut(); flush()" @keydown.capture="onFrameKey">
-      <EditorToolbar v-model:link-open="linkOpen" v-model:image-open="imageOpen" v-model:find-open="findOpen" :editor="editor" :profile="profile" :docked="docked" @source="toggleSource" />
+      <EditorToolbar v-model:link-open="linkOpen" v-model:image-open="imageOpen" v-model:find-open="findOpen" :editor="editor" :profile="profile" :items="items" :docked="docked" @source="toggleSource" />
       <FindBar v-model:open="findOpen" :editor="editor" />
       <!-- EditorContent wants the Vue flavour of Editor; it only adds fields that EditorContent fills itself. -->
       <EditorContent :editor="editor as VueEditor" :class="['ginko-editor', multiline ? 'is-multiline' : 'is-inline', dragHandle && multiline && 'has-handle']" />
@@ -486,8 +486,11 @@ const frame = 'relative rounded-lg border border-input/80 bg-background dark:bor
 .ginko-editor :deep(img:not(.ginko-card-img)) { max-width: 100%; height: auto; }
 /* A selected picture (with a library file the node view's span is selected, else the img itself). */
 .ginko-editor :deep(:is(.ginko-image.ProseMirror-selectednode img, img.ProseMirror-selectednode)) { outline: 2px solid var(--ring); outline-offset: 2px; }
-.ginko-editor :deep(table) { margin: 0.75em 0; border-collapse: collapse; table-layout: fixed; width: 100%; }
-.ginko-editor :deep(th), .ginko-editor :deep(td) { border: 1px solid var(--border); padding: 0.25rem 0.5rem; text-align: left; vertical-align: top; }
+/* Every cell has room to type in; a table wider than the text scrolls sideways inside it (display: block keeps the
+   scroll on the table, max-content lets the columns take the room their text needs). */
+.ginko-editor :deep(table) { display: block; width: max-content; max-width: 100%; overflow-x: auto; margin: 0.75em 0; border-collapse: collapse; }
+.ginko-editor :deep(th), .ginko-editor :deep(td) { min-width: 8rem; max-width: 24rem; border: 1px solid var(--border); padding: 0.25rem 0.5rem; text-align: left; vertical-align: top; }
+.ginko-editor :deep(:is(th, td) > p) { margin: 0; }
 .ginko-editor :deep(th) { background: var(--muted); font-weight: 600; }
 .ginko-editor :deep(.selectedCell) { background: var(--accent); }
 /* Nodes the editor shows but has no design for yet. */

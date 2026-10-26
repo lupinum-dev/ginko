@@ -555,7 +555,8 @@
       "blockquote": "Quote",
       "horizontalRule": "Divider",
       "table": "Table",
-      "codeBlock": "Code block"
+      "codeBlock": "Code block",
+      "textDescribe": "A normal paragraph"
     },
     "source": {
       "show": "Show Markdown source",
@@ -700,6 +701,31 @@
       "copy": "“{text}” is the same value as the fact “{label}”. Inserted as a fact, the text stays current when the value changes.",
       "copyReplace": "Insert as fact",
       "copyKeep": "Not now"
+    },
+    "blockMenu": {
+      "search": "Search …",
+      "inCell": "A table cell holds only text and pictures.",
+      "current": "(current)"
+    },
+    "table": {
+      "label": "Table",
+      "row": "Row",
+      "column": "Column",
+      "addRowBefore": "Add row above",
+      "addRowAfter": "Add row below",
+      "moveRowUp": "Move row up",
+      "moveRowDown": "Move row down",
+      "deleteRow": "Delete row",
+      "addColumnBefore": "Add column left",
+      "addColumnAfter": "Add column right",
+      "moveColumnLeft": "Move column left",
+      "moveColumnRight": "Move column right",
+      "deleteColumn": "Delete column",
+      "deleteTable": "Delete table",
+      "align": "Alignment",
+      "align_left": "Left",
+      "align_center": "Center",
+      "align_right": "Right"
     }
   },
   "fields": {

@@ -555,7 +555,8 @@
       "blockquote": "Zitat",
       "horizontalRule": "Trennlinie",
       "table": "Tabelle",
-      "codeBlock": "Codeblock"
+      "codeBlock": "Codeblock",
+      "textDescribe": "Normaler Absatz"
     },
     "source": {
       "show": "Markdown-Quelltext zeigen",
@@ -700,6 +701,31 @@
       "copy": "„{text}“ ist derselbe Wert wie die Angabe „{label}“. Als Angabe eingefügt, bleibt der Text aktuell, wenn sich der Wert ändert.",
       "copyReplace": "Als Angabe einfügen",
       "copyKeep": "Diesmal nicht"
+    },
+    "blockMenu": {
+      "search": "Suchen …",
+      "inCell": "In einer Tabellenzelle steht nur Text und Bild.",
+      "current": "(aktuell)"
+    },
+    "table": {
+      "label": "Tabelle",
+      "row": "Zeile",
+      "column": "Spalte",
+      "addRowBefore": "Zeile darüber einfügen",
+      "addRowAfter": "Zeile darunter einfügen",
+      "moveRowUp": "Zeile nach oben",
+      "moveRowDown": "Zeile nach unten",
+      "deleteRow": "Zeile löschen",
+      "addColumnBefore": "Spalte links einfügen",
+      "addColumnAfter": "Spalte rechts einfügen",
+      "moveColumnLeft": "Spalte nach links",
+      "moveColumnRight": "Spalte nach rechts",
+      "deleteColumn": "Spalte löschen",
+      "deleteTable": "Tabelle löschen",
+      "align": "Ausrichtung",
+      "align_left": "Links",
+      "align_center": "Mitte",
+      "align_right": "Rechts"
     }
   },
   "fields": {
