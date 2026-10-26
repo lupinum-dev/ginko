@@ -1,5 +1,15 @@
 # create-ginko
 
+## 0.9.0
+
+### Minor Changes
+
+- [#64](https://github.com/lupinum-dev/ginko/pull/64) [`409df79`](https://github.com/lupinum-dev/ginko/commit/409df791c869eefcdaa91c209cb2aa9b7e5411e9) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change docs pages (`docsCollection`) and the free pages of the starter templates to use drafts: on the platform, Speichern on a live page keeps the change unpublished until Veröffentlichen; pass `drafts: false` to `docsCollection` to keep one-step saving.
+
+### Patch Changes
+
+- [#59](https://github.com/lupinum-dev/ginko/pull/59) [`f753aa7`](https://github.com/lupinum-dev/ginko/commit/f753aa7a12162b6ce2ff764a8667bc2b4bea3d80) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change new sites to start with Nuxt 4.6.2, Vue 3.5.44, nuxt-og-image 7.0.7 and vue-tsc 3.3.13.
+
 ## 0.8.0
 
 No changes in this release.

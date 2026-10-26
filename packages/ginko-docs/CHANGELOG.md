@@ -1,5 +1,22 @@
 # @lupinum/ginko-docs
 
+## 0.9.0
+
+### Minor Changes
+
+- [#59](https://github.com/lupinum-dev/ginko/pull/59) [`f753aa7`](https://github.com/lupinum-dev/ginko/commit/f753aa7a12162b6ce2ff764a8667bc2b4bea3d80) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change the Markdown parser to comark 0.8: heading anchors stay the same, and a code block without a code component now has `data-language` instead of `language`.
+
+- [#64](https://github.com/lupinum-dev/ginko/pull/64) [`409df79`](https://github.com/lupinum-dev/ginko/commit/409df791c869eefcdaa91c209cb2aa9b7e5411e9) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change docs pages (`docsCollection`) and the free pages of the starter templates to use drafts: on the platform, Speichern on a live page keeps the change unpublished until Veröffentlichen; pass `drafts: false` to `docsCollection` to keep one-step saving.
+
+### Patch Changes
+
+- [#63](https://github.com/lupinum-dev/ginko/pull/63) [`1fd5e90`](https://github.com/lupinum-dev/ginko/commit/1fd5e90582543baefb7729f61155156b9c6297d8) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change the docs side navigation to read its tabs and sections through Ginko's shared navigation rules, which the Studio's new navigation tree uses too; the navigation it shows stays the same.
+- Updated dependencies [[`f753aa7`](https://github.com/lupinum-dev/ginko/commit/f753aa7a12162b6ce2ff764a8667bc2b4bea3d80), [`f753aa7`](https://github.com/lupinum-dev/ginko/commit/f753aa7a12162b6ce2ff764a8667bc2b4bea3d80), [`1fd5e90`](https://github.com/lupinum-dev/ginko/commit/1fd5e90582543baefb7729f61155156b9c6297d8), [`b78c0a8`](https://github.com/lupinum-dev/ginko/commit/b78c0a8370390043eb9b83147a6f5feb6eab028d), [`b78c0a8`](https://github.com/lupinum-dev/ginko/commit/b78c0a8370390043eb9b83147a6f5feb6eab028d)]:
+  - @lupinum/ginko@0.9.0
+  - @lupinum/ginko-content@0.9.0
+  - @lupinum/ginko-components@0.9.0
+  - @lupinum/ginko-i18n@0.9.0
+
 ## 0.8.0
 
 ### Patch Changes
