@@ -371,11 +371,12 @@ describe('block menu', () => {
     await until(() => document.activeElement === wrapper.get('[role="textbox"]').element)
     await wait(20)
     await wrapper.get('[role="toolbar"] button[aria-label="Blocktyp"]').trigger('click')
-    await until(() => document.querySelector('input[aria-label="Suchen …"]') !== null)
-    return document.querySelector<HTMLInputElement>('input[aria-label="Suchen …"]')!
+    await until(() => document.activeElement?.matches('input[aria-label="Suchen …"]') ?? false)
+    await flushPromises()
+    return document.activeElement as HTMLInputElement
   }
   const shown = () => [...document.querySelectorAll('[role="listbox"] [role="option"]')].map((o) => o.querySelector('span > span')!.textContent!.trim())
-  const headings = () => [...document.querySelectorAll('[role="listbox"] [role="group"]')].map((g) => g.getAttribute('aria-label'))
+  const headings = () => [...document.querySelectorAll('[role="listbox"] [role="group"]')].map((g) => document.getElementById(g.getAttribute('aria-labelledby')!)?.textContent?.trim())
 
   // Wrong behaviour caught: components (Spalten, Callout, ...) were only in the "/" menu, which people did not find; the
   // toolbar list had text styles only. Both lists now come from one source and must not drift apart.
@@ -417,7 +418,7 @@ describe('block menu', () => {
     const wrapper = await mounted({ text: 'Eins\n' })
     editorOf(wrapper).commands.focus('end')
     const input = await openMenu(wrapper)
-    const selected = () => document.querySelector('[role="option"][aria-selected="true"] span > span')!.textContent!.trim()
+    const selected = () => document.querySelector('[role="option"][data-highlighted] span > span')!.textContent!.trim()
     expect(selected()).toBe('Text')
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await flushPromises()
@@ -448,5 +449,26 @@ describe('block menu', () => {
     const { state } = wrapper.findComponent(SlashMenu).props() as { state: SlashState }
     await until(() => state.open && state.items.length > 0)
     expect(state.items.map((i) => i.label)).toEqual(['Bild'])
+  })
+})
+
+describe('table tools', () => {
+  // Wrong behaviour caught: the bin deletes the whole table in one click. Once more was typed, Cmd+Z took back the typing
+  // first; the message's "Rückgängig" must bring the table back and keep what was typed since.
+  test('"Tabelle löschen" offers the table back, also after more typing', async () => {
+    const wrapper = await mounted({ text: 'Eins\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\nZwei\n' })
+    const editor = editorOf(wrapper)
+    let inCell = 0
+    editor.state.doc.descendants((node, pos) => { if (!inCell && node.type.name === 'tableCell') inCell = pos + 2; return !inCell })
+    editor.chain().focus().setTextSelection(inCell).run()
+    await flushPromises()
+    vi.mocked(toast.success).mockClear()
+    await wrapper.get('button[aria-label="Tabelle löschen"]').trigger('click')
+    const [text, options] = vi.mocked(toast.success).mock.calls[0]!
+    expect(text).toBe('Tabelle gelöscht.')
+    editor.chain().focus('end').insertContent('!').run()
+    await (options as { action: { onClick: (e: Event) => Promise<void> } }).action.onClick(new MouseEvent('click'))
+    await wait(350)
+    expect(String(wrapper.emitted('update:modelValue')!.at(-1)![0])).toBe('Eins\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\nZwei!\n')
   })
 })

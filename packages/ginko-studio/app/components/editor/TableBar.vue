@@ -1,6 +1,8 @@
-<!-- The table row of the toolbar, while the cursor is in a table: "Zeile" and "Spalte" menus (add, move, delete, the
-     column's alignment) and "Tabelle löschen". The commands keep a valid GFM table (see ginko-editor's table.ts), so an
-     entry that would break it is greyed out. Tab and Shift+Tab move between cells; Tab in the last cell adds a row. -->
+<!-- The table tools of the toolbar, while the cursor is in a table: "Zeile" and "Spalte" menus (add, move, delete, the
+     column's alignment) and "Tabelle löschen", which offers to undo. The commands keep a valid GFM table (see
+     ginko-editor's table.ts), so an entry that would break it is greyed out. Tab and Shift+Tab move between cells; Tab in
+     the last cell adds a row. `inline`: a group at the end of the tool row (nothing below moves when it comes); else a
+     row of its own under the tools, where the tool row has no room. -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from '#imports'
@@ -12,9 +14,11 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@studio/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/components/ui/tooltip'
+import { useToast } from '@studio/composables/useToast'
 
-const props = defineProps<{ editor: Editor; at: TableAt }>()
+const props = defineProps<{ editor: Editor; at: TableAt; inline?: boolean }>()
 const { t } = useI18n()
+const toast = useToast()
 
 // `at` is new after every change of the editor, so these are worked out again for the current state.
 const entry = (command: TableCommand) => ({ command, label: t(`editor.table.${command}`), disabled: !canRunTable(props.editor.state, command) })
@@ -40,10 +44,33 @@ function backToText(event: Event) {
   if (!props.editor.isDestroyed) props.editor.commands.focus()
 }
 const item = 'min-h-9 pointer-coarse:min-h-11'
+
+// One click deletes the table, as for any block; the message offers it back. Right after, that is the editor's own undo;
+// once the text has changed since, the table goes back in before the block that is now where it stood.
+function deleteTable() {
+  const { editor } = props
+  const { $from } = editor.state.selection
+  let depth = $from.depth
+  while (depth > 0 && $from.node(depth).type.spec.tableRole !== 'table') depth--
+  if (!depth) return
+  const table = $from.node(depth).toJSON()
+  const pos = $from.before(depth)
+  if (!runTable(editor, 'deleteTable')) return
+  const after = editor.state.doc
+  toast.show(t('editor.table.deleted'), { action: { label: t('ops.undo'), run: () => {
+    if (editor.isDestroyed) return
+    if (editor.state.doc !== after || !editor.commands.undo()) {
+      const $at = editor.state.doc.resolve(Math.min(pos, editor.state.doc.content.size))
+      editor.chain().focus().insertContentAt($at.depth ? $at.before(1) : $at.pos, table).run()
+    }
+    toast.show(t('ops.undone'))
+  } } })
+}
 </script>
 
 <template>
-  <div role="toolbar" :aria-label="t('editor.table.label')" class="flex items-center gap-0.5 border-t pt-1">
+  <div :role="inline ? 'group' : 'toolbar'" :aria-label="t('editor.table.label')" :class="inline ? 'flex shrink-0 items-center gap-0.5' : 'flex items-center gap-0.5 border-t pt-1'">
+    <div v-if="inline" class="mx-1 h-5 w-px bg-border" aria-hidden="true" />
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button type="button" variant="ghost" size="sm" class="shrink-0 gap-1 px-2 font-normal [@media(pointer:coarse)]:h-11" @mousedown.prevent>
@@ -82,7 +109,7 @@ const item = 'min-h-9 pointer-coarse:min-h-11'
     </DropdownMenu>
     <Tooltip>
       <TooltipTrigger as-child>
-        <Button type="button" variant="ghost" size="icon-sm" class="ml-auto shrink-0 [@media(pointer:coarse)]:size-11" :aria-label="t('editor.table.deleteTable')" @mousedown.prevent @click="runTable(editor, 'deleteTable')">
+        <Button type="button" variant="ghost" size="icon-sm" class="shrink-0 [@media(pointer:coarse)]:size-11" :class="!inline && 'ml-auto'" :aria-label="t('editor.table.deleteTable')" @mousedown.prevent @click="deleteTable">
           <Trash2 aria-hidden="true" />
         </Button>
       </TooltipTrigger>

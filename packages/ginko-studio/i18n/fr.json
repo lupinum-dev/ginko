@@ -722,6 +722,7 @@
       "moveColumnRight": "Déplacer la colonne à droite",
       "deleteColumn": "Supprimer la colonne",
       "deleteTable": "Supprimer le tableau",
+      "deleted": "Tableau supprimé.",
       "align": "Alignement",
       "align_left": "Gauche",
       "align_center": "Centre",

@@ -722,6 +722,7 @@
       "moveColumnRight": "Mover columna a la derecha",
       "deleteColumn": "Eliminar columna",
       "deleteTable": "Eliminar tabla",
+      "deleted": "Tabla eliminada.",
       "align": "Alineación",
       "align_left": "Izquierda",
       "align_center": "Centro",

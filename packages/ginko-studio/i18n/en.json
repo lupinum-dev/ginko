@@ -722,6 +722,7 @@
       "moveColumnRight": "Move column right",
       "deleteColumn": "Delete column",
       "deleteTable": "Delete table",
+      "deleted": "Table deleted.",
       "align": "Alignment",
       "align_left": "Left",
       "align_center": "Center",

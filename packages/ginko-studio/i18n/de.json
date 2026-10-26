@@ -722,6 +722,7 @@
       "moveColumnRight": "Spalte nach rechts",
       "deleteColumn": "Spalte löschen",
       "deleteTable": "Tabelle löschen",
+      "deleted": "Tabelle gelöscht.",
       "align": "Ausrichtung",
       "align_left": "Links",
       "align_center": "Mitte",

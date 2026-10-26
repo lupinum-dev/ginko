@@ -1,5 +1,6 @@
 <!-- Toolbar above the text: the block menu (the "/" menu's entries behind the current block type), marks, link, picture,
-     lists, search and the Markdown switch; while the cursor is in a table, a second row for the table. Only what the
+     lists, search and the Markdown switch; while the cursor is in a table, the table tools: at the end of the row when they
+     fit (so the text below does not move), else in a second row. Only what the
      editor's schema has is shown, so each Markdown profile gets its own set. The row fits its own width (a phone, a
      sheet, a column next to the preview): bold, italic and link always stay in it, the other tools follow in a fixed
      order as long as they fit, and the rest is in "Weitere Werkzeuge" (⋯), so every tool is reachable at every width.
@@ -92,6 +93,8 @@ const SELECT_WORD = 160 - 54
 const SOURCE_GAP = 8
 const SOURCE_WORD = 72
 const SPARE = 8
+// The table tools: "Zeile ▾", "Spalte ▾", the bin and a divider (German, the longest of the Studio languages).
+const TABLE = isCoarsePointer() ? 265 : 250
 const width = ref(Number.POSITIVE_INFINITY)
 const fit = computed(() => {
   const select = hasBlockMenu.value
@@ -101,18 +104,22 @@ const fit = computed(() => {
   const everything = tools.reduce((sum, x) => sum + cost(x), 0)
   if (everything <= room) {
     room -= everything
+    // The table tools come before the words: in the row they keep the text from moving when the cursor enters a table.
+    const tableInRow = inTable.value && room >= TABLE
+    if (tableInRow) room -= TABLE
     const word = select && room >= SELECT_WORD
     if (word) room -= SELECT_WORD
-    return { row: tools, menu: [] as Tool[], selectWord: word, sourceWord: room >= SOURCE_WORD }
+    return { row: tools, menu: [] as Tool[], selectWord: word, sourceWord: room >= SOURCE_WORD, tableInRow }
   }
   room -= UNIT
   let shown = 0
   while (shown < tools.length && room >= cost(tools[shown]!)) room -= cost(tools[shown++]!)
-  return { row: tools.slice(0, shown), menu: tools.slice(shown), selectWord: false, sourceWord: false }
+  return { row: tools.slice(0, shown), menu: tools.slice(shown), selectWord: false, sourceWord: false, tableInRow: false }
 })
 const hasBlockMenu = computed(() => props.items().length > 0)
-/** Where the cursor is in a table: the table row shows below the tools. */
+/** Where the cursor is in a table: the table tools show. */
 const table = computed(() => { void tick.value; return tableAt(props.editor.state) })
+const inTable = computed(() => Boolean(table.value))
 const rowTools = computed(() => fit.value.row.filter((x) => x.name !== 'source'))
 const sourceInRow = computed(() => fit.value.row.some((x) => x.name === 'source'))
 
@@ -147,7 +154,7 @@ watch(() => props.docked, async (on, _before, onCleanup) => {
   if (taller !== barHeight.value) { barHeight.value = taller; measure() }
 }, { immediate: true, flush: 'post' })
 // The table row comes and goes with the cursor: the docked bar measures its height again.
-watch(() => Boolean(table.value), async () => {
+watch(inTable, async () => {
   if (!place.value) return
   await nextTick()
   barHeight.value = bar.value?.offsetHeight ?? barHeight.value
@@ -195,9 +202,10 @@ const style = computed(() => (place.value ? { transform: `translate(${place.valu
             </template>
           </DropdownMenuContent>
         </DropdownMenu>
+        <TableBar v-if="table && fit.tableInRow" inline :editor="editor" :at="table" />
         <div v-if="sourceInRow" class="ml-auto shrink-0 pl-2"><SourceToggle :pressed="false" :word="fit.sourceWord" @toggle="emit('source')" /></div>
       </div>
-      <TableBar v-if="table" :editor="editor" :at="table" />
+      <TableBar v-if="table && !fit.tableInRow" :editor="editor" :at="table" />
     </div>
   </TooltipProvider>
 </template>
