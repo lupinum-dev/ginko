@@ -223,7 +223,9 @@
     "importTooLarge": "Ein Import nimmt höchstens {max} Einträge. Teilen Sie ihn auf mehrere Aufrufe auf.",
     "uploadUrlNotAllowed": "Nur öffentliche https-Adressen können geladen werden.",
     "uploadFetchFailed": "Die Datei konnte nicht von {url} geladen werden (Status {status}).",
-    "createNeedsCollection": "„{brick}“ ist ein einzelner Baustein: ändern Sie ihn mit ginko_write."
+    "createNeedsCollection": "„{brick}“ ist ein einzelner Baustein: ändern Sie ihn mit ginko_write.",
+    "noUnpublishedChanges": "Hier gibt es keine unveröffentlichten Änderungen.",
+    "liveChangedMeanwhile": "Die Online-Fassung wurde inzwischen geändert. Verwirf die unveröffentlichten Änderungen und mach sie neu."
   },
   "history": {
     "changedSingle": "{label}: {fields} geändert",
@@ -269,7 +271,16 @@
     "staleApproverNotAllowed": "Der Genehmiger darf das nicht mehr freigeben.",
     "staleNoLonger": "Das geht nicht mehr.",
     "staleRefused": "{why} Bitte schlage die Änderung neu vor.",
-    "stateField": "Status"
+    "stateField": "Status",
+    "publishChangesProposal": "Änderungen an „{title}“ veröffentlichen: {fields}",
+    "publishChangesProposalScheduled": "Änderungen an „{title}“ veröffentlichen ({fields}), online ab {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "publishedChanges": "Änderungen an „{title}“ veröffentlicht: {fields}",
+    "publishedChangesDue": "Änderungen an „{title}“ veröffentlicht (geplant): {fields}",
+    "publishedChangesLate": "Änderungen an „{title}“ sofort veröffentlicht (die geplante Zeit war bei der Freigabe schon vorbei): {fields}",
+    "changesScheduled": "Änderungen an „{title}“: online ab {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "changesUnscheduled": "Änderungen an „{title}“: Zeitplan aufgehoben",
+    "changesDiscarded": "Unveröffentlichte Änderungen an „{title}“ verworfen",
+    "changesPublishStopped": "Änderungen an „{title}“ gingen nicht online: {why}"
   },
   "publicness": {
     "deleted": "Der Eintrag wurde entfernt. Er lässt sich bis zum {until, date, long} wiederherstellen, danach wird er endgültig gelöscht.",

@@ -5,6 +5,7 @@ import { entryTitle, labelOf, ordered, type Schema } from '@lupinum/ginko/intern
 import type { Doc } from '../_generated/dataModel'
 import type { Data } from './content'
 import { leafStatus, type LeafStatus } from './translation'
+import { overlay, pendingInfo, type Pending } from './pending'
 
 /**
  * The fields a list row shows beside its title: the field `visible` reads (expired or not) and the first date or date
@@ -58,21 +59,25 @@ export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, lang
 
 /**
  * An entry as an editor needs it: the stored row without its derived trees and counters, and `deleted` instead of the
- * time it went to the trash (an open form keeps the person's input when someone removes the entry).
+ * time it went to the trash (an open form keeps the person's input when someone removes the entry). With unpublished
+ * changes, `data` and `prints` are the version they make (the editor and the preview show it) and `pending` says so;
+ * `user` marks the person's own (`pending.own`).
  */
-export function editorEntry(row: Doc<'entries'>) {
+export function editorEntry(row: Doc<'entries'>, held?: Pending | null, user?: string) {
+  const { data, prints } = overlay(row, held)
   return {
     _id: row._id,
     brick: row.brick,
     kind: row.kind,
     order: row.order,
-    data: row.data as Data,
+    data,
     rev: row.rev,
     fieldRevs: row.fieldRevs,
     lifeRev: row.lifeRev,
-    prints: row.prints,
+    prints,
     ...(row.state === undefined ? {} : { state: row.state }),
     ...(row.publishAt === undefined ? {} : { publishAt: row.publishAt }),
+    ...(held ? { pending: pendingInfo(held, user) } : {}),
     deleted: row.deletedAt !== undefined,
   }
 }
@@ -84,11 +89,11 @@ export function editorEntry(row: Doc<'entries'>) {
  * Long texts, lists and files stay out, so a timed collection near the site budget does not send megabytes on every
  * change; a sheet that edits the entry reads it whole (entries.get).
  */
-export function slimEntry(brick: Brick, row: Doc<'entries'>) {
+export function slimEntry(brick: Brick, row: Doc<'entries'>, held?: Pending | null, user?: string) {
   const dates = new Set([brick.kind === 'collection' ? brick.plans?.field : undefined, brick.kind === 'collection' && brick.visible?.mode === 'until' ? brick.visible.field : undefined, brick.planned?.from])
   const small = new Set(['text', 'longtext', 'choice', 'money', 'boolean'])
   const keep = (key: string) => dates.has(key) || small.has(brick.fields[key]?.type ?? '')
-  const entry = editorEntry(row)
+  const entry = editorEntry(row, held, user)
   return { ...entry, data: Object.fromEntries(Object.entries(entry.data).filter(([key]) => keep(key))), prints: {} }
 }
 
@@ -96,10 +101,10 @@ export function slimEntry(brick: Brick, row: Doc<'entries'>) {
  * `editorEntry` with each foreign language's translation state: the texts it misses or has outdated (the language
  * switch shows a dot), the missing ones that keep the entry from having a page there, and what the website shows.
  */
-export function editorEntryWithTranslation(schema: Schema, row: Doc<'entries'>) {
+export function editorEntryWithTranslation(schema: Schema, row: Doc<'entries'>, held?: Pending | null, user?: string) {
   const translation: Record<Locale, LeafStatus> = {}
   if (row.state !== 'draft' && row.deletedAt === undefined && Object.hasOwn(schema.bricks, row.brick)) {
     for (const locale of schema.locales.slice(1)) translation[locale] = leafStatus(schema, row.brick, row, locale)
   }
-  return { ...editorEntry(row), translation }
+  return { ...editorEntry(row, held, user), translation }
 }

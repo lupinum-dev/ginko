@@ -234,7 +234,7 @@ export function builderTools(actor: Actor): ToolDef[] {
     {
       name: 'ginko_write',
       description: `Changes fields of an entry, or of a single brick, in the main language (${main}). Fields you leave out stay as they are; null removes an optional value. `
-        + `${values} Foreign languages go through ginko_translate.`,
+        + `${values} Foreign languages go through ginko_translate. In a collection with drafts, a change to a published entry waits as an unpublished change; the person publishes it in the platform.`,
       inputSchema: object({ brick, entry, fields, propose: PROPOSE, request_id: REQUEST_ID }, ['brick', 'fields']),
       annotations: WRITES,
     },

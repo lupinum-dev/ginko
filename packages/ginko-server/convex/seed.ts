@@ -89,6 +89,7 @@ export const reset = internalMutation({
     const rows = [
       ...(await ctx.db.query('entries').withIndex('by_site_deleted', (q) => q.eq('site', id)).collect()),
       ...(await ctx.db.query('entryTrees').withIndex('by_site', (q) => q.eq('site', id)).collect()),
+      ...(await ctx.db.query('pendingChanges').withIndex('by_site', (q) => q.eq('site', id)).collect()),
       ...(await ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', id)).collect()),
       ...(await ctx.db.query('fileRefs').withIndex('by_site_holder', (q) => q.eq('site', id)).collect()),
       ...(await ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', id)).collect()),
@@ -165,6 +166,10 @@ export const importClear = internalMutation({
     for await (const part of ctx.db.query('entryTrees').withIndex('by_site', (q) => q.eq('site', site._id))) {
       if (full()) return { done: false }
       await drop(part)
+    }
+    for await (const row of ctx.db.query('pendingChanges').withIndex('by_site', (q) => q.eq('site', site._id))) {
+      if (full()) return { done: false }
+      await drop(row)
     }
     for await (const entry of ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id))) {
       if (full()) return { done: false }

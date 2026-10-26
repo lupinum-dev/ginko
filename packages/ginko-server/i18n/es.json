@@ -223,7 +223,9 @@
     "importTooLarge": "Una importación admite como máximo {max} elementos. Divídala en varias llamadas.",
     "uploadUrlNotAllowed": "Solo se pueden descargar direcciones https públicas.",
     "uploadFetchFailed": "No se pudo descargar el archivo de {url} (estado {status}).",
-    "createNeedsCollection": "“{brick}” es un bloque único: cámbielo con ginko_write."
+    "createNeedsCollection": "“{brick}” es un bloque único: cámbielo con ginko_write.",
+    "noUnpublishedChanges": "Aquí no hay cambios sin publicar.",
+    "liveChangedMeanwhile": "La versión publicada ha cambiado mientras tanto. Descarta los cambios sin publicar y vuelve a hacerlos."
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",
@@ -269,7 +271,16 @@
     "staleApproverNotAllowed": "Quien aprueba ya no tiene permiso para aprobar esto.",
     "staleNoLonger": "Esto ya no es posible.",
     "staleRefused": "{why} Propón el cambio de nuevo.",
-    "stateField": "Estado"
+    "stateField": "Estado",
+    "publishChangesProposal": "Publicar cambios en “{title}”: {fields}",
+    "publishChangesProposalScheduled": "Publicar cambios en “{title}” ({fields}), en línea desde {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "publishedChanges": "Cambios en “{title}” publicados: {fields}",
+    "publishedChangesDue": "Cambios en “{title}” publicados (programado): {fields}",
+    "publishedChangesLate": "Cambios en “{title}” publicados de inmediato (la hora programada ya había pasado al aprobarlo): {fields}",
+    "changesScheduled": "Cambios en “{title}”: en línea desde {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
+    "changesUnscheduled": "Cambios en “{title}”: programación cancelada",
+    "changesDiscarded": "Cambios sin publicar en “{title}” descartados",
+    "changesPublishStopped": "Los cambios en “{title}” no se publicaron: {why}"
   },
   "publicness": {
     "deleted": "La entrada se eliminó. Puedes restaurarla hasta el {until, date, long}; después se borra definitivamente.",

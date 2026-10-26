@@ -80,9 +80,13 @@ describe('drafts in the public bundle', () => {
     const published = (await s.bundle()).bricks.events!.items!.find((i) => i.id === draft.entry)!
     expect(published.updatedAt).toBe(new Date(NOW + 2 * HOUR).toISOString())
 
+    // A save of the live entry waits unpublished; its publish is the new time.
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 3, fields: { title: { de: 'Wildwoche 3' } }, sentence: 'Titel' })
+    await s.advanceTo(NOW + 4 * HOUR)
+    expect((await s.bundle()).bricks.events!.items!.find((i) => i.id === draft.entry)!.updatedAt).toBe(new Date(NOW + 2 * HOUR).toISOString())
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 2 })
     const edited = (await s.bundle()).bricks.events!.items!.find((i) => i.id === draft.entry)!
-    expect(edited.updatedAt).toBe(new Date(NOW + 3 * HOUR).toISOString())
+    expect(edited.updatedAt).toBe(new Date(NOW + 4 * HOUR).toISOString())
   })
 
   it('publish: {} on a drafts collection is live at once', async () => {
@@ -185,7 +189,7 @@ describe('scheduled publishing', () => {
 })
 
 describe('revisions and slugs of a draft', () => {
-  it('editing a draft bumps rev and fieldRevs but not contentRev; editing a live entry bumps all three', async () => {
+  it('editing a draft bumps rev and fieldRevs but not contentRev; publishing a live entry\'s saved changes bumps all three', async () => {
     const s = await draftSetup()
     const draft = await s.createDraft('Bearbeitung')
     const rev = (await s.siteRow())!.contentRev
@@ -204,7 +208,9 @@ describe('revisions and slugs of a draft', () => {
     const live = await s.as.owner.mutation(api.entries.save, {
       site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 4, fields: { title: { de: 'Live bearbeitet' } }, sentence: 'Titel',
     })
-    expect(live).toMatchObject({ rev: 5, contentRev: rev + 2 })
+    expect(live).toMatchObject({ rev: 5, contentRev: rev + 1, pending: true })
+    const out = await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 2 })
+    expect(out).toMatchObject({ rev: 6, contentRev: rev + 2 })
   })
 
   it('the slug of a draft is reserved: the next entry with the same title gets a suffix', async () => {
@@ -321,5 +327,149 @@ describe('readers that treat a draft apart', () => {
     expect(snapshot.entries.find((e) => e.id === s.entries.weinabend)).not.toHaveProperty('state')
 
     expect(await s.as.cook.query(api.entries.get, { site: 'restaurant', entry: draft.entry })).toMatchObject({ state: 'draft', publishAt: at })
+  })
+})
+
+describe('unpublished changes of a live entry (save without publishing)', () => {
+  const save = (s: Awaited<ReturnType<typeof draftSetup>>, entry: string, baseRev: number, fields: Record<string, unknown>, as: 'owner' | 'cook' = 'owner', task?: string) =>
+    s.as[as].mutation(api.entries.save, { site: 'restaurant', opId: opId(), ...(task ? { task } : {}), entry, baseRev, fields })
+  const publish = (s: Awaited<ReturnType<typeof draftSetup>>, entry: string, extra: { lifeRev?: number; rev?: number; at?: number; task?: string } = {}, as: 'owner' | 'cook' = 'owner') =>
+    s.as[as].mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry, lifeRev: 1, ...extra })
+  const liveTitle = async (s: Awaited<ReturnType<typeof draftSetup>>, entry: string) => (await s.bundle()).bricks.events!.items!.find((i) => i.id === entry)!.data.title
+  /** A live event of its own (rev 1, lifeRev 1); the seeded ones point at fixture images that are no uploads. */
+  const liveEvent = async (s: Awaited<ReturnType<typeof draftSetup>>) => (await s.createDraft('Weinabend', {})).entry as string
+  const pendingRows = (s: Awaited<ReturnType<typeof draftSetup>>) => s.t.run((ctx) => ctx.db.query('pendingChanges').collect())
+
+  // Wrong behaviour caught: Speichern on a live page of a drafts collection changes the website at once (Romi's problem).
+  it('a save waits unpublished: the website and contentRev stay, the editor reads the saved version', async () => {
+    const s = await draftSetup()
+    const entry = await liveEvent(s)
+    const before = await s.bundle()
+    const contentRev = (await s.siteRow())!.contentRev
+    const saved = await save(s, entry, 1, { title: { de: 'Weinabend neu' }, description: { de: '**Neu** mit [Link](https://example.com)' } })
+    expect(saved).toMatchObject({ rev: 2, contentRev, pending: true })
+
+    expect(await s.bundle()).toEqual(before)
+    expect((await s.siteRow())!.contentRev).toBe(contentRev)
+    expect((await s.row(entry))!.data.title).toEqual({ de: 'Weinabend' })
+
+    const read = await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })
+    expect(read).toMatchObject({ rev: 2, data: { title: { de: 'Weinabend neu' }, description: { de: '**Neu** mit [Link](https://example.com)' } }, pending: { fields: expect.arrayContaining(['title', 'description']), since: NOW, own: true } })
+    // The preview builds the site from the same read, so it shows the saved version too.
+    expect((await s.as.owner.query(api.entries.ofBricks, { site: 'restaurant', bricks: ['events'] })).find((e) => e._id === entry)).toMatchObject({ data: { title: { de: 'Weinabend neu' } } })
+  })
+
+  // Wrong behaviour caught: Veröffentlichen leaves the saved changes out, or writes them without a history line that can be undone.
+  it('publish puts the saved changes live in one undoable change and clears them', async () => {
+    const s = await draftSetup()
+    const entry = await liveEvent(s)
+    const contentRev = (await s.siteRow())!.contentRev
+    await save(s, entry, 1, { title: { de: 'Weinabend neu' } })
+    await save(s, entry, 2, { description: { de: 'Mehr Text' } })
+    const out = await publish(s, entry, { rev: 3 })
+    expect(out).toMatchObject({ state: 'live', rev: 4, contentRev: contentRev + 1 })
+    expect(await liveTitle(s, entry)).toBe('Weinabend neu')
+    expect(await pendingRows(s)).toEqual([])
+    expect(await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })).not.toHaveProperty('pending')
+
+    const change = await s.t.run((ctx) => ctx.db.get(out.change as Id<'changes'>))
+    expect(change).toMatchObject({ kind: 'save', fields: expect.arrayContaining(['title', 'description']), after: { title: { de: 'Weinabend neu' }, description: { de: 'Mehr Text' } } })
+    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: out.change as string })
+    expect(await liveTitle(s, entry)).toBe('Weinabend')
+  })
+
+  // Wrong behaviour caught: Verwerfen keeps the unpublished values, or touches the live version.
+  it('discard returns to the live version; a field saved back to its live value leaves nothing to publish', async () => {
+    const s = await draftSetup()
+    const entry = await liveEvent(s)
+    const live = (await s.row(entry))!.data.title
+    const before = await s.bundle()
+    await save(s, entry, 1, { title: { de: 'Weg damit' } })
+    const gone = await s.as.owner.mutation(api.entries.discard, { site: 'restaurant', opId: opId(), entry, rev: 2 })
+    expect(gone).toMatchObject({ rev: 3 })
+    expect(await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })).toMatchObject({ rev: 3, fieldRevs: { title: 3 }, data: { title: live } })
+    expect(await s.bundle()).toEqual(before)
+    expect(await errorOf(s.as.owner.mutation(api.entries.discard, { site: 'restaurant', opId: opId(), entry }))).toMatchObject({ code: 'INVALID', key: 'errors.noUnpublishedChanges' })
+
+    await save(s, entry, 3, { title: { de: 'Hin' } })
+    expect(await save(s, entry, 4, { title: live })).toMatchObject({ pending: false })
+    expect(await pendingRows(s)).toEqual([])
+  })
+
+  // Wrong behaviour caught: a publish puts live what the person never saw, or overwrites a live change made after the save.
+  it('publish refuses a newer save than the one the person saw, and a live change after the save', async () => {
+    const s = await draftSetup()
+    const entry = await liveEvent(s)
+    await save(s, entry, 1, { title: { de: 'Meins' } })
+    await save(s, entry, 2, { description: { de: 'Von jemand anderem' } })
+    expect(await errorOf(publish(s, entry, { rev: 2 }))).toMatchObject({ code: 'CHANGED_SINCE' })
+
+    // The live title changes after the unpublished one was saved (an older proposal applied, a migration): publish refuses.
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(entry as Id<'entries'>))!
+      await ctx.db.patch(row._id, { rev: row.rev + 1, fieldRevs: { ...row.fieldRevs, title: row.rev + 1 }, data: { ...row.data, title: { de: 'Online geändert' } } })
+    })
+    expect(await errorOf(publish(s, entry))).toMatchObject({ code: 'CHANGED_SINCE', key: 'errors.liveChangedMeanwhile', details: { conflicts: ['title'] } })
+    expect(await liveTitle(s, entry)).toBe('Online geändert')
+  })
+
+  // Wrong behaviour caught: "publish later" puts the changes live at once, or never; a removal leaves them behind.
+  it('a scheduled publish applies them at the time; until then the website keeps the live version', async () => {
+    const s = await draftSetup()
+    const entry = await liveEvent(s)
+    const live = await liveTitle(s, entry)
+    await save(s, entry, 1, { title: { de: 'Ab morgen' } })
+    expect(await publish(s, entry, { at: NOW + 2 * HOUR })).toMatchObject({ state: 'live', publishAt: NOW + 2 * HOUR })
+    expect(await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })).toMatchObject({ pending: { publishAt: NOW + 2 * HOUR } })
+    await s.advanceTo(NOW + HOUR)
+    expect(await liveTitle(s, entry)).toEqual(live)
+    await s.advanceTo(NOW + 2 * HOUR + 1)
+    expect(await liveTitle(s, entry)).toBe('Ab morgen')
+    expect(await pendingRows(s)).toEqual([])
+
+    // Unpublish of a planned publish takes back only the time; the entry stays online with its changes saved.
+    await save(s, entry, 3, { title: { de: 'Noch später' } })
+    await publish(s, entry, { at: NOW + 4 * HOUR })
+    expect(await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })).toMatchObject({ state: 'live' })
+    expect((await pendingRows(s))[0]).not.toHaveProperty('publishAt')
+    const row = (await s.row(entry))!
+    await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: row.lifeRev })
+    expect(await pendingRows(s)).toEqual([])
+    await s.advanceTo(NOW + 5 * HOUR)
+    expect((await s.row(entry))!.data.title).toEqual({ de: 'Ab morgen' })
+  })
+
+  // Wrong behaviour caught: with needsApproval the save goes to review, or the publish skips it; an approval puts live a newer save.
+  it('with needsApproval the save needs no yes, the publish does, and a save after sending makes it stale', async () => {
+    const s = await draftSetup()
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      for (const task of (site.schema as Schema).bricks.menu!.tasks ?? []) (task as { needsApproval?: boolean }).needsApproval = true
+      await ctx.db.patch(s.site, { schema: site.schema })
+    })
+    const dish = s.entries['menu-saibling']!
+    expect(await save(s, dish, 1, { price: { amount: 1500 } }, 'cook', 'menu.price')).toMatchObject({ pending: true })
+    const sent = await publish(s, dish, { rev: 2, task: 'menu.price' }, 'cook') as unknown as { proposal: string; status: string }
+    expect(sent).toMatchObject({ status: 'open' })
+    const detail = await s.as.owner.query(api.proposals.get, { site: 'restaurant', proposal: sent.proposal })
+    expect(detail.diff).toMatchObject([{ field: 'price' }])
+    expect(await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })).toMatchObject({ status: 'applied' })
+    expect((await s.row(dish))!.data.price).toEqual({ amount: 1500 })
+
+    await save(s, dish, 3, { price: { amount: 1700 } }, 'cook', 'menu.price')
+    const again = await publish(s, dish, { rev: 4, task: 'menu.price' }, 'cook') as unknown as { proposal: string }
+    await save(s, dish, 4, { price: { amount: 1800 } }, 'cook', 'menu.price')
+    expect(await s.as.owner.mutation(api.proposals.approve, { proposal: again.proposal })).toMatchObject({ status: 'stale' })
+    expect((await s.row(dish))!.data.price).toEqual({ amount: 1500 })
+  })
+
+  // Wrong behaviour caught: taking a page back to a draft loses the saved changes.
+  it('unpublish folds the saved changes into the draft', async () => {
+    const s = await draftSetup()
+    const entry = await liveEvent(s)
+    await save(s, entry, 1, { title: { de: 'Behalten' } })
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })
+    expect(await s.row(entry)).toMatchObject({ state: 'draft', data: { title: { de: 'Behalten' } } })
+    expect(await pendingRows(s)).toEqual([])
   })
 })
