@@ -33,7 +33,7 @@ export interface Entry {
    * A live entry's unpublished changes (save without publishing): `data` and `prints` already show them. Since when,
    * the last save, the changed fields, a planned publish, and `own` when the person saved last.
    */
-  pending?: { since: number; at: number; fields: string[]; publishAt?: number; own?: true }
+  pending?: { since: number; at: number; fields: string[]; publishAt?: number; own?: boolean }
 }
 
 export async function useSiteData() {

@@ -355,6 +355,8 @@ describe('unpublished changes of a live entry (save without publishing)', () => 
 
     const read = await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })
     expect(read).toMatchObject({ rev: 2, data: { title: { de: 'Weinabend neu' }, description: { de: '**Neu** mit [Link](https://example.com)' } }, pending: { fields: expect.arrayContaining(['title', 'description']), since: NOW, own: true } })
+    // The list marks it, with the website's title.
+    expect((await s.as.owner.query(api.entries.list, { site: 'restaurant', brick: 'events' })).rows.find((r) => r._id === entry)).toMatchObject({ pending: true, title: 'Weinabend' })
     // The preview builds the site from the same read, so it shows the saved version too.
     expect((await s.as.owner.query(api.entries.ofBricks, { site: 'restaurant', bricks: ['events'] })).find((e) => e._id === entry)).toMatchObject({ data: { title: { de: 'Weinabend neu' } } })
   })

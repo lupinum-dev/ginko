@@ -213,7 +213,8 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
 
   const onlyConfirm = Object.keys(args.fields).length === 0
   // Nothing goes online: no proposal, no history line yet (publishing writes it).
-  if (toPending) return await savePending(ctx, actor, { entry, held, roots: changed, data, prints, warnings: warnings as unknown as Json })
+  // A foreign address made from a new title (`foreignSlugs`) waits with it; its row moves when it is published.
+  if (toPending) return await savePending(ctx, actor, { entry, held, roots: [...new Set([...changed, ...moved.map((m) => m.key)])], data, prints, warnings: warnings as unknown as Json })
 
   const history = recorded(line ?? saveMsg(schema, brick, entry, changed, data, onlyConfirm), schema)
 
@@ -1430,7 +1431,8 @@ export const list = query({
       })
     }
     if (args.sort) rows = listSort(rows, brick, args.sort, schema.locales[0]!)
-    return { total: rows.length, rows: rows.slice(0, limit).map((row) => listRow(schema, args.brick, row, args.language)) }
+    const held = await pendingBySite(ctx, actor.site._id)
+    return { total: rows.length, rows: rows.slice(0, limit).map((row) => listRow(schema, args.brick, row, args.language, held.has(row._id))) }
   },
 })
 

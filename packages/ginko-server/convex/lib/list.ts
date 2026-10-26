@@ -41,7 +41,7 @@ export function titleOf(schema: Schema, brick: Brick, data: Data, language: stri
 }
 
 /** One row of a collection list (about 150 B): its title, its state, the date values the row shows, and its translation gaps. */
-export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, language?: string) {
+export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, language?: string, pending = false) {
   const def = schema.bricks[brick]!
   const data = row.data as Data
   const dates: Data = {}
@@ -51,6 +51,8 @@ export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, lang
     order: row.order,
     ...(row.state === undefined ? {} : { state: row.state }),
     ...(row.publishAt === undefined ? {} : { publishAt: row.publishAt }),
+    // Saved changes wait to be published (lib/pending.ts); the title stays the website's.
+    ...(pending ? { pending: true } : {}),
     title: titleOf(schema, def, data, language),
     dates,
     gaps: gapsOf(schema, brick, row),

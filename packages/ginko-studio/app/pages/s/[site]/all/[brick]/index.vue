@@ -61,11 +61,12 @@ const canCreate = computed(() => !!access.value && (access.value.all || !!access
 
 const rowTitle = (row: Row) => row.title ?? (brick.value ? shown(brick.value.label) : '')
 
-/** "Draft" / "Online from …" for drafts; "expired on …" / "ended" (daterange) / "" for an entry of a timed collection. */
+/** "Draft" / "Online from …" for drafts; "Unpublished changes" for a live entry with saved changes; "expired on …" / "ended" (daterange) / "" for an entry of a timed collection. */
 function status(row: Row): string {
   const b = brick.value
   // A draft is not on the website, whatever its dates say (SPEC 15).
   if (row.state === 'draft') return row.publishAt ? t('site.status.onlineFrom', { when: whenText(row.publishAt, s.schema.value?.timeZone ?? 'Europe/Vienna', format) }) : t('site.status.draft')
+  if (row.pending) return t('entry.status.changes')
   if (!b || b.kind !== 'collection' || !b.visible || b.visible.mode === 'always') return ''
   const until = visibleUntil(b, row.dates)
   if (until === undefined || until >= s.today.value) return ''
