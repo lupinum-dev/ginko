@@ -241,7 +241,7 @@ export interface EntryWrite {
   roots: string[]
   data: Data
   prints: Prints
-  kind: 'save' | 'confirm' | 'undo'
+  kind: 'save' | 'confirm' | 'undo' | 'place'
   history: Recorded
   opId: string
 }

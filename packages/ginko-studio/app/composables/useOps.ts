@@ -6,6 +6,7 @@ import { useI18n } from '#imports'
 import { isConvexCallError, normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import type { InjectionKey } from 'vue'
 import type { Json } from '@lupinum/ginko'
+import type { Place } from '@lupinum/ginko/internal'
 import { whenText } from '../utils/when'
 import { translationNote } from '../utils/content'
 import { UploadError } from './useUpload'
@@ -88,6 +89,8 @@ function lastingOps() {
     unpublish: useConvexMutation(api.entries.unpublish),
     discard: useConvexMutation(api.entries.discard),
     move: useConvexMutation(api.entries.move),
+    place: useConvexMutation(api.navigation.move),
+    setHeading: useConvexMutation(api.navigation.heading),
   }
 }
 export function provideLastingOps() {
@@ -104,7 +107,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   const purge = useConvexMutation(api.entries.purge)
   const lasting = inject(LASTING)
   if (!lasting) throw new Error('provideLastingOps() is missing in app.vue')
-  const { remove, restore, undo, publish, unpublish, discard, move } = lasting
+  const { remove, restore, undo, publish, unpublish, discard, move, place: moveInTree, setHeading: headingInTree } = lasting
   /** Nothing was written: say so and offer no Undo. The server does not name the approver, so neither does the message. */
   const sentForApproval = () => show(t('review.sent'))
 
@@ -230,6 +233,37 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     }
   }
 
+  /**
+   * Moves a page of a navigation tree (with its subpages) to `place`; `baseRev` is the page's revision the tree showed.
+   * `message` says where it landed; `undo` (when given) puts it back. Quiet without a message. True when it moved.
+   */
+  async function placeEntry(entry: string, baseRev: number, place: Place, opts: { message?: string; undo?: () => Promise<unknown> } = {}) {
+    try {
+      const result = await moveInTree.mutate({ site: site.value, opId: opId(), entry, baseRev, place })
+      const undo = opts.undo
+      if (opts.message && (result as { moved?: boolean }).moved) show(opts.message, undo ? { action: { label: t('ops.undo'), run: async () => { await undo() } } } : {})
+      return true
+    } catch (error) {
+      show(opErrorOf(error).message, { tone: 'err' })
+      return false
+    }
+  }
+
+  /**
+   * Starts, renames or (empty `text`) removes a section or tab heading on a top-level page (navigation.heading);
+   * `message` is shown on success. True when it is done.
+   */
+  async function setHeading(entry: string, baseRev: number, field: 'section' | 'tab', locale: string, text: string, message: string) {
+    try {
+      await headingInTree.mutate({ site: site.value, opId: opId(), entry, baseRev, field, locale, text })
+      show(message)
+      return true
+    } catch (error) {
+      show(opErrorOf(error).message, { tone: 'err' })
+      return false
+    }
+  }
+
   /** Deletes a removed entry for good (owners and admins). It cannot be undone, so the message offers no Rückgängig. True when it is gone. */
   async function purgeEntry(entry: string, lifeRev: number, title: string) {
     try {
@@ -262,6 +296,8 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     liveText,
     revertEntry,
     moveEntry,
+    placeEntry,
+    setHeading,
     publishChanges,
     clearChangesSchedule,
     discardChanges,
