@@ -166,6 +166,22 @@ describe('paste from Word, Google Docs and the web', () => {
   })
 })
 
+// Wrong behaviour caught: merged cells lost their span, the row was padded at its end, and every later cell moved one
+// column left (Wien's price stood under "Ort").
+test('a table with merged cells keeps every value in its column', async () => {
+  const html = '<table><tr><th>Kurs</th><th>Ort</th><th>Preis</th></tr>'
+    + '<tr><td colspan="2">Abendkurs Wien</td><td>90 €</td></tr>'
+    + '<tr><td rowspan="2">Tageskurs</td><td>Graz</td><td>120 €</td></tr>'
+    + '<tr><td>Linz</td><td>110 €</td></tr></table>'
+  expect(await pasted(html, 'rich')).toBe([
+    '| Kurs           | Ort  | Preis |',
+    '| -------------- | ---- | ----- |',
+    '| Abendkurs Wien |      | 90 €  |',
+    '| Tageskurs      | Graz | 120 € |',
+    '|                | Linz | 110 € |',
+  ].join('\n'))
+})
+
 describe('paste within the editor', () => {
   test('a picture of the Files library keeps its reference', async () => {
     const html = '<p>Erster Absatz</p><p><img src="$file.k57abc_9-x" alt="Ein Hund"></p><p>Dritter Absatz</p>'
