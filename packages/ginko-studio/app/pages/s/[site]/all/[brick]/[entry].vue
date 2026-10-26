@@ -1,6 +1,7 @@
 <!-- One entry of a collection, or a new one (/new). -->
 <script setup lang="ts">
 import { api } from '#convex/api'
+import type { Place } from '@lupinum/ginko/internal'
 import { Skeleton } from '@studio/components/ui/skeleton'
 import { localDraftKey, readLocalDraft } from '../../../../../composables/useLocalDraft'
 
@@ -41,7 +42,23 @@ const back = computed(() => ({ to: `/s/${s.slug.value}/all/${key.value}`, label:
 const { shown } = useStudioSite()
 useHead(() => ({ title: t('site.title.area', { area: brick.value ? shown(brick.value.label) : t('site.fallback.entry') }) }))
 
-function created(entryId: string) { navigateTo(`/s/${s.slug.value}/all/${key.value}/${entryId}`, { replace: true }) }
+// "New page here" in a navigation tree (NavTree) sends its place along: the new page goes there once it exists.
+const ops = useOps(s.slug)
+const place = computed(() => (typeof route.query.place === 'string' ? placeOf(route.query.place) : undefined))
+async function created(entryId: string) {
+  if (place.value) await ops.placeEntry(entryId, 1, place.value)
+  navigateTo(`/s/${s.slug.value}/all/${key.value}/${entryId}`, { replace: true })
+}
+function placeOf(json: string): Place | undefined {
+  try {
+    const p = JSON.parse(json) as Record<string, unknown>
+    const id = (x: unknown) => typeof x === 'string' && x.length > 0
+    if (id(p.before)) return { before: p.before as string }
+    if (id(p.parent)) return id(p.after) ? { parent: p.parent as string, after: p.after as string } : { parent: p.parent as string }
+    if (id(p.after)) return { after: p.after as string }
+  } catch { /* a hand-edited address: no place */ }
+  return undefined
+}
 function toList() { navigateTo(back.value.to) }
 </script>
 
@@ -62,6 +79,7 @@ function toList() { navigateTo(back.value.to) }
       :tasks="access?.all ? undefined : access"
       :can-remove="!!access && (access.all || !!access.remove)"
       :removed="entryRemoved"
+      :place="id === 'new' ? place : undefined"
       @created="created" @removed="toList"
     />
   </AllShell>

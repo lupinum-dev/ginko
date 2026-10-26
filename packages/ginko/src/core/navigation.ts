@@ -43,21 +43,34 @@ export function navTree(bundle: Bundle, bricks: string[], locale: Locale): NavNo
     if (!byPath.has(node.path)) byPath.set(node.path, node)
     if (node.id !== undefined && !byId.has(node.id)) byId.set(node.id, node)
   }
-  const parentOf = new Map<NavNode, NavNode>()
-  const isAncestor = (maybe: NavNode, of: NavNode): boolean => {
-    for (let n: NavNode | undefined = of; n; n = parentOf.get(n)) if (n === maybe) return true
+  const parentId = new Map(entries.map((e) => [e.node, e.parent]))
+  const fallback = (node: NavNode) => {
+    const hit = ancestorsOf(node.path).find((p) => byPath.has(p) && byPath.get(p) !== node)
+    return hit !== undefined ? byPath.get(hit) : undefined
+  }
+  return nestBy(entries.map((e) => e.node), (n) => {
+    const id = parentId.get(n)
+    return id !== undefined ? byId.get(id) : undefined
+  }, (n) => n.children, fallback)
+}
+
+/**
+ * Nests `items` in their order: each goes into the children of `parentOf(item)`, or of `fallback(item)` when that
+ * would make a cycle or there is none, else it is a root. A target that would make a cycle is never used.
+ */
+export function nestBy<T>(items: readonly T[], parentOf: (item: T) => T | undefined, childrenOf: (item: T) => T[], fallback?: (item: T) => T | undefined): T[] {
+  const up = new Map<T, T>()
+  const isAncestor = (maybe: T, of: T): boolean => {
+    for (let n: T | undefined = of; n !== undefined; n = up.get(n)) if (n === maybe) return true
     return false
   }
-  const roots: NavNode[] = []
-  for (const { node, parent } of entries) {
-    let target = parent !== undefined ? byId.get(parent) : undefined
-    if (target && isAncestor(node, target)) target = undefined
-    if (!target) {
-      const hit = ancestorsOf(node.path).find((p) => byPath.has(p) && byPath.get(p) !== node)
-      target = hit !== undefined ? byPath.get(hit) : undefined
-    }
-    if (target && isAncestor(node, target)) target = undefined
-    if (target) { target.children.push(node); parentOf.set(node, target) } else roots.push(node)
+  const roots: T[] = []
+  for (const item of items) {
+    let target = parentOf(item)
+    if (target !== undefined && isAncestor(item, target)) target = undefined
+    if (target === undefined) target = fallback?.(item)
+    if (target !== undefined && isAncestor(item, target)) target = undefined
+    if (target !== undefined) { childrenOf(target).push(item); up.set(item, target) } else roots.push(item)
   }
   return roots
 }

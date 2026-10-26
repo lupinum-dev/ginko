@@ -5,7 +5,7 @@
      away and the form and the preview share the panel. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, textIn, todayIn, untranslatedMode, urlsFor, visibleUntil, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isNavTree, isShown, ordered, routeUrls, textIn, todayIn, untranslatedMode, urlsFor, visibleUntil, type Place, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
@@ -66,6 +66,8 @@ const props = defineProps<{
    * mutation returns, and an unmounted component's emits go nowhere.
    */
   onRemoved?: () => void
+  /** Where a new page of a navigation tree goes ("New page here" in NavTree); none: at the end. */
+  place?: Place
 }>()
 const emit = defineEmits<{ created: [entry: string] }>()
 const { t, format, locale: uiLocale } = useI18n()
@@ -84,9 +86,12 @@ const foreign = computed(() => locale.value !== main.value)
  * All live fields; a new entry has no slug yet; a foreign language shows only translatable ones, and the address the
  * page has there (display only: the form never sends a slug, the server makes it from the translated title).
  */
+const navTree = computed(() => isNavTree(props.brickKey, props.brick))
 const fields = computed<Fields>(() => Object.fromEntries(ordered(props.brick.fields).filter(([key, f]) => {
   if (f.retired) return false
   if (!props.entry && f.type === 'slug') return false
+  // A navigation tree places its pages itself (NavTree; NavPlace shows where).
+  if (navTree.value && (key === 'parent' || key === 'section' || key === 'tab')) return false
   if (props.entry && props.tasks?.fields && !props.tasks.fields.includes(key)) return false
   if (foreign.value) return hasTranslation(f) || (f.type === 'slug' && props.brick.kind === 'collection' && !!props.brick.route?.[locale.value])
   return true
@@ -769,6 +774,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <p v-if="problem" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ problem }}</p>
         <p v-if="readOnly" class="rounded-md bg-muted px-3 py-2.5 text-muted-foreground" role="status">{{ readOnlyNote }}</p>
 
+        <NavPlace v-if="navTree" :slug="site.slug" :brick-key="brickKey" :entry="entry?._id" :place="place" :language="locale" :new-draft="brick.kind === 'collection' && brick.drafts === true" />
         <EntryFields v-bind="fieldProps" :entries="mainUngrouped" @update="setField" />
         <template v-if="tabbed">
           <Tabs v-if="mainGroups.length" v-model="activeTab">
