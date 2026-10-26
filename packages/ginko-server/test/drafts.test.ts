@@ -4,7 +4,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, setup } from './setup'
+import { errorOf, opId, setup, upload } from './setup'
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
 const HOUR = 60 * 60 * 1000
@@ -472,6 +472,68 @@ describe('unpublished changes of a live entry (save without publishing)', () => 
     await save(s, entry, 1, { title: { de: 'Behalten' } })
     await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })
     expect(await s.row(entry)).toMatchObject({ state: 'draft', data: { title: { de: 'Behalten' } } })
+    expect(await pendingRows(s)).toEqual([])
+  })
+
+  // Wrong behaviour caught: an image only in unpublished changes had no file reference, so the daily sweep purged it
+  // after 7 days and the "unused" view offered it for the trash; publishing then showed a missing picture.
+  it('an image only in unpublished changes counts as used until it is published', async () => {
+    const s = await draftSetup()
+    const entry = await liveEvent(s)
+    const file = await upload(s, { type: 'image/jpeg', content: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]), name: 'foto.jpg', ready: false })
+    await s.t.run(async (ctx) => ctx.db.patch(file, { status: 'ready', processedId: (await ctx.db.get(file))!.storageId }))
+    await save(s, entry, 1, { image: { file, alt: { de: 'Foto' } } })
+    expect((await s.as.owner.query(api.files.list, { site: 'restaurant', view: 'unused' })).files).toEqual([])
+
+    vi.setSystemTime(NOW + 8 * DAY)
+    await s.t.mutation(internal.uploads.sweep, { phase: 'ready' })
+    vi.setSystemTime(NOW + HOUR)
+    expect(await s.t.run((ctx) => ctx.db.get(file))).not.toBeNull()
+
+    expect(await publish(s, entry, { rev: 2 })).toMatchObject({ state: 'live' })
+    const refs = await s.t.run((ctx) => ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', file)).collect())
+    // The entry holds it now; its pending reference is gone (the history line keeps its own).
+    expect(refs.filter((r) => r.holder !== 'change').map((r) => [r.holder, r.holderId])).toEqual([['entry', entry]])
+  })
+
+  // Wrong behaviour caught: staff allowed to change only the price could publish the waiting changes of other fields.
+  it('publishing needs the right to change every waiting field', async () => {
+    const s = await draftSetup()
+    const dishId = (await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish('Suppe'), publish: {} })).entry as string
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: dishId, baseRev: 1, fields: { name: { de: 'Suppe neu' } } })
+    expect(await errorOf(publish(s, dishId, { task: 'menu.price' }, 'cook'))).toMatchObject({ code: 'FORBIDDEN' })
+    expect(await pendingRows(s)).toHaveLength(1)
+  })
+
+  // Wrong behaviour caught: after the collection turned drafts off, the editor still showed the waiting values but a
+  // save went live and left them waiting, so the form kept snapping back to them with no way to publish or discard.
+  it('changes still waiting after drafts were turned off keep collecting saves and can be published', async () => {
+    const s = await draftSetup()
+    const entry = await liveEvent(s)
+    await save(s, entry, 1, { title: { de: 'Wartet' } })
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.events as { drafts?: boolean }).drafts = false
+      await ctx.db.patch(s.site, { schema })
+    })
+    expect(await save(s, entry, 2, { description: { de: 'Auch' } })).toMatchObject({ pending: true })
+    expect(await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })).toMatchObject({ data: { title: { de: 'Wartet' }, description: { de: 'Auch' } }, pending: { fields: expect.arrayContaining(['title', 'description']) } })
+    expect(await liveTitle(s, entry)).toBe('Weinabend')
+    await publish(s, entry, { rev: 3 })
+    expect(await liveTitle(s, entry)).toBe('Wartet')
+  })
+
+  // Wrong behaviour caught: "Diese Version wiederherstellen" compared the old version with the live one, so with a
+  // waiting change it said "nothing to change" while the form showed the waiting value, and the revert wrote nothing.
+  it('a revert compares with the waiting version the person sees', async () => {
+    const s = await draftSetup()
+    const entry = await liveEvent(s)
+    const first = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry as Id<'entries'>)).first())
+    await save(s, entry, 1, { title: { de: 'Wartet' } })
+    const version = await s.as.owner.query(api.entries.versionAt, { site: 'restaurant', entry, change: first!._id })
+    expect(version.diff).not.toEqual([])
+    await s.as.owner.mutation(api.entries.revert, { site: 'restaurant', opId: opId(), entry, change: first!._id })
+    expect(await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })).toMatchObject({ data: { title: { de: 'Weinabend' } } })
     expect(await pendingRows(s)).toEqual([])
   })
 })

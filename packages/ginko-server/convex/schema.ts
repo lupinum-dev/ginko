@@ -338,7 +338,7 @@ export default defineSchema({
   fileRefs: defineTable({
     site: v.id('sites'),
     file: v.id('uploads'),
-    holder: v.union(v.literal('entry'), v.literal('change')),
+    holder: v.union(v.literal('entry'), v.literal('change'), v.literal('pending')),
     holderId: v.string(),
     /** Entry holders only: where in the entry the file sits, and whether that image lacks a description in a language of the site. */
     uses: v.optional(v.array(v.object({ path: v.string(), missingAlt: v.boolean() }))),

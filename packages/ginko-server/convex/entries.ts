@@ -12,7 +12,7 @@ import { fieldLabelAt, fileIdsOf, mergeField, nextPrints, refIdsIn, rootOf, tree
 import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
 import { DEFAULT_LOCALE, isLocale, t, type MessageKey } from './lib/i18n'
-import { keepsPending, overlay, pendingBySite, pendingInfo, pendingOf, type Pending } from './lib/pending'
+import { dropPending, keepsPending, overlay, pendingBySite, pendingInfo, pendingOf, syncPendingRefs, type Pending } from './lib/pending'
 import { countersOf, DELETED_KEPT, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
@@ -177,8 +177,9 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   if (conflicts.length) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, { ...(current(entry) as object), conflicts, by: await conflictAuthors(ctx, actor, entry, conflicts, args.baseRev) })
 
   // A live entry of a collection with drafts keeps the save as unpublished changes: the form showed them, so they are the base.
-  const toPending = keepsPending(schema, entry)
-  const held = toPending ? await pendingOf(ctx, entry._id) : null
+  // Changes still waiting after drafts were turned off keep waiting too, so the person can publish or discard them.
+  const held = await pendingOf(ctx, entry._id)
+  const toPending = keepsPending(schema, entry) || held !== null
   const shown = overlay(entry, held)
   const before = shown.data
   const data: Data = { ...before }
@@ -283,24 +284,24 @@ async function savePending(ctx: MutationCtx, actor: Actor, w: { entry: Doc<'entr
     revs[root] = rev
     Object.assign(prints, printsOf(w.prints, root))
   }
-  const fieldRevs = { ...entry.fieldRevs }
-  for (const root of w.roots) fieldRevs[root] = rev
-  await ctx.db.patch(entry._id, { rev, fieldRevs })
+  await bumpRevs(ctx, entry, w.roots)
   const now = Date.now()
   const pending = Object.keys(fields).length > 0
   if (!pending) {
     if (held) await dropPending(ctx, held)
-  } else if (held) {
-    await ctx.db.patch(held._id, { fields, prints, revs, by: actor.user.id, at: now })
   } else {
-    await ctx.db.insert('pendingChanges', { site: site._id, entry: entry._id, brick: entry.brick, fields, prints, revs, by: actor.user.id, since: now, at: now })
+    if (held) await ctx.db.patch(held._id, { fields, prints, revs, by: actor.user.id, at: now })
+    else await ctx.db.insert('pendingChanges', { site: site._id, entry: entry._id, brick: entry.brick, fields, prints, revs, by: actor.user.id, since: now, at: now })
+    await syncPendingRefs(ctx, site.schema as Schema, { site: site._id, entry: entry._id, brick: entry.brick, fields })
   }
   return { entry: entry._id, rev, contentRev: site.contentRev, warnings: w.warnings, translation: [], pending }
 }
 
-async function dropPending(ctx: MutationCtx, held: Pending, running = false) {
-  if (held.publishJob && !running) await ctx.scheduler.cancel(held.publishJob)
-  await ctx.db.delete(held._id)
+/** Moves the entry's rev and the fieldRevs of `roots` without touching its content, so open forms see a conflict. */
+async function bumpRevs(ctx: MutationCtx, entry: Doc<'entries'>, roots: string[]) {
+  const rev = entry.rev + 1
+  await ctx.db.patch(entry._id, { rev, fieldRevs: { ...entry.fieldRevs, ...Object.fromEntries(roots.map((r) => [r, rev])) } })
+  return rev
 }
 
 /**
@@ -368,6 +369,8 @@ async function publishPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entrie
   const schema = actor.site.schema as Schema
   const held = await pendingOf(ctx, entry._id)
   if (!held) fail('INVALID', 'errors.entryAlreadyOnline', undefined, lifeStateOf(entry))
+  // Publishing puts every waiting field online: the person needs the right to change each of them, as for a save.
+  authorize(actor, schema, { task: args.task, brick: taskBrickOf(schema, args.task, entry), kind: 'edit', fields: Object.keys(held.fields), entry })
   if (args.rev !== undefined && args.rev !== entry.rev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
   const late = lapsed(actor, args.at)
   const at = late ? undefined : args.at
@@ -447,10 +450,7 @@ export async function discardAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     if (args.rev !== undefined && args.rev !== entry.rev) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, current(entry))
     await dropPending(ctx, held)
     // Open forms that show the unpublished values see a conflict, as after a save.
-    const rev = entry.rev + 1
-    const fieldRevs = { ...entry.fieldRevs }
-    for (const root of roots) fieldRevs[root] = rev
-    await ctx.db.patch(entry._id, { rev, fieldRevs })
+    const rev = await bumpRevs(ctx, entry, roots)
     const change = await ctx.db.insert('changes', {
       site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'discard',
       ...recorded(msg('history.changesDiscarded', { title: labelOf(schema, entry.brick, entry.data as Data) }), schema), entryRev: rev, contentRev: actor.site.contentRev, at: Date.now(),
@@ -520,7 +520,8 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
 /**
  * The entry's field values right after `changeId`. Per field, the earliest later change of this entry
  * that touched it gives the value through its `before`; a field no later change touched keeps its
- * current value. `touched` lists the fields that a later change touched (the only ones that can differ).
+ * current live value. `touched` lists the fields that a later change touched or that wait as unpublished changes
+ * (the only ones that can differ). `now` is what the Studio shows: the live values under the unpublished changes.
  */
 async function versionOf(ctx: QueryCtx, actor: Actor, entryId: string, changeId: string) {
   const entry = await entryOf(ctx, actor, entryId)
@@ -542,7 +543,9 @@ async function versionOf(ctx: QueryCtx, actor: Actor, entryId: string, changeId:
       else data[root] = before[root]
     }
   }
-  return { entry, change, data, touched: [...touched] }
+  const held = await pendingOf(ctx, entry._id)
+  for (const root of Object.keys(held?.fields ?? {})) touched.add(root)
+  return { entry, change, data, touched: [...touched], now: overlay(entry, held).data }
 }
 
 /**
@@ -564,9 +567,9 @@ function revertFields(brick: Brick | undefined, touched: string[], data: Data, n
  * the version's values come back for this week: the task always covers it (`refuseOtherWeek`). `revert` saves exactly
  * these and `versionAt` shows exactly these, so the preview never promises a week change the save will not make.
  */
-function revertWrites(schema: Schema, entry: Doc<'entries'>, touched: string[], data: Data, task: string | undefined): Record<string, Json> {
+function revertWrites(schema: Schema, entry: Doc<'entries'>, touched: string[], data: Data, now: Data, task: string | undefined): Record<string, Json> {
   const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
-  const fields = revertFields(brick, touched, data, entry.data as Data)
+  const fields = revertFields(brick, touched, data, now)
   const taskBrick = taskBrickOf(schema, task, entry)
   const weekly = Object.hasOwn(schema.bricks, taskBrick) ? weeklyTask(schema.bricks[taskBrick]!) : undefined
   if (weekly && task === `${taskBrick}.${weekly.task.id}`) delete fields[weekly.field]
@@ -581,11 +584,10 @@ function revertWrites(schema: Schema, entry: Doc<'entries'>, touched: string[], 
  * what that task keeps (the week of the weekly task, `revertWrites`).
  */
 export async function versionAtAs(ctx: QueryCtx, actor: Actor, args: { entry: string; change: string; task?: string | undefined }) {
-  const { entry, change, data, touched } = await versionOf(ctx, actor, args.entry, args.change)
+  const { entry, change, data, touched, now } = await versionOf(ctx, actor, args.entry, args.change)
   const schema = actor.site.schema as Schema
   const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
-  const now = entry.data as Data
-  const fields = revertWrites(schema, entry, touched, data, args.task)
+  const fields = revertWrites(schema, entry, touched, data, now, args.task)
   const pick = (from: Data) => Object.fromEntries(Object.keys(fields).filter((root) => from[root] !== undefined).map((root) => [root, from[root]!]))
   return { entry: entry._id, change: change._id, at: change.at, data, fields: touched, diff: diffFields(brick?.fields, pick(now), pick(data), schema.locales[0]!) }
 }
@@ -605,12 +607,11 @@ export const revert = mutation({ args: revertArgs, handler: async (ctx, args) =>
  */
 export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof revertArgs>) {
   return idempotent(ctx, actor, args, async () => {
-    const { entry, change, data, touched } = await versionOf(ctx, actor, args.entry, args.change)
+    const { entry, change, data, touched, now } = await versionOf(ctx, actor, args.entry, args.change)
     if (entry.deletedAt) fail('INVALID', 'errors.entryDeletedRestoreFirst')
     const schema = actor.site.schema as Schema
     const brick = brickOf(schema, entry)
-    const now = entry.data as Data
-    const fields = revertWrites(schema, entry, touched, data, args.task)
+    const fields = revertWrites(schema, entry, touched, data, now, args.task)
     if (!Object.keys(fields).length) {
       const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
       return unchanged

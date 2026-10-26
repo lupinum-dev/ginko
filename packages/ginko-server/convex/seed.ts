@@ -149,7 +149,7 @@ export const importClear = internalMutation({
       docs++
       await ctx.db.delete(doc._id)
     }
-    const dropRefs = async (holder: 'entry' | 'change', holderId: string) => {
+    const dropRefs = async (holder: Doc<'fileRefs'>['holder'], holderId: string) => {
       for (const ref of await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', holder).eq('holderId', holderId)).collect()) await drop(ref)
     }
 
@@ -169,6 +169,7 @@ export const importClear = internalMutation({
     }
     for await (const row of ctx.db.query('pendingChanges').withIndex('by_site', (q) => q.eq('site', site._id))) {
       if (full()) return { done: false }
+      await dropRefs('pending', row.entry)
       await drop(row)
     }
     for await (const entry of ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id))) {

@@ -3,8 +3,9 @@
 // (`overlay`). Publishing writes them through the normal write path (entries.ts `applyPending` → `commitEntry`).
 import type { Schema } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
-import type { QueryCtx } from '../_generated/server'
-import type { Data, Prints } from './content'
+import type { MutationCtx, QueryCtx } from '../_generated/server'
+import { fileIdsOf, type Data, type Prints } from './content'
+import { syncFileRefs, uploadIdsOf } from './write'
 
 export type Pending = Doc<'pendingChanges'>
 
@@ -50,4 +51,21 @@ export function pendingInfo(pending: Pending, user?: string) {
     ...(pending.publishAt === undefined ? {} : { publishAt: pending.publishAt }),
     ...(user !== undefined && pending.by === user ? { own: true } : {}),
   }
+}
+
+/**
+ * Keeps the file references of an entry's unpublished changes (holder 'pending', one per entry) to exactly the files
+ * they name, so the uploads sweep, the "unused" view and the trash treat those files as in use.
+ */
+export async function syncPendingRefs(ctx: MutationCtx, schema: Schema, pending: Pick<Pending, 'site' | 'entry' | 'brick' | 'fields'>) {
+  const brick = Object.hasOwn(schema.bricks, pending.brick) ? schema.bricks[pending.brick] : undefined
+  const ids = brick ? fileIdsOf(brick.fields, pending.fields as Data, { isUploadId: uploadIdsOf(ctx) }) : new Set<string>()
+  await syncFileRefs(ctx, pending.site, 'pending', pending.entry, ids)
+}
+
+/** Deletes unpublished changes with their planned publish (unless that run is the one calling) and file references. */
+export async function dropPending(ctx: MutationCtx, held: Pending, running = false) {
+  if (held.publishJob && !running) await ctx.scheduler.cancel(held.publishJob)
+  await syncFileRefs(ctx, held.site, 'pending', held.entry, new Set())
+  await ctx.db.delete(held._id)
 }
