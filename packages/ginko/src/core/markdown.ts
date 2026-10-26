@@ -444,10 +444,10 @@ function letterSlug(text: string): string {
   return asciiSlug(spelled.normalize('NFD').replace(/\p{M}/gu, ''))
 }
 
-/** Text of a node; `br` and `html_inline` do not count (comark reads heading text the same way for the slug). */
 /** The text of a component that has none of its own, such as a fact (facts.ts): a string replaces the node, undefined keeps it. */
 export type TextResolver = (tag: string, props: Readonly<Record<string, unknown>> | undefined) => string | undefined
 
+/** Text of a node; comments, `br`, `html_inline` and `pre` do not count (heading ids and summaries read it this way). */
 function textOf(node: Node, blocks = false, resolve?: TextResolver): string {
   if (typeof node === 'string') return node
   const [tag, props, ...children] = node
