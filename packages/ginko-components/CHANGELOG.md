@@ -1,5 +1,18 @@
 # @lupinum/ginko-components
 
+## 0.9.0
+
+### Minor Changes
+
+- [#61](https://github.com/lupinum-dev/ginko/pull/61) [`b78c0a8`](https://github.com/lupinum-dev/ginko/commit/b78c0a8370390043eb9b83147a6f5feb6eab028d) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the smaller copies and the focus point of a library picture to `::figure`, and a 4:3 `landscape` aspect ratio
+
+### Patch Changes
+
+- [#61](https://github.com/lupinum-dev/ginko/pull/61) [`b78c0a8`](https://github.com/lupinum-dev/ginko/commit/b78c0a8370390043eb9b83147a6f5feb6eab028d) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix an enlarged `::figure` to show the whole picture instead of its crop
+- Updated dependencies [[`f753aa7`](https://github.com/lupinum-dev/ginko/commit/f753aa7a12162b6ce2ff764a8667bc2b4bea3d80), [`f753aa7`](https://github.com/lupinum-dev/ginko/commit/f753aa7a12162b6ce2ff764a8667bc2b4bea3d80), [`1fd5e90`](https://github.com/lupinum-dev/ginko/commit/1fd5e90582543baefb7729f61155156b9c6297d8), [`b78c0a8`](https://github.com/lupinum-dev/ginko/commit/b78c0a8370390043eb9b83147a6f5feb6eab028d)]:
+  - @lupinum/ginko@0.9.0
+  - @lupinum/ginko-i18n@0.9.0
+
 ## 0.8.0
 
 ### Patch Changes
