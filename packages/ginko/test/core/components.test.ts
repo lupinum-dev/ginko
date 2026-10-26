@@ -28,6 +28,7 @@ describe('componentProblems', () => {
     // A declared prop passes the attribute allowlist: `as` would mount another component, `innerHTML` writes markup.
     ['prop named as', { x: { ...def, props: { as: f.text('Als') } } }, 'Invalid property name “as”'],
     ['prop named innerHTML', { x: { ...def, props: { innerHTML: f.text('HTML') } } }, 'Invalid property name “innerHTML”'],
+    ['prop named …Html', { x: { ...def, props: { descriptionHtml: f.longtext('Beschreibung') } } }, 'Invalid property name “descriptionHtml”'],
     // Labels follow the brick rule (labelProblem): the main language or English, no empty text.
     ['label without the main language or English', { x: { ...def, label: { fr: 'X' } } }, 'components.x.label: label needs a text in the main language “de” or in English.'],
     ['empty describe', { x: { ...def, describe: '' } }, 'components.x.describe: label is empty.'],

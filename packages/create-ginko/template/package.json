@@ -16,13 +16,13 @@
     "@lupinum/ginko": "^{{VERSION}}",
     "@lupinum/ginko-content": "^{{VERSION}}",
     "@lupinum/ginko-i18n": "^{{VERSION}}",
-    "@takumi-rs/core": "^2.15.0",
-    "nuxt": "^4.6.1",
-    "nuxt-og-image": "^7.0.0",
-    "vue": "^3.5.0"
+    "@takumi-rs/core": "^2.17.1",
+    "nuxt": "^4.6.2",
+    "nuxt-og-image": "^7.0.7",
+    "vue": "^3.5.44"
   },
   "devDependencies": {
     "typescript": "^6.0.3",
-    "vue-tsc": "^3.1.5"
+    "vue-tsc": "^3.3.13"
   }
 }

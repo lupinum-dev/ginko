@@ -52,7 +52,7 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "@comark/vue": "0.7.0",
+    "@comark/vue": "0.8.1",
     "@iconify-json/lucide": "^1.2.137",
     "@iconify/utils": "^3.1.7",
     "@lupinum/ginko-components": "workspace:^",
@@ -71,8 +71,8 @@
     "@lupinum/ginko": "workspace:*",
     "@lupinum/ginko-content": "workspace:*",
     "@lupinum/ginko-i18n": "workspace:*",
-    "nuxt": "4.6.0",
+    "nuxt": "4.6.2",
     "unbuild": "3.6.1",
-    "vue": "3.5.43"
+    "vue": "3.5.44"
   }
 }

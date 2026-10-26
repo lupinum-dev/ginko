@@ -7,8 +7,8 @@
     "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/public-sans": "5.3.0",
     "@lupinum/ginko": "workspace:*",
-    "nuxt": "4.6.0",
-    "vue": "3.5.43"
+    "nuxt": "4.6.2",
+    "vue": "3.5.44"
   },
   "scripts": {
     "dev": "nuxt dev --port 3400",
@@ -18,6 +18,6 @@
   },
   "devDependencies": {
     "typescript": "6.0.3",
-    "vue-tsc": "3.1.5"
+    "vue-tsc": "3.3.13"
   }
 }

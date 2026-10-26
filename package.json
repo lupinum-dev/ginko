@@ -29,19 +29,19 @@
     "postinstall": "pnpm --filter @lupinum/ginko-i18n --filter @lupinum/ginko-components exec nuxt-module-build prepare"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.13.0",
+    "@axe-core/playwright": "4.14.0",
     "@changesets/changelog-github": "1.0.1",
     "@changesets/cli": "3.0.3",
     "@nuxt/module-builder": "1.0.3",
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.64.1",
     "@types/node": "^24.19.1",
-    "@vitejs/plugin-vue": "6.0.9",
-    "happy-dom": "20.14.5",
-    "pkg-pr-new": "0.0.90",
+    "@vitejs/plugin-vue": "6.0.10",
+    "happy-dom": "21.0.4",
+    "pkg-pr-new": "0.0.92",
     "publint": "0.3.25",
     "typescript": "6.0.3",
     "unbuild": "3.6.1",
-    "vitest": "5.0.3",
-    "vue": "3.5.43"
+    "vitest": "5.0.5",
+    "vue": "3.5.44"
   }
 }
