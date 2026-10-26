@@ -30,7 +30,6 @@ overrides:
   '@lupinum/ginko-docs': workspace:*
   '@lupinum/ginko-preset-gastro': workspace:*
   create-ginko: workspace:*
-  katex: ^0.18.11
 
 importers:
 
@@ -121,8 +120,8 @@ importers:
   packages/ginko:
     dependencies:
       '@comark/vue':
-        specifier: 0.7.0
-        version: 0.7.0(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)(vue@3.5.44(typescript@6.0.3))
+        specifier: 0.8.1
+        version: 0.8.1(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)(vue@3.5.44(typescript@6.0.3))
       '@lupinum/ginko-i18n':
         specifier: workspace:*
         version: link:../ginko-i18n
@@ -133,8 +132,8 @@ importers:
         specifier: 4.0.1
         version: 4.0.1
       comark:
-        specifier: 0.7.0
-        version: 0.7.0(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)
+        specifier: 0.8.1
+        version: 0.8.1(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)
       minisearch:
         specifier: 7.2.0
         version: 7.2.0
@@ -189,8 +188,8 @@ importers:
   packages/ginko-content:
     dependencies:
       comark:
-        specifier: 0.7.0
-        version: 0.7.0(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)
+        specifier: 0.8.1
+        version: 0.8.1(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)
       js-yaml:
         specifier: ^5.4.3
         version: 5.5.0
@@ -211,8 +210,8 @@ importers:
   packages/ginko-docs:
     dependencies:
       '@comark/vue':
-        specifier: 0.7.0
-        version: 0.7.0(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)(vue@3.5.44(typescript@6.0.3))
+        specifier: 0.8.1
+        version: 0.8.1(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)(vue@3.5.44(typescript@6.0.3))
       '@iconify-json/lucide':
         specifier: ^1.2.137
         version: 1.2.147
@@ -1830,13 +1829,13 @@ packages:
   '@colordx/core@7.3.0':
     resolution: {integrity: sha512-LVzTTPhX7wpy7TkGjouA9zbbCBIw92RGm7ZQqSKFE0oYE3sMx2FGXz90eVpgw7k/+wrrY+qJ86nHXifZWMS5jA==}
 
-  '@comark/vue@0.7.0':
-    resolution: {integrity: sha512-C63ObcCAiM5DKVDhWPz27pCRsvl0IG9XZJDGjFef1h/V4kS6lEjsoyepLdl4pvAPoSn6U0oGiJTgHLj5GCw2rQ==}
+  '@comark/vue@0.8.1':
+    resolution: {integrity: sha512-zMxShbPfynnSU5AWH7IeXe2RYm8YIqb5r5XC6eX2Rzv5Ed3/jypbCwp2o1JZAEV0/S3Mczil7Nnb0mzMaOAvHA==}
     peerDependencies:
       beautiful-mermaid: ^1.1.3
-      katex: ^0.18.11
-      shiki: ^4.3.1
-      vue: ^3.5.0
+      katex: ^0.18.7
+      shiki: ^4.4.3
+      vue: ^3.5.43
     peerDependenciesMeta:
       beautiful-mermaid:
         optional: true
@@ -5326,13 +5325,13 @@ packages:
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
 
-  comark@0.7.0:
-    resolution: {integrity: sha512-680hLtUOBcvBEJCD+iCU20jk5TrIJlIcE6X4npdC4x7LBhCvmiYJgByozR2fKav6DYw7AYoXsJVae65kXV6Qhw==}
+  comark@0.8.1:
+    resolution: {integrity: sha512-oz2Nrt3o/e5SRYVgd3PlBwDUp5P4PWYZbVggORI02rLF63WEjHYkPJkxZh2Hwfpl0J4jDLspe6aeUraNplAsAw==}
     peerDependencies:
       beautiful-mermaid: ^1.1.3
-      katex: ^0.18.11
+      katex: ^0.18.7
       rangi: ^2.2.0
-      shiki: ^4.3.1
+      shiki: ^4.4.3
     peerDependenciesMeta:
       beautiful-mermaid:
         optional: true
@@ -5674,31 +5673,15 @@ packages:
   dom-serializer@2.0.0:
     resolution: {integrity: sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==}
 
-  dom-serializer@3.1.1:
-    resolution: {integrity: sha512-4MEa38/QexBob6gFNwu+EGdWvhJ1OKuNwdYY3Y3NyeWDQfnGeDYQUDfIRzWu5B5gsv03so2Uxd28YC6zrsx3Lw==}
-    engines: {node: '>=20.19.0'}
-
   domelementtype@2.3.0:
     resolution: {integrity: sha512-OLETBj6w0OsagBwdXnPdN0cnMfF9opN69co+7ZrbfPGrdpPVNBUj02spi6B1N7wChLQiPn4CSH/zJvXw56gmHw==}
-
-  domelementtype@3.0.0:
-    resolution: {integrity: sha512-umCQid3jKbDmVjx8jGaW7uUykm4DEUeyV21hPxNMo2nV955DhUThwqyOIDtreepP31hl84X7G5U9ZfsWvIB3Pg==}
-    engines: {node: '>=20.19.0'}
 
   domhandler@5.0.3:
     resolution: {integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==}
     engines: {node: '>= 4'}
 
-  domhandler@6.0.1:
-    resolution: {integrity: sha512-gYzvtM72ZtxQO0T048kd6HWSbbGCNOUwcnfQ01cqIJ4X2IYKFFHZ5mKvrQETcFXxsRObZulDaKmy//R7TPtsBg==}
-    engines: {node: '>=20.19.0'}
-
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
-
-  domutils@4.0.2:
-    resolution: {integrity: sha512-qI4JLRKnSzqFqr7hAlS5xQDusBCjKSEG4t4+7aNrIQMHBcsC2TGEhuyABJdYkgSewL57PNLYEiibY2iPKhKpaA==}
-    engines: {node: '>=20.19.0'}
 
   dot-prop@10.2.0:
     resolution: {integrity: sha512-BTJ9aZYL3vCfZlZOBLy9v8TUqWGQ0pzFnygKwFZt5udj6viBoFIBviKPUoZLDCPn1FoXffv6McQFDenrm5Krfw==}
@@ -6274,10 +6257,6 @@ packages:
   html-void-elements@3.0.0:
     resolution: {integrity: sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg==}
 
-  htmlparser2@12.0.0:
-    resolution: {integrity: sha512-Tz7u1i95/g2x2jz81+x0FBVhBhY5aRTvD3tXXdFaljuNdzDLJ8UGNRrTcj2cgQvAg3iW/h77Fz15nLW0L0CrZw==}
-    engines: {node: '>=20.19.0'}
-
   http-errors@2.0.1:
     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
     engines: {node: '>= 0.8'}
@@ -6482,10 +6461,6 @@ packages:
 
   js-yaml@4.3.2:
     resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
-    hasBin: true
-
-  js-yaml@5.4.3:
-    resolution: {integrity: sha512-yzzNtgczwgoVHNigCyKTXcQJU4Y8t/ikU4UxXW0BvrLfHTGWZhsNcOT2s/a7vn81/4KqVnNmHjaUEPlvWnNwVw==}
     hasBin: true
 
   js-yaml@5.5.0:
@@ -6786,8 +6761,8 @@ packages:
     resolution: {integrity: sha512-ayF7iT+44LXdxJLTrTd3TLQpFDDvPCBxXxbv+pMUSuHA5Q8zyAfwkRP6aHHwNVFBUFWtxAHqwNJxF8vMZLAbVg==}
     engines: {node: '>=18'}
 
-  markdown-exit@1.1.0-beta.2:
-    resolution: {integrity: sha512-8CzMGVlFZ4DEfnc8KU+4ycUW2SIOuiXqCHD7z51ecVEi/weyc0f2ylQbCm4KoKuVlTZSuMUMnWT0hTyquZ7anQ==}
+  markdown-exit@1.3.0:
+    resolution: {integrity: sha512-bsqlcm3Hk1ukcG1Al83pp3JjVobu4w1mpZz47OzLw8bCY8XchkCX+PXC32l2TH4nZ7p5WFg2NwpnLDXkY1X7Yw==}
 
   marky@1.3.0:
     resolution: {integrity: sha512-ocnPZQLNpvbedwTy9kNrQEsknEfgvcLMvOtz3sFeWApDq1MXH1TqkCIx58xlpESsfwQOnuBO9beyQuNGzVvuhQ==}
@@ -9577,9 +9552,9 @@ snapshots:
 
   '@colordx/core@7.3.0': {}
 
-  '@comark/vue@0.7.0(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)(vue@3.5.44(typescript@6.0.3))':
+  '@comark/vue@0.8.1(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)(vue@3.5.44(typescript@6.0.3))':
     dependencies:
-      comark: 0.7.0(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)
+      comark: 0.8.1(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0)
       vue: 3.5.44(typescript@6.0.3)
     optionalDependencies:
       beautiful-mermaid: 1.1.3
@@ -14059,12 +14034,11 @@ snapshots:
 
   color-name@1.1.4: {}
 
-  comark@0.7.0(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0):
+  comark@0.8.1(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.5.0):
     dependencies:
       entities: 8.1.0
-      htmlparser2: 12.0.0
-      js-yaml: 5.4.3
-      markdown-exit: 1.1.0-beta.2
+      js-yaml: 5.5.0
+      markdown-exit: 1.3.0
     optionalDependencies:
       beautiful-mermaid: 1.1.3
       katex: 0.18.11
@@ -14363,35 +14337,17 @@ snapshots:
       domhandler: 5.0.3
       entities: 4.5.0
 
-  dom-serializer@3.1.1:
-    dependencies:
-      domelementtype: 3.0.0
-      domhandler: 6.0.1
-      entities: 8.1.0
-
   domelementtype@2.3.0: {}
-
-  domelementtype@3.0.0: {}
 
   domhandler@5.0.3:
     dependencies:
       domelementtype: 2.3.0
-
-  domhandler@6.0.1:
-    dependencies:
-      domelementtype: 3.0.0
 
   domutils@3.2.2:
     dependencies:
       dom-serializer: 2.0.0
       domelementtype: 2.3.0
       domhandler: 5.0.3
-
-  domutils@4.0.2:
-    dependencies:
-      dom-serializer: 3.1.1
-      domelementtype: 3.0.0
-      domhandler: 6.0.1
 
   dot-prop@10.2.0:
     dependencies:
@@ -15113,13 +15069,6 @@ snapshots:
 
   html-void-elements@3.0.0: {}
 
-  htmlparser2@12.0.0:
-    dependencies:
-      domelementtype: 3.0.0
-      domhandler: 6.0.1
-      domutils: 4.0.2
-      entities: 8.1.0
-
   http-errors@2.0.1:
     dependencies:
       depd: 2.0.0
@@ -15324,10 +15273,6 @@ snapshots:
   js-tokens@4.0.0: {}
 
   js-yaml@4.3.2:
-    dependencies:
-      argparse: 2.0.1
-
-  js-yaml@5.4.3:
     dependencies:
       argparse: 2.0.1
 
@@ -15636,7 +15581,7 @@ snapshots:
       type-fest: 4.41.0
       web-worker: 1.5.0
 
-  markdown-exit@1.1.0-beta.2:
+  markdown-exit@1.3.0:
     dependencies:
       '@types/linkify-it': 5.0.0
       '@types/mdurl': 2.0.0

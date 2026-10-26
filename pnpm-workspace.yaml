@@ -24,9 +24,6 @@ overrides:
   '@lupinum/ginko-docs': 'workspace:*'
   '@lupinum/ginko-preset-gastro': 'workspace:*'
   create-ginko: 'workspace:*'
-  # comark's optional katex peer still resolves to 0.17 for ginko and ginko-content (GHSA-238p-pmpm-9mq7,
-  # fixed in 0.18.2). Remove when the lockfile has no katex below 0.18.2 without this line.
-  katex: '^0.18.11'
 
 # Dependency quarantine: never install versions younger than 24 hours. Our own scope skips it,
 # because only our protected release workflows publish it.

@@ -101,7 +101,12 @@ export async function markdownBlocks(text: string, options: ParseOptions = {}): 
 const TASK_LIST = 'contains-task-list'
 
 /**
- * Two shapes of a task list that comark 0.7 parses but cannot write back:
+ * A heading is written without its id. Since 0.8 comark writes `{#id}` for every id that differs from its own
+ * generated one, and Ginko's generated ids (headingAnchors) always may: an edited text would gain `{#…}` on its
+ * headings, and a renamed heading would keep its old anchor. A text with an explicit `{#id}` is therefore not
+ * stable (`isStableMarkdown`), as before 0.8.
+ *
+ * Two shapes of a task list that comark parses but cannot write back:
  * - a nested list makes the item `li > p > [input, text]`, and the writer expects the checkbox as the first
  *   child of the `li` (it writes `- [ ] - [x] b`). The text of the `p` moves into the `li`, as in an item without a nested list.
  * - an ordered task list gets `{.contains-task-list}` written around it (the writer hides that class on `ul` only).
@@ -112,6 +117,10 @@ function writable(node: Json): Json {
   const [tag, props, ...children] = node as [string | null, Record<string, Json>, ...Json[]]
   let kids = children.map(writable)
   let own = props
+  if (tag !== null && /^h[1-6]$/.test(tag) && own?.id !== undefined) {
+    const { id: _id, ...rest } = own
+    own = rest
+  }
   if (tag === 'ol' && typeof own?.class === 'string' && own.class.split(/\s+/).includes(TASK_LIST)) {
     const { class: classes, ...rest } = own
     const left = String(classes).split(/\s+/).filter((c) => c && c !== TASK_LIST).join(' ')

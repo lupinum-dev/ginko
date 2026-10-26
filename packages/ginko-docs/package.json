@@ -52,7 +52,7 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "@comark/vue": "0.7.0",
+    "@comark/vue": "0.8.1",
     "@iconify-json/lucide": "^1.2.137",
     "@iconify/utils": "^3.1.7",
     "@lupinum/ginko-components": "workspace:^",
