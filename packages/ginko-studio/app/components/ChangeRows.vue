@@ -306,7 +306,7 @@ async function undo(change: Change) {
           </li>
         </ol>
       </section>
-      <p v-if="!rows.length && list.status.value === 'success'" class="text-muted-foreground">{{ filter === 'entry' ? t('history.entryEmpty') : filter && filter !== 'all' ? t('history.noMatches') : t('entry.changes.empty') }}</p>
+      <p v-if="!rows.length && list.status.value === 'success'" class="rounded-xl border bg-card px-4 py-8 text-center text-muted-foreground min-[900px]:text-sm">{{ filter === 'entry' ? t('history.entryEmpty') : filter && filter !== 'all' ? t('history.noMatches') : t('entry.changes.empty') }}</p>
       <div v-if="list.canLoadMore.value || list.isLoadingMore.value">
         <Button type="button" variant="outline" :disabled="!list.canLoadMore.value" @click="list.loadMore(PAGE)">{{ t('site.history.loadOlder') }}</Button>
       </div>

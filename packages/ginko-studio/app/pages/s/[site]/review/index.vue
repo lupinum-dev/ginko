@@ -193,7 +193,7 @@ async function remove(release: string, proposal: string) {
             :site="s.slug.value" :schema="s.schema.value" :proposal="selected" variant="pane" open
           />
         </div>
-        <p v-else-if="list.isExhausted.value && !releases.length" class="rounded-xl border border-dashed px-6 py-12 text-center text-sm text-balance text-muted-foreground">{{ t('review.emptyHint') }}</p>
+        <p v-else-if="list.isExhausted.value && !releases.length" class="rounded-xl border bg-card px-4 py-8 text-center text-muted-foreground min-[900px]:text-sm text-balance">{{ t('review.emptyHint') }}</p>
         <div v-else-if="list.data.value === undefined && !list.error.value" class="divide-y overflow-hidden rounded-xl border bg-card" :class="wide && 'max-w-[380px]'" aria-hidden="true">
           <div v-for="n in 3" :key="n" class="grid gap-2 px-4 py-4">
             <Skeleton class="h-4 w-3/4" />

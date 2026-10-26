@@ -316,11 +316,16 @@ test('Ctrl+S in the form saves a change once, and an unchanged form not at all',
 // showed only "G…"; or it stayed up there after the editor closed.
 test('while the editor is open the toast sits above its save bar, and goes back down when it closes', async () => {
   const Toaster = defineComponent({ name: 'Toaster', props: ['offset', 'mobileOffset'], render: () => null })
-  // happy-dom lays nothing out: its observer reports the save bar 72px high, as a browser would.
+  // happy-dom lays nothing out: its observer reports the save bar 72px high, as a browser would (both boxes, since
+  // the editor also measures its own content width).
   const observer = window.ResizeObserver
   window.ResizeObserver = class {
     constructor(private report: ResizeObserverCallback) {}
-    observe(el: Element) { queueMicrotask(() => this.report([{ borderBoxSize: [{ inlineSize: 600, blockSize: el.classList.contains('bar') ? 72 : 0 }] }] as never, this as never)) }
+    observe(el: Element) {
+      const blockSize = el.classList.contains('bar') ? 72 : 0
+      const box = [{ inlineSize: 600, blockSize }]
+      queueMicrotask(() => this.report([{ target: el, borderBoxSize: box, contentBoxSize: box, contentRect: { width: 600, height: blockSize } }] as never, this as never))
+    }
     unobserve() {}
     disconnect() {}
   } as never

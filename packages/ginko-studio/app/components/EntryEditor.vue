@@ -24,6 +24,7 @@ import ConflictPanel from './ConflictPanel.vue'
 import EntryRemoveDialog from './EntryRemoveDialog.vue'
 import EntryPublishPanel from './EntryPublishPanel.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
+import SplitHandle from './SplitHandle.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
@@ -256,6 +257,28 @@ const areaList = useAreaList()
 watch([bar, showPreview], ([wide, open]) => areaList.foldFor(wide && open), { immediate: true })
 onBeforeUnmount(() => areaList.foldFor(false))
 const split = computed(() => bar.value && showPreview.value)
+// The form's width next to the preview: dragged with the handle, remembered per browser. The form keeps at least
+// 24rem and the preview at least 22rem; without a choice the form takes 40rem (or less on a narrow panel).
+const SPLIT_WIDTH = 'ginko:preview-split'
+const FORM_MIN = 384
+const PREVIEW_MIN = 352
+const FORM_DEFAULT = 640
+const editorEl = ref<HTMLElement | null>(null)
+const { width: editorWidth } = useElementSize(editorEl)
+const chosenWidth = ref<number>()
+onMounted(() => {
+  try { const w = Number(localStorage.getItem(SPLIT_WIDTH)); if (w > 0) chosenWidth.value = w } catch { /* no choice yet */ }
+})
+const formMax = computed(() => Math.max(FORM_MIN, editorWidth.value - PREVIEW_MIN))
+const formWidth = computed(() => Math.min(formMax.value, Math.max(FORM_MIN, chosenWidth.value ?? FORM_DEFAULT)))
+function resizeForm(width: number) {
+  chosenWidth.value = Math.min(formMax.value, Math.max(FORM_MIN, width))
+  try { localStorage.setItem(SPLIT_WIDTH, String(Math.round(chosenWidth.value))) } catch { /* not remembered */ }
+}
+function resetForm() {
+  chosenWidth.value = undefined
+  try { localStorage.removeItem(SPLIT_WIDTH) } catch { /* nothing stored */ }
+}
 // Before sideMode: with the panel bar already shown (a move within the Studio), the tab watcher below reads it during setup.
 // Drafts (SPEC 15): only collections that ask for them. A draft is saved without going online;
 // "Veröffentlichen …" puts it online now or at a time; a live entry can be taken back to a draft.
@@ -589,7 +612,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
 </script>
 
 <template>
-  <div :class="['editor', split && 'is-split']" @keydown="onFormKey">
+  <div ref="editorEl" :class="['editor', split && 'is-split']" :style="split ? { '--form-width': `${formWidth}px` } : undefined" @keydown="onFormKey">
     <form
       :id="formId" ref="formEl" novalidate
       :class="['entry-form grid gap-x-10 gap-y-6', sideMode && 'has-side', split && 'px-8 pt-7 pb-12']"
@@ -798,6 +821,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
     <!-- The destructive action sits in "Mehr", away from Speichern and Vorschau; the question stays. -->
     <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" :draft="entry?.state === 'draft'" @confirm="remove" @close-auto-focus="focusMore" />
 
+    <SplitHandle v-if="split" class="split-col" :value="formWidth" :min="FORM_MIN" :max="formMax" :label="t('entry.preview.resize')" @change="resizeForm" @reset="resetForm" />
     <PreviewPane
       v-if="showPreview"
       class="preview-col"
@@ -818,17 +842,16 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
 </template>
 
 <style scoped>
-/* One column: the form keeps a readable width, centred like every page frame (StudioPage). With the right column:
-   form and an 18rem column. */
-.entry-form { max-width: 45rem; margin-inline: auto; }
+/* One column: the form keeps a readable width, on the left edge like every page frame (StudioPage). With the right
+   column: form and an 18rem column. */
+.entry-form { max-width: 45rem; }
 .entry-form.has-side { max-width: 72rem; grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; }
 .editor > .preview-col { margin-top: 1.5rem; height: 80dvh; }
 /* Wide screens with the preview open: form and preview share the panel, the preview flush with its edges. */
 @media (min-width: 900px) {
-  .editor.is-split { display: grid; grid-template-columns: minmax(24rem, 40rem) minmax(0, 1fr); align-items: start; }
-  /* No auto margins here: in a grid cell they shrink the form to its content. */
-  .editor.is-split .entry-form { max-width: none; margin-inline: 0; }
-  .editor.is-split > .preview-col {
+  .editor.is-split { display: grid; grid-template-columns: var(--form-width) auto minmax(0, 1fr); align-items: start; }
+  .editor.is-split .entry-form { max-width: none; }
+  .editor.is-split > :is(.preview-col, .split-col) {
     margin-top: 0; position: sticky; top: var(--studio-header-height);
     height: calc(100dvh - var(--studio-header-height) - 0.75rem);
   }

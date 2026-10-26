@@ -215,7 +215,11 @@
       "desktop": "Ordinateur",
       "phone": "Mobile",
       "open": "Ouvrir",
-      "ended": "Le site web ne l’affiche plus : il était visible jusqu’au {date}. Avec une date plus tardive, il réapparaît."
+      "ended": "Le site web ne l’affiche plus : il était visible jusqu’au {date}. Avec une date plus tardive, il réapparaît.",
+      "resize": "Largeur du formulaire et de l’aperçu",
+      "tablet": "Tablette",
+      "laptop": "Ordinateur portable",
+      "actualSize": "Taille réelle"
     },
     "remove": {
       "title": "Supprimer l’entrée",
