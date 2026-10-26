@@ -36,6 +36,22 @@ export function useEditorTick(editor: () => Editor | undefined): Ref<number> {
 }
 
 /** A touch screen: the bubble menu stays away (it would sit under the finger and the system's own selection menu). */
+/**
+ * For a popup of the toolbar (the block menu, the link box): focus that moves into the text while it is open does not
+ * close it and goes back into the popup. TipTap's focus command focuses the text again a frame later (on Android at once
+ * and once more then), so a focus from the step before could land after the popup had opened and close it; the next
+ * Escape then reached the task sheet and asked "Änderungen verwerfen?". A click in the text still closes the popup: that
+ * is a pointer-down outside, which closes it before this runs.
+ */
+export function keepOpenOnTextFocus(editor: () => Editor, open: () => boolean) {
+  return (event: CustomEvent<{ originalEvent: FocusEvent }>) => {
+    const { target, relatedTarget } = event.detail.originalEvent
+    if (!open() || !(target instanceof Node) || !editor().view.dom.contains(target)) return
+    event.preventDefault()
+    if (relatedTarget instanceof HTMLElement && relatedTarget.isConnected) relatedTarget.focus()
+  }
+}
+
 export const isCoarsePointer = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
 
 /** A pointer that can hover (mouse, trackpad): the drag handle at a block needs it; phones keep plain editing. */

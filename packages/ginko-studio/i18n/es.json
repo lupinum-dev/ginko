@@ -638,16 +638,9 @@
     },
     "blocks": {
       "text": "Texto",
-      "h2": "Título",
-      "h3": "Subtítulo",
-      "h4": "Título pequeño",
       "bulletList": "Lista con viñetas",
       "orderedList": "Lista numerada",
-      "taskList": "Lista de tareas",
-      "blockquote": "Cita",
-      "horizontalRule": "Separador",
-      "table": "Tabla",
-      "codeBlock": "Bloque de código"
+      "textDescribe": "Un párrafo normal"
     },
     "source": {
       "show": "Mostrar código Markdown",
@@ -792,6 +785,32 @@
       "copy": "«{text}» es el mismo valor que el dato «{label}». Insertado como dato, el texto se mantiene al día cuando cambia el valor.",
       "copyReplace": "Insertar como dato",
       "copyKeep": "Ahora no"
+    },
+    "blockMenu": {
+      "search": "Buscar …",
+      "inCell": "Una celda de tabla solo admite texto e imágenes.",
+      "current": "(actual)"
+    },
+    "table": {
+      "label": "Tabla",
+      "row": "Fila",
+      "column": "Columna",
+      "addRowBefore": "Insertar fila arriba",
+      "addRowAfter": "Insertar fila abajo",
+      "moveRowUp": "Subir fila",
+      "moveRowDown": "Bajar fila",
+      "deleteRow": "Eliminar fila",
+      "addColumnBefore": "Insertar columna a la izquierda",
+      "addColumnAfter": "Insertar columna a la derecha",
+      "moveColumnLeft": "Mover columna a la izquierda",
+      "moveColumnRight": "Mover columna a la derecha",
+      "deleteColumn": "Eliminar columna",
+      "deleteTable": "Eliminar tabla",
+      "deleted": "Tabla eliminada.",
+      "align": "Alineación",
+      "align_left": "Izquierda",
+      "align_center": "Centro",
+      "align_right": "Derecha"
     }
   },
   "fields": {

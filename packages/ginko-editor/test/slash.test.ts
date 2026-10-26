@@ -5,7 +5,7 @@ import { f } from '@lupinum/ginko'
 import { defineComponents, type MarkdownProfile } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { describe, expect, test } from 'vitest'
-import { createGinkoEditor, filterSlashItems, slashItems, toggleTaskList } from '../src/core/index.ts'
+import { createGinkoEditor, filterSlashItems, runSlashItem, slashItems, slashItemsAt, toggleTaskList } from '../src/core/index.ts'
 
 const TEXT = ['heading2', 'heading3', 'heading4', 'bulletList', 'orderedList', 'taskList', 'blockquote', 'horizontalRule']
 const RICH = [...TEXT, 'table', 'codeBlock', 'image']
@@ -157,5 +157,36 @@ describe('checklist', () => {
     toggleTaskList(handle.editor)
     expect(await handle.markdown()).toBe('- a\n- b')
     handle.destroy()
+  })
+})
+
+describe('runSlashItem (the toolbar menu)', () => {
+  const run = async (text: string, at: (editor: Editor) => void, id: string) => {
+    const handle = await createGinkoEditor({ text, profile: 'page', components, element: document.createElement('div') })
+    if (handle.mode !== 'rich') throw new Error('expected rich')
+    at(handle.editor)
+    const picked: string[] = []
+    const item = slashItems({ profile: 'page', components, pickImage: (e) => { picked.push(e.state.selection.$from.parent.textContent) } }).find((i) => i.id === id)!
+    await runSlashItem(handle.editor, item)
+    return { markdown: await handle.markdown(), picked, handle }
+  }
+
+  // Wrong behaviour caught: an insert from the toolbar split the heading or paragraph at the cursor in two.
+  test('an insert in a block with text goes below it; a style changes the block itself', async () => {
+    const inserted = await run('## Preise und Dauer\n', (e) => e.commands.setTextSelection(5), 'horizontalRule')
+    expect(inserted.markdown).toBe('## Preise und Dauer\n\n---\n')
+    const styled = await run('Preise\n', (e) => e.commands.setTextSelection(3), 'heading2')
+    expect(styled.markdown).toBe('## Preise\n')
+  })
+
+  // Wrong behaviour caught: a picture chosen in a table cell went into a second paragraph of the cell, which no GFM row holds.
+  test('in a table cell the picture goes in the line', async () => {
+    const { picked, handle } = await run('| A | B |\n| - | - |\n| eins | 2 |\n', (e) => {
+      let pos = 0
+      e.state.doc.descendants((node, p) => { if (!pos && node.type.name === 'paragraph' && node.textContent === 'eins') pos = p + 3; return !pos })
+      e.commands.setTextSelection(pos)
+    }, 'image')
+    expect(picked).toEqual(['eins'])
+    expect(slashItemsAt(slashItems({ profile: 'page', components, pickImage: () => {} }), handle.editor.state).map((i) => i.id)).toEqual(['image'])
   })
 })

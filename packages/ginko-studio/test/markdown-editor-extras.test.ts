@@ -11,7 +11,9 @@ import { toast } from 'vue-sonner'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { computed, reactive } from 'vue'
 import { EDITOR_COMPONENTS, EDITOR_LINK_TARGETS } from '../app/components/editor/context.ts'
+import type { SlashState } from '../app/components/editor/extensions.ts'
 import MarkdownEditor from '../app/components/editor/MarkdownEditor.vue'
+import SlashMenu from '../app/components/editor/SlashMenu.vue'
 import { REFS } from '../app/components/fields/refs.ts'
 
 vi.mock('vue-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), dismiss: vi.fn() } }))
@@ -332,6 +334,31 @@ describe('the toolbar', () => {
     }
   })
 
+  // Wrong behaviour caught: in a narrow row the table tools came as a second row when the cursor entered a table, and
+  // the text below moved down by its height. They now stay in the row, as one "Tabelle" menu.
+  test('a narrow row takes the table tools as one menu, without a second row', async () => {
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private report: (entries: { contentRect: { width: number } }[]) => void) {}
+      observe() { this.report([{ contentRect: { width: 330 } }]) }
+      unobserve() {}
+      disconnect() {}
+    })
+    try {
+      const wrapper = await mounted({ text: '| A | B |\n| - | - |\n| 1 | 2 |\n' })
+      editorOf(wrapper).chain().focus().setTextSelection(4).run()
+      await flushPromises()
+      expect(wrapper.findAll('[role="toolbar"]')).toHaveLength(1)
+      expect(wrapper.findAll('[role="toolbar"] button').map((b) => b.attributes('aria-label'))).toContain('Tabelle')
+      await wrapper.get('button[aria-label="Tabelle"]').trigger('click')
+      await until(() => document.querySelectorAll('[role="menu"] [role^="menuitem"]').length > 0)
+      const items = [...document.querySelectorAll('[role="menu"] [role^="menuitem"]')].map((i) => i.textContent?.trim())
+      expect(items).toContain('Zeile darunter einfügen')
+      expect(items.at(-1)).toBe('Tabelle löschen')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   // Wrong behaviour caught: closing "Weitere Werkzeuge" without a choice (Escape) put the focus into the text, so a
   // keyboard user lost their place in the toolbar.
   test('"Weitere Werkzeuge" closed without a choice gives the focus back to its button; a chosen tool to the text', async () => {
@@ -360,5 +387,160 @@ describe('the toolbar', () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+})
+
+describe('block menu', () => {
+  async function openMenu(wrapper: Awaited<ReturnType<typeof mounted>>) {
+    // TipTap focuses the text a frame later; that focus would close the menu again.
+    await until(() => document.activeElement === wrapper.get('[role="textbox"]').element)
+    await wait(20)
+    await wrapper.get('[role="toolbar"] button[aria-label="Blocktyp"]').trigger('click')
+    await until(() => document.activeElement?.matches('input[aria-label="Suchen …"]') ?? false)
+    await flushPromises()
+    return document.activeElement as HTMLInputElement
+  }
+  const shown = () => [...document.querySelectorAll('[role="listbox"] [role="option"]')].map((o) => o.querySelector('span > span')!.textContent!.trim())
+  const headings = () => [...document.querySelectorAll('[role="listbox"] [role="group"]')].map((g) => document.getElementById(g.getAttribute('aria-labelledby')!)?.textContent?.trim())
+
+  // Wrong behaviour caught: components (Spalten, Callout, ...) were only in the "/" menu, which people did not find; the
+  // toolbar list had text styles only. Both lists now come from one source and must not drift apart.
+  test('it offers what the "/" menu offers, plus "Text", grouped, with the search field focused', async () => {
+    const wrapper = await mounted({ text: 'Eins\n' })
+    const editor = editorOf(wrapper)
+    editor.commands.focus('end')
+    editor.commands.insertContent({ type: 'paragraph', content: [{ type: 'text', text: '/' }] })
+    const { state } = wrapper.findComponent(SlashMenu).props() as { state: SlashState }
+    await until(() => state.open && state.items.length > 0)
+    const slash = state.items.map((i) => i.label)
+    editor.commands.keyboardShortcut('Escape')
+    const input = await openMenu(wrapper)
+    expect(document.activeElement).toBe(input)
+    expect(shown()).toEqual(['Text', ...slash])
+    expect(shown()).toContain('Spalten')
+    expect(headings()[0]).toBe('Text')
+    expect(headings().length).toBeGreaterThan(1)
+    // The current text style has the check mark.
+    expect(document.querySelector('[role="option"][id] .sr-only')?.textContent?.trim()).toBe('(aktuell)')
+  })
+
+  test('typing "spal" and Enter inserts Spalten below the current text', async () => {
+    const wrapper = await mounted({ text: 'Eins\n' })
+    editorOf(wrapper).commands.focus('end')
+    const input = await openMenu(wrapper)
+    input.value = 'spal'
+    input.dispatchEvent(new Event('input'))
+    await flushPromises()
+    expect(shown()[0]).toBe('Spalten')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await until(() => document.querySelector('[role="listbox"]') === null)
+    await wait(350)
+    const saved = String(wrapper.emitted('update:modelValue')!.at(-1)![0])
+    expect(saved.startsWith('Eins\n\n::layout')).toBe(true)
+  })
+
+  // Wrong behaviour caught: "Bild" from the menu made an empty line below the text for the picture, and it stayed when
+  // the picture dialog was closed without one.
+  test('a closed picture dialog leaves no empty line', async () => {
+    const wrapper = await mounted({ text: 'Eins\n' })
+    const editor = editorOf(wrapper)
+    editor.commands.focus('end')
+    const input = await openMenu(wrapper)
+    input.value = 'bild'
+    input.dispatchEvent(new Event('input'))
+    await flushPromises()
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await until(() => document.querySelector('[role="dialog"]') !== null)
+    expect(editor.state.doc.childCount).toBe(2)
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await until(() => document.querySelector('[role="dialog"]') === null)
+    expect(editor.state.doc.childCount).toBe(1)
+    expect(editor.state.selection.from).toBe(5)
+  })
+
+  // Wrong behaviour caught: TipTap focuses the text once more a frame after a focus command (on Android at once and
+  // again then). Landing after the menu had opened, that late focus closed it, and the next Escape asked to discard the
+  // task sheet instead of closing the menu.
+  test('a late focus of the text does not close the menu', async () => {
+    const wrapper = await mounted({ text: 'Eins\n' })
+    editorOf(wrapper).commands.focus('end')
+    const input = await openMenu(wrapper)
+    editorOf(wrapper).view.focus()
+    await wait(50)
+    await flushPromises()
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(document.activeElement).toBe(input)
+  })
+
+  test('arrow keys move the choice, Escape closes without a change', async () => {
+    const wrapper = await mounted({ text: 'Eins\n' })
+    editorOf(wrapper).commands.focus('end')
+    const input = await openMenu(wrapper)
+    const selected = () => document.querySelector('[role="option"][data-highlighted] span > span')!.textContent!.trim()
+    expect(selected()).toBe('Text')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    await flushPromises()
+    expect(selected()).toBe('Überschrift')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
+    await flushPromises()
+    expect(selected()).toBe(shown().at(-1))
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await until(() => document.querySelector('[role="listbox"]') === null)
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: a component or heading chosen in a table cell was written into the GFM row and broke the table.
+  test('in a table cell only the picture is offered, in both menus', async () => {
+    const wrapper = await mounted({ text: '| A | B |\n| - | - |\n|   | 2 |\n' })
+    const editor = editorOf(wrapper)
+    editor.chain().focus().setTextSelection(4).run()
+    await openMenu(wrapper)
+    expect(shown()).toEqual(['Bild'])
+    expect(document.querySelector('[role="listbox"]')!.textContent).toContain('In einer Tabellenzelle steht nur Text und Bild.')
+    document.querySelector<HTMLInputElement>('input[aria-label="Suchen …"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await until(() => document.querySelector('[role="listbox"]') === null)
+    // The empty body cell: "/" there offers the same.
+    let empty = 0
+    editor.state.doc.descendants((node, pos) => { if (!empty && node.type.name === 'tableCell' && !node.textContent) empty = pos + 2; return !empty })
+    editor.chain().focus().setTextSelection(empty).insertContent('/').run()
+    const { state } = wrapper.findComponent(SlashMenu).props() as { state: SlashState }
+    await until(() => state.open && state.items.length > 0)
+    expect(state.items.map((i) => i.label)).toEqual(['Bild'])
+    // Enter still chooses in the "/" menu there (a cell's own Enter does nothing).
+    editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    await until(() => !state.open)
+    expect(editor.state.doc.textContent).not.toContain('/')
+  })
+})
+
+describe('table tools', () => {
+  // Wrong behaviour caught: after Cmd+Z had brought the deleted table back, the message's "Rückgängig" still stood and
+  // brought it back a second time. The message offers the undo only until the text changes.
+  test('"Tabelle löschen" offers the table back until the text changes', async () => {
+    const text = 'Eins\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\nZwei\n'
+    const wrapper = await mounted({ text })
+    const editor = editorOf(wrapper)
+    const intoTable = async () => {
+      let inCell = 0
+      editor.state.doc.descendants((node, pos) => { if (!inCell && node.type.name === 'tableCell') inCell = pos + 2; return !inCell })
+      editor.chain().focus().setTextSelection(inCell).run()
+      await flushPromises()
+    }
+    const saved = async () => { await wait(350); return String(wrapper.emitted('update:modelValue')!.at(-1)![0]) }
+    await intoTable()
+    vi.mocked(toast.success).mockClear()
+    await wrapper.get('button[aria-label="Tabelle löschen"]').trigger('click')
+    const [message, options] = vi.mocked(toast.success).mock.calls[0]!
+    expect(message).toBe('Tabelle gelöscht.')
+    await (options as { action: { onClick: (e: Event) => Promise<void> } }).action.onClick(new MouseEvent('click'))
+    expect(await saved()).toBe(text)
+    // Cmd+Z instead: the message goes.
+    await intoTable()
+    await wrapper.get('button[aria-label="Tabelle löschen"]').trigger('click')
+    vi.mocked(toast.dismiss).mockClear()
+    editor.commands.undo()
+    expect(toast.dismiss).toHaveBeenCalled()
+    expect(await saved()).toBe(text)
   })
 })

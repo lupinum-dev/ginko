@@ -206,28 +206,40 @@ function convertTable(el: Element, ctx: Ctx, out: Node[]) {
     }
     return
   }
+  // Cells go on a grid: a merged cell (colspan, rowspan from Word or Docs) keeps its text in its first place, and the
+  // places it covered get empty cells. GFM has no merged cells; without the grid every later cell moved one column left.
+  const grid: Array<Array<Node[] | null>> = rows.map(() => [])
+  rows.forEach((tr, r) => {
+    let c = 0
+    for (const cell of Array.from(tr.children)) {
+      if (!/^(td|th)$/.test(lowerTag(cell))) continue
+      while (grid[r]![c] !== undefined) c++
+      const span = (name: string, max: number) => Math.min(max, Math.max(1, Number.parseInt(cell.getAttribute(name) ?? '', 10) || 1))
+      const cols = span('colspan', 100)
+      const down = span('rowspan', rows.length - r)
+      const inline = inlineChildren(cell, ctx)
+      trim(inline)
+      for (let y = r; y < r + down; y++) for (let x = c; x < c + cols; x++) grid[y]![x] = null
+      grid[r]![c] = inline
+      c += cols
+    }
+  })
+  const width = Math.max(0, ...grid.map((row) => row.length))
   const table = ctx.doc.createElement('table')
   const body = ctx.doc.createElement('tbody')
   table.appendChild(body)
-  let width = 0
-  rows.forEach((tr, rowIndex) => {
+  for (const places of grid) {
+    if (!places.length) continue
     const row = ctx.doc.createElement('tr')
-    for (const cell of Array.from(tr.children)) {
-      if (!/^(td|th)$/.test(lowerTag(cell))) continue
-      const made = ctx.doc.createElement(rowIndex === 0 ? 'th' : 'td')
-      const inline = inlineChildren(cell, ctx)
-      trim(inline)
+    for (let c = 0; c < width; c++) {
+      const made = ctx.doc.createElement(body.childNodes.length === 0 ? 'th' : 'td')
       // A cell holds one paragraph; the text of a cell with several paragraphs is joined by line breaks.
       const p = ctx.doc.createElement('p')
-      for (const n of inline) p.appendChild(n)
+      for (const n of places[c] ?? []) p.appendChild(n)
       made.appendChild(p)
       row.appendChild(made)
     }
-    if (row.childNodes.length) { width = Math.max(width, row.childNodes.length); body.appendChild(row) }
-  })
-  // A table whose rows have different widths is padded, so every row has the same number of cells.
-  for (const row of Array.from(body.children)) {
-    while (row.children.length < width) { const td = ctx.doc.createElement(row === body.firstElementChild ? 'th' : 'td'); td.appendChild(ctx.doc.createElement('p')); row.appendChild(td) }
+    body.appendChild(row)
   }
   if (body.childNodes.length) out.push(table)
 }

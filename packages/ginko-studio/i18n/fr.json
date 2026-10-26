@@ -638,16 +638,9 @@
     },
     "blocks": {
       "text": "Texte",
-      "h2": "Titre",
-      "h3": "Sous-titre",
-      "h4": "Petit titre",
       "bulletList": "Liste à puces",
       "orderedList": "Liste numérotée",
-      "taskList": "Liste de tâches",
-      "blockquote": "Citation",
-      "horizontalRule": "Séparateur",
-      "table": "Tableau",
-      "codeBlock": "Bloc de code"
+      "textDescribe": "Un paragraphe normal"
     },
     "source": {
       "show": "Afficher la source Markdown",
@@ -792,6 +785,32 @@
       "copy": "« {text} » est la même valeur que la donnée « {label} ». Insérée comme donnée, elle reste à jour quand la valeur change.",
       "copyReplace": "Insérer comme donnée",
       "copyKeep": "Pas maintenant"
+    },
+    "blockMenu": {
+      "search": "Rechercher …",
+      "inCell": "Une cellule de tableau ne contient que du texte et des images.",
+      "current": "(actuel)"
+    },
+    "table": {
+      "label": "Tableau",
+      "row": "Ligne",
+      "column": "Colonne",
+      "addRowBefore": "Insérer une ligne au-dessus",
+      "addRowAfter": "Insérer une ligne en dessous",
+      "moveRowUp": "Monter la ligne",
+      "moveRowDown": "Descendre la ligne",
+      "deleteRow": "Supprimer la ligne",
+      "addColumnBefore": "Insérer une colonne à gauche",
+      "addColumnAfter": "Insérer une colonne à droite",
+      "moveColumnLeft": "Déplacer la colonne à gauche",
+      "moveColumnRight": "Déplacer la colonne à droite",
+      "deleteColumn": "Supprimer la colonne",
+      "deleteTable": "Supprimer le tableau",
+      "deleted": "Tableau supprimé.",
+      "align": "Alignement",
+      "align_left": "Gauche",
+      "align_center": "Centre",
+      "align_right": "Droite"
     }
   },
   "fields": {

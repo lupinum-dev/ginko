@@ -182,7 +182,8 @@ export function toEditorDoc(nodes: readonly Json[], options: ToDocOptions = {}):
         const r = row as Tuple
         return withContent('tableRow', { props: propsOf(r) }, childrenOf(r).map((cell) => {
           const c = cell as Tuple
-          return withContent(c[0] === 'th' ? 'tableHeader' : 'tableCell', { props: propsOf(c) }, blocks(childrenOf(c)))
+          const content = blocks(childrenOf(c))
+          return withContent(c[0] === 'th' ? 'tableHeader' : 'tableCell', { props: propsOf(c) }, content.length ? content : [{ type: 'paragraph', attrs: { props: {}, bare: true } }])
         }))
       }))
     }
@@ -283,8 +284,9 @@ export function fromEditorDoc(doc: GinkoDocNode): Json[] {
           ...(bodyRows.length ? [['tbody', { ...(a.tbodyProps as Props) }, ...bodyRows.map(block)]] : [])] as Json[]
       }
       case 'tableRow': return ['tr', props, ...(n.content ?? []).map(block)]
-      case 'tableHeader': return ['th', props, ...blocks(n.content, true)]
-      case 'tableCell': return ['td', props, ...blocks(n.content, true)]
+      // An empty paragraph is the room to type in an empty cell (see toEditorDoc), not text.
+      case 'tableHeader': return ['th', props, ...blocks(n.content?.filter((c) => c.type !== 'paragraph' || c.content?.length), true)]
+      case 'tableCell': return ['td', props, ...blocks(n.content?.filter((c) => c.type !== 'paragraph' || c.content?.length), true)]
       case 'component': return [a.tag, props, ...blocks(n.content, true)]
       case 'slot': return ['template', { ...props, name: a.name }, ...blocks(n.content, true)]
       case 'raw': return a.node as Json

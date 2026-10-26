@@ -75,10 +75,15 @@ provideCommandContext({
   allGroups,
   filterState,
 })
+
+// A list filtered from outside (a plain ListboxFilter with its own query) re-highlights its first item after it renders.
+const root = ref<{ highlightFirstItem: () => void }>()
+defineExpose({ highlightFirstItem: () => root.value?.highlightFirstItem() })
 </script>
 
 <template>
   <ListboxRoot
+    ref="root"
     data-slot="command"
     v-bind="forwarded"
     :class="cn('bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-md', props.class)"

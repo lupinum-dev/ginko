@@ -156,14 +156,13 @@ describe('MarkdownEditor', () => {
   test('after a block type from the list, the focus is back in the text', async () => {
     const wrapper = await mounted('Eins\n')
     editorOf(wrapper).commands.focus('end')
-    const trigger = wrapper.get('[role="combobox"][aria-label="Blocktyp"]').element
-    trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }))
+    await wrapper.get('button[aria-label="Blocktyp"]').trigger('click')
     for (let i = 0; i < 50 && !document.querySelector('[role="option"]'); i++) { await wait(20); await flushPromises() }
-    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.textContent?.trim() === 'Unterüberschrift')!
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.querySelector('span > span')?.textContent?.trim() === 'Unterüberschrift')!
     const frame = window.requestAnimationFrame
     window.requestAnimationFrame = (callback) => { callback(performance.now()); return 0 }
     try {
-      option.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerType: 'mouse' }))
+      option.click()
       for (let i = 0; i < 50 && document.querySelector('[role="option"]'); i++) { await wait(20); await flushPromises() }
     } finally { window.requestAnimationFrame = frame }
     await wait(50)

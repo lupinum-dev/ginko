@@ -13,6 +13,7 @@ import { Button } from '@studio/components/ui/button'
 import { Command } from '@studio/components/ui/command'
 import { Label } from '@studio/components/ui/label'
 import { Popover, PopoverAnchor, PopoverContent } from '@studio/components/ui/popover'
+import { keepOpenOnTextFocus } from './context.ts'
 import LinkTargetList, { type LinkTarget } from './LinkTargetList.vue'
 
 const props = defineProps<{ editor: Editor }>()
@@ -83,12 +84,13 @@ function remove() {
 
 // The popover closes while the page goes away too; by then the editor is gone.
 const refocus = () => { if (!props.editor.isDestroyed) props.editor.commands.focus() }
+const keepOpen = keepOpenOnTextFocus(() => props.editor, () => open.value)
 </script>
 
 <template>
   <Popover v-model:open="open">
     <PopoverAnchor as-child><span class="inline-flex"><slot /></span></PopoverAnchor>
-    <PopoverContent align="start" class="w-80" @close-auto-focus.prevent="refocus">
+    <PopoverContent align="start" class="w-80" @close-auto-focus.prevent="refocus" @focus-outside="keepOpen">
       <form class="grid gap-3" @submit.prevent="apply">
         <div class="grid gap-2">
           <Label :for="inputId">{{ t('editor.link.label') }}</Label>

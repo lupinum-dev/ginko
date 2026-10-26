@@ -4,10 +4,12 @@ import type { Label } from '@lupinum/ginko'
 import type { ComponentRegistry, MarkdownProfile } from '@lupinum/ginko/internal'
 import { labelOf, parseMarkdown, profileCovers, URL_PROPS } from '@lupinum/ginko/internal'
 import type { Editor, Range } from '@tiptap/core'
-import { TextSelection } from '@tiptap/pm/state'
+import type { Node as PmNode } from '@tiptap/pm/model'
+import { NodeSelection, TextSelection, type EditorState, type SelectionBookmark } from '@tiptap/pm/state'
 import { editorMeta, missingRequired, type ComponentProps, type PropField } from './component-props.ts'
 import { toEditorDoc, type GinkoDocNode } from './convert.ts'
 import { toggleTaskList } from './extensions.ts'
+import { inTableCell } from './table.ts'
 
 export interface SlashItem {
   /** Stable key: `heading2`, `bulletList`, ... and `component:<tag>`. */
@@ -19,6 +21,11 @@ export interface SlashItem {
   group: string
   /** More words the filter finds this item by. */
   keywords: string[]
+  /**
+   * `style` turns the block at the cursor into this one (a heading, a list); `insert` adds something new (a component, a
+   * table). From the toolbar an insert goes below a block that has text, like "/" on a new line would.
+   */
+  kind: 'style' | 'insert'
   /** Changes the document at the cursor. The caller has already removed the typed `/query`. */
   run(editor: Editor): void | Promise<void>
 }
@@ -59,7 +66,9 @@ const heading = (level: 2 | 3 | 4): SlashItem => ({
   group: SLASH_TEXT_GROUP,
   // "Zwischenüberschrift" is the usual word for a section heading, so search finds level 2 with it.
   keywords: ['titel', 'heading', `h${level}`, ...(level === 2 ? ['zwischenüberschrift'] : [])],
-  run: (editor) => { editor.chain().focus().setHeading({ level }).run() },
+  kind: 'style',
+  // Toggles, so the toolbar's checked entry turns the block back into text; in an empty paragraph (the "/" menu) it is the same as set.
+  run: (editor) => { editor.chain().focus().toggleHeading({ level }).run() },
 })
 
 /** The entries for what `profile` allows, in menu order. The inline profile (one paragraph) has none. */
@@ -71,18 +80,18 @@ export function slashItems(options: SlashItemsOptions): SlashItem[] {
   if (covers('basic')) {
     items.push(
       heading(2), heading(3), heading(4),
-      { id: 'bulletList', label: 'Aufzählung', describe: 'Liste mit Punkten', group: SLASH_TEXT_GROUP, keywords: ['liste', 'punkte', 'bullet'], run: (e) => { e.chain().focus().toggleBulletList().run() } },
-      { id: 'orderedList', label: 'Nummerierte Liste', describe: 'Liste mit Zahlen', group: SLASH_TEXT_GROUP, keywords: ['liste', 'zahlen', 'schritte'], run: (e) => { e.chain().focus().toggleOrderedList().run() } },
-      { id: 'taskList', label: 'Checkliste', describe: 'Liste mit Kästchen zum Abhaken', group: SLASH_TEXT_GROUP, keywords: ['aufgaben', 'todo', 'checkbox', 'kästchen'], run: (e) => { toggleTaskList(e) } },
-      { id: 'blockquote', label: 'Zitat', describe: 'Eingerückter Text, zum Beispiel eine Stimme', group: SLASH_TEXT_GROUP, keywords: ['quote', 'zitieren'], run: (e) => { e.chain().focus().setBlockquote().run() } },
-      { id: 'horizontalRule', label: 'Trennlinie', describe: 'Eine Linie zwischen zwei Abschnitten', group: SLASH_TEXT_GROUP, keywords: ['linie', 'strich', 'trenner'], run: (e) => { e.chain().focus().setHorizontalRule().run() } },
+      { id: 'bulletList', label: 'Aufzählung', describe: 'Liste mit Punkten', group: SLASH_TEXT_GROUP, keywords: ['liste', 'punkte', 'bullet'], kind: 'style', run: (e) => { e.chain().focus().toggleBulletList().run() } },
+      { id: 'orderedList', label: 'Nummerierte Liste', describe: 'Liste mit Zahlen', group: SLASH_TEXT_GROUP, keywords: ['liste', 'zahlen', 'schritte'], kind: 'style', run: (e) => { e.chain().focus().toggleOrderedList().run() } },
+      { id: 'taskList', label: 'Checkliste', describe: 'Liste mit Kästchen zum Abhaken', group: SLASH_TEXT_GROUP, keywords: ['aufgaben', 'todo', 'checkbox', 'kästchen'], kind: 'style', run: (e) => { toggleTaskList(e) } },
+      { id: 'blockquote', label: 'Zitat', describe: 'Eingerückter Text, zum Beispiel eine Stimme', group: SLASH_TEXT_GROUP, keywords: ['quote', 'zitieren'], kind: 'style', run: (e) => { e.chain().focus().toggleBlockquote().run() } },
+      { id: 'horizontalRule', label: 'Trennlinie', describe: 'Eine Linie zwischen zwei Abschnitten', group: SLASH_TEXT_GROUP, keywords: ['linie', 'strich', 'trenner'], kind: 'insert', run: (e) => { e.chain().focus().setHorizontalRule().run() } },
     )
   }
   if (covers('rich')) {
     items.push(
-      { id: 'table', label: 'Tabelle', describe: 'Zeilen und Spalten', group: SLASH_TEXT_GROUP, keywords: ['raster', 'zeilen', 'spalten'], run: (e) => { e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() } },
-      { id: 'codeBlock', label: 'Codeblock', describe: 'Text in fester Schrift, für Code', group: SLASH_TEXT_GROUP, keywords: ['code', 'quelltext'], run: (e) => { e.chain().focus().setCodeBlock().run() } },
-      { id: 'image', label: 'Bild', describe: 'Ein Bild mit Beschreibung einfügen', group: SLASH_TEXT_GROUP, keywords: ['foto', 'grafik', 'bild'], run: (e) => { pickImage?.(e) } },
+      { id: 'table', label: 'Tabelle', describe: 'Zeilen und Spalten', group: SLASH_TEXT_GROUP, keywords: ['raster', 'zeilen', 'spalten'], kind: 'insert', run: (e) => { e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() } },
+      { id: 'codeBlock', label: 'Codeblock', describe: 'Text in fester Schrift, für Code', group: SLASH_TEXT_GROUP, keywords: ['code', 'quelltext'], kind: 'style', run: (e) => { e.chain().focus().toggleCodeBlock().run() } },
+      { id: 'image', label: 'Bild', describe: 'Ein Bild mit Beschreibung einfügen', group: SLASH_TEXT_GROUP, keywords: ['foto', 'grafik', 'bild'], kind: 'insert', run: (e) => { pickImage?.(e) } },
     )
   }
   if (covers('page') && components) {
@@ -96,6 +105,7 @@ export function slashItems(options: SlashItemsOptions): SlashItem[] {
         describe: text(def.describe),
         group: def.editor?.group === undefined ? SLASH_COMPONENT_GROUP : text(def.editor.group),
         keywords: [tag, ...(editorMeta(def).keywords ?? [])],
+        kind: 'insert',
         async run(editor) {
           const { from, to } = editor.state.selection
           await insertComponent(editor, { tag, profile, components, at: { from, to }, onNeedsProps })
@@ -111,6 +121,53 @@ export function slashItems(options: SlashItemsOptions): SlashItem[] {
     keys.forEach((key) => seen.add(key))
     return true
   })
+}
+
+/**
+ * The items that can go at the cursor, for the "/" menu and the toolbar alike. A GFM table cell holds one line of
+ * inline text, so there only the picture is offered: a heading, list or component there would not survive the save.
+ */
+export function slashItemsAt(items: readonly SlashItem[], state: EditorState): SlashItem[] {
+  return inTableCell(state) ? items.filter((item) => item.id === 'image') : [...items]
+}
+
+/**
+ * Runs `item` from a menu that does not sit in an empty line (the toolbar). An insert in a block with text goes into a
+ * new empty paragraph below that block, so the text stays whole; everything else runs where the cursor is.
+ */
+export function runSlashItem(editor: Editor, item: SlashItem): void | Promise<void> {
+  const { selection } = editor.state
+  const parent = selection.$from.parent
+  // A selected block (a component) stays too: the new one goes below it. In a table cell the picture goes in the line
+  // (a cell holds one line).
+  const below = inTableCell(editor.state) ? undefined
+    : selection instanceof NodeSelection ? selection.to
+    : parent.isTextblock && (parent.type.name !== 'paragraph' || parent.content.size > 0) ? selection.$from.after() : undefined
+  if (item.kind === 'insert' && below !== undefined) {
+    const back = selection.getBookmark()
+    editor.chain().insertContentAt(below, { type: 'paragraph' }).setTextSelection(below + 1).run()
+    blanks.set(editor, { doc: editor.state.doc, pos: below, back })
+  }
+  const done = item.run(editor)
+  // The picture opens a dialog: MarkdownEditor drops the blank line when it closes without a picture.
+  if (item.id === 'image') return done
+  if (done instanceof Promise) return done.then(() => dropSlashBlank(editor))
+  dropSlashBlank(editor)
+}
+
+// The empty paragraph `runSlashItem` made for an insert, kept with the text it was made in.
+const blanks = new WeakMap<Editor, { doc: PmNode; pos: number; back: SelectionBookmark }>()
+
+/**
+ * Takes back the empty paragraph `runSlashItem` added for an insert, when the insert did not happen (a component without
+ * an example, a closed picture dialog): the text is still the one it was made in. The cursor goes back where it was.
+ */
+export function dropSlashBlank(editor: Editor): void {
+  const blank = blanks.get(editor)
+  blanks.delete(editor)
+  if (!blank || editor.isDestroyed || editor.state.doc !== blank.doc) return
+  const tr = editor.state.tr.delete(blank.pos, blank.pos + 2)
+  editor.view.dispatch(tr.setSelection(blank.back.resolve(tr.doc)))
 }
 
 export interface InsertComponentOptions {
@@ -239,10 +296,14 @@ function fold(text: string): string {
   return text.toLowerCase().replace(/ß/g, 'ss').normalize('NFD').replace(/\p{M}/gu, '').replace(/(a|o|u)e/g, '$1')
 }
 
-/** The items whose label, keywords or description contain every word of `query`. Label matches come first. */
+/**
+ * The items whose label, keywords or description contain every word of `query`, in the order the menus show them: by
+ * group, the group of the best match first, label matches first inside a group. So the first item is the best match,
+ * and the arrow keys walk the list as it is drawn.
+ */
 export function filterSlashItems(items: readonly SlashItem[], query: string): SlashItem[] {
   const words = fold(query).split(/\s+/).filter(Boolean)
-  if (!words.length) return [...items]
+  if (!words.length) return byGroup(items)
   const scored: Array<{ item: SlashItem; rank: number; index: number }> = []
   items.forEach((item, index) => {
     const label = fold(item.label)
@@ -250,5 +311,11 @@ export function filterSlashItems(items: readonly SlashItem[], query: string): Sl
     if (!words.every((w) => label.includes(w) || rest.includes(w))) return
     scored.push({ item, rank: words.every((w) => label.startsWith(w) || label.includes(` ${w}`)) ? 0 : words.every((w) => label.includes(w)) ? 1 : 2, index })
   })
-  return scored.sort((a, b) => a.rank - b.rank || a.index - b.index).map((s) => s.item)
+  return byGroup(scored.sort((a, b) => a.rank - b.rank || a.index - b.index).map((s) => s.item))
+}
+
+/** `items` with each group together, groups in the order they first appear. */
+function byGroup(items: readonly SlashItem[]): SlashItem[] {
+  const groups = [...new Set(items.map((item) => item.group))]
+  return groups.flatMap((group) => items.filter((item) => item.group === group))
 }

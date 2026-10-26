@@ -1,7 +1,7 @@
 // What the Studio adds to the headless extensions: the node view of components, Mod+K, and the slash menu.
 // Nothing here changes the schema (see `extend` in createGinkoEditor).
 import { factCopies, type ComponentRegistry, type FactCopy, type Msg } from '@lupinum/ginko/internal'
-import { docProblems, filterSlashItems, type DocProblem, type SlashItem } from '@lupinum/ginko-editor'
+import { docProblems, filterSlashItems, slashItemsAt, type DocProblem, type SlashItem } from '@lupinum/ginko-editor'
 import { Extension, type AnyExtension, type Editor, type Node as TiptapNode } from '@tiptap/core'
 import { NodeSelection, Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
@@ -85,6 +85,8 @@ export function studioExtensions({ slashItems, slash, openLink, bus, problems, f
     if (slashItems().length) {
       extensions.push(Extension.create({
         name: 'ginkoSlash',
+        // While open, the menu takes Enter and the arrows before every key rule of the text (a table cell's Enter too).
+        priority: 1100,
         addProseMirrorPlugins() {
           return [Suggestion<SlashItem, SlashItem>({
             editor: this.editor,
@@ -93,7 +95,7 @@ export function studioExtensions({ slashItems, slash, openLink, bus, problems, f
             startOfLine: true,
             // Only in running text, not in a code block.
             allow: ({ state, range }) => state.doc.resolve(range.from).parent.type.name === 'paragraph',
-            items: ({ query }) => filterSlashItems(slashItems(), query),
+            items: ({ query, editor }) => filterSlashItems(slashItemsAt(slashItems(), editor.state), query),
             command: ({ editor, range, props }) => {
               editor.chain().focus().deleteRange(range).run()
               void props.run(editor)
