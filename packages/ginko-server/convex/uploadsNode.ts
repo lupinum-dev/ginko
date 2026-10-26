@@ -49,17 +49,27 @@ export const run = internalAction({
     // three small files gain little from running in parallel.
     const variants: { width: number; storageId: typeof processedId }[] = []
     for (const variant of result.variants) variants.push({ width: variant.width, storageId: await ctx.storage.store(new Blob([variant.bytes], { type: 'image/webp' })) })
-    const applied = await ctx.runMutation(internal.uploads.markReady, {
-      upload,
-      processedId,
-      size: result.bytes.byteLength,
-      width: result.width,
-      height: result.height,
-      variants,
-      sha256,
-    })
+    const copies = [processedId, ...variants.map((x) => x.storageId)]
+    let applied: boolean
+    try {
+      applied = await ctx.runMutation(internal.uploads.markReady, {
+        upload,
+        processedId,
+        size: result.bytes.byteLength,
+        width: result.width,
+        height: result.height,
+        variants,
+        sha256,
+      })
+    } catch {
+      // markReady raises the site's contentRev, so many uploads of one site finishing at once (an import) can keep
+      // losing that write until Convex gives up. Uncaught, the row would stay `processing` until the sweep purges it.
+      await Promise.all(copies.map((id) => ctx.storage.delete(id)))
+      await ctx.runMutation(internal.uploads.markFailed, { upload, key: 'errors.uploadRetrying', permanent: false })
+      return null
+    }
     // Another run finished first (or the row is gone): the new copies would be unreferenced.
-    if (!applied) await Promise.all([processedId, ...variants.map((x) => x.storageId)].map((id) => ctx.storage.delete(id)))
+    if (!applied) await Promise.all(copies.map((id) => ctx.storage.delete(id)))
     return null
   },
 })
