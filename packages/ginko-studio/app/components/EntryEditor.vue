@@ -527,14 +527,25 @@ async function doUnpublish() {
   publishBusy.value = true
   publishError.value = ''
   try {
-    if (pending.value?.publishAt !== undefined) {
-      // A planned publish of unpublished changes: only the time goes, the entry stays online.
-      await ops.clearChangesSchedule(props.entry._id, props.entry.lifeRev, publishTask.value)
-      publishing.value = false
-      return
-    }
+    // The server takes one step back per call: a planned time of unpublished changes goes first, then the entry.
+    if (pending.value?.publishAt !== undefined) await ops.clearChangesSchedule(props.entry._id, props.entry.lifeRev, publishTask.value)
     await ops.unpublishEntry(props.entry._id, props.entry.lifeRev, { task: publishTask.value, timeZone: timeZone.value, wasLive: state.value === 'live', at: props.entry.publishAt, main: main.value })
     askUnpublish.value = false
+    publishing.value = false
+  } catch (error) {
+    publishError.value = opErrorOf(error).message
+  } finally {
+    publishBusy.value = false
+  }
+}
+
+/** "Zeitplan aufheben" in the publish panel: a scheduled draft stays a draft, planned changes stay saved and the entry online. */
+async function doClearSchedule() {
+  if (!pending.value?.publishAt || !props.entry) return doUnpublish()
+  publishBusy.value = true
+  publishError.value = ''
+  try {
+    await ops.clearChangesSchedule(props.entry._id, props.entry.lifeRev, publishTask.value)
     publishing.value = false
   } catch (error) {
     publishError.value = opErrorOf(error).message
@@ -706,7 +717,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           <EntryPublishPanel
             v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
             :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
-            @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
+            @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
           />
           <div v-if="askUnpublish" class="grid gap-2.5 rounded-lg border bg-sidebar p-3.5">
             <p>{{ t('entry.unpublish.warning', { title }) }}</p>
@@ -791,7 +802,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
             <EntryPublishPanel
               v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
               :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
-              @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
+              @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
             />
           </template>
         </div>
@@ -820,7 +831,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           <EntryPublishPanel
             v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
             :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
-            @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
+            @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
           />
           <div v-else-if="!removed" class="flex flex-wrap gap-2">
             <Button v-if="publishable" type="button" variant="outline" size="sm" :disabled="busy" @click="openPublish">{{ scheduledAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
