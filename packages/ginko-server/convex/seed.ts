@@ -269,11 +269,14 @@ export const importExport = internalMutation({
     const uploads = new Map<string, Id<'uploads'>>()
     // A backup carries no smaller copies (variants): restored images get them made afterwards.
     let withoutVariants = false
+    // Originals that go (or already went) through the upload pipeline: the CLI waits for these (importUploads).
+    const originals: Id<'uploads'>[] = []
     for (const file of args.files) {
       // A repeated batch names the same stored file: it is stored once.
       const have = await ctx.db.query('uploads').withIndex('by_storage', (q) => q.eq('storageId', file.storageId)).first()
       if (have) {
         uploads.set(file.id, have._id)
+        if (file.original) originals.push(have._id)
         continue
       }
       const sha256 = file.sha256
@@ -295,6 +298,7 @@ export const importExport = internalMutation({
       const same = candidates.find((row) => file.original || libraryOf(row) === libraryOf(library))
       if (same) {
         uploads.set(file.id, same._id)
+        if (file.original) originals.push(same._id)
         await deleteStorage(ctx, file.storageId)
         continue
       }
@@ -304,6 +308,7 @@ export const importExport = internalMutation({
         const id = await ctx.db.insert('uploads', { site: site._id, uploader: 'import', storageId: file.storageId, name: cleanName(file.name), size: file.size, mime: file.mime, status: 'processing', attempts: 0, ...library })
         await ctx.scheduler.runAfter(0, internal.uploadsNode.run, { upload: id })
         uploads.set(file.id, id)
+        originals.push(id)
         continue
       }
       uploads.set(file.id, await ctx.db.insert('uploads', {
@@ -421,7 +426,7 @@ export const importExport = internalMutation({
     await ctx.db.patch(site._id, {
       bytes: site.bytes + bytes, trashBytes: trashAfter, treeBytes: (site.treeBytes ?? 0) + treeBytes, entryCount: site.entryCount + live,
     })
-    return { entries: args.entries.length, files: args.files.length, ids, warnings, ...(firstWarning ? { firstWarning } : {}) }
+    return { entries: args.entries.length, files: args.files.length, ids, uploads: originals, warnings, ...(firstWarning ? { firstWarning } : {}) }
   },
 })
 
@@ -447,7 +452,7 @@ export const importBatch = internalAction({
 })
 
 /** What one import batch answers (importExport, importBatch). */
-type ImportAnswer = { entries: number; files: number; ids: [string, string][]; warnings: number; firstWarning?: ImportWarning }
+type ImportAnswer = { entries: number; files: number; ids: [string, string][]; uploads: Id<'uploads'>[]; warnings: number; firstWarning?: ImportWarning }
 
 /** For `importBatch`, an action without database access. */
 export const isImportAllowed = internalQuery({
@@ -584,6 +589,28 @@ export const importDone = internalMutation({
     }
     await ctx.db.patch(site._id, { importOpen: undefined, ...(site.importOpen ? { contentRev: site.contentRev + 1 } : {}) })
     return { site: args.site, open: false }
+  },
+})
+
+/**
+ * How far the processing of imported originals is (the IDs importExport answered): counts per status and the name and
+ * reason (in English, for the CLI) of each failed file. Ids of another site are ignored. Internal like the rest of the import, so the CLI polls it
+ * with the same access (`convex run`).
+ */
+export const importUploads = internalQuery({
+  args: { site: v.string(), ids: v.array(v.id('uploads')) },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
+    const count = { processing: 0, ready: 0, failed: 0 }
+    const failedFiles: { name: string; error: string }[] = []
+    if (!site) return { ...count, failedFiles }
+    for (const id of args.ids) {
+      const row = await ctx.db.get(id)
+      if (!row || row.site !== site._id) continue
+      count[row.status]++
+      if (row.status === 'failed') failedFiles.push({ name: row.name, error: t('en', (row.error ?? 'errors.uploadFailed') as MessageKey) })
+    }
+    return { ...count, failedFiles }
   },
 })
 

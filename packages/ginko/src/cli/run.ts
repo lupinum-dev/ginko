@@ -81,6 +81,8 @@ export interface Args {
   config?: string
   /** `--site`: a site's slug on the platform; only commands with `site: true` accept it. */
   site?: string
+  /** `--wait-timeout <seconds>`: longest wait for processed images; only commands with `waitTimeout: true` accept it. */
+  waitTimeout?: number
   /** The one positional argument after the command: the folder of `export` and `import`. */
   folder?: string
   /** Boolean options such as `--offline`; each command says which it accepts. */
@@ -100,6 +102,11 @@ function parseArgs(argv: string[]): Args {
       const value = arg === '--site' ? argv[++i] : arg.slice('--site='.length)
       if (!value) throw new CliError('--site needs a site slug.', 'USAGE')
       args.site = value
+    } else if (arg === '--wait-timeout' || arg.startsWith('--wait-timeout=')) {
+      const value = arg === '--wait-timeout' ? argv[++i] : arg.slice('--wait-timeout='.length)
+      const seconds = Number(value)
+      if (!value || !Number.isFinite(seconds) || seconds < 0) throw new CliError('--wait-timeout needs a number of seconds.', 'USAGE')
+      args.waitTimeout = seconds
     } else if (arg.startsWith('-')) args.flags.add(arg)
     else if (args.command === undefined) args.command = arg
     else if (args.folder === undefined) args.folder = arg
@@ -115,6 +122,8 @@ export interface Command {
   flags?: readonly string[]
   /** Whether the command takes `--site <slug>`. */
   site?: boolean
+  /** Whether the command takes `--wait-timeout <seconds>`. */
+  waitTimeout?: boolean
   run: (args: Args) => Promise<Record<string, unknown>>
 }
 
@@ -147,6 +156,7 @@ export async function runCli(argv: string[], deps: CliDeps, cli: Cli): Promise<E
     const flag = [...args.flags].find((f) => f !== '--json' && !command.flags?.includes(f))
     if (flag) throw new CliError(`Unknown option “${flag}” for ${name}.`, 'USAGE')
     if (args.site !== undefined && !command.site) throw new CliError(`Unknown option “--site” for ${name}.`, 'USAGE')
+    if (args.waitTimeout !== undefined && !command.waitTimeout) throw new CliError(`Unknown option “--wait-timeout” for ${name}.`, 'USAGE')
     if (args.folder !== undefined && !command.folder) throw new CliError(`Unexpected argument “${args.folder}” for ${name}.`, 'USAGE')
     if (args.folder === undefined && command.folder === 'required') throw new CliError(`${name} needs a folder: ${name} <folder>.`, 'USAGE')
     return command.run(args)
