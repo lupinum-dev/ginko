@@ -1138,6 +1138,7 @@
       "unused": "Nicht verwendet",
       "missingAlt": "Bildbeschreibung fehlt",
       "duplicates": "Doppelte",
+      "problems": "Fehlgeschlagene Uploads",
       "trash": "Papierkorb"
     },
     "folders": "Ordner",
@@ -1198,9 +1199,11 @@
       "missingAlt": "Jedes Foto hat eine Beschreibung.",
       "unused": "Jede Datei wird verwendet.",
       "duplicates": "Keine Doppelten.",
+      "problems": "Keine fehlgeschlagenen Uploads.",
       "trash": "Der Papierkorb ist leer. Entfernte Dateien bleiben hier 30 Tage.",
       "none": "Keine Dateien gefunden."
     },
+    "retryQueued": "Die Datei wird noch einmal verarbeitet.",
     "loadMoreFailed": "Weitere Dateien ließen sich nicht laden.",
     "uploadTooSlow": "Das Hochladen dauert zu lange. Versuche es noch einmal.",
     "uploadFailedFile": "„{name}“: {message}",

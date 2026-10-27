@@ -117,7 +117,7 @@ async function view(ctx: QueryCtx, row: Doc<'uploads'>) {
   return {
     id: row._id, name: row.name, mime: row.mime, kind: kindOfUpload(row), size: row.size, width: row.width ?? null, height: row.height ?? null,
     url, folder: row.folder ?? null, kept: row.kept === true, focus: row.focus ?? null, sha256: row.sha256 ?? null,
-    trashedAt: row.trashedAt ?? null, createdAt: row._creationTime, used: usage.usedCount > 0, usedCount: usage.usedCount, missingAlt: usage.missingAlt,
+    status: row.status, error: row.error ?? null, trashedAt: row.trashedAt ?? null, createdAt: row._creationTime, used: usage.usedCount > 0, usedCount: usage.usedCount, missingAlt: usage.missingAlt,
   }
 }
 
@@ -159,7 +159,7 @@ const fold = (text: string) => text.normalize('NFKD').replace(/\p{M}/gu, '').toL
 export const list = query({
   args: {
     site: v.string(),
-    view: v.union(v.literal('all'), v.literal('recent'), v.literal('unused'), v.literal('missingAlt'), v.literal('duplicates'), v.literal('trash')),
+    view: v.union(v.literal('all'), v.literal('recent'), v.literal('unused'), v.literal('missingAlt'), v.literal('duplicates'), v.literal('problems'), v.literal('trash')),
     folder: v.optional(v.union(v.string(), v.null())),
     search: v.optional(v.string()),
     cursor: v.optional(v.union(v.string(), v.null())),
@@ -194,6 +194,15 @@ export const list = query({
         if (group.length > 1) rows.push(...group.filter((r) => named(r) && inFolder(r)))
       }
       result = { rows, cursor: done ? null : after, isDone: done }
+    } else if (args.view === 'problems') {
+      // Failed uploads, newest first. A stuck `processing` one is queued again by uploads.requeueStale and ends here
+      // once it runs out of attempts. Unused failed uploads go with the daily sweep, so the list stays short.
+      const rows: Doc<'uploads'>[] = []
+      for await (const row of ctx.db.query('uploads').withIndex('by_status', (q) => q.eq('status', 'failed'))) {
+        if (row.site === site && !row.trashedAt && named(row)) rows.push(row)
+      }
+      rows.sort((a, b) => b._creationTime - a._creationTime)
+      result = { rows: rows.slice(0, PAGE), cursor: null, isDone: true }
     } else if (args.view === 'trash') {
       // Newest in the trash first; the cursor is "trashedAt:creation time" because many files can be trashed in one millisecond.
       const [t, c] = (start ?? '').split(':').map(Number)

@@ -1138,6 +1138,7 @@
       "unused": "Inutilisés",
       "missingAlt": "Description d’image manquante",
       "duplicates": "Doublons",
+      "problems": "Envois échoués",
       "trash": "Corbeille"
     },
     "folders": "Dossiers",
@@ -1198,9 +1199,11 @@
       "missingAlt": "Chaque photo a une description.",
       "unused": "Chaque fichier est utilisé.",
       "duplicates": "Aucun doublon.",
+      "problems": "Aucun envoi échoué.",
       "trash": "La corbeille est vide. Les fichiers supprimés y restent 30 jours.",
       "none": "Aucun fichier trouvé."
     },
+    "retryQueued": "Le fichier est de nouveau en cours de traitement.",
     "loadMoreFailed": "Impossible de charger d’autres fichiers.",
     "uploadTooSlow": "L’importation prend trop de temps. Réessayez.",
     "uploadFailedFile": "« {name} » : {message}",

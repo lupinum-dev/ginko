@@ -4,7 +4,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from '#imports'
-import { AlertCircleIcon, ClockIcon, CopyIcon, EllipsisIcon, FolderIcon, ImagesIcon, PencilIcon, PlusIcon, Trash2Icon, UnlinkIcon } from '@lucide/vue'
+import { AlertCircleIcon, ClockIcon, CopyIcon, EllipsisIcon, FolderIcon, ImagesIcon, PencilIcon, PlusIcon, Trash2Icon, TriangleAlertIcon, UnlinkIcon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
 import { Input } from '@studio/components/ui/input'
@@ -27,8 +27,9 @@ const emit = defineEmits<{
 }>()
 const { t, format } = useI18n()
 
-const VIEWS: ListView[] = ['all', 'recent', 'unused', 'missingAlt', 'duplicates', 'trash']
-const ICONS = { all: ImagesIcon, recent: ClockIcon, unused: UnlinkIcon, missingAlt: AlertCircleIcon, duplicates: CopyIcon, trash: Trash2Icon }
+// Failed uploads are for the Files page, not for the picker.
+const VIEWS = computed<ListView[]>(() => ['all', 'recent', 'unused', 'missingAlt', 'duplicates', ...(props.picker ? [] : ['problems' as const]), 'trash'])
+const ICONS = { all: ImagesIcon, recent: ClockIcon, unused: UnlinkIcon, missingAlt: AlertCircleIcon, duplicates: CopyIcon, problems: TriangleAlertIcon, trash: Trash2Icon }
 const badge = computed(() => (props.missingAlt ? format.number(props.missingAlt) : null))
 const manage = computed(() => props.canManage && !props.picker)
 

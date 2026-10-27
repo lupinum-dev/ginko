@@ -5,7 +5,7 @@
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { sha256 } from '@lupinum/ginko/internal'
-import type { Doc } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx } from './_generated/server'
 import { windowOf } from './bundle'
 import { actorFor, fail, type Actor } from './lib/access'
@@ -17,7 +17,9 @@ const DAY = 24 * 60 * 60 * 1000
 export const MAX_ATTEMPTS = 3
 const RETRY_MS = 30_000
 /** Longer than an action may run (10 minutes): a `processing` row this far past its run has lost it. */
-const STALE_MS = 15 * 60 * 1000
+export const STALE_MS = 15 * 60 * 1000
+/** Gap between the runs a retry schedules, so many re-queued files do not write at the same moment. */
+const RETRY_STAGGER_MS = 2000
 
 const TICKET_MS = 10 * 60 * 1000
 /** Upload tickets per person, site and hour. A busy editor uploads a few dozen files; this bounds what a script or a stolen session stores. */
@@ -210,6 +212,73 @@ export const requeueStale = internalMutation({
     }
     if (queued) console.log(`uploads.requeueStale: ${queued} stuck upload(s) queued again`)
     return queued
+  },
+})
+
+/** A `processing` row far past its due run (requeueStale picks these up every 10 minutes). */
+export const isStale = (row: Doc<'uploads'>, now: number) => row.status === 'processing' && (row.runAt ?? row._creationTime) < now - STALE_MS
+
+/**
+ * Puts these uploads back to `processing` with a fresh attempt count and schedules their run, 2 s apart.
+ * A row whose stored original is gone cannot be processed again: it is listed as `missing` and left as it is.
+ */
+async function requeue(ctx: MutationCtx, rows: Doc<'uploads'>[], dryRun: boolean) {
+  const ids: Id<'uploads'>[] = []
+  const missing: Id<'uploads'>[] = []
+  for (const row of rows) {
+    if (!(await ctx.db.system.get(row.storageId))) {
+      missing.push(row._id)
+      continue
+    }
+    if (!dryRun) {
+      const delay = ids.length * RETRY_STAGGER_MS
+      await ctx.db.patch(row._id, { status: 'processing', attempts: 0, error: undefined, runAt: Date.now() + delay })
+      await ctx.scheduler.runAfter(delay, internal.uploadsNode.run, { upload: row._id })
+    }
+    ids.push(row._id)
+  }
+  return { count: ids.length, ids, missing }
+}
+
+/**
+ * Operator repair (internal, `convex run uploads:retry`): re-queues the `failed` and stuck `processing` uploads of one
+ * site (`site` slug), of the given `ids`, or of every site when both are left out. A dry run (the default) only lists them.
+ */
+export const retry = internalMutation({
+  args: { site: v.optional(v.string()), ids: v.optional(v.array(v.id('uploads'))), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { site, ids, dryRun }) => {
+    const now = Date.now()
+    const siteRow = site === undefined ? null : await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', site)).unique()
+    if (site !== undefined && !siteRow) fail('NOT_FOUND', 'errors.siteNotFound')
+    const rows: Doc<'uploads'>[] = []
+    if (ids) {
+      for (const id of ids) {
+        const row = await ctx.db.get(id)
+        if (row && (!siteRow || row.site === siteRow._id)) rows.push(row)
+      }
+    } else {
+      for (const status of ['failed', 'processing'] as const) {
+        rows.push(...await ctx.db.query('uploads').withIndex('by_status', (q) => q.eq('status', status)).collect())
+      }
+    }
+    const matching = rows.filter((row) => (!siteRow || row.site === siteRow._id) && (row.status === 'failed' || isStale(row, now)))
+    return requeue(ctx, matching, dryRun ?? true)
+  },
+})
+
+/** Studio (Files, Problems): a member re-queues one failed upload of their site. Another site's upload is NOT_FOUND, like everywhere else. */
+export const retryOne = mutation({
+  args: { site: v.string(), upload: v.string() },
+  handler: async (ctx, { site, upload }) => {
+    const actor = await actorFor(ctx, site)
+    const id = ctx.db.normalizeId('uploads', upload)
+    const row = id ? await ctx.db.get(id) : null
+    if (!row || row.site !== actor.site._id) fail('NOT_FOUND', 'errors.fileNotFound')
+    if (row.status !== 'failed') return { queued: false as const }
+    const { count } = await requeue(ctx, [row], false)
+    // The original is gone: nothing to process again.
+    if (!count) fail('NOT_FOUND', 'errors.fileNotFound')
+    return { queued: true as const }
   },
 })
 

@@ -1138,6 +1138,7 @@
       "unused": "Unused",
       "missingAlt": "Missing image description",
       "duplicates": "Duplicates",
+      "problems": "Failed uploads",
       "trash": "Trash"
     },
     "folders": "Folders",
@@ -1198,9 +1199,11 @@
       "missingAlt": "Every photo has a description.",
       "unused": "Every file is in use.",
       "duplicates": "No duplicates.",
+      "problems": "No failed uploads.",
       "trash": "Trash is empty. Removed files stay here for 30 days.",
       "none": "No files found."
     },
+    "retryQueued": "The file is being processed again.",
     "loadMoreFailed": "Could not load more files.",
     "uploadTooSlow": "The upload is taking too long. Please try again.",
     "uploadFailedFile": "“{name}”: {message}",

@@ -4,14 +4,19 @@
 import { FileTextIcon } from '@lucide/vue'
 import { useI18n } from '#imports'
 import { Badge } from '@studio/components/ui/badge'
+import { Button } from '@studio/components/ui/button'
 import type { LibFile } from '../../composables/useFilesLibrary'
 import { DRAG_TYPE } from './util'
 import { sizeText } from '../../utils/size'
+import { useTextOf } from '../../composables/useTextOf'
 
 /** `dense`: the picker's dialog, where more and smaller cards help to find the one photo. */
 const props = defineProps<{ files: LibFile[]; layout: 'grid' | 'list'; selected: ReadonlySet<string>; draggable: boolean; dense?: boolean }>()
-const emit = defineEmits<{ pick: [id: string, how: { shift: boolean; toggle: boolean }]; quicklook: [id: string] }>()
+const emit = defineEmits<{ pick: [id: string, how: { shift: boolean; toggle: boolean }]; quicklook: [id: string]; retry: [id: string] }>()
 const { t, format } = useI18n()
+const textOf = useTextOf()
+/** Why an upload failed (Problems view), as the uploader saw it. */
+const problem = (f: LibFile) => (f.status === 'failed' ? textOf(f.error ? { key: f.error } : null, t('ops.upload.failed')) : null)
 
 function click(id: string, event: MouseEvent | KeyboardEvent) {
   emit('pick', id, { shift: event.shiftKey, toggle: event.metaKey || event.ctrlKey })
@@ -67,6 +72,10 @@ const focusStyle = (f: LibFile) => (f.focus ? { objectPosition: `${f.focus.x * 1
         </button>
         <p class="m-0 truncate px-1 text-[13px] text-muted-foreground tabular-nums">{{ typeText(file) }} · {{ sizeText(file.size, format.number) }}</p>
         <Badge v-if="file.missingAlt" variant="warning" class="mx-1 mt-1 justify-self-start">{{ t('files.noAlt') }}</Badge>
+        <template v-if="problem(file)">
+          <p class="m-0 px-1 text-[13px] text-destructive">{{ problem(file) }}</p>
+          <Button type="button" variant="outline" size="sm" class="relative z-10 mx-1 mt-1 justify-self-start" @click="emit('retry', file.id)">{{ t('basics.retry') }}</Button>
+        </template>
       </li>
     </ul>
   </div>
@@ -102,6 +111,10 @@ const focusStyle = (f: LibFile) => (f.focus ? { objectPosition: `${f.focus.x * 1
             <span class="truncate font-medium">{{ file.name }}</span>
             <Badge v-if="file.missingAlt" variant="warning">{{ t('files.noAlt') }}</Badge>
           </button>
+          <span v-if="problem(file)" class="mt-1 flex items-center gap-2 pl-11 text-[13px] text-destructive">
+            {{ problem(file) }}
+            <Button type="button" variant="outline" size="sm" @click.stop="emit('retry', file.id)">{{ t('basics.retry') }}</Button>
+          </span>
         </td>
         <td class="hidden px-3 sm:table-cell">{{ typeText(file) }}</td>
         <td class="hidden px-3 sm:table-cell">{{ sizeText(file.size, format.number) }}</td>

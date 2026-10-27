@@ -1138,6 +1138,7 @@
       "unused": "Sin usar",
       "missingAlt": "Sin descripción de imagen",
       "duplicates": "Duplicados",
+      "problems": "Subidas fallidas",
       "trash": "Papelera"
     },
     "folders": "Carpetas",
@@ -1198,9 +1199,11 @@
       "missingAlt": "Todas las fotos tienen descripción.",
       "unused": "Todos los archivos están en uso.",
       "duplicates": "No hay duplicados.",
+      "problems": "No hay subidas fallidas.",
       "trash": "La papelera está vacía. Los archivos eliminados se quedan aquí 30 días.",
       "none": "No se encontraron archivos."
     },
+    "retryQueued": "El archivo se está procesando de nuevo.",
     "loadMoreFailed": "No se pudieron cargar más archivos.",
     "uploadTooSlow": "La subida está tardando demasiado. Inténtalo de nuevo.",
     "uploadFailedFile": "“{name}”: {message}",
