@@ -56,6 +56,8 @@ export default defineNuxtConfig({
     '/**': { headers: { 'x-robots-tag': 'noindex' } },
     // A site needs only the platform origin: the bundle endpoint is proxied to Convex (SPEC 6).
     '/bundle/**': { proxy: `${convexSiteUrl}/bundle/**` },
+    // Stable file addresses of a site (/__ginko/file/…) end here; the platform answers with a redirect to the storage.
+    '/file/**': { proxy: `${convexSiteUrl}/file/**` },
   },
   // Sign-in for people in the platform (SPEC 10). Origin and trusted IP header come from the env (see docs: Better Auth setup).
   convex: {

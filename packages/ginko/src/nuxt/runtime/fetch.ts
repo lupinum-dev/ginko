@@ -7,7 +7,7 @@ import { BUNDLE_FORMAT, bundleFits, isBundle, knownBricks, SITE_BUDGET, withFile
 import type { GinkoPublicConfig } from './shared.ts'
 
 /** A platform that does not answer in time is a failure, not a page that never loads. */
-const TIMEOUT_MS = 10_000
+export const TIMEOUT_MS = 10_000
 /**
  * Larger than any bundle the platform's budget allows (SPEC 3): a site's text plus its Markdown trees, which count apart
  * from it, and half again for the bundle's own JSON and file URLs. Anything bigger is not a bundle of this site.
@@ -64,7 +64,8 @@ export async function fetchBundle(config: GinkoPublicConfig, locale: Locale, min
     missingPlatformLogged = true
     throw new PlatformError('Content temporarily unavailable')
   }
-  const query = new URLSearchParams({ format: String(BUNDLE_FORMAT), locale })
+  // `files=stable`: file URLs on the site's own address (`/__ginko/file/…`, server/file.ts), not the storage host.
+  const query = new URLSearchParams({ format: String(BUNDLE_FORMAT), locale, files: 'stable' })
   if (minRev && /^\d+\.\d+$/.test(minRev)) query.set('minRev', minRev)
   const url = `${config.platform.replace(/\/$/, '')}/bundle/${encodeURIComponent(config.site)}?${query}`
   let body: unknown

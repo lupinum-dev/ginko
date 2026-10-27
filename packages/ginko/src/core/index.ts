@@ -38,7 +38,7 @@ export { matchRedirect, findRedirect, entryRedirects, redirectProblems, type Red
 // '@lupinum/ginko/internal/search' (building) only: it imports MiniSearch, which must stay out of the client bundle.
 export { entryMarkdown, llmsFullTxt, llmsTxt, markdownNotFound, type AgentOptions } from './agent.ts'
 export { findEntryByPath, markdownRequestPath, type EntryMatch } from './agent-route.ts'
-export { seoHead, robotsTxt, isPreviewHost, siteHeaders, websiteLd, organizationLd, breadcrumbJsonLd, articleLd, faqLd, withCountry, ORGANIZATION_TYPES, type OrganizationLdInput, type ArticleLdInput, type SeoImage, type SeoInput, type SeoHead } from './seo.ts'
+export { seoHead, robotsTxt, isPreviewHost, siteHeaders, websiteLd, organizationLd, breadcrumbJsonLd, articleLd, faqLd, withCountry, absoluteUrl, withAbsoluteImages, ORGANIZATION_TYPES, type OrganizationLdInput, type ArticleLdInput, type SeoImage, type SeoInput, type SeoHead } from './seo.ts'
 export { imageInfo, type ImageInfo, type ImageType } from './image.ts'
 export { GINKO_COMPONENTS_KEY, GINKO_TOC_KEY, defineComponents, componentProblems, componentPropProblem, componentPropMessage, type ComponentDef, type ComponentRegistry, type ComponentSlot } from './components.ts'
 export { coreMessage, msg, coreCatalogs, type CoreKey, type Msg, type Described } from './messages.ts'

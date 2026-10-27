@@ -1,4 +1,4 @@
-// GET /bundle/<site>?format=3&locale=<l>[&minRev=<schemaRev>.<contentRev>] (SPEC 6).
+// GET /bundle/<site>?format=3&locale=<l>[&minRev=<schemaRev>.<contentRev>][&files=stable] (SPEC 6).
 // Order: format, rate limit (also finds the site), build. Every answer is JSON with code and
 // an English message on errors (a site's server reads them); the HTTP status carries the SPEC 6 mapping.
 import { BUNDLE_FORMAT } from '@lupinum/ginko/internal'
@@ -45,6 +45,8 @@ const bundle = httpAction(async (ctx, request) => {
       slug,
       locale: url.searchParams.get('locale') ?? '',
       minRev: parseMinRev(url.searchParams.get('minRev')),
+      // Opt-in: a site version that does not know the /__ginko/file route keeps live storage URLs.
+      ...(url.searchParams.get('files') === 'stable' ? { stableFiles: true } : {}),
     })
     if (result === 'SITE_NOT_FOUND') return failure(404, 'SITE_NOT_FOUND', 'This site does not exist.')
     if (result === 'STALE') return failure(409, 'STALE', 'The content is older than requested. Please load it again later.')

@@ -197,6 +197,8 @@ export default defineNuxtModule<SiteInput>({
     if (sources.platform) {
       extendPages((pages) => { pages.push({ name: 'ginko-preview', path: '/__ginko/preview', file: resolve('./runtime/preview.vue') }) })
       // Page state holds platform texts as `{ ref }` (runtime/plugin.ts); this route serves them on client navigation.
+      // Files of the platform live under the site's own address, so pages never hold storage hosts.
+      addServerHandler({ route: '/__ginko/file/:upload/:storage', handler: resolve(`./runtime/server/file.${runtimeExt}`) })
       addServerHandler({ route: '/__ginko/platform/:locale/:rev/md/**', handler: resolve(`./runtime/server/platform-md.${runtimeExt}`) })
     }
     for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'useGinkoPath', 'useGinkoLang', 'useGinkoSite', 'useGinkoFact']) addImports({ name, from: composables })

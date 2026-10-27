@@ -43,6 +43,25 @@ export function seoHead(input: SeoInput): SeoHead {
   return { title: fullTitle, meta: meta.filter((m) => m.content !== '') }
 }
 
+/** `src` as an absolute address: a path of the site (`/__ginko/file/…`) gets `siteUrl` in front, anything else stays. */
+export function absoluteUrl(src: string, siteUrl: string): string {
+  return src.startsWith('/') && !src.startsWith('//') ? `${siteUrl.replace(/\/$/, '')}${src}` : src
+}
+
+const IMAGE_KEYS = new Set(['image', 'logo', 'photo', 'thumbnailUrl', 'contentUrl'])
+
+/** JSON-LD with the image addresses of the site made absolute (crawlers read JSON-LD without a base address). */
+export function withAbsoluteImages<T>(node: T, siteUrl: string): T {
+  if (node === null || typeof node !== 'object') return node
+  if (Array.isArray(node)) return node.map((item) => withAbsoluteImages(item, siteUrl)) as T
+  return Object.fromEntries(Object.entries(node).map(([key, value]) => [
+    key,
+    IMAGE_KEYS.has(key) && typeof value === 'string' ? absoluteUrl(value, siteUrl)
+      : IMAGE_KEYS.has(key) && Array.isArray(value) ? value.map((item) => (typeof item === 'string' ? absoluteUrl(item, siteUrl) : withAbsoluteImages(item, siteUrl)))
+      : withAbsoluteImages(value, siteUrl),
+  ])) as T
+}
+
 /** True when a request for `host` (with port, as in the Host header) is not for the site's own address: preview deployments, staging, localhost. Those must never be indexed. */
 export function isPreviewHost(host: string | undefined, siteUrl: string): boolean {
   // `www.` is the same site: a production site served on both must never be noindexed.

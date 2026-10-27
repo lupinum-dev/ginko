@@ -6,7 +6,7 @@ import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import { useSchemaOrg } from '#ginko/schema-org'
 import {
-  applyDefaults, breadcrumbs, factText, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, websiteLd, withCountry,
+  applyDefaults, breadcrumbs, factText, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, websiteLd, withCountry, withAbsoluteImages,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from './shared.ts'
@@ -264,6 +264,7 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
   const route = useRoute()
   const i18n = useI18n()
   const absolute = (src: string) => (/^https?:\/\//.test(src) ? src : new URL(src, config.url).href)
+  const withAbsolute = <T>(node: T) => withAbsoluteImages(node, config.url)
   // Images of the site itself stay paths: nuxt-og-image reads them from the site, not from its public address.
   const cardImage = (raw: GinkoSeoInput['image'] | string | undefined) => (raw === undefined ? '' : typeof raw === 'string' ? raw : raw.url)
   // With nuxt-og-image installed, every page gets a generated card with the page's image in it (the site's
@@ -289,7 +290,7 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
   }
   // With nuxt-schema-org the page's JSON-LD joins that module's graph; `@context` belongs to the graph, not to a node.
   // The page's JSON-LD with the site's `country` where a builder left it out (siteJsonLd, jobJsonLd).
-  const pageLd = () => (toValue(input).jsonLd ?? []).map((node) => withCountry(node, config.country))
+  const pageLd = () => (toValue(input).jsonLd ?? []).map((node) => withCountry(withAbsolute(node), config.country))
   if (useSchemaOrg) useSchemaOrg(computed(() => pageLd().map(({ '@context': _context, ...node }) => node)))
   const trim = (p: string) => (p.length > 1 ? p.replace(/\/$/, '') : p)
   useHead(() => {
