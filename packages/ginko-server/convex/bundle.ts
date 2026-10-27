@@ -3,7 +3,7 @@
 import type { Json } from '@lupinum/ginko'
 import { servedBundle, todayIn, type Bundle, type FileInfo, type MarkdownTrees, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
-import type { Doc } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, internalQuery, type QueryCtx } from './_generated/server'
 import { readTrees } from './lib/trees'
 
@@ -55,15 +55,38 @@ export const build = internalQuery({
   args: {
     slug: v.string(),
     locale: v.string(),
+    /** The public site asks for file URLs on its own address (`/__ginko/file/…`) instead of live storage URLs. */
+    stableFiles: v.optional(v.boolean()),
     minRev: v.optional(v.object({ schemaRev: v.number(), contentRev: v.number() })),
   },
-  handler: async (ctx, { slug, locale, minRev }): Promise<Bundle | 'SITE_NOT_FOUND' | 'STALE'> => {
+  handler: async (ctx, { slug, locale, minRev, stableFiles }): Promise<Bundle | 'SITE_NOT_FOUND' | 'STALE'> => {
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()
     if (!site || site.deleting) return 'SITE_NOT_FOUND'
     if (minRev && (site.schemaRev < minRev.schemaRev || site.contentRev < minRev.contentRev)) return 'STALE'
-    return bundleOf(ctx, site, locale)
+    return bundleOf(ctx, site, locale, undefined, [], stableFiles)
   },
 })
+
+/** The storage URL of `storage` when it belongs to a ready upload of `slug` (original, processed copy or variant); else null. */
+export const fileUrl = internalQuery({
+  args: { slug: v.string(), upload: v.string(), storage: v.string() },
+  handler: async (ctx, { slug, upload, storage }): Promise<string | null> => {
+    const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()
+    if (!site || site.deleting) return null
+    const id = ctx.db.normalizeId('uploads', upload)
+    const row = id ? await ctx.db.get(id) : null
+    if (!row || row.site !== site._id || row.status !== 'ready') return null
+    const allowed = new Set<string>([row.processedId ?? row.storageId, ...(row.variants ?? []).map((variant) => variant.storageId)])
+    if (!allowed.has(storage)) return null
+    const storageId = ctx.db.system.normalizeId('_storage', storage)
+    return storageId ? ctx.storage.getUrl(storageId) : null
+  },
+})
+
+/** A file on the site's own address; the site's `/__ginko/file/:upload/:storage` route forwards it to the platform's `/file/<site>/…`. */
+export function stableFileUrl(upload: Id<'uploads'>, storageId: Id<'_storage'>): string {
+  return `/__ginko/file/${upload}/${storageId}`
+}
 
 /** An entry that is not stored yet, with a temporary id, as the link check sees it. */
 export interface NewItem { brick: string; id: string; data: Record<string, Json> }
@@ -74,7 +97,7 @@ async function storedTrees(ctx: QueryCtx, row: Doc<'entries'>): Promise<Markdown
 }
 
 /** The bundle of a site that is known to exist; the agent door's link check builds one per language with it. */
-export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string, overrides?: ReadonlyMap<string, Record<string, Json>>, added: readonly NewItem[] = []): Promise<Bundle> {
+export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string, overrides?: ReadonlyMap<string, Record<string, Json>>, added: readonly NewItem[] = [], stableFiles = false): Promise<Bundle> {
   const schema = site.schema as Schema
   // A missing locale parameter (empty string) means the main language, not an unknown locale.
   const requestedLocale = locale === '' ? schema.locales[0]! : locale
@@ -105,11 +128,13 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
   const uploads = await ctx.db.query('uploads').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
   for (const upload of uploads) {
     if (upload.status !== 'ready') continue
-    const url = await ctx.storage.getUrl(upload.processedId ?? upload.storageId)
+    // A stable URL names the storage id, which the file route checks against the upload; it never calls the storage.
+    const fileUrl = async (storageId: Id<'_storage'>) => (stableFiles ? stableFileUrl(upload._id, storageId) : ctx.storage.getUrl(storageId))
+    const url = await fileUrl(upload.processedId ?? upload.storageId)
     if (!url) continue
     const variants: { width: number; url: string }[] = []
     for (const variant of upload.variants ?? []) {
-      const variantUrl = await ctx.storage.getUrl(variant.storageId)
+      const variantUrl = await fileUrl(variant.storageId)
       if (variantUrl) variants.push({ width: variant.width, url: variantUrl })
     }
     variants.sort((a, b) => a.width - b.width)
