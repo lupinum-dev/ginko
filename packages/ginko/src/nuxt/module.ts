@@ -57,10 +57,10 @@ export default defineNuxtModule<SiteInput>({
     // A production build without the platform address would deploy a site that answers 503. Not in dev, and not in
     // `nuxi prepare` (typecheck), which has no deploy environment.
     if (!nuxt.options.dev && !nuxt.options._prepare) {
-      const configured = (nuxt.options.runtimeConfig.public as { ginko?: { platform?: string } }).ginko?.platform
+      // Only the variable counts: the module writes `public.ginko.platform` itself (below), so the site cannot set it in nuxt.config.
       const check = platformBuildCheck({
         needsPlatform: sources.platform,
-        platform: configured || process.env.NUXT_PUBLIC_GINKO_PLATFORM,
+        platform: process.env.NUXT_PUBLIC_GINKO_PLATFORM,
         token: process.env.NUXT_GINKO_REVALIDATE_TOKEN,
         vercelEnv: process.env.VERCEL_ENV,
       })

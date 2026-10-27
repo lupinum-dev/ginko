@@ -2,7 +2,7 @@
 export interface PlatformBuildInput {
   /** The site has bricks that read from the platform (not only `source: 'files'`). */
   needsPlatform: boolean
-  /** `NUXT_PUBLIC_GINKO_PLATFORM`, or the `platform` the site's nuxt.config sets. */
+  /** `NUXT_PUBLIC_GINKO_PLATFORM`. */
   platform: string | undefined
   /** `NUXT_GINKO_REVALIDATE_TOKEN`. */
   token: string | undefined
