@@ -594,7 +594,7 @@ export const importDone = internalMutation({
 
 /**
  * How far the processing of imported originals is (the IDs importExport answered): counts per status and the name and
- * reason of each failed file. Ids of another site are ignored. Internal like the rest of the import, so the CLI polls it
+ * reason (in English, for the CLI) of each failed file. Ids of another site are ignored. Internal like the rest of the import, so the CLI polls it
  * with the same access (`convex run`).
  */
 export const importUploads = internalQuery({
@@ -608,7 +608,7 @@ export const importUploads = internalQuery({
       const row = await ctx.db.get(id)
       if (!row || row.site !== site._id) continue
       count[row.status]++
-      if (row.status === 'failed') failedFiles.push({ name: row.name, error: row.error ?? 'errors.uploadFailed' })
+      if (row.status === 'failed') failedFiles.push({ name: row.name, error: t('en', (row.error ?? 'errors.uploadFailed') as MessageKey) })
     }
     return { ...count, failedFiles }
   },

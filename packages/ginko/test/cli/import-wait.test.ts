@@ -32,7 +32,7 @@ describe('waitForUploads', () => {
     vi.useFakeTimers()
     const run = source([
       { processing: 1, ready: 1, failed: 0, failedFiles: [] },
-      { processing: 0, ready: 1, failed: 1, failedFiles: [{ name: 'broken.png', error: 'errors.uploadWrongContent' }] },
+      { processing: 0, ready: 1, failed: 1, failedFiles: [{ name: 'broken.png', error: 'The content does not match the file type.' }] },
     ])
     const done = waitForUploads({ run, log: () => {}, again: 'pnpm local:import x' }, 'linde', ['a', 'b'])
     const result = done.catch((error: unknown) => error)
@@ -40,8 +40,8 @@ describe('waitForUploads', () => {
     const error = await result
     expect(error).toBeInstanceOf(CliError)
     expect((error as CliError).message).toBe([
-      '1 of 2 images are ready; 1 are not usable:',
-      '  ✗ broken.png: errors.uploadWrongContent',
+      '1 of 2 images are ready; 1 is not usable:',
+      '  ✗ broken.png: The content does not match the file type.',
       'Run the import again (pnpm local:import x), or upload these files again in the Studio (Files). Raise the wait with --wait-timeout <seconds> if the images only need more time.',
     ].join('\n'))
   })

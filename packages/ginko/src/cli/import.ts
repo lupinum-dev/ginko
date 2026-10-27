@@ -77,7 +77,7 @@ export async function waitForUploads(input: Pick<ImportInput, 'run' | 'log' | 's
       }
       ready += part.ready
       processing += part.processing
-      for (const file of part.failedFiles) if (isObject(file) && typeof file.name === 'string') failed.push({ name: file.name, error: typeof file.error === 'string' ? file.error : 'errors.uploadFailed' })
+      for (const file of part.failedFiles) if (isObject(file) && typeof file.name === 'string') failed.push({ name: file.name, error: typeof file.error === 'string' ? file.error : 'unknown reason' })
     }
     if (ready !== lastReady) log(`Processing images: ${ready}/${ids.length} ready`)
     lastReady = ready
@@ -87,8 +87,9 @@ export async function waitForUploads(input: Pick<ImportInput, 'run' | 'log' | 's
       const lines = failed.map((file) => `  ✗ ${file.name}: ${file.error}`)
       if (processing > 0) lines.push(`  ✗ ${processing} ${processing === 1 ? 'image is' : 'images are'} still processing after ${Math.round(timeout / 1000)} s.`)
       const again = input.again ? ` (${input.again})` : ''
+      const unusable = failed.length + processing
       throw new CliError([
-        `${ready} of ${ids.length} images are ready; ${failed.length + processing} are not usable:`,
+        `${ready} of ${ids.length} images are ready; ${unusable} ${unusable === 1 ? 'is' : 'are'} not usable:`,
         ...lines,
         `Run the import again${again}, or upload these files again in the Studio (Files). Raise the wait with --wait-timeout <seconds> if the images only need more time.`,
       ].join('\n'))
