@@ -64,7 +64,8 @@ async function runCommand(deps: CliDeps, command: () => Promise<Record<string, u
   try {
     const fields = await command()
     deps.stdout(`${JSON.stringify({ ok: true, ...fields })}\n`)
-    return 0
+    // A command that finished its work but found problems says so with `ok: false` among its fields: exit 1, summary kept.
+    return fields.ok === false ? 1 : 0
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     const code = codeOf(error)
@@ -83,6 +84,8 @@ export interface Args {
   site?: string
   /** `--wait-timeout <seconds>`: longest wait for processed images; only commands with `waitTimeout: true` accept it. */
   waitTimeout?: number
+  /** `--map`: the path of a command's map file; only commands with `map: true` accept it. */
+  map?: string
   /** The one positional argument after the command: the folder of `export` and `import`. */
   folder?: string
   /** Boolean options such as `--offline`; each command says which it accepts. */
@@ -107,6 +110,10 @@ function parseArgs(argv: string[]): Args {
       const seconds = Number(value)
       if (!value || !Number.isFinite(seconds) || seconds < 0) throw new CliError('--wait-timeout needs a number of seconds.', 'USAGE')
       args.waitTimeout = seconds
+    } else if (arg === '--map' || arg.startsWith('--map=')) {
+      const value = arg === '--map' ? argv[++i] : arg.slice('--map='.length)
+      if (!value) throw new CliError('--map needs a path.', 'USAGE')
+      args.map = value
     } else if (arg.startsWith('-')) args.flags.add(arg)
     else if (args.command === undefined) args.command = arg
     else if (args.folder === undefined) args.folder = arg
@@ -124,6 +131,8 @@ export interface Command {
   site?: boolean
   /** Whether the command takes `--wait-timeout <seconds>`. */
   waitTimeout?: boolean
+  /** Whether the command takes `--map <file>`. */
+  map?: boolean
   run: (args: Args) => Promise<Record<string, unknown>>
 }
 
@@ -157,6 +166,7 @@ export async function runCli(argv: string[], deps: CliDeps, cli: Cli): Promise<E
     if (flag) throw new CliError(`Unknown option “${flag}” for ${name}.`, 'USAGE')
     if (args.site !== undefined && !command.site) throw new CliError(`Unknown option “--site” for ${name}.`, 'USAGE')
     if (args.waitTimeout !== undefined && !command.waitTimeout) throw new CliError(`Unknown option “--wait-timeout” for ${name}.`, 'USAGE')
+    if (args.map !== undefined && !command.map) throw new CliError(`Unknown option “--map” for ${name}.`, 'USAGE')
     if (args.folder !== undefined && !command.folder) throw new CliError(`Unexpected argument “${args.folder}” for ${name}.`, 'USAGE')
     if (args.folder === undefined && command.folder === 'required') throw new CliError(`${name} needs a folder: ${name} <folder>.`, 'USAGE')
     return command.run(args)

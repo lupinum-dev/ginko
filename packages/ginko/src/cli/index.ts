@@ -1,14 +1,16 @@
 #!/usr/bin/env node
-// The `ginko` command: `ginko check | release | export`. Output and exit codes: run.ts.
+// The `ginko` command: `ginko check | release | export | prepare-import`. Output and exit codes: run.ts.
 // Reads GINKO_PLATFORM (or NUXT_PUBLIC_GINKO_PLATFORM), GINKO_KEY, GINKO_COMMIT (or GITHUB_SHA), GINKO_BRANCH and
 // GINKO_REMOTE from the environment; it does not read .env files.
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { loadConfig } from './config.ts'
 import { check } from './check.ts'
 import { exportSite, siteOfKey } from './export.ts'
 import { defaultDir } from './model.ts'
 import { CliError } from './model.ts'
+import { prepareImport } from './prepare-import.ts'
 import { release } from './release.ts'
 import { connectPlatform, env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ExitCode } from './run.ts'
 
@@ -22,8 +24,15 @@ Commands:
                      GINKO_COMMIT (or GITHUB_SHA). Deploy the site only when it prints "deploy":true.
   export [folder]    Save the schema, entries and files from production to a new or empty folder
                      (default: ginko-export-<site>-<yyyy-mm-dd>). Needs GINKO_PLATFORM and GINKO_KEY.
+  prepare-import <folder> --map <map.json>
+                     Turn a folder in the export format, filled from an old site, into one that Lupinum can import:
+                     downloads images into files/, renames Markdown components, writes redirects.json. Rewrites
+                     export.json (backup: export.json.bak); a second run changes nothing. Needs --config for
+                     redirects to entries and for the list of unknown components. Exit 1 when an image failed.
 
 Options:
+  --map <file>       JSON map for prepare-import (all keys optional): { "images": { "folder" },
+                     "components": { "<old tag>": "<new tag>" }, "redirects": { "<old path>": "<brick>/<id>" } }
   --config <file>    Path to ginko.config.ts (default: ./ginko.config.ts)
   -h, --help         Show this help
   --version          Show the version
@@ -102,6 +111,23 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const platform = connectPlatform(deps)
           const site = siteOfKey(env(deps, 'GINKO_KEY'))
           return exportSite({ platform, site, dir: args.folder ?? defaultDir(site, new Date()), fetch: deps.fetch, log: deps.log })
+        },
+      },
+      'prepare-import': {
+        folder: 'required',
+        map: true,
+        async run(args) {
+          if (!args.map) throw new CliError('prepare-import needs a map file: ginko prepare-import <folder> --map <map.json>.', 'USAGE')
+          let map: unknown
+          try {
+            map = JSON.parse(await readFile(args.map, 'utf8'))
+          } catch {
+            throw new CliError(`The map file “${args.map}” could not be read as JSON.`, 'USAGE')
+          }
+          // The config is optional here: it is needed only for redirects to entries and for the unknown-tag list.
+          const path = configPathOf(args)
+          const config = args.config !== undefined || existsSync(path) ? await loadConfig(path) : undefined
+          return prepareImport({ dir: args.folder!, map, config, fetch: deps.fetch, log: deps.log })
         },
       },
     },
