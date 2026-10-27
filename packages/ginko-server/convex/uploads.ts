@@ -336,14 +336,17 @@ const phases = ['storage', 'processing', 'failed', 'ready', 'tickets'] as const
  * Daily cleanup (SPEC 3, 4.3, 12), in batches of 200 that reschedule themselves:
  * - storage: files without an uploads row, created more than 24 h ago. Every older file is
  *   checked, so a missed daily run is caught by the next one.
- * - processing/failed: uploads older than 24 h
+ * - processing/failed: uploads older than 24 h that are neither kept nor referenced; a referenced stale
+ *   processing upload becomes failed instead
  * - ready: uploads older than 7 days without any file reference; kept, foldered and trashed uploads stay
  * - tickets: upload tickets that expired (unused ones; a used ticket is deleted at once)
  */
 export const sweep = internalMutation({
-  args: { phase: v.optional(v.union(...phases.map((p) => v.literal(p)))), cursor: v.optional(v.union(v.string(), v.null())) },
+  args: { phase: v.optional(v.union(...phases.map((p) => v.literal(p)))), cursor: v.optional(v.union(v.string(), v.null())), dryRun: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const now = Date.now()
+    const dryRun = args.dryRun ?? false
+    let purged = 0, kept = 0, markedFailed = 0
     const phase = args.phase ?? 'storage'
     const cursor = args.cursor ?? null
     let page
@@ -373,21 +376,38 @@ export const sweep = internalMutation({
             for (const old of upload.previous ?? []) for (const variant of old.variants ?? []) variantIds.add(variant.storageId)
           }
         }
-        if (!variantIds.has(file._id)) await ctx.storage.delete(file._id)
+        if (variantIds.has(file._id)) { kept++; continue }
+        purged++
+        if (!dryRun) await ctx.storage.delete(file._id)
       }
     } else if (phase === 'tickets') {
       page = await ctx.db.query('uploadTickets').withIndex('by_expires', (q) => q.lt('expiresAt', now)).paginate({ numItems: BATCH, cursor })
-      for (const ticket of page.page) await ctx.db.delete(ticket._id)
+      for (const ticket of page.page) {
+        purged++
+        if (!dryRun) await ctx.db.delete(ticket._id)
+      }
     } else {
       const before = phase === 'ready' ? now - 7 * DAY : now - DAY
       page = await ctx.db.query('uploads').withIndex('by_status', (q) => q.eq('status', phase).lt('_creationTime', before)).paginate({ numItems: BATCH, cursor })
       for (const row of page.page) {
-        const referenced = phase === 'ready' && (isKeptUpload(row) || await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', row._id)).first())
-        if (!referenced) await purgeUpload(ctx, row)
+        // Content that still uses an upload keeps it in every phase; a stale processing row that is used
+        // is marked failed so Studio and ops can see it.
+        const used = isKeptUpload(row) || await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', row._id)).first()
+        if (!used) {
+          purged++
+          if (!dryRun) await purgeUpload(ctx, row)
+          continue
+        }
+        kept++
+        if (phase === 'processing') {
+          markedFailed++
+          if (!dryRun) await ctx.db.patch(row._id, { status: 'failed', error: 'errors.uploadRetrying' })
+        }
       }
     }
+    console.log(`sweep ${phase}${dryRun ? ' (dry run)' : ''}: purged ${purged}, kept ${kept}, marked failed ${markedFailed}`)
     const next = page.isDone ? phases[phases.indexOf(phase) + 1] : phase
-    if (next) await ctx.scheduler.runAfter(0, internal.uploads.sweep, { phase: next, cursor: page.isDone ? null : page.continueCursor })
+    if (next) await ctx.scheduler.runAfter(0, internal.uploads.sweep, { phase: next, cursor: page.isDone ? null : page.continueCursor, dryRun })
     return null
   },
 })

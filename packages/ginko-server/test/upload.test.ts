@@ -249,6 +249,25 @@ describe('uploads.sweep', () => {
   })
 })
 
+describe('uploads.sweep with stale processing rows', () => {
+  it('keeps a referenced processing upload (and marks it failed), purges an unreferenced one with its refs', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-01T00:00:00Z'))
+    const s = await setup()
+    const { t, site } = s
+    const unused = await upload(s, { person: 'cook', ready: false })
+    const used = await upload(s, { person: 'cook', ready: false })
+    await t.run((ctx) => ctx.db.insert('fileRefs', { site, file: used, holder: 'entry', holderId: 'eintrag-1' }))
+
+    vi.setSystemTime(new Date('2026-10-02T01:00:00Z'))
+    for (const phase of ['processing', 'failed'] as const) await t.mutation(internal.uploads.sweep, { phase })
+    expect(await t.run((ctx) => ctx.db.get(unused))).toBeNull()
+    expect(await t.run((ctx) => ctx.db.get(used))).toMatchObject({ status: 'failed', error: 'errors.uploadRetrying' })
+    expect(await t.run((ctx) => ctx.db.query('fileRefs').collect())).toHaveLength(1)
+    expect(await storedFiles(t)).toHaveLength(1)
+  })
+})
+
 describe('uploads.get', () => {
   it('refuses the status and URL of an upload to a member of another site', async () => {
     const s = await setup()

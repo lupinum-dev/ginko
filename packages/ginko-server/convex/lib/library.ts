@@ -20,6 +20,7 @@ export async function purgeUpload(ctx: MutationCtx, row: Doc<'uploads'>) {
   await deleteStorage(ctx, row.processedId)
   for (const variant of row.variants ?? []) await deleteStorage(ctx, variant.storageId)
   for (const old of row.previous ?? []) await deletePrevious(ctx, old)
+  for (const ref of await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', row._id)).collect()) await ctx.db.delete(ref._id)
   await ctx.db.delete(row._id)
 }
 
