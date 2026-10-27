@@ -2,9 +2,9 @@
 // Loads the bundle of the current locale once per request (SPEC 8 "Ein Bundle-Anbieter"),
 // and on client navigation into another locale. The preview fills the state by message instead,
 // and in preview mode nothing fetches (the preview page starts its listener: preview-listener.ts).
-import { addAlternatesResolver, addRouteMiddleware, createError, defineNuxtPlugin, useRequestHeader, useRequestURL, useResponseHeader, useRuntimeConfig, useState } from '#imports'
+import { addAlternatesResolver, addRouteMiddleware, createError, defineNuxtPlugin, navigateTo, useRequestHeader, useRequestURL, useResponseHeader, useRuntimeConfig, useState } from '#imports'
 import schema from '#ginko/schema'
-import { platformMarkdownRef, withMarkdownRefs, type Bundle, type Locale } from '../../internal.ts'
+import { findRedirect, platformMarkdownRef, withMarkdownRefs, type Bundle, type Locale } from '../../internal.ts'
 import { BUNDLE_STATE, PREVIEW_STATE } from './composables.ts'
 import { loadBundle as loadBundleCore, PlatformError } from './fetch.ts'
 import { serverTrees } from './markdown.ts'
@@ -81,7 +81,15 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   // Detail pages: the entry's URL in every locale where it exists (SPEC 8), for the language switch and hreflang.
   addAlternatesResolver((to) => entryUrls(bundles.value[localeOfPath(to.path)], to.path))
   addRouteMiddleware('ginko-bundle', async (to) => {
-    if (!PREVIEW.test(to.path) && !preview.value && !errorPage()) await load(localeOfPath(to.path))
+    if (PREVIEW.test(to.path) || preview.value || errorPage()) return
+    const locale = localeOfPath(to.path)
+    await load(locale)
+    // An address a platform entry had before its slug changed (`oldUrls`) forwards to its page. Here, not in the server
+    // middleware (runtime/server/redirects.ts), which never asks the platform; the bundle is loaded for this page anyway.
+    // Only entry rules: the server middleware already applied the site's own.
+    if (!config.sources.platform) return
+    const hit = findRedirect([], bundles.value[locale], to.path)
+    if (hit && hit.to !== to.path) return navigateTo({ path: hit.to, query: to.query, hash: to.hash }, { redirectCode: 301 })
   }, { global: true })
 })
 

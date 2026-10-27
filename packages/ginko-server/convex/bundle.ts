@@ -148,7 +148,7 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     })
   }
 
-  return servedBundle({
+  const bundle = await servedBundle({
     schema,
     requestedLocale,
     entries,
@@ -158,4 +158,15 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     generatedAt: new Date().toISOString(),
     today: todayIn(schema.timeZone),
   })
+  // Addresses an entry had before entries.changeSlug: the site forwards them to its page there (301).
+  for (const row of await ctx.db.query('slugs').withIndex('by_site_old', (q) => q.eq('site', site._id).eq('old', true)).collect()) {
+    const brick = schema.bricks[row.brick]
+    const route = brick?.kind === 'collection' ? brick.route?.[row.locale] : undefined
+    const served = bundle.bricks[row.brick]
+    const item = route && served?.kind === 'collection' ? served.items.find((i) => i.id === row.entry) : undefined
+    if (!route || !item?.urls?.[row.locale]) continue
+    const urls = (item.oldUrls ??= {})
+    ;(urls[row.locale] ??= []).push(route.replace('[slug]', row.slug))
+  }
+  return bundle
 }

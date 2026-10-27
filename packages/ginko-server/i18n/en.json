@@ -36,6 +36,7 @@
     "fieldNoLongerExists": "The field “{key}” does not exist (anymore).",
     "languageNotSetUp": "The language “{locale}” is not set up.",
     "confirmOnlyForForeignLanguage": "Confirming only works for a foreign language.",
+    "addressFormat": "An address has lowercase letters, digits and hyphens, for example “summer-party-2026”.",
     "addressFixed": "The address is fixed and cannot be changed.",
     "thisEntryDeletedSince": "This entry has been deleted since.",
     "someoneChangedMeanwhile": "Someone has changed this in the meantime.",
@@ -236,6 +237,7 @@
   "history": {
     "changedSingle": "{label}: {fields} changed",
     "changedSingleIn": "{label}: {fields} changed ({languages})",
+    "addressChanged": "Address of “{title}” changed: {from} → {to}",
     "changedEntry": "{fields} changed in “{title}”",
     "changedEntryIn": "{fields} changed in “{title}” ({languages})",
     "translationConfirmed": "Translation confirmed",

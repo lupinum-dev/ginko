@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, entryBytes, fitsBudget, isNavTree, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, ordered, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, SLUG_PATTERN, entryBytes, fitsBudget, isNavTree, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, ordered, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -246,7 +246,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
 const printsOf = (p: Prints, root: string) => Object.fromEntries(Object.entries(p).filter(([leaf]) => underRoot(leaf, root)))
 
 async function moveSlugRows(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, locale: Locale, moved: { slug: string }[]) {
-  const rows = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).filter((r) => r.locale === locale)
+  const rows = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).filter((r) => r.locale === locale && !r.old)
   for (const { slug } of moved) {
     // The slugs rows hold no field key: this pairs them by language only, which is exact while a brick has one slug field.
     const row = rows.shift()
@@ -254,6 +254,55 @@ async function moveSlugRows(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'
     else await ctx.db.insert('slugs', { site: actor.site._id, brick: entry.brick, locale, slug, entry: entry._id })
   }
 }
+
+/**
+ * An owner or admin changes an entry's address in one language (decisions.md D35; a save never sends a slug, D9). When
+ * the entry has a page there, the old slug stays as an `old` row: still reserved, and the site forwards it with a 301
+ * (bundle `oldUrls`). Taking back one of its own old slugs makes that one current again.
+ */
+export const changeSlug = mutation({
+  args: { site: v.string(), opId: v.string(), entry: v.string(), locale: v.string(), slug: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    if (actor.role === 'staff') fail('FORBIDDEN', 'errors.ownersOnly')
+    return idempotent(ctx, actor, args, async () => {
+      const entry = await entryOf(ctx, actor, args.entry)
+      if (entry.deletedAt) fail('CHANGED_SINCE', 'errors.thisEntryDeletedSince', undefined, current(entry))
+      const schema = actor.site.schema as Schema
+      const brick = brickOf(schema, entry)
+      const locale = args.locale as Locale
+      if (!schema.locales.includes(locale)) fail('INVALID', 'errors.languageNotSetUp', { locale })
+      const key = Object.keys(brick.fields).find((k) => brick.fields[k]!.type === 'slug' && !brick.fields[k]!.retired)
+      if (brick.kind !== 'collection' || !brick.route?.[locale] || !key) fail('INVALID', 'errors.addressFixed')
+      const slug = args.slug.trim()
+      if (!SLUG_PATTERN.test(slug)) fail('INVALID', 'errors.addressFormat')
+      const before = entry.data as Data
+      const was = textOf(plainObject(before[key])[locale])
+      if (slug === was) return { entry: entry._id, rev: entry.rev, slug }
+      if ((await freeSlug(ctx, actor, entry.brick, locale, slug, entry._id)) !== slug) fail('INVALID', 'errors.addressTaken')
+
+      // A page that is online keeps its old address as a forward; one that is not (a draft, an untranslated language) just moves.
+      const online = stateOf(entry) === 'live' && !!urlsFor(schema, entry.brick, brick, { id: entry._id, data: before, prints: entry.prints as Prints })[locale]
+      const rows = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).filter((r) => r.locale === locale)
+      const currentRow = rows.find((r) => !r.old)
+      const back = rows.find((r) => r.old && r.slug === slug)
+      if (currentRow) {
+        if (online) await ctx.db.patch(currentRow._id, { old: true })
+        else await ctx.db.delete(currentRow._id)
+      }
+      if (back) await ctx.db.patch(back._id, { old: undefined })
+      else await ctx.db.insert('slugs', { site: actor.site._id, brick: entry.brick, locale, slug, entry: entry._id })
+
+      const data: Data = { ...before, [key]: { ...plainObject(before[key]), [locale]: slug } }
+      const history = recorded(msg('history.addressChanged', { title: labelOf(schema, entry.brick, data), from: was, to: slug }), schema)
+      const written = await commitEntry(ctx, { actor, entry, fields: brick.fields, roots: [key], data, prints: entry.prints as Prints, kind: 'save', history, opId: args.opId })
+      // Unpublished changes that hold the address would put the old one back when they are published.
+      const held = await pendingOf(ctx, entry._id)
+      if (held && Object.hasOwn(held.fields, key)) await ctx.db.patch(held._id, { fields: { ...held.fields, [key]: { ...plainObject(held.fields[key] as Json), [locale]: slug } } })
+      return { entry: entry._id, rev: written.rev, slug }
+    })
+  },
+})
 
 // ---- Unpublished changes (lib/pending.ts): saved, published, scheduled, discarded. ----
 

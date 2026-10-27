@@ -81,6 +81,7 @@ export function findRedirect(rules: readonly Redirect[], bundle: Bundle | undefi
 
 /**
  * Rules from entries: every collection item whose data has `redirectFrom` (a string or string[] of old paths) gets a 301 rule from each old path to its URL in the bundle's locale. Items without a URL are skipped.
+ * The platform's `oldUrls` (addresses before a slug change, entries.changeSlug) become such rules too.
  */
 export function entryRedirects(bundle: Bundle): Redirect[] {
   const rules: Redirect[] = []
@@ -93,7 +94,7 @@ export function entryRedirects(bundle: Bundle): Redirect[] {
         : typeof value === 'string' ? [value] : []
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      for (const from of oldPaths) rules.push({ from, to: url, status: 301 })
+      for (const from of [...oldPaths, ...(item.oldUrls?.[bundle.locale] ?? [])]) rules.push({ from, to: url, status: 301 })
     }
   }
   return rules

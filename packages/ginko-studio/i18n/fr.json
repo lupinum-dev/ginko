@@ -827,7 +827,12 @@
       "pageAt": "La page se trouve à l’adresse {address}",
       "generated": "Générée à partir du titre à la création.",
       "fromTranslation": "Créée à partir du titre en {lang} une fois la page traduite.",
-      "view": "Voir la page"
+      "view": "Voir la page",
+      "change": "Modifier",
+      "newAddress": "Nouvelle adresse",
+      "forwards": "L’ancienne adresse redirige vers la nouvelle : les liens et les résultats de recherche continuent de fonctionner.",
+      "notOnline": "La page n’est pas encore en ligne, personne ne connaît donc l’ancienne adresse.",
+      "save": "Modifier l’adresse"
     },
     "translation": {
       "changedSince": "Le texte en {name} a changé depuis la traduction",

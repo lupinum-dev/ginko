@@ -827,7 +827,12 @@
       "pageAt": "La página está en {address}",
       "generated": "Se genera a partir del título al crear.",
       "fromTranslation": "Se crea a partir del título en {lang} cuando la página esté traducida.",
-      "view": "Ver página"
+      "view": "Ver página",
+      "change": "Cambiar",
+      "newAddress": "Nueva dirección",
+      "forwards": "La dirección anterior redirige a la nueva, así que los enlaces y los resultados de búsqueda siguen funcionando.",
+      "notOnline": "La página aún no está en línea, así que nadie conoce la dirección anterior.",
+      "save": "Cambiar dirección"
     },
     "translation": {
       "changedSince": "El texto en {name} ha cambiado desde la traducción",

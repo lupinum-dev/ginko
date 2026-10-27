@@ -16,6 +16,7 @@ import { isModKey } from '../utils/keys'
 import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { isProposal, opErrorOf } from '../composables/useOps'
 import { TRANSLATION } from '@lupinum/ginko-editor'
+import { SLUG_CHANGE } from '../utils/slugChange'
 import { EllipsisIcon, EyeIcon, EyeOffIcon } from '@lucide/vue'
 import WhyNotPublic from './WhyNotPublic.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
@@ -224,6 +225,17 @@ provide(TRANSLATION, {
   // History shows the main-language text before and after each change of this entry.
   changesUrl: () => (props.entry ? `/s/${props.site.slug}/history?entry=${props.entry._id}` : undefined),
   address,
+})
+
+// Owners and admins (no tasks) change a saved entry's address; the old one forwards to the new one (entries.changeSlug).
+const changeSlug = useConvexMutation(api.entries.changeSlug)
+provide(SLUG_CHANGE, {
+  enabled: () => !!props.entry && !props.tasks && props.brick.kind === 'collection' && !!props.brick.route,
+  live: () => props.entry?.state === 'live',
+  change: async (l, slug) => {
+    if (!props.entry) return
+    await changeSlug.mutate({ site: props.site.slug, opId: crypto.randomUUID(), entry: props.entry._id, locale: l, slug })
+  },
 })
 
 const shown = (label: LabelText) => shownLabel(label, main.value)

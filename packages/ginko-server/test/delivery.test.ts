@@ -34,6 +34,38 @@ async function withBlog(s: Setup, bodyMax?: number) {
   }) as Promise<{ entry: string }>
 }
 
+
+describe('entries.changeSlug', () => {
+  // Wrong behaviour caught: a renamed page's old address turns into a 404 (links and search results break), another
+  // entry takes the old address over, or staff move a page.
+  it('keeps the old address as a forward, reserved; taking it back makes it current again; staff may not', async () => {
+    const s = await setup()
+    const post = await withBlog(s)
+    const { entry } = await post(1, 'Text')
+    const change = (who: 'owner' | 'cook', id: string, slug: string) => s.as[who].mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: id, locale: 'de', slug })
+    const item = async (id: string) => {
+      const bundle = (await (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json()) as { bricks: { blog: { items: { id: string; urls?: Record<string, string>; oldUrls?: Record<string, string[]> }[] } } }
+      return bundle.bricks.blog.items.find((i) => i.id === id)!
+    }
+    const before = (await item(entry)).urls!.de!
+    expect((await errorOf(change('cook', entry, 'anders'))).code).toBe('FORBIDDEN')
+
+    await change('owner', entry, 'neuer-name')
+    const renamed = await item(entry)
+    expect(renamed.urls!.de).toBe(before.replace(/[^/]+$/, 'neuer-name'))
+    expect(renamed.oldUrls).toEqual({ de: [before] })
+
+    const { entry: other } = await post(2, 'Text')
+    expect((await errorOf(change('owner', other, before.split('/').pop()!))).code).toBe('INVALID')
+    expect((await errorOf(change('owner', entry, 'Kein Slug!'))).code).toBe('INVALID')
+
+    await change('owner', entry, before.split('/').pop()!)
+    const back = await item(entry)
+    expect(back.urls!.de).toBe(before)
+    expect(back.oldUrls).toEqual({ de: [before.replace(/[^/]+$/, 'neuer-name')] })
+  })
+})
+
 type Bundle = {
   locale: string
   requestedLocale?: string

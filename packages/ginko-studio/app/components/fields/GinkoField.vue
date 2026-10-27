@@ -18,6 +18,7 @@ import GinkoFieldMoney from './GinkoFieldMoney.vue'
 import GinkoFieldNumber from './GinkoFieldNumber.vue'
 import GinkoFieldRef from './GinkoFieldRef.vue'
 import FieldFrame from './FieldFrame.vue'
+import SlugChange from './SlugChange.vue'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
@@ -186,15 +187,18 @@ const missingText = computed(() => {
       <GinkoFieldFile v-else-if="field.type === 'file'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldRef v-else-if="field.type === 'ref'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <template v-else-if="field.type === 'slug' && foreignTab">
-        <p v-if="address" :id="id" class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-          <span class="[overflow-wrap:anywhere]">{{ foreignSlug }}</span>
+        <div v-if="address" class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+          <span :id="id" class="[overflow-wrap:anywhere]">{{ foreignSlug }}</span>
           <a v-if="address.href" :href="address.href" target="_blank" rel="noopener" class="font-medium text-primary underline underline-offset-2">{{ t('fields.slug.view') }}<span class="sr-only"> {{ t('nav.newTab') }}</span></a>
-        </p>
+          <!-- Only an own address in this language can change; one that is the main-language slug follows the title. -->
+          <SlugChange v-if="slugAddress" :id="id" :slug="text" :locale="locale" :before="slugAddress.before" :after="slugAddress.after" class="ml-auto" />
+        </div>
         <p v-else :id="id" class="rounded-md bg-muted px-3 py-2.5 text-sm text-muted-foreground">{{ t('fields.slug.fromTranslation', { lang: foreignName }) }}</p>
       </template>
-      <p v-else-if="field.type === 'slug' && slugAddress" :id="id" class="flex min-h-10 items-center rounded-md bg-muted px-3 py-2 text-sm [overflow-wrap:anywhere]">
-        <span><span class="text-muted-foreground">{{ slugAddress.before }}</span>{{ text }}<span class="text-muted-foreground">{{ slugAddress.after }}</span></span>
-      </p>
+      <div v-else-if="field.type === 'slug' && slugAddress" class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted px-3 py-2 text-sm [overflow-wrap:anywhere]">
+        <span :id="id"><span class="text-muted-foreground">{{ slugAddress.before }}</span>{{ text }}<span class="text-muted-foreground">{{ slugAddress.after }}</span></span>
+        <SlugChange :id="id" :slug="text" :locale="locale" :before="slugAddress.before" :after="slugAddress.after" class="ml-auto" />
+      </div>
       <p v-else-if="field.type === 'slug'" :id="id" class="flex min-h-10 items-center rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground [overflow-wrap:anywhere]">{{ text || t('fields.slug.generated') }}</p>
     </template>
   </FieldFrame>
