@@ -349,6 +349,9 @@ export default defineSchema({
     .index('by_file', ['file']).index('by_holder', ['holder', 'holderId'])
     .index('by_site_holder', ['site', 'holder']).index('by_site_missingAlt', ['site', 'missingAlt']),
 
+  /** One row per finished upload that an entry uses; `uploads.applyRevBumps` turns all rows of a site into one contentRev raise. */
+  revBumps: defineTable({ site: v.id('sites') }).index('by_site', ['site']),
+
   pushKeys: defineTable({
     site: v.id('sites'),
     hash: v.string(),

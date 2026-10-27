@@ -20,6 +20,8 @@ const RETRY_MS = 30_000
 export const STALE_MS = 15 * 60 * 1000
 /** Gap between the runs a retry schedules, so many re-queued files do not write at the same moment. */
 const RETRY_STAGGER_MS = 2000
+/** Wait before queued revision bumps are applied, so one import raises contentRev once. */
+const REV_BUMP_MS = 3_000
 
 const TICKET_MS = 10 * 60 * 1000
 /** Upload tickets per person, site and hour. A busy editor uploads a few dozen files; this bounds what a script or a stolen session stores. */
@@ -110,9 +112,23 @@ export const register = internalMutation({
  */
 async function showWhereUsed(ctx: MutationCtx, row: Doc<'uploads'>) {
   const used = await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', row._id)).filter((q) => q.eq(q.field('holder'), 'entry')).first()
-  const site = used ? await ctx.db.get(row.site) : null
-  if (site) await ctx.db.patch(site._id, { contentRev: site.contentRev + 1 })
+  if (!used) return
+  // Only a new row, not the shared site document: hundreds of uploads finishing at once would otherwise conflict on it.
+  await ctx.db.insert('revBumps', { site: row.site })
+  await ctx.scheduler.runAfter(REV_BUMP_MS, internal.uploads.applyRevBumps, { site: row.site })
 }
+
+/** Raises contentRev once for all bumps that finished uploads queued since the last run. Later runs find nothing and return. */
+export const applyRevBumps = internalMutation({
+  args: { site: v.id('sites') },
+  handler: async (ctx, { site }) => {
+    const bumps = await ctx.db.query('revBumps').withIndex('by_site', (q) => q.eq('site', site)).collect()
+    if (bumps.length === 0) return
+    for (const bump of bumps) await ctx.db.delete(bump._id)
+    const row = await ctx.db.get(site)
+    if (row) await ctx.db.patch(site, { contentRev: row.contentRev + 1 })
+  },
+})
 
 /** A PDF whose content checked out is ready as stored; nothing is processed or removed. Repeats are no-ops. */
 export const markFileReady = internalMutation({

@@ -169,7 +169,25 @@ describe('uploads.markReady and markFailed', () => {
     const id = await registerImage(s)
     await s.t.run((ctx) => ctx.db.insert('fileRefs', { site: s.site, file: id, holder: 'entry', holderId: Object.values(s.entries)[0]!, uses: [{ path: 'photo', missingAlt: false }], missingAlt: false }))
     await s.t.mutation(internal.uploads.markReady, { upload: id, processedId: await storeFile(s.t, 'webp'), size: 8, width: 2, height: 1 })
+    await s.t.mutation(internal.uploads.applyRevBumps, { site: s.site })
     expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev).toBe(2)
+  })
+
+  // Wrong behaviour caught: every finished upload of an import patched the site document, so ~200 at once hit write conflicts and got stuck.
+  it('ten finished uploads used by entries raise contentRev once and leave no queued bumps', async () => {
+    const s = await setup()
+    const before = (await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev
+    for (let i = 0; i < 10; i++) {
+      const id = await registerImage(s)
+      await s.t.run((ctx) => ctx.db.insert('fileRefs', { site: s.site, file: id, holder: 'entry', holderId: Object.values(s.entries)[0]!, uses: [{ path: 'photo', missingAlt: false }], missingAlt: false }))
+      await s.t.mutation(internal.uploads.markReady, { upload: id, processedId: await storeFile(s.t, `webp ${i}`), size: 8, width: 2, height: 1 })
+    }
+    expect((await s.t.run((ctx) => ctx.db.query('revBumps').collect())).length).toBe(10)
+    expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev).toBe(before)
+    await s.t.mutation(internal.uploads.applyRevBumps, { site: s.site })
+    await s.t.mutation(internal.uploads.applyRevBumps, { site: s.site })
+    expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev).toBe(before + 1)
+    expect(await s.t.run((ctx) => ctx.db.query('revBumps').collect())).toEqual([])
   })
 
   it('marks an upload failed after the third failed attempt, not before', async () => {
