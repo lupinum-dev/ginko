@@ -34,9 +34,10 @@ export const GinkoMarkdown = defineComponent({
     // Provided before the await (inject/provide need the instance); read at render, after `tree` is set.
     let tree: ComputedRef<MarkdownTree | null> | undefined
     provide(GINKO_TOC_KEY, computed(() => tree?.value?.toc ?? null))
+    // Before the await too: useRoute needs the Nuxt instance, which this plain async setup no longer has after it.
+    const route = import.meta.dev ? useRoute() : undefined
     tree = await useGinkoMarkdown(() => props.value)
-    if (import.meta.dev) {
-      const route = useRoute()
+    if (import.meta.dev && route) {
       watchEffect(() => {
         for (const { id, label } of brokenFileRefs([...(tree?.value?.nodes ?? []), ...(tree?.value?.summary ?? [])])) {
           if (warned.has(id)) continue
