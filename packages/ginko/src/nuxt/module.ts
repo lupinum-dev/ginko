@@ -8,6 +8,7 @@ import { fileLinkIssues } from './external-links.ts'
 import { checkI18nOptions } from './i18n.ts'
 import { listsNuxtSeo, nuxtSeoDependencies, runsNuxtSeo } from './nuxt-seo.ts'
 import { unservedPaths } from './pages.ts'
+import { platformBuildCheck } from './platform-check.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
 import { restartOnConfigChange } from './watch.ts'
@@ -51,6 +52,20 @@ export default defineNuxtModule<SiteInput>({
     const sources = {
       platform: Object.values(schema.bricks).some((b) => b.source !== 'files'),
       files: Object.values(schema.bricks).some((b) => b.source === 'files'),
+    }
+
+    // A production build without the platform address would deploy a site that answers 503. Not in dev, and not in
+    // `nuxi prepare` (typecheck), which has no deploy environment.
+    if (!nuxt.options.dev && !nuxt.options._prepare) {
+      // Only the variable counts: the module writes `public.ginko.platform` itself (below), so the site cannot set it in nuxt.config.
+      const check = platformBuildCheck({
+        needsPlatform: sources.platform,
+        platform: process.env.NUXT_PUBLIC_GINKO_PLATFORM,
+        token: process.env.NUXT_GINKO_REVALIDATE_TOKEN,
+        vercelEnv: process.env.VERCEL_ENV,
+      })
+      for (const warning of check.warnings) console.warn(warning)
+      if (check.error) throw new Error(check.error)
     }
 
     const { resolve } = createResolver(import.meta.url)
