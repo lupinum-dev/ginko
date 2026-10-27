@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/ginko-preset-gastro",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "type": "module",
   "description": "Restaurant bricks and opening-hours logic for Ginko sites.",
   "license": "MIT",

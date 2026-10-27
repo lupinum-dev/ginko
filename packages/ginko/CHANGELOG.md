@@ -1,5 +1,25 @@
 # @lupinum/ginko
 
+## 0.10.0
+
+### Minor Changes
+
+- [#71](https://github.com/lupinum-dev/ginko/pull/71) [`6bd8ca6`](https://github.com/lupinum-dev/ginko/commit/6bd8ca6f2020017a09e66dd41d253ee52a9fd338) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add a report for images and file links whose file is missing or not processed yet: the link check (build and `ginko check`) lists them like broken links, and dev prints one warning per file.
+
+- [#76](https://github.com/lupinum-dev/ginko/pull/76) [`c9f4d4d`](https://github.com/lupinum-dev/ginko/commit/c9f4d4d6642a0555d2ad8df4dc7a28b582390ffe) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add forwarding for platform pages whose address an owner changed in the Studio: the old address answers with a 301 to the new one.
+
+- [#69](https://github.com/lupinum-dev/ginko/pull/69) [`f71856e`](https://github.com/lupinum-dev/ginko/commit/f71856e00a12f9847982c1c2c12ed64a651d4171) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change `import` to wait until the imported images are processed and to fail with the list of images that failed or timed out; `--no-wait` keeps the old behaviour and `--wait-timeout <seconds>` sets the limit.
+
+- [#75](https://github.com/lupinum-dev/ginko/pull/75) [`7ec1afc`](https://github.com/lupinum-dev/ginko/commit/7ec1afc6685a7a16d86c7ad6c511729e4b07c2d9) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `ginko prepare-import <folder> --map <map.json>`: turns a folder in the export format, filled from an old site, into one that Lupinum can import (downloads images, renames Markdown components, writes redirects).
+
+- [#73](https://github.com/lupinum-dev/ginko/pull/73) [`1b23cbe`](https://github.com/lupinum-dev/ginko/commit/1b23cbe5ad6c20d595ac24d1f8fb3b6e826e0575) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change images from the platform to load from the site's own address (`/__ginko/file/…`) instead of the storage host, so a backend move cannot break images in caches and search results; JSON-LD image addresses are now absolute.
+
+### Patch Changes
+
+- [#70](https://github.com/lupinum-dev/ginko/pull/70) [`a824888`](https://github.com/lupinum-dev/ginko/commit/a824888e0bb0c186847d39215da54c7c73766799) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix a Vercel production build without `NUXT_PUBLIC_GINKO_PLATFORM` passing and shipping a site that answers 503: it now stops with a clear error (other builds only warn).
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.10.0
+
 ## 0.9.0
 
 ### Minor Changes
