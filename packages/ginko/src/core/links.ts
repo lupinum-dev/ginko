@@ -156,6 +156,10 @@ export function checkLinks(bundles: Bundle[], schema: Pages, options: CheckLinks
       eachNode([...tree.nodes, ...(tree.summary ?? [])], (node) => {
         const [tag, props] = node
         if (tag === 'snippet' && props['data-broken']) return broken(`snippet:${String(props.name)}`, 'snippetMissing', { name: String(props.name) })
+        if (props['data-broken'] && typeof props['data-broken-file'] === 'string') {
+          const file = `$file.${props['data-broken-file']}`
+          return broken(file, 'fileBroken', { file, label: String(props.alt ?? '').trim() || tag })
+        }
         const href = props.href
         if (tag !== 'a' || typeof href !== 'string') return
         if (props['data-broken']) {

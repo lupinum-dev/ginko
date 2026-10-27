@@ -103,6 +103,7 @@
     "linkBroken": "Link {href} leads to no entry and no page.",
     "linkRedirected": "Link {href} leads to {to} through a redirect.",
     "pathUnknown": "Path {path} matches no entry, no page and no file in public/.",
+    "fileBroken": "File {file} ({label}) is missing or not processed yet.",
     "anchorMissing": "Anchor #{anchor} is missing: no heading with this id.",
     "externalBroken": "External link {href} is broken ({reason})."
   },

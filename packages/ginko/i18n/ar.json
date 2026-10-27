@@ -103,6 +103,7 @@
     "linkBroken": "الرابط {href} لا يقود إلى أي إدخال أو صفحة.",
     "linkRedirected": "الرابط {href} يقود إلى {to} عبر إعادة توجيه.",
     "pathUnknown": "المسار {path} لا يطابق أي إدخال أو صفحة أو ملف في public/.",
+    "fileBroken": "الملف {file} ({label}) مفقود أو لم تتم معالجته بعد.",
     "anchorMissing": "المرجع #{anchor} مفقود: لا يوجد عنوان بهذا المعرّف.",
     "externalBroken": "الرابط الخارجي {href} معطّل ({reason})."
   },

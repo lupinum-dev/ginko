@@ -2,13 +2,17 @@
 // Renders a `markdown` field (CONTENT.md): the Comark tree parsed at build time, so no parser or
 // highlighter runs here. In page state the field is `{ ref }`: the tree is loaded from the site,
 // so the payload holds only the texts a page shows. Registered by the Ginko module in every site.
-import { computed, defineComponent, h, inject, provide, type Component, type ComputedRef, type PropType } from 'vue'
+import { computed, defineComponent, h, inject, provide, watchEffect, type Component, type ComputedRef, type PropType } from 'vue'
 import components from '#ginko/components'
-import { GINKO_COMPONENTS_KEY, GINKO_TOC_KEY } from '../../internal.ts'
+import { GINKO_COMPONENTS_KEY, GINKO_TOC_KEY, brokenFileRefs } from '../../internal.ts'
+import { useRoute } from '#imports'
 import { GinkoMarkdown as GinkoMarkdownTree } from '../../vue.ts'
 import type { MarkdownTree, MarkdownValue } from '../../internal.ts'
 import { useGinkoMarkdown } from './markdown.ts'
 import { GinkoFact } from './GinkoFact.ts'
+
+// Dev only: one warning per broken file reference (a missing or not yet processed upload) until the dev server restarts.
+const warned = new Set<string>()
 
 export const GinkoMarkdown = defineComponent({
   name: 'GinkoMarkdown',
@@ -31,6 +35,16 @@ export const GinkoMarkdown = defineComponent({
     let tree: ComputedRef<MarkdownTree | null> | undefined
     provide(GINKO_TOC_KEY, computed(() => tree?.value?.toc ?? null))
     tree = await useGinkoMarkdown(() => props.value)
+    if (import.meta.dev) {
+      const route = useRoute()
+      watchEffect(() => {
+        for (const { id, label } of brokenFileRefs([...(tree?.value?.nodes ?? []), ...(tree?.value?.summary ?? [])])) {
+          if (warned.has(id)) continue
+          warned.add(id)
+          console.warn(`[ginko] Broken image on ${route.path}: file ${id} (${label}) is missing or not processed yet. It is rendered without src.`)
+        }
+      })
+    }
     // The site's registry: a component keeps the props it declares there (attributeProblem).
     return () => h(GinkoMarkdownTree, { value: tree!.value, components: { fact: GinkoFact, ...provided, ...props.components }, registry: components, idPrefix: props.idPrefix })
   },
