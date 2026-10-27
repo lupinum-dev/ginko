@@ -89,18 +89,21 @@ describe('entryRedirects', () => {
           { id: 'a', data: { redirectFrom: '/alt-a' }, fallback: [], urls: { de: '/aktuell/a', en: '/news/a' } },
           { id: 'b', data: { redirectFrom: ['/alt-b', '/alt-b2'] }, fallback: [], urls: { de: '/aktuell/b' } },
           { id: 'c', data: { redirectFrom: '/alt-c' }, fallback: [], urls: { en: '/news/c' } },
+          { id: 'd', data: {}, fallback: [], urls: { de: '/aktuell/d-neu' }, oldUrls: { de: ['/aktuell/d'], en: ['/news/d'] } },
         ],
       },
       hero: { kind: 'single', data: { redirectFrom: '/nicht-relevant' }, fallback: [] },
     },
   }
 
-  // Wrong behaviour caught: string and array `redirectFrom` are not both turned into rules, items without a URL in the bundle locale produce a rule to nowhere, or single bricks produce rules.
-  it('creates 301 rules from string and array redirectFrom to the locale URL and skips items without one', () => {
+  // Wrong behaviour caught: string and array `redirectFrom` are not both turned into rules, a renamed platform page's
+  // old address (`oldUrls`) gives a 404, items without a URL in the bundle locale produce a rule to nowhere, or single bricks produce rules.
+  it('creates 301 rules from redirectFrom and the locale\'s oldUrls to the locale URL and skips items without one', () => {
     expect(entryRedirects(bundle)).toEqual([
       { from: '/alt-a', to: '/aktuell/a', status: 301 },
       { from: '/alt-b', to: '/aktuell/b', status: 301 },
       { from: '/alt-b2', to: '/aktuell/b', status: 301 },
+      { from: '/aktuell/d', to: '/aktuell/d-neu', status: 301 },
     ])
   })
 })

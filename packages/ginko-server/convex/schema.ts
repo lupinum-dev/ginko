@@ -158,7 +158,9 @@ export default defineSchema({
     locale: v.string(),
     slug: v.string(),
     entry: v.id('entries'),
-  }).index('by_key', ['site', 'brick', 'locale', 'slug']).index('by_entry', ['entry']),
+    /** An address the entry had before `entries.changeSlug`: still reserved, the site forwards it with a 301 (bundle `oldUrls`). */
+    old: v.optional(v.boolean()),
+  }).index('by_key', ['site', 'brick', 'locale', 'slug']).index('by_entry', ['entry']).index('by_site_old', ['site', 'old']),
 
   ops: defineTable({
     site: v.id('sites'),

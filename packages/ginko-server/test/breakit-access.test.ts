@@ -48,6 +48,7 @@ const as = (s: S, subject: string, email?: string) => s.t.withIdentity({ subject
 type Call = { fn: string; kind: 'query' | 'mutation' | 'action'; args: (s: S) => Record<string, unknown> }
 const SITE = { site: 'restaurant' }
 const publicCalls: Call[] = [
+  { fn: 'entries.changeSlug', kind: 'mutation', args: () => ({ ...SITE, opId: opId(), entry: 'x', locale: 'de', slug: 'neu' }) },
   { fn: 'account.settings', kind: 'query', args: () => ({}) },
   { fn: 'account.setRemindByMail', kind: 'mutation', args: () => ({ on: false }) },
   { fn: 'account.sawLocale', kind: 'mutation', args: () => ({ locale: 'de' }) },

@@ -50,6 +50,7 @@ type Fx = Awaited<ReturnType<typeof fixtures>>
 type Call = { fn: string; kind: 'query' | 'mutation' | 'action'; args: (site: string, f: Fx) => Record<string, unknown> }
 const o = () => opId()
 const calls: Call[] = [
+  { fn: 'entries.changeSlug', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, locale: 'de', slug: 'umbenannt' }) },
   { fn: 'backup.download', kind: 'query', args: (site) => ({ site }) },
   { fn: 'changes.list', kind: 'query', args: (site, f) => ({ site, paginationOpts: firstPage, entry: f.entry }) },
   { fn: 'changes.list#nofilter', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },

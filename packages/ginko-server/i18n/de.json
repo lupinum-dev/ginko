@@ -36,6 +36,7 @@
     "fieldNoLongerExists": "Das Feld „{key}“ gibt es nicht (mehr).",
     "languageNotSetUp": "Sprache „{locale}“ ist nicht eingerichtet.",
     "confirmOnlyForForeignLanguage": "Bestätigen geht nur für eine Fremdsprache.",
+    "addressFormat": "Die Adresse besteht aus Kleinbuchstaben, Ziffern und Bindestrichen, zum Beispiel „sommerfest-2026“.",
     "addressFixed": "Die Adresse ist fest und kann nicht geändert werden.",
     "thisEntryDeletedSince": "Dieser Eintrag wurde inzwischen gelöscht.",
     "someoneChangedMeanwhile": "Inzwischen hat jemand das geändert.",
@@ -236,6 +237,7 @@
   "history": {
     "changedSingle": "{label}: {fields} geändert",
     "changedSingleIn": "{label}: {fields} geändert ({languages})",
+    "addressChanged": "Adresse von „{title}“ geändert: {from} → {to}",
     "changedEntry": "{fields} von „{title}“ geändert",
     "changedEntryIn": "{fields} von „{title}“ geändert ({languages})",
     "translationConfirmed": "Übersetzung bestätigt",
