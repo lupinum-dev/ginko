@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/ginko-docs",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "type": "module",
   "description": "Docs sites on Ginko: a Nuxt layer with navigation, search, blog, changelog and Markdown components.",
   "license": "MIT",

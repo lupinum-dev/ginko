@@ -1,5 +1,15 @@
 # @lupinum/ginko
 
+## 0.10.1
+
+### Patch Changes
+
+- [#79](https://github.com/lupinum-dev/ginko/pull/79) [`6ffd497`](https://github.com/lupinum-dev/ginko/commit/6ffd497242142a17656c8b7d0831c8b15351cd45) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the file route serving a platform's HTML page as a file with a one-year cache.
+
+- [#78](https://github.com/lupinum-dev/ginko/pull/78) [`c5aebca`](https://github.com/lupinum-dev/ginko/commit/c5aebcaa82694154ce3e6d141297bc45feaca130) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `nuxt dev` answering 500 on every page with a Markdown text.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.10.1
+
 ## 0.10.0
 
 ### Minor Changes

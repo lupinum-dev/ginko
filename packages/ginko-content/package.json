@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/ginko-content",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "type": "module",
   "description": "Ginko bricks from Markdown files in the site's repo. Installed, not imported: the Ginko module loads it.",
   "license": "MIT",
