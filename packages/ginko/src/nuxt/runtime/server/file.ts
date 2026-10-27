@@ -27,11 +27,13 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 502, statusMessage: 'File temporarily unavailable' })
   }
   if (upstream.status === 404) throw createError({ statusCode: 404, statusMessage: 'File not found' })
-  if (!upstream.ok || !upstream.body) {
+  const type = upstream.headers.get('content-type')
+  // Uploads are images and PDFs, so an HTML page is never the file: it is a platform without this route (a sign-in
+  // page it redirected to), and caching it for a year would put that page in place of the image.
+  if (!upstream.ok || !upstream.body || type?.toLowerCase().startsWith('text/html')) {
     event.res.headers.set('cache-control', 'no-store')
     throw createError({ statusCode: 502, statusMessage: 'File temporarily unavailable' })
   }
-  const type = upstream.headers.get('content-type')
   const length = upstream.headers.get('content-length')
   if (type) event.res.headers.set('content-type', type)
   if (length) event.res.headers.set('content-length', length)
