@@ -6,6 +6,7 @@ import type { Doc } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, currentUser, fail, memberOf, type Actor } from './lib/access'
 import { NAME_MAX, SLUG } from './lib/input'
+import { secret } from './release'
 import { isReminded, reminderBricks } from './lib/reminders'
 import { statesOf } from './lib/status'
 import { isFetchableSiteUrl } from './lib/siteUrl'
@@ -138,6 +139,8 @@ export const meta = query({
         agentReview: site.agentReview ?? null,
         /** When the live site last proved it shows the current revision (an urgent refresh that every page confirmed); null: never. */
         lastRefreshAt: site.lastRefreshAt ?? null,
+        /** Whether the site has a site token (`refreshToken`); the token itself is never returned. */
+        hasSiteToken: site.refreshToken !== undefined,
       },
       role: actor.role,
       grants: actor.grants,
@@ -247,6 +250,24 @@ export const setRefreshToken = internalMutation({
     if (args.token.length < 32) fail('INVALID', 'errors.tokenTooShort')
     await ctx.db.patch(site._id, { refreshToken: args.token })
     return { slug: args.slug }
+  },
+})
+
+/**
+ * An owner creates the site token, or replaces it: the website sets it as `NUXT_GINKO_REVALIDATE_TOKEN`. It lets the
+ * site's server load content without the visitor rate limit and lets "Update website now" refresh the pages. The
+ * platform must send it to Vercel, so it is stored as it is (like `setRefreshToken`) and returned only here, once.
+ */
+export const createSiteToken = mutation({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    // Owners, and the platform's admins who set sites up for them; never staff.
+    if (actor.role === 'staff') fail('FORBIDDEN', 'errors.ownersOnly')
+    // 64 characters: Vercel's bypass token needs at least 32.
+    const token = `${secret()}${secret()}`
+    await ctx.db.patch(actor.site._id, { refreshToken: token })
+    return { token }
   },
 })
 

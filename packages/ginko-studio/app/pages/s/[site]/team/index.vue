@@ -1,5 +1,5 @@
 <!-- Team (UI.md 7): members with their rights, open invitations, the invite form, the site's publishing keys (made here,
-     shown once), the text storage, the backup download and the site's deletion. From 1100px people are on the left and
+     shown once), the site token, the text storage, the backup download and the site's deletion. From 1100px people are on the left and
      the site's keys, storage and backup on the right; the deletion is a danger zone below both. Owners and admins only; the members query is skipped for
      everyone else, so the server never answers them. -->
 <script setup lang="ts">
@@ -498,6 +498,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
             <p class="text-[13px] text-muted-foreground">{{ t('site.storage.filesFree') }}</p>
           </section>
 
+          <SiteToken v-if="s.site.value" :slug="s.slug.value" :has-token="s.site.value.hasSiteToken" />
           <SiteBackup :slug="s.slug.value" />
         </div>
       </div>

@@ -584,6 +584,18 @@
       "entriesUsed": "{count} of {limit} entries",
       "filesFree": "Pictures and PDFs do not count."
     },
+    "siteToken": {
+      "heading": "Site token",
+      "lead": "Your website sends this token to load its content without limits, and the platform uses it to show a publish right away (“Update website now”). Set it on Vercel as {name}, for Production and Preview.",
+      "set": "A token is set.",
+      "notSet": "No token yet. Until then, a publish reaches the website within 60 seconds and “Update website now” does not work.",
+      "create": "Create token",
+      "replace": "Replace token",
+      "replaceConfirm": "The old token stops working at once. Until you set the new one on Vercel as {name} and deploy again, “Update website now” does not work.",
+      "once": "You see this token only now. Set it on Vercel as {name} (Production and Preview), then deploy again.",
+      "copy": "Copy token",
+      "copied": "Token copied."
+    },
     "backup": {
       "heading": "Backup",
       "lead": "Downloads all content (drafts and trash included) and all pictures and PDFs as a ZIP file. Team, history and keys are not included.",
