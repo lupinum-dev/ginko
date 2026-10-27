@@ -1,5 +1,12 @@
 # @lupinum/ginko-content
 
+## 0.10.0
+
+### Patch Changes
+
+- Updated dependencies [[`6bd8ca6`](https://github.com/lupinum-dev/ginko/commit/6bd8ca6f2020017a09e66dd41d253ee52a9fd338), [`a824888`](https://github.com/lupinum-dev/ginko/commit/a824888e0bb0c186847d39215da54c7c73766799), [`c9f4d4d`](https://github.com/lupinum-dev/ginko/commit/c9f4d4d6642a0555d2ad8df4dc7a28b582390ffe), [`f71856e`](https://github.com/lupinum-dev/ginko/commit/f71856e00a12f9847982c1c2c12ed64a651d4171), [`7ec1afc`](https://github.com/lupinum-dev/ginko/commit/7ec1afc6685a7a16d86c7ad6c511729e4b07c2d9), [`1b23cbe`](https://github.com/lupinum-dev/ginko/commit/1b23cbe5ad6c20d595ac24d1f8fb3b6e826e0575)]:
+  - @lupinum/ginko@0.10.0
+
 ## 0.9.0
 
 ### Minor Changes
