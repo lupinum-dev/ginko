@@ -12,7 +12,7 @@ export type LibFile = FunctionReturnType<typeof api.files.list>['files'][number]
 export type FileInfo = FunctionReturnType<typeof api.files.info>
 export type UsedIn = FileInfo['usedIn'][number]
 export type Folder = FunctionReturnType<typeof api.files.folders>[number]
-export type ListView = 'all' | 'recent' | 'unused' | 'missingAlt' | 'duplicates' | 'trash'
+export type ListView = 'all' | 'recent' | 'unused' | 'missingAlt' | 'duplicates' | 'problems' | 'trash'
 /** `folder`: absent for every folder, null for the top level, an id for one folder. */
 export interface ListQuery { view: ListView; folder?: string | null; search?: string }
 
@@ -50,6 +50,8 @@ export interface FilesLibrary {
   setFocus: (file: string, focus: { x: number; y: number }) => Promise<void>
   trash: (files: string[]) => Promise<{ trashed: string[]; refused: { file: string; name: string; usedIn: UsedIn[] }[] }>
   restore: (files: string[]) => Promise<void>
+  /** Queues a failed upload again; the Problems view updates by itself. */
+  retry: (file: string) => Promise<void>
   /** Puts `source` (a ready upload) in the place of `file`. */
   replace: (file: string, source: File) => Promise<void>
   /** Writes the library description of a photo. The server allows owner and admin only; the panel offers it when `canManage` (like the focus point) and shows the text read-only otherwise. */
@@ -167,6 +169,7 @@ export function useFilesLibrary(): FilesLibrary {
     trash: useConvexMutation(api.files.trash),
     restore: useConvexMutation(api.files.restore),
     replace: useConvexMutation(api.files.replace),
+    retry: useConvexMutation(api.uploads.retryOne),
   }
   const base = () => ({ site: slug.value })
 
@@ -192,6 +195,7 @@ export function useFilesLibrary(): FilesLibrary {
       const upload = await sendAndWait(source)
       await mutations.replace.mutate({ ...base(), file, upload })
     },
+    retry: async (file) => { await mutations.retry.mutate({ ...base(), upload: file }) },
     errorText: (error) => opErrorOf(error).message,
   }
 }

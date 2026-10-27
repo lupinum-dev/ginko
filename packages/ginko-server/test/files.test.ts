@@ -167,6 +167,18 @@ describe('views', () => {
     expect(all.files.map((f) => [f.id, f.used])).toEqual([[free, false], [used, true]])
   })
 
+  // Wrong behaviour caught: a member sees another site's failed upload, or a ready one shows as a problem.
+  it('"problems" lists the site\'s failed uploads with their reason, nothing else', async () => {
+    const s = await setup()
+    const fail = (id: Id<'uploads'>) => s.t.mutation(internal.uploads.markFailed, { upload: id, key: 'errors.uploadNotAnImage', permanent: true })
+    const failed = await upload(s, { type: 'image/jpeg', content: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]), name: 'kaputt.jpg', ready: false })
+    await fail(failed)
+    await pdf(s)
+    await fail(await upload(s, { person: 'stranger', site: 'andere', type: 'image/jpeg', content: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]), ready: false }))
+    const problems = await s.as.owner.query(api.files.list, { site, view: 'problems' })
+    expect(problems.files.map((f) => [f.id, f.status, f.error])).toEqual([[failed, 'failed', 'errors.uploadNotAnImage']])
+  })
+
   it('"missing alt" follows a save that fills the alt text, and info names where the file is used', async () => {
     const s = await setup()
     const file = await readyImage(s)

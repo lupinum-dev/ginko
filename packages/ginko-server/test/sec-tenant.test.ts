@@ -127,6 +127,7 @@ const calls: Call[] = [
   { fn: 'proposals.approveRelease', kind: 'mutation', args: (_s, f) => ({ release: f.release }) },
   { fn: 'uploads.prepare', kind: 'mutation', args: (site, f) => ({ site, folder: f.folder }) },
   { fn: 'uploads.get', kind: 'query', args: (site, f) => ({ site, upload: f.file }) },
+  { fn: 'uploads.retryOne', kind: 'mutation', args: (site, f) => ({ site, upload: f.file }) },
   { fn: 'uploads.urls', kind: 'query', args: (site, f) => ({ site, ids: [f.file] }) },
   { fn: 'tasks.prefill', kind: 'query', args: (site, f) => ({ site, task: 'menu.edit', entry: f.entry }) },
   { fn: 'sites.meta', kind: 'query', args: (site) => ({ site }) },

@@ -280,3 +280,41 @@ describe('uploads.urls', () => {
     expect(error.code).toBe('FORBIDDEN')
   })
 })
+
+describe('uploads.retry and retryOne', () => {
+  const pendingRuns = async (t: Harness, id: Id<'uploads'>) =>
+    (await t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect()))
+      .filter((f) => f.name === 'uploadsNode:run' && f.state.kind === 'pending' && JSON.stringify(f.args).includes(id)).length
+
+  // Wrong behaviour caught: a failed upload stays failed after the operator "repaired" it (no new run), or the repair touches files that are fine.
+  it('re-queues a failed upload (dryRun false) and leaves a ready one alone; a dry run changes nothing', async () => {
+    const s = await setup()
+    const failed = await upload(s, { type: 'image/jpeg', content: jpeg(16), name: 'kaputt.jpg', ready: false })
+    await s.t.mutation(internal.uploads.markFailed, { upload: failed, key: 'errors.uploadRetrying', permanent: true })
+    const ready = await upload(s, { name: 'gut.pdf' })
+    const before = await pendingRuns(s.t, failed)
+
+    expect(await s.t.mutation(internal.uploads.retry, { site: 'restaurant' })).toMatchObject({ count: 1, ids: [failed] })
+    expect(await s.t.run((ctx) => ctx.db.get(failed))).toMatchObject({ status: 'failed', attempts: 1 })
+    expect(await pendingRuns(s.t, failed)).toBe(before)
+
+    expect(await s.t.mutation(internal.uploads.retry, { site: 'restaurant', dryRun: false })).toMatchObject({ count: 1, ids: [failed] })
+    const row = await s.t.run((ctx) => ctx.db.get(failed))
+    expect(row).toMatchObject({ status: 'processing', attempts: 0 })
+    expect(row!.error).toBeUndefined()
+    expect(await pendingRuns(s.t, failed)).toBe(before + 1)
+    expect(await s.t.run((ctx) => ctx.db.get(ready))).toMatchObject({ status: 'ready' })
+  })
+
+  // Wrong behaviour caught: a member of another site re-queues, or even learns of, an upload that is not theirs.
+  it('retryOne of another site\'s upload is NOT_FOUND, and the owner can re-queue their own', async () => {
+    const s = await setup()
+    const failed = await upload(s, { type: 'image/jpeg', content: jpeg(16), name: 'kaputt.jpg', ready: false })
+    await s.t.mutation(internal.uploads.markFailed, { upload: failed, key: 'errors.uploadRetrying', permanent: true })
+    // The stranger owns the site "andere".
+    expect((await errorOf(s.as.stranger.mutation(api.uploads.retryOne, { site: 'andere', upload: failed }))).code).toBe('NOT_FOUND')
+    expect(await s.t.run((ctx) => ctx.db.get(failed))).toMatchObject({ status: 'failed' })
+    expect(await s.as.owner.mutation(api.uploads.retryOne, { site: 'restaurant', upload: failed })).toEqual({ queued: true })
+    expect(await s.t.run((ctx) => ctx.db.get(failed))).toMatchObject({ status: 'processing', attempts: 0 })
+  })
+})

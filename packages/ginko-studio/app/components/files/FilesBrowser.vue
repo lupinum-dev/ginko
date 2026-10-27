@@ -84,6 +84,15 @@ watch([files, () => list.hasMore.value], () => {
   if (picker && files.value.length < 12 && list.hasMore.value) void more()
 })
 
+/** Queues a failed upload again; it leaves the Problems view at once (it is processing again). */
+async function retryUpload(id: string) {
+  try {
+    await lib.retry(id)
+    show(t('files.retryQueued'))
+  } catch (error) {
+    show(lib.errorText(error))
+  }
+}
 function setView(next: ListView) {
   view.value = next
   folder.value = null
@@ -412,6 +421,7 @@ defineExpose({ chooseFiles, canUpload: computed(() => !inTrash.value) })
         :draggable="!picker && lib.canManage.value && !inTrash"
         @pick="pick"
         @quicklook="openLook"
+        @retry="retryUpload"
       />
       <p v-if="list.moreError.value" class="text-sm font-medium text-destructive" role="alert">{{ list.moreError.value }}</p>
       <Button v-if="list.hasMore.value" type="button" variant="secondary" class="justify-self-start" :disabled="loadingMore" @click="more">{{ list.moreError.value ? t('basics.retry') : t('basics.loadMore') }}</Button>

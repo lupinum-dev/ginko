@@ -86,6 +86,34 @@ the singles the first release created from their defaults give way to the export
 its defaults back when the import closes. With `--reset` it first clears the site; only a deployment with
 `GINKO_DEMO=1` allows that.
 
+## Uploads stuck or failed
+
+Every upload is `processing` until its run finishes, then `ready` or `failed`:
+
+- `processing`: the file is stored and waits for the check (and, for photos, the processing). Normally done within
+  seconds. A run that is lost (crash, timeout, a write that failed) is queued again by the `stuck uploads` cron every
+  10 minutes; after three attempts the upload is `failed`.
+- `ready`: done; the file is in the library.
+- `failed`: the check or processing failed for good (`error` is the message key the uploader saw) or the attempts ran
+  out. A retry makes sense after a service problem, not for a broken or forbidden file.
+
+Members see failed uploads in the Studio under Files, "Problems", with a "Try again" button. Operators can do the same
+for a whole site. Run these in `packages/ginko-server` like the other operator commands (the plain `npx convex run`
+form works on a local backend):
+
+```bash
+pnpm exec better-convex convex run ops:status '{}'                       # counts, stuck and failed rows (add "site":"<slug>")
+pnpm exec better-convex convex run uploads:retry '{"site":"<slug>"}'     # dry run: lists what would be queued
+pnpm exec better-convex convex run uploads:retry '{"site":"<slug>","dryRun":false}'
+```
+
+`uploads:retry` takes failed and stuck uploads, or `"ids":[...]` for single rows. It sets them back to `processing`
+with 0 attempts and schedules one run per row, 2 seconds apart. A row whose stored original is gone is not touched; it
+is listed in `missing`. The daily sweep removes failed uploads that no content uses after 24 hours.
+
+`ops:status` does not list open migrations: `migrations.ts` records no runs; see
+[internals/migrations.md](../../internals/migrations.md).
+
 ## Image variants (srcset)
 
 New image uploads get WebP copies at 480, 960 and 1600 px wide (only those narrower than the image). Images
