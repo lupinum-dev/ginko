@@ -584,6 +584,18 @@
       "entriesUsed": "{count} von {limit} Einträgen",
       "filesFree": "Bilder und PDFs zählen nicht mit."
     },
+    "siteToken": {
+      "heading": "Website-Token",
+      "lead": "Deine Website lädt mit diesem Token ihre Inhalte ohne Begrenzung, und die Plattform zeigt damit Veröffentlichtes sofort („Website jetzt aktualisieren“). Trage es auf Vercel als {name} ein, für Production und Preview.",
+      "set": "Ein Token ist eingerichtet.",
+      "notSet": "Noch kein Token. Bis dahin erreicht Veröffentlichtes die Website innerhalb von 60 Sekunden, und „Website jetzt aktualisieren“ funktioniert nicht.",
+      "create": "Token erstellen",
+      "replace": "Token ersetzen",
+      "replaceConfirm": "Das alte Token gilt sofort nicht mehr. Bis du das neue auf Vercel als {name} einträgst und neu deployst, funktioniert „Website jetzt aktualisieren“ nicht.",
+      "once": "Du siehst dieses Token nur jetzt. Trage es auf Vercel als {name} ein (Production und Preview) und deploye neu.",
+      "copy": "Token kopieren",
+      "copied": "Token kopiert."
+    },
     "backup": {
       "heading": "Sicherung",
       "lead": "Lädt alle Inhalte (auch Entwürfe und den Papierkorb) und alle Bilder und PDFs als ZIP-Datei. Team, Verlauf und Schlüssel sind nicht dabei.",

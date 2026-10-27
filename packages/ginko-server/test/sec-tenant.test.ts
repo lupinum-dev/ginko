@@ -147,6 +147,8 @@ const calls: Call[] = [
   { fn: 'views.list', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
   // Against "andere" it stops at the missing refresh key, before anything is fetched.
   { fn: 'refresh.urgentRefresh', kind: 'action', args: (site) => ({ site, opId: o() }) },
+  // Last: with a site token, refresh.urgentRefresh above would really call the site's address.
+  { fn: 'sites.createSiteToken', kind: 'mutation', args: (site) => ({ site }) },
 ]
 
 const SECRETS = ['GEHEIM', 'Saibling', 'Frittaten', 'Gasthaus', 'koch@example.com', 'wirtin@example.com', 'geheim@example.com']

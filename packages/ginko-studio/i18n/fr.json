@@ -584,6 +584,18 @@
       "entriesUsed": "{count} entrées sur {limit}",
       "filesFree": "Les images et les PDF ne comptent pas."
     },
+    "siteToken": {
+      "heading": "Jeton du site",
+      "lead": "Votre site web envoie ce jeton pour charger son contenu sans limite, et la plateforme l’utilise pour afficher aussitôt ce qui est publié (« Mettre à jour le site web maintenant »). Définissez-le sur Vercel comme {name}, pour Production et Preview.",
+      "set": "Un jeton est défini.",
+      "notSet": "Pas encore de jeton. D’ici là, une publication atteint le site web en 60 secondes et « Mettre à jour le site web maintenant » ne fonctionne pas.",
+      "create": "Créer un jeton",
+      "replace": "Remplacer le jeton",
+      "replaceConfirm": "L’ancien jeton cesse aussitôt de fonctionner. Tant que vous n’avez pas défini le nouveau sur Vercel comme {name} et redéployé, « Mettre à jour le site web maintenant » ne fonctionne pas.",
+      "once": "Vous ne voyez ce jeton que maintenant. Définissez-le sur Vercel comme {name} (Production et Preview), puis redéployez.",
+      "copy": "Copier le jeton",
+      "copied": "Jeton copié."
+    },
     "backup": {
       "heading": "Sauvegarde",
       "lead": "Télécharge tout le contenu (brouillons et corbeille compris) ainsi que toutes les images et tous les PDF dans un fichier ZIP. L’équipe, l’historique et les clés n’y figurent pas.",

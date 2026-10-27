@@ -584,6 +584,18 @@
       "entriesUsed": "{count} de {limit} entradas",
       "filesFree": "Las imágenes y los PDF no cuentan."
     },
+    "siteToken": {
+      "heading": "Token del sitio web",
+      "lead": "Tu sitio web envía este token para cargar su contenido sin límites, y la plataforma lo usa para mostrar al instante lo publicado («Actualizar el sitio web ahora»). Configúralo en Vercel como {name}, para Production y Preview.",
+      "set": "Hay un token configurado.",
+      "notSet": "Todavía no hay token. Hasta entonces, lo publicado llega al sitio web en 60 segundos y «Actualizar el sitio web ahora» no funciona.",
+      "create": "Crear token",
+      "replace": "Reemplazar token",
+      "replaceConfirm": "El token anterior deja de funcionar al instante. Hasta que configures el nuevo en Vercel como {name} y vuelvas a desplegar, «Actualizar el sitio web ahora» no funciona.",
+      "once": "Solo ves este token ahora. Configúralo en Vercel como {name} (Production y Preview) y vuelve a desplegar.",
+      "copy": "Copiar token",
+      "copied": "Token copiado."
+    },
     "backup": {
       "heading": "Copia de seguridad",
       "lead": "Descarga todo el contenido (también borradores y papelera) y todas las imágenes y PDF como archivo ZIP. El equipo, el historial y las claves no se incluyen.",

@@ -257,6 +257,22 @@ describe('GET /bundle/<site>', () => {
     expect((await get('site-secret')).status).toBe(200)
   })
 
+  // Wrong behaviour caught: the token the Studio shows is not the one the platform checks, or a replaced token still works.
+  it('the site token an owner creates in the Studio admits the site; a new one replaces it', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const { t, as, site } = await setup()
+    expect((await as.owner.query(api.sites.meta, { site: 'restaurant' })).site.hasSiteToken).toBe(false)
+    const first = (await as.owner.mutation(api.sites.createSiteToken, { site: 'restaurant' })).token
+    expect(first).toHaveLength(64)
+    expect((await as.owner.query(api.sites.meta, { site: 'restaurant' })).site.hasSiteToken).toBe(true)
+    const second = (await as.owner.mutation(api.sites.createSiteToken, { site: 'restaurant' })).token
+    await t.run((ctx) => ctx.db.insert('rateWindows', { site, window: Math.floor(NOW / 60_000), count: 600 }))
+    const get = (token: string) => t.fetch('/bundle/restaurant?format=3&locale=de', { headers: { 'x-ginko-site-token': token } })
+    expect((await get(first)).status).toBe(429)
+    expect((await get(second)).status).toBe(200)
+  })
+
   // 601 HTTP requests take ~3 s alone and more under a full parallel run: a longer limit, not a flake.
   it('the 601st request in one minute is RATE_LIMITED (429)', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
