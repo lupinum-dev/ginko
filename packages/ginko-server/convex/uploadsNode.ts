@@ -5,7 +5,8 @@
 import { v } from 'convex/values'
 import { createHash } from 'node:crypto'
 import { internal } from './_generated/api'
-import { internalAction } from './_generated/server'
+import { internalAction, type ActionCtx } from './_generated/server'
+import type { Id } from './_generated/dataModel'
 import { processImage, UnreadableImageError } from './image'
 import { kindOf, WRONG_CONTENT } from './lib/files'
 
@@ -13,25 +14,38 @@ import { kindOf, WRONG_CONTENT } from './lib/files'
 export const run = internalAction({
   args: { upload: v.id('uploads') },
   handler: async (ctx, { upload }) => {
+    try {
+      await processUpload(ctx, upload)
+    } catch (error) {
+      // Anything unexpected (storage, a lost write) is a failed attempt that retries; uncaught, the row would stay
+      // `processing` until uploads.requeueStale finds it.
+      console.error(`uploadsNode.run ${upload}:`, error)
+      await ctx.runMutation(internal.uploads.markFailed, { upload, key: 'errors.uploadRetrying', permanent: false })
+    }
+    return null
+  },
+})
+
+async function processUpload(ctx: ActionCtx, upload: Id<'uploads'>) {
     const row = await ctx.runQuery(internal.uploads.load, { upload })
-    if (!row || row.status !== 'processing') return null
+    if (!row || row.status !== 'processing') return
 
     const original = await ctx.storage.get(row.storageId)
     if (!original) {
       await ctx.runMutation(internal.uploads.markFailed, { upload, key: 'errors.uploadMissing', permanent: true })
-      return null
+      return
     }
 
     const bytes = new Uint8Array(await original.arrayBuffer())
     if (!kindOf(row.mime)?.signature(bytes)) {
       await ctx.runMutation(internal.uploads.markFailed, { upload, key: WRONG_CONTENT.key, permanent: true })
-      return null
+      return
     }
     // The hash of the original bytes finds the same file uploaded twice (library view "Doppelt").
     const sha256 = createHash('sha256').update(bytes).digest('hex')
     if (row.mime === 'application/pdf') {
       await ctx.runMutation(internal.uploads.markFileReady, { upload, sha256 })
-      return null
+      return
     }
 
     let result: Awaited<ReturnType<typeof processImage>>
@@ -41,7 +55,7 @@ export const run = internalAction({
       const permanent = error instanceof UnreadableImageError
       const key = permanent ? error.key : 'errors.uploadRetrying'
       await ctx.runMutation(internal.uploads.markFailed, { upload, key, permanent })
-      return null
+      return
     }
 
     const processedId = await ctx.storage.store(new Blob([result.bytes], { type: 'image/webp' }))
@@ -49,17 +63,24 @@ export const run = internalAction({
     // three small files gain little from running in parallel.
     const variants: { width: number; storageId: typeof processedId }[] = []
     for (const variant of result.variants) variants.push({ width: variant.width, storageId: await ctx.storage.store(new Blob([variant.bytes], { type: 'image/webp' })) })
-    const applied = await ctx.runMutation(internal.uploads.markReady, {
-      upload,
-      processedId,
-      size: result.bytes.byteLength,
-      width: result.width,
-      height: result.height,
-      variants,
-      sha256,
-    })
+    const copies = [processedId, ...variants.map((x) => x.storageId)]
+    let applied: boolean
+    try {
+      applied = await ctx.runMutation(internal.uploads.markReady, {
+        upload,
+        processedId,
+        size: result.bytes.byteLength,
+        width: result.width,
+        height: result.height,
+        variants,
+        sha256,
+      })
+    } catch (error) {
+      // markReady raises the site's contentRev, so many uploads of one site finishing at once (an import) can keep
+      // losing that write until Convex gives up. The copies are not referenced; the retry makes new ones.
+      await Promise.all(copies.map((id) => ctx.storage.delete(id)))
+      throw error
+    }
     // Another run finished first (or the row is gone): the new copies would be unreferenced.
-    if (!applied) await Promise.all([processedId, ...variants.map((x) => x.storageId)].map((id) => ctx.storage.delete(id)))
-    return null
-  },
-})
+    if (!applied) await Promise.all(copies.map((id) => ctx.storage.delete(id)))
+}

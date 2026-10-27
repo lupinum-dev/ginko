@@ -4,6 +4,7 @@ import { internal } from './_generated/api'
 const crons = cronJobs()
 crons.daily('retention', { hourUTC: 2, minuteUTC: 0 }, internal.retention.daily, {})
 crons.daily('stale personal data', { hourUTC: 3, minuteUTC: 0 }, internal.cleanup.daily, {})
+crons.interval('stuck uploads', { minutes: 10 }, internal.uploads.requeueStale, {})
 crons.daily('upload sweep', { hourUTC: 2, minuteUTC: 30 }, internal.uploads.sweep, {})
 // Retired auth signing keys stay published for 21 minutes after a rotation; this deletes them afterwards (up to 64 per
 // run, never the current key). Rotations are rare, so a daily run catches up.
