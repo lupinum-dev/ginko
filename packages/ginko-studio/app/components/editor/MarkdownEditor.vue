@@ -60,6 +60,8 @@ const factLabel = (name: string) => {
   return option ? siteLabel(option.label) : name
 }
 const multiline = computed(() => profile.value !== 'inline')
+/** Long-form text (articles, case studies) opens at a writing height; short multi-line text such as a bio stays small. */
+const long = computed(() => profile.value === 'rich' || profile.value === 'page')
 const toast = useToast()
 const { t, locale } = useI18n()
 /** The text of a core problem in the Studio language. */
@@ -419,7 +421,7 @@ const frame = 'relative rounded-lg border border-input/80 bg-background dark:bor
         <TooltipProvider :delay-duration="300"><SourceToggle pressed @toggle="toggleSource" /></TooltipProvider>
       </div>
       <Textarea
-        :id="id" class="min-h-[12rem] font-mono" rows="8" spellcheck="true" :model-value="sourceText" :aria-invalid="invalid" :aria-describedby="describedBy"
+        :id="id" :class="['font-mono', long ? 'min-h-[clamp(16rem,50vh,32rem)]' : 'min-h-[12rem]']" rows="8" spellcheck="true" :model-value="sourceText" :aria-invalid="invalid" :aria-describedby="describedBy"
         @update:model-value="onSource" @blur="flush"
       />
       <ul v-if="sourceIssues.length" class="grid gap-2" :aria-label="t('editor.source.problems')">
@@ -435,7 +437,7 @@ const frame = 'relative rounded-lg border border-input/80 bg-background dark:bor
       <EditorToolbar v-model:link-open="linkOpen" v-model:image-open="imageOpen" v-model:find-open="findOpen" :editor="editor" :profile="profile" :items="items" :docked="docked" @source="toggleSource" />
       <FindBar v-model:open="findOpen" :editor="editor" />
       <!-- EditorContent wants the Vue flavour of Editor; it only adds fields that EditorContent fills itself. -->
-      <EditorContent :editor="editor as VueEditor" :class="['ginko-editor', multiline ? 'is-multiline' : 'is-inline', dragHandle && multiline && 'has-handle']" />
+      <EditorContent :editor="editor as VueEditor" :class="['ginko-editor', multiline ? 'is-multiline' : 'is-inline', long && 'is-long', dragHandle && multiline && 'has-handle']" />
       <DragHandle v-if="dragHandle && multiline" :editor="editor" class="ginko-drag-handle">
         <GripVertical class="size-4 text-muted-foreground" aria-hidden="true" />
       </DragHandle>
@@ -457,7 +459,7 @@ const frame = 'relative rounded-lg border border-input/80 bg-background dark:bor
     </div>
 
     <!-- Until the editor is open: a box of the same size, so the page does not jump. -->
-    <div v-else :class="[frame, multiline ? 'min-h-[11.5rem]' : 'min-h-10']" aria-hidden="true" />
+    <div v-else :class="[frame, long ? 'min-h-[calc(clamp(16rem,50vh,32rem)+3.5rem)]' : multiline ? 'min-h-[11.5rem]' : 'min-h-10']" aria-hidden="true" />
 
     <p v-if="showCount && !readonly" :class="['justify-self-end text-xs', reached ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ t('editor.text.counter', { count, limit }) }}</p>
   </div>
@@ -469,6 +471,7 @@ const frame = 'relative rounded-lg border border-input/80 bg-background dark:bor
 .ginko-editor :deep(.ginko-prose) { padding: 0.5rem 0.75rem; outline: none; overflow-wrap: anywhere; font-size: 1rem; line-height: 1.6; }
 @media (min-width: 768px) { .ginko-editor :deep(.ginko-prose) { font-size: 0.875rem; } }
 .is-multiline :deep(.ginko-prose) { min-height: 8rem; }
+.is-long :deep(.ginko-prose) { min-height: clamp(16rem, 50vh, 32rem); }
 .is-inline :deep(.ginko-prose) { min-height: 2.5rem; }
 .ginko-editor :deep(.ginko-prose > :first-child) { margin-top: 0; }
 .ginko-editor :deep(.ginko-prose > :last-child) { margin-bottom: 0; }
