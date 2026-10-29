@@ -28,6 +28,8 @@ function loadTree(ref: string, nuxtApp: NuxtApp | undefined = tryUseNuxtApp() ??
 /**
  * The tree of a markdown value, for server code such as a list page's `useAsyncData` that reads
  * several texts and keeps only what the page needs. `undefined` (an optional field) gives `null`.
+ * Such a key must name the locale, or a language switch keeps the texts of the old one:
+ * `useAsyncData(() => \`services:${locale.value}\`, () => ...)`.
  */
 export async function fetchGinkoMarkdown(value: MarkdownValue | undefined): Promise<MarkdownTree | null> {
   if (!value) return null
