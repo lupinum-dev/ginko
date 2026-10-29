@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const route = useRoute()
-const doc = useGinkoEntry('docs', () => route.params.slug)
+const doc = useGinkoEntry(useDocsBrick(), () => route.params.slug)
 // The toc comes with the text (page state holds only its ref); the same request as the page's <GinkoMarkdown>.
 const tree = await useGinkoMarkdown(() => doc.value.data.body)
 const toc = computed(() => tree.value?.toc?.links ?? [])

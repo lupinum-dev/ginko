@@ -1,6 +1,6 @@
 // Which pages and feeds the layer adds for a site, decided from the site's Ginko config and the paths its own pages
 // already take. Pure, so modules/pages.ts only wires the result into Nuxt and the test can check every case.
-export interface SiteOptions { locales?: readonly string[], pages?: Record<string, Record<string, string> | undefined>, bricks?: Record<string, { route?: Record<string, string> } | undefined> }
+export interface SiteOptions { locales?: readonly string[], pages?: Record<string, Record<string, string> | undefined>, bricks?: Record<string, { route?: Record<string, string>, fields?: { parent?: { to?: string } } } | undefined> }
 
 export interface LayerPage { name: string, path: string, /** In `app/docs-pages/`. */ file: string }
 
@@ -33,13 +33,14 @@ function addressesOf(page: PageLike, main: string): string[] {
   return mapped ? [page.path, mapped] : [page.path]
 }
 
-export function layerRoutes(site: SiteOptions | undefined, pages: Iterable<PageLike>): LayerRoutes {
+/** `brick`: the key of the docs brick (the module's `brick` option). */
+export function layerRoutes(site: SiteOptions | undefined, pages: Iterable<PageLike>, brick = 'docs'): LayerRoutes {
   const bricks = site?.bricks ?? {}
   const main = site?.locales?.[0] ?? ''
   const taken = new Set<string>()
   for (const page of pages) for (const path of addressesOf(page, main)) taken.add(path)
   // docsCollection writes `<base>/[slug]` for the main language; other languages get a prefix from ginko-i18n.
-  const docsBase = bricks.docs?.route?.[main]?.replace(/\/\[slug\]$/, '') ?? '/docs'
+  const docsBase = bricks[brick]?.route?.[main]?.replace(/\/\[slug\]$/, '') ?? '/docs'
   const blog = bricks.posts ? listPath(bricks.posts.route?.[main]) : undefined
   // The changelog has no page of its own per entry: its list lives at the route the brick has, else at `pages.changelog`.
   const changelog = bricks.changelog ? listPath(bricks.changelog.route?.[main]) ?? site?.pages?.changelog?.[main] : undefined

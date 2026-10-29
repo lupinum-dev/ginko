@@ -12,7 +12,8 @@ const props = defineProps<{ doc: ItemOf<ReturnType<typeof docsCollection>['field
 const { t, format, language } = useI18n()
 const { crumbs } = useDocs()
 const langOf = useGinkoLang()
-const neighbors = useGinkoNeighbors('docs', () => props.doc.id)
+const brick = useDocsBrick()
+const neighbors = useGinkoNeighbors(brick, () => props.doc.id)
 const site = useGinkoSite()
 // The Studio link needs the platform address and the site name: internal keys of the Ginko module, read by its own layer.
 const { platform, site: siteName } = useRuntimeConfig().public.ginko as { site: string, platform: string }
@@ -30,7 +31,7 @@ useGinkoSeo(() => ({
 }))
 
 const { repository, studioEditLink } = useAppConfig().docs ?? {}
-const editUrl = computed(() => docsPageEditUrl(props.doc, { repository, studioEditLink, platform, site: siteName }))
+const editUrl = computed(() => docsPageEditUrl(props.doc, { repository, studioEditLink, platform, site: siteName, brick }))
 const issueUrl = computed(() => docsIssueUrl(repository, props.doc.data.title, new URL(route.path, site.url).href))
 const updated = computed(() => props.doc.updatedAt && {
   iso: props.doc.updatedAt,

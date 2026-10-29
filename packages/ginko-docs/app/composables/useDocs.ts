@@ -5,9 +5,10 @@ import { navTabs } from '@lupinum/ginko/internal'
 import { enrichNav, type DocNode, type DocTab } from '../lib/docsNav'
 
 export function useDocs() {
-  const items = useGinko('docs')
-  const tree = useGinkoNav(['docs'])
-  const chain = useGinkoBreadcrumbs(['docs'])
+  const brick = useDocsBrick()
+  const items = useGinko(brick)
+  const tree = useGinkoNav([brick])
+  const chain = useGinkoBreadcrumbs([brick])
 
   // Ginko's nodes carry title and path; badge, icon, section and tab live on the entry (rules: enrichNav).
   const byId = computed(() => new Map(items.value.items.map((d) => [d.id, d.data])))
@@ -39,7 +40,7 @@ export function useDocs() {
   /** Where the docs live in this language (docsCollection's `base`, `/docs` by default), e.g. `/de/docs`. */
   const { localePath } = useI18n()
   const { mainLocale } = useGinkoSite()
-  const route = (schema.bricks.docs as { route?: Record<string, string> } | undefined)?.route?.[mainLocale]
+  const route = ((schema.bricks as Record<string, unknown>)[brick] as { route?: Record<string, string> } | undefined)?.route?.[mainLocale]
   const mainBase = route?.replace(/\/\[slug\]$/, '') ?? '/docs'
   const base = computed(() => localePath(mainBase))
 
