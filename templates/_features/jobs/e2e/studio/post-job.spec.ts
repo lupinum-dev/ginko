@@ -22,7 +22,7 @@ test('the owner posts a job with its last day, and the jobs list shows both', as
   await sheet.getByLabel(/^Ausgeschrieben bis/).fill(lastDay)
   await sheet.getByRole('textbox', { name: 'Beschreibung', exact: true }).click()
   await page.keyboard.type('You install and service pumps at our customers.')
-  await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
 
   // Wrong behaviour caught: the job missing from the list, or listed without its last day (an ad must end by itself).

@@ -20,7 +20,7 @@ async function attachSheet(page: Page, fileTitle: string) {
   const sheet = page.getByRole('dialog')
   await sheet.getByRole('combobox', { name: new RegExp(`^${PRODUCT.field}`) }).click()
   await page.getByRole('option', { name: fileTitle, exact: true }).click()
-  await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
   const toast = page.locator('[data-sonner-toast]').filter({ hasText: 'Veröffentlicht' })
   await expect(toast).toBeVisible()
@@ -48,7 +48,7 @@ test('the owner attaches a PDF to a product, and the product page links it', asy
   await add.getByLabel('Datum', { exact: true }).fill(new Date(stamp).toISOString().slice(0, 10))
   await add.locator('input[type=file]').setInputFiles({ name: fileName, mimeType: 'application/pdf', buffer: pdfBytes(`Gate seven ${stamp}`) })
   await expect(add.getByRole('link', { name: fileName })).toBeVisible({ timeout: 60_000 })
-  await add.getByRole('button', { name: 'Veröffentlichen' }).click()
+  await add.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(add).toHaveCount(0)
 
   try {

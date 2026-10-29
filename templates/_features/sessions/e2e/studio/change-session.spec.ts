@@ -21,7 +21,7 @@ test('on a phone the organiser moves a session to another time and room, and the
   await sheet.getByLabel(/^Beginn/).fill('13:05')
   await sheet.getByLabel(/^Ende/).fill('13:50')
   await sheet.getByLabel(/^Raum/).fill(room)
-  await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
 
   // Wrong behaviour caught: the programme keeps the old time or room (a wrong session time or room must never stay

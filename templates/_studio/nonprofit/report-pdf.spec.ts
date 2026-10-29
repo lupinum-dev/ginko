@@ -21,7 +21,7 @@ test('the owner uploads the report as a PDF, and the reports page links a file t
   await sheet.locator('input[type=file]').setInputFiles(fixture)
   // The upload is checked on the server: the file name shows as a link once it is ready.
   await expect(sheet.getByRole('link', { name: 'gate-seven-report.pdf' })).toBeVisible()
-  await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
   // The status the Studio shows after the save (ops.saved + ops.liveHint in the Studio's German): saved, and when it is
   // live. The site has several languages, so the same line ends with a note about untranslated texts: no exact match.

@@ -24,7 +24,7 @@ test('the lunch week gets a new dish, and the lunch page shows it', async ({ pag
   await row.getByLabel('Gericht', { exact: true }).fill(dish)
   // A new dish keeps the old allergens only after a "yes": wrong allergens must never go online by accident.
   await row.getByRole('button', { name: 'Ja, stimmt' }).click()
-  await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
 
   // Days before today are hidden on screen (not in print), and the new dish may sit on one of them: print media shows

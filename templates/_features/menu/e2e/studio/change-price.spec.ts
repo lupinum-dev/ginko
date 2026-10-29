@@ -18,7 +18,7 @@ test('the owner changes the price of a dish, and the menu shows it', async ({ pa
   await page.getByRole('dialog').getByRole('button', { name: new RegExp(`^${PRICE.dish}`) }).click()
   const sheet = page.getByRole('dialog')
   await sheet.getByLabel('Preis', { exact: true }).fill(PRICE.price)
-  await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
 
   // The dish's own line (name and price) shows the new price, not just any "27.40" elsewhere on the page.

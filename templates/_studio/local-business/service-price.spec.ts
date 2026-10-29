@@ -22,7 +22,7 @@ test('the owner changes the price of a treatment, and its page shows the new pri
   await page.getByRole('dialog').getByRole('button', { name: new RegExp(`^${PRICE.service}`) }).click()
   const sheet = page.getByRole('dialog')
   await sheet.getByLabel(/^Betrag/).fill(PRICE.price)
-  await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
 
   // Wrong behaviour caught: the page keeps the old price, or loses the price ("On request") after the save.
