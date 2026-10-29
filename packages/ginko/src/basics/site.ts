@@ -1,6 +1,5 @@
-// The organisation behind the site: legal name, address and contact. The stored names are those of the agency
-// preset's company brick, so a site built on it can switch without moving data. There is no country field: the
-// country is part of the site's config.
+// The organisation behind the site: legal name, address and contact. There is no country field: the country is part
+// of the site's config.
 import { f } from '../core/fields.ts'
 import { single } from '../core/site.ts'
 import { organizationLd, type OrganizationLdInput } from '../core/seo.ts'

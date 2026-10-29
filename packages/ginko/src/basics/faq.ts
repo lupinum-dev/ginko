@@ -1,4 +1,4 @@
-// Frequently asked questions, in the owner's order. The stored names are the agency preset's.
+// Frequently asked questions, in the owner's order.
 import { f } from '../core/fields.ts'
 import { faqLd } from '../core/seo.ts'
 import { collection } from '../core/site.ts'

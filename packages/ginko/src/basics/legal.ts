@@ -1,11 +1,11 @@
-// Legal texts: one entry per text, each with its kind and one Markdown body. The stored names and kinds are those
-// of the agency preset's legal brick; which texts a site needs depends on its country, so none is required.
+// Legal texts: one entry per text, each with its kind and one Markdown body. Which texts a site needs depends on its
+// country, so none is required.
 import { f } from '../core/fields.ts'
 import { collection, type RouteTemplate } from '../core/site.ts'
 import type { Locale } from '../core/types.ts'
 import { sourceOf, t, type BasicsOptions } from './shared.ts'
 
-/** The kinds of legal text (`legalType`), in the agency preset's order: stored values, they never change. */
+/** The kinds of legal text (`legalType`): stored values, they never change. */
 export const legalTypes = [
   { value: 'privacy', label: t('Datenschutz', 'Privacy policy', 'Política de privacidad', 'Politique de confidentialité') },
   { value: 'customer-privacy', label: t('Datenschutz für Kunden', 'Privacy policy for customers', 'Privacidad para clientes', 'Confidentialité pour les clients') },
