@@ -17,6 +17,15 @@ export function docsStudioUrl(platform: string | undefined, site: string, brick:
 }
 
 /**
+ * "Edit this page" of a docs page. A page from a file links to its repository file; a page stored on the platform
+ * links to the Studio only when the site opts in (`studioEditLink`), since visitors of a public site have no use for it.
+ */
+export function docsPageEditUrl(doc: { id: string, source?: string }, options: { repository?: Parameters<typeof docsEditUrl>[0], studioEditLink?: boolean, platform?: string, site: string }): string | undefined {
+  if (doc.source) return docsEditUrl(options.repository, doc.source)
+  return options.studioEditLink ? docsStudioUrl(options.platform, options.site, 'docs', doc.id) : undefined
+}
+
+/**
  * "Report an issue" for a page. Placeholders: `{url}`, `{title}`, `{page}` (the page's address), URL-encoded except
  * `{url}`. GitHub repositories get the GitHub form by default; other hosts need `issueUrl`.
  */

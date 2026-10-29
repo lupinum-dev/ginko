@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { docsEditUrl, docsIssueUrl, docsStudioUrl } from '../lib/docsPage'
+import { docsIssueUrl, docsPageEditUrl } from '../lib/docsPage'
 import { markdownComponents } from '../lib/markdownComponents'
 // One doc: breadcrumbs, title, lead and page actions, the text with the layer's Markdown components, the edit
 // link and date, previous/next; the table of contents beside it (or in the docs bar, see doc.vue).
@@ -29,9 +29,8 @@ useGinkoSeo(() => ({
   ],
 }))
 
-const repository = useAppConfig().docs?.repository
-// A page from a file is edited in the repository; one stored on the platform in the Studio.
-const editUrl = computed(() => (props.doc.source ? docsEditUrl(repository, props.doc.source) : docsStudioUrl(platform, siteName, 'docs', props.doc.id)))
+const { repository, studioEditLink } = useAppConfig().docs ?? {}
+const editUrl = computed(() => docsPageEditUrl(props.doc, { repository, studioEditLink, platform, site: siteName }))
 const issueUrl = computed(() => docsIssueUrl(repository, props.doc.data.title, new URL(route.path, site.url).href))
 const updated = computed(() => props.doc.updatedAt && {
   iso: props.doc.updatedAt,
