@@ -1,5 +1,16 @@
 # @lupinum/ginko
 
+## 0.14.0
+
+### Minor Changes
+
+- [#90](https://github.com/lupinum-dev/ginko/pull/90) [`1140222`](https://github.com/lupinum-dev/ginko/commit/11402224fcc89dc2488cfb081eb41fd9376091c3) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change where a new or restored entry goes in a manually ordered collection (`order: 'manual'`): it is now first in the Studio list and on the website, not last, so editors no longer move it up one place at a time. Entries brought in by import, seed or a release keep the order they bring; auto-sorted collections and navigation trees do not change.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.14.0
+
 ## 0.13.0
 
 ### Minor Changes
