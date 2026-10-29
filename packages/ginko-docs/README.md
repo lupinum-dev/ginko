@@ -39,8 +39,8 @@ The bricks read Markdown files from `content/`. To edit them in Ginko Studio ins
 `docsCollection`, `docsHome`, `blogCollections` or `changelogCollection` (each brick on its own; the default is
 `'files'`). The pages, their Markdown twins, the search (the search box and `search_docs`) and `read_doc` work the
 same with either source: with platform bricks the site's server builds the search index from the published content
-and renews it like a page, so a page published in the Studio is found within a minute. A page from the platform links
-"Edit this page" to its form in the Studio. One thing is built from files only: an icon named only in Studio content
+and renews it like a page, so a page published in the Studio is found within a minute. A page from the platform shows
+no "Edit this page" unless the site sets `studioEditLink: true` (see "Options"). One thing is built from files only: an icon named only in Studio content
 is not bundled (name it once in a file the icon scan reads, see "Icons").
 
 `components` is the registry of `@lupinum/ginko-components` (a dependency of the layer, re-exported here). With it, Ginko checks every component tag and prop in the
@@ -79,6 +79,7 @@ export default defineAppConfig({
     social: [{ icon: 'docs:github', href: 'https://github.com/me/docs', label: 'GitHub' }],
     banner: { id: 'v2', href: '/docs/changes' },        // dismissible notice above the header; `href` optional
     repository: { url: 'https://github.com/me/docs', branch: 'main' }, // "Edit this page" and "Report an issue"
+    studioEditLink: false,                              // true: pages from the platform link to the Studio (default false)
     markdownActions: { copy: true, openIn: ['chatgpt', 'claude'] },     // "Copy page" and the chats of its menu (the defaults)
     footer: {
       links: [{ id: 'github', href: 'https://github.com/me/docs' }],
@@ -100,8 +101,10 @@ language has its own:
 - Each `nav` and footer link `id` picks the message `docs.nav.<id>` or `docs.footer.<id>`.
 - `social` icons are any Iconify name. Built in: `docs:github`, `docs:discord`, `docs:x`, `docs:bluesky`, `docs:mastodon`, `docs:linkedin`, `docs:youtube`.
 - `repository` adds "Edit this page" to every page that comes from a file (`<url>/edit/<branch>/<source>`; `branch` defaults to `main`)
-  and, for GitHub, "Report an issue". `editUrl` (`{url}`, `{branch}`, `{source}`) and `issueUrl` (`{url}`, `{title}`, `{page}`) are templates for other hosts. Pages stored on the Ginko platform (not in files) link to
-  their form in the Studio instead, at the site's platform address.
+  and, for GitHub, "Report an issue". `editUrl` (`{url}`, `{branch}`, `{source}`) and `issueUrl` (`{url}`, `{title}`, `{page}`) are templates for other hosts. Pages stored on the Ginko platform (not in files) get no
+  edit link by default, so visitors never see a link to the Studio.
+- `studioEditLink: true` adds "Edit this page" to pages stored on the platform, linking to their form in the Studio at the
+  site's platform address. Set it for docs that only editors read, such as an internal handbook.
 - Every page shows "Last updated" from the entry's `updatedAt`, and its JSON-LD is a `TechArticle` with `dateModified`.
 - "Copy page" copies the page as Markdown; its menu opens the `.md` twin, or ChatGPT or Claude with a prompt that points at it.
 - The layer also serves a read-only [MCP](https://modelcontextprotocol.io) endpoint at `POST /__ginko/docs-mcp` (Streamable HTTP, JSON-RPC)

@@ -30,6 +30,9 @@ export interface DocsConfig {
     /** Issue link template; `{url}`, `{title}` and `{page}` are replaced. Default on GitHub: a new issue with the page title. */
     issueUrl?: string
   }
+  /** `true` adds "Edit this page" to pages stored on the Ginko platform, linking to their form in the Studio (at the
+   *  site's platform address). Default false: visitors of a public site see no link to the Studio. */
+  studioEditLink?: boolean
   /** "Copy page" (default true) and the chats the page menu can open it in (default both, `[]` for none). */
   markdownActions?: { copy?: boolean, openIn?: DocsAssistant[] }
   /** `false` leaves out the built-in search (header, sidebar, phone bar), for a site with <DocsSearch /> in its own header. */

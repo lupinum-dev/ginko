@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildIndex } from '@lupinum/ginko/internal/search'
 import { loadIndex, search } from '@lupinum/ginko/search'
 import { handleMcp, type DocsMcpDeps } from '../server/mcp/handler'
-import { docsAskLinks, docsEditUrl, docsMainLanguagePath, docsMainPath, docsMarkdownPath, docsRouteLink, docsStudioUrl } from '../app/lib/docsPage'
+import { docsAskLinks, docsEditUrl, docsMainLanguagePath, docsMainPath, docsMarkdownPath, docsPageEditUrl, docsRouteLink, docsStudioUrl } from '../app/lib/docsPage'
 
 describe('page helpers', () => {
   it.each([
@@ -32,6 +32,14 @@ describe('page helpers', () => {
   it('a platform page links to its Studio form; without a platform address there is no link', () => {
     expect(docsStudioUrl('https://studio.example/', 'lupinum', 'docs', 'k17 x')).toBe('https://studio.example/s/lupinum/all/docs/k17%20x')
     expect(docsStudioUrl('', 'lupinum', 'docs', 'k17')).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: every visitor of a public site with Studio pages sees "Edit this page" pointing at the Studio.
+  it('a platform page links to the Studio only when the site opts in', () => {
+    const options = { platform: 'https://studio.example', site: 'rolfing' }
+    expect(docsPageEditUrl({ id: 'k17' }, options)).toBeUndefined()
+    expect(docsPageEditUrl({ id: 'k17' }, { ...options, studioEditLink: true })).toBe('https://studio.example/s/rolfing/all/docs/k17')
+    expect(docsPageEditUrl({ id: 'k17', source: 'x.md' }, { ...options, repository: { url: 'https://github.com/a/b' } })).toBe('https://github.com/a/b/edit/main/x.md')
   })
 
   it.each([['/en/docs/languages', '/en/docs/languages.md'], ['/docs/x/', '/docs/x.md'], ['/', '/index.md']])('markdown twin of %s', (path, md) => expect(docsMarkdownPath(path)).toBe(md))
