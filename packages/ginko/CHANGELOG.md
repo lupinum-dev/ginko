@@ -1,5 +1,17 @@
 # @lupinum/ginko
 
+## 0.11.0
+
+### Minor Changes
+
+- [#84](https://github.com/lupinum-dev/ginko/pull/84) [`474281a`](https://github.com/lupinum-dev/ginko/commit/474281aba38171c9d8df8f5f1a90e9ed4c667c29) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `platform` to `defineSite`: the hosted platform's address can live in `ginko.config.ts`, so `pnpm dev` reads the hosted content without an `.env` file, in every clone and worktree. `NUXT_PUBLIC_GINKO_PLATFORM` still overrides it, and `pnpm local:dev` sets it to the local platform.
+
+### Patch Changes
+
+- [#81](https://github.com/lupinum-dev/ginko/pull/81) [`cb0c1fc`](https://github.com/lupinum-dev/ginko/commit/cb0c1fcec6235e99ecd71254b46b265ff84286f6) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the Studio's long-form text editor (rich and page texts) opening as a small box: it now starts at about half the screen.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.11.0
+
 ## 0.10.1
 
 ### Patch Changes

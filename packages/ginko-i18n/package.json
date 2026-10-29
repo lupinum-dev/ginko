@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/ginko-i18n",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "type": "module",
   "description": "Nuxt i18n with the URL as the only locale source.",
   "license": "MIT",
