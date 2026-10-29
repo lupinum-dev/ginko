@@ -3,7 +3,6 @@
      come before the rows, so the frequent button keeps its place whatever the number of rows. -->
 <script setup lang="ts">
 import { computed, inject } from 'vue'
-import type { CollectionBrick } from '@lupinum/ginko'
 import { CircleAlertIcon, CircleXIcon, ClockIcon, EllipsisIcon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
@@ -116,8 +115,7 @@ function menuClosed(event: Event) {
   <TodayRows v-if="ctx.isTimed(sec.brick) && view.rows !== 'unknown'" :sec="sec" :listing="view.listing" :pending="view.rows === 'loading'" :plan="plan" />
 
   <TodayDrafts
-    v-if="sec.brick.kind === 'collection' && sec.brick.drafts"
-    :slug="ctx.slug" :brick-key="sec.key" :brick="sec.brick as CollectionBrick" :entries="ctx.entriesOf(sec.key)" :tasks="sec.tasks"
+    :slug="ctx.slug" :brick-key="sec.key" :brick="sec.brick" :entries="ctx.entriesOf(sec.key)" :tasks="sec.tasks"
     :is-manager="ctx.isManager" :main="ctx.main" :time-zone="ctx.timeZone"
   />
 </template>

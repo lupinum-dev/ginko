@@ -23,6 +23,8 @@ const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 // The serialized schema grammar. Unknown properties are rejected here and in diffSchema (deny by default).
 export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'languages', 'currency', 'week', 'holidays', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
+// `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
+// before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
 export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after'])
 
@@ -43,7 +45,9 @@ export function serializeSchema(site: SiteInput): Schema {
       return [name, isRetired(`${key}.${name}`) ? { ...field, retired: true as const } : field]
     }))
     const tasks = brick.tasks?.map((task) => 'prefill' in task && task.prefill ? { ...task, prefill: storedPrefill(task.prefill, brick.fields, site.locales) } : task)
-    return [key, { ...brick, pos, fields: positioned(fields), ...(tasks ? { tasks } : {}), ...(isRetired(key) ? { retired: true as const } : {}) }]
+    // A config written for 0.12 or older may still say `drafts`: the new schema leaves it out (BRICK_KEYS).
+    const { drafts: _drafts, ...rest } = brick as typeof brick & { drafts?: unknown }
+    return [key, { ...rest, pos, fields: positioned(fields), ...(tasks ? { tasks } : {}), ...(isRetired(key) ? { retired: true as const } : {}) }]
   }))
   const migrations = Object.entries(site.migrations ?? {})
     .map(([id, m]) => ({ id, brick: m.brick, fills: m.fills, fingerprint: migrationFingerprint(m.brick, m.fills, m.compute) }))
@@ -380,12 +384,9 @@ function schemaProblems(schema: Schema): string[] {
     }
     if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
     if (brick.status !== undefined) problems.push(...statusProblems(key, brick, schema))
-    // Drafts need entries that can wait for publishing; a single brick has one entry that is always live (SPEC 15).
-    if (brick.kind === 'single' && 'drafts' in brick) problems.push(`${key}: drafts are only allowed for collections.`)
     if (brick.kind === 'single' && 'plans' in brick) problems.push(`${key}: plans are only allowed for collections.`)
     if (brick.kind === 'collection') {
       if (!(brick.max >= 1 && brick.max <= 500)) problems.push(`${key}: max must be between 1 and 500.`)
-      if (brick.drafts !== undefined && typeof brick.drafts !== 'boolean') problems.push(`${key}: drafts must be true or false.`)
       if (brick.plans !== undefined) problems.push(...plansProblems(key, brick.plans, brick.fields, schema))
       if (brick.order !== 'manual' && !brick.fields[brick.order.field]) problems.push(`${key}: the sort field is missing.`)
       if (brick.order !== 'manual' && brick.order.dir !== undefined && brick.order.dir !== 'asc' && brick.order.dir !== 'desc') problems.push(`${key}: order.dir must be “asc” or “desc”.`)

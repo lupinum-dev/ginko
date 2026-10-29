@@ -249,17 +249,9 @@ async function needApproval(s: S, brick = 'menu') {
     await ctx.db.patch(s.site, { schema })
   })
 }
-async function enableDrafts(s: S, bricks = ['events', 'notices']) {
-  await s.t.run(async (ctx) => {
-    const site = (await ctx.db.get(s.site))!
-    const schema = site.schema as Schema
-    for (const key of bricks) (schema.bricks[key] as { drafts?: boolean }).drafts = true
-    await ctx.db.patch(s.site, { schema })
-  })
-}
 const saibling = (s: S) => s.entries['menu-saibling']!
 const saveMenu = (s: S, who: keyof S['as'], over: Record<string, unknown>) =>
-  s.as[who].mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: saibling(s), baseRev: 1, fields: { price: { amount: 1450 } }, ...over } as never)
+  s.as[who].mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: saibling(s), baseRev: 1, fields: { price: { amount: 1450 } }, ...over } as never)
 
 // ---------------------------------------------------------------------------------------------
 // 2. Staff outside their grants
@@ -288,7 +280,7 @@ describe('2. staff (the cook) outside the grants', () => {
   it('entries.save refuses a granted task of another brick on a notice entry', async () => {
     const s = await setup()
     const notice = s.entries['notice-ausgebucht']!
-    const code = await outcome(s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry: notice, baseRev: 1, fields: { text: { de: 'x' } } }))
+    const code = await outcome(s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.edit', entry: notice, baseRev: 1, fields: { text: { de: 'x' } } }))
     expect(code).toBe('FORBIDDEN')
   })
 
@@ -301,7 +293,7 @@ describe('2. staff (the cook) outside the grants', () => {
   ])('entries.create through a create task with fields refuses %s, and takes the listed fields and the default', async (_label, extra) => {
     const s = await setup()
     const dish = { category: 'starters', name: { de: 'Suppe' }, price: { amount: 700 }, allergens: [], veg: 'none' }
-    const create = (data: Record<string, unknown>) => outcome(s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data }))
+    const create = (data: Record<string, unknown>) => outcome(s.as.cook.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data }))
     const before = (await rows(s, 'entries')).length
     expect(await create({ ...dish, ...extra })).toBe('FORBIDDEN')
     expect((await rows(s, 'entries')).length).toBe(before)
@@ -313,8 +305,8 @@ describe('2. staff (the cook) outside the grants', () => {
   it('a cook who created a dish through a create task with fields still changes onMenu and soldOutOn on it', async () => {
     const s = await setup()
     const dish = { category: 'starters', name: { de: 'Suppe' }, price: { amount: 700 }, allergens: [], veg: 'none' }
-    const made = (await s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish })) as { entry: Id<'entries'>; rev: number }
-    const code = await outcome(s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: made.entry, baseRev: made.rev, fields: { onMenu: false, soldOutOn: '2026-10-20' } }))
+    const made = (await s.as.cook.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish })) as { entry: Id<'entries'>; rev: number }
+    const code = await outcome(s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.add', entry: made.entry, baseRev: made.rev, fields: { onMenu: false, soldOutOn: '2026-10-20' } }))
     expect(code).toBe('ok')
     expect((await s.t.run((ctx) => ctx.db.get(made.entry)))!.data).toMatchObject({ onMenu: false, soldOutOn: '2026-10-20' })
   })
@@ -323,8 +315,8 @@ describe('2. staff (the cook) outside the grants', () => {
     const s = await setup()
     const notice = s.entries['notice-ausgebucht']!
     const results = {
-      createNotice: await outcome(s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'notices', data: { text: { de: 'x' } } })),
-      createNoTask: await outcome(s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: { category: 'starters', name: { de: 'x' }, price: { amount: 1 }, allergens: [], veg: 'none' } })),
+      createNotice: await outcome(s.as.cook.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'notices', data: { text: { de: 'x' } } })),
+      createNoTask: await outcome(s.as.cook.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'menu', data: { category: 'starters', name: { de: 'x' }, price: { amount: 1 }, allergens: [], veg: 'none' } })),
       duplicateNotice: await outcome(s.as.cook.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: notice })),
       removeNotice: await outcome(s.as.cook.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), task: 'menu.remove', entry: notice, lifeRev: 1 })),
       removeWithEditTask: await outcome(s.as.cook.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry: saibling(s), lifeRev: 1 })),
@@ -344,7 +336,6 @@ describe('2. staff (the cook) outside the grants', () => {
 
   it('publish and unpublish refuse a cook with no create/edit task of the brick, also with only a remove task', async () => {
     const s = await setup()
-    await enableDrafts(s)
     const draft = (await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: { title: { de: 'Fest' }, when: { from: '2026-12-01', to: '2026-12-01' }, description: { de: 'x' } } })) as { entry: string; state: string }
     expect(draft.state).toBe('draft')
     const call1 = (task?: string) => outcome(s.as.cook.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), ...(task ? { task } : {}), entry: draft.entry, lifeRev: 1 }))
@@ -409,7 +400,7 @@ describe('2. staff (the cook) outside the grants', () => {
     await needApproval(s)
     // The owner's agent proposes a price change: the author is the owner.
     const key = await keyOf(s, 'owner')
-    const proposed = await call(s, key, 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 20, propose: true })
+    const proposed = await call(s, key, 'task_menu_price', { publish: true, entry: s.entries['menu-schnitzel'], price: 20, propose: true })
     expect(proposed.isError).toBe(false)
     const id = (await rows(s, 'proposals'))[0]!._id
     expect(await outcome(s.as.cook.query(api.proposals.get, { ...SITE, proposal: id }))).toBe('NOT_FOUND')
@@ -436,12 +427,12 @@ describe('2. staff (the cook) outside the grants', () => {
     const names = ((await rpc(s, key, 'tools/list')).body.result.tools as { name: string }[]).map((t) => t.name)
     expect(names).toContain('task_menu_price')
     expect(names.filter((n) => n.startsWith('task_') && !/^task_(menu_(edit|price|add|remove)|lunch_lunchWeek)$/.test(n))).toEqual([])
-    const forbidden = await call(s, key, 'task_notices_add', { text: 'Hallo' })
+    const forbidden = await call(s, key, 'task_notices_add', { publish: true, text: 'Hallo' })
     expect(forbidden.isError).toBe(true)
-    const notOffered = await call(s, key, 'task_menu_priceFrom', { entry: saibling(s), nextPrice: 5 })
+    const notOffered = await call(s, key, 'task_menu_priceFrom', { publish: true, entry: saibling(s), nextPrice: 5 })
     expect(notOffered.isError).toBe(true)
     // An owner-only change of a brick the cook has no task for cannot be undone with the cook's key.
-    await s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: s.entries['contact']!, baseRev: 1, fields: { city: 'Wien' } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: s.entries['contact']!, baseRev: 1, fields: { city: 'Wien' } })
     const change = (await rows(s, 'changes')).at(-1)!._id
     expect((await call(s, key, 'ginko_undo', { change })).isError).toBe(true)
     expect((await s.t.run((ctx) => ctx.db.get(s.entries['contact']!)))!.data.city).toBe('Wien')
@@ -464,7 +455,7 @@ describe('2b. positive control: the probes above can tell allowed from refused',
   it('the cook may change a price with the price task and the owner may do anything', async () => {
     const s = await setup()
     expect(await outcome(saveMenu(s, 'cook', { task: 'menu.price' }))).toBe('ok')
-    expect(await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: saibling(s), baseRev: 2, fields: { name: { de: 'Saibling neu' } } }))).toBe('ok')
+    expect(await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: saibling(s), baseRev: 2, fields: { name: { de: 'Saibling neu' } } }))).toBe('ok')
   })
 })
 
@@ -474,7 +465,7 @@ describe('2b. positive control: the probes above can tell allowed from refused',
 
 async function fixtures(s: S) {
   const entry = saibling(s)
-  const save = (await s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: s.entries['menu-frittaten'], baseRev: 1, fields: { price: { amount: 1111 } } })) as { change: string }
+  const save = (await s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: s.entries['menu-frittaten'], baseRev: 1, fields: { price: { amount: 1111 } } })) as { change: string }
   const folder = await s.as.owner.mutation(api.files.createFolder, { ...SITE, name: 'GEHEIM-ORDNER' })
   const ticket = (await s.as.owner.mutation(api.uploads.prepare, SITE)).ticket
   const upload = await s.t.fetch(`/upload?ticket=${ticket}&name=karte.pdf`, { method: 'POST', headers: { 'Content-Type': 'application/pdf' }, body: '%PDF-1.4 geheim' })
@@ -806,7 +797,7 @@ async function reviewSetup() {
 describe('5. agent key with review on cannot change live content directly', () => {
   it('ginko_undo of a live save is refused', async () => {
     const s = await reviewSetup()
-    const saved = (await s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: saibling(s), baseRev: 1, fields: { price: { amount: 1450 } } })) as { change: string }
+    const saved = (await s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: saibling(s), baseRev: 1, fields: { price: { amount: 1450 } } })) as { change: string }
     const before = await s.changes()
     const undone = await call(s, s.key, 'ginko_undo', { change: saved.change })
     expect(undone.isError).toBe(true)
@@ -816,7 +807,7 @@ describe('5. agent key with review on cannot change live content directly', () =
 
   it('ginko_undo of a live create does not remove the entry, it can only propose', async () => {
     const s = await reviewSetup()
-    const created = (await s.as.owner.mutation(api.entries.create, { ...SITE, opId: opId(), brick: 'notices', data: { text: { de: 'Heute Ruhetag' } } })) as { entry: Id<'entries'> }
+    const created = (await s.as.owner.mutation(api.entries.create, { publish: {}, ...SITE, opId: opId(), brick: 'notices', data: { text: { de: 'Heute Ruhetag' } } })) as { entry: Id<'entries'> }
     const change = (await rows(s, 'changes')).find((c) => c.kind === 'create')!._id
     const contentRev = (await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev
     await call(s, s.key, 'ginko_undo', { change })
@@ -827,14 +818,14 @@ describe('5. agent key with review on cannot change live content directly', () =
 
   it('ginko_revert, ginko_translate, tasks and removes become proposals, also with propose: false', async () => {
     const s = await reviewSetup()
-    const saved = (await s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: saibling(s), baseRev: 1, fields: { price: { amount: 1450 } } })) as { change: string }
+    const saved = (await s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: saibling(s), baseRev: 1, fields: { price: { amount: 1450 } } })) as { change: string }
     const before = await s.changes()
     const answers = [
       await call(s, s.key, 'ginko_revert', { entry: saibling(s), change: saved.change }),
-      await call(s, s.key, 'ginko_translate', { entry: saibling(s), locale: 'en', fields: { name: 'Char' } }),
-      await call(s, s.key, 'task_menu_price', { entry: saibling(s), price: 99, propose: false }),
+      await call(s, s.key, 'ginko_translate', { publish: true, entry: saibling(s), locale: 'en', fields: { name: 'Char' } }),
+      await call(s, s.key, 'task_menu_price', { publish: true, entry: saibling(s), price: 99, propose: false }),
       await call(s, s.key, 'task_menu_remove', { entry: saibling(s), confirm: true, propose: false }),
-      await call(s, s.key, 'task_notices_add', { text: 'Neu', propose: false }),
+      await call(s, s.key, 'task_notices_add', { publish: true, text: 'Neu', propose: false }),
     ]
     expect(answers.map((a) => a.isError)).toEqual([false, false, false, false, false])
     expect(answers.slice(2).map((a) => a.text)).toEqual(Array(3).fill('Proposed, waiting for approval.'))
@@ -847,7 +838,7 @@ describe('5. agent key with review on cannot change live content directly', () =
   it('smuggled arguments (review, task, opId, approvedBy) are refused', async () => {
     const s = await reviewSetup()
     for (const extra of [{ review: false }, { task: 'menu.price' }, { opId: 'x' }, { approvedBy: 'u-wirtin' }, { forceProposal: false }, { site: 'andere' }]) {
-      expect((await call(s, s.key, 'task_menu_price', { entry: saibling(s), price: 7, ...extra })).isError).toBe(true)
+      expect((await call(s, s.key, 'task_menu_price', { publish: true, entry: saibling(s), price: 7, ...extra })).isError).toBe(true)
     }
     expect(await s.price()).toEqual({ amount: 1350 })
   })
@@ -862,7 +853,6 @@ describe('5. agent key with review on cannot change live content directly', () =
 
   it('ginko_draft makes a draft that is not in the public bundle', async () => {
     const s = await reviewSetup()
-    await enableDrafts(s, ['notices'])
     const rev = (await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev
     const made = await call(s, s.key, 'ginko_draft', { brick: 'notices', fields: { text: 'Entwurf' } })
     expect(made.isError).toBe(false)
@@ -1030,7 +1020,7 @@ const json = (text: string): Json => JSON.parse(text) as Json
 const nest = (depth: number): Json => { let v: Json = 1; for (let i = 0; i < depth; i++) v = { a: v }; return v }
 
 async function saveFields(s: S, fields: Record<string, unknown>, over: Record<string, unknown> = {}) {
-  return outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: saibling(s), baseRev: 1, fields, ...over } as never))
+  return outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: saibling(s), baseRev: 1, fields, ...over } as never))
 }
 const unchanged = async (s: S, entry = saibling(s)) => (await s.t.run((ctx) => ctx.db.get(entry)))!.rev
 
@@ -1101,7 +1091,7 @@ describe('7a. entries.save refuses wrong types, unknown fields and values over t
 
   it('an optional text cleared with { de: null } is removed or refused, never stored as a null inside the text', async () => {
     const s = await setup()
-    const code = await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: saibling(s), baseRev: 1, fields: { description: { de: null } } }))
+    const code = await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: saibling(s), baseRev: 1, fields: { description: { de: null } } }))
     const stored = (await s.t.run((ctx) => ctx.db.get(saibling(s))))!.data.description
     expect([code, JSON.stringify(stored ?? null)]).not.toEqual(['ok', '{"de":null}'])
   })
@@ -1123,7 +1113,7 @@ describe('7a. entries.save refuses wrong types, unknown fields and values over t
     ['confirm of an unknown field', { locale: 'en', confirm: ['bogus'] }],
   ])('%s', async (_label, over) => {
     const s = await setup()
-    const code = await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: saibling(s), baseRev: 1, fields: { price: { amount: 100 } }, ...over } as never))
+    const code = await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: saibling(s), baseRev: 1, fields: { price: { amount: 100 } }, ...over } as never))
     expect(code).toMatch(/^(INVALID|CHANGED_SINCE|FORBIDDEN)$/)
     expect(await unchanged(s)).toBe(1)
   })
@@ -1131,8 +1121,8 @@ describe('7a. entries.save refuses wrong types, unknown fields and values over t
   it('an opId reused with other content is refused and the first result stands', async () => {
     const s = await setup()
     const id = opId()
-    await s.as.owner.mutation(api.entries.save, { ...SITE, opId: id, entry: saibling(s), baseRev: 1, fields: { price: { amount: 100 } } })
-    expect(await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: id, entry: saibling(s), baseRev: 1, fields: { price: { amount: 999 } } }))).toBe('OP_REUSED')
+    await s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: id, entry: saibling(s), baseRev: 1, fields: { price: { amount: 100 } } })
+    expect(await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: id, entry: saibling(s), baseRev: 1, fields: { price: { amount: 999 } } }))).toBe('OP_REUSED')
     expect((await s.t.run((ctx) => ctx.db.get(saibling(s))))!.data.price).toEqual({ amount: 100 })
   })
 
@@ -1140,7 +1130,7 @@ describe('7a. entries.save refuses wrong types, unknown fields and values over t
     const s = await setup()
     const contact = s.entries['contact']!
     for (const fields of [{ street: { de: 'x' } }, { street: 5 }, { street: 'x'.repeat(81) }, { email: 'not-an-email' }, { email: 'a@b' }, { phone: 'call me' }, { postalCode: 'x'.repeat(11) }]) {
-      expect([JSON.stringify(fields), await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: contact, baseRev: 1, fields }))]).toEqual([JSON.stringify(fields), expect.stringMatching(REFUSAL)])
+      expect([JSON.stringify(fields), await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: contact, baseRev: 1, fields }))]).toEqual([JSON.stringify(fields), expect.stringMatching(REFUSAL)])
     }
     expect(await unchanged(s, contact)).toBe(1)
   })
@@ -1152,7 +1142,7 @@ describe('7a. entries.save refuses wrong types, unknown fields and values over t
     const bad: unknown[] = [{ de: { type: 'doc', content: [] } }, { de: ['a'] }, { de: 5 }, ['a'], 5, { de: { type: 'doc' }, en: 'ok' }]
     for (const value of bad) {
       for (const [entry, field] of [[legal, 'imprint'], [event, 'description']] as const) {
-        const code = await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry, baseRev: 1, fields: { [field]: value } }))
+        const code = await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry, baseRev: 1, fields: { [field]: value } }))
         expect([field, JSON.stringify(value), code]).toEqual([field, JSON.stringify(value), expect.stringMatching(REFUSAL)])
       }
     }
@@ -1162,8 +1152,8 @@ describe('7a. entries.save refuses wrong types, unknown fields and values over t
 
   it('markdown: 5001 characters in events.description and 3 MB in legal.imprint are refused', async () => {
     const s = await setup()
-    expect(await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: s.entries['weinabend']!, baseRev: 1, fields: { description: { de: 'x'.repeat(5001) } } }))).toMatch(REFUSAL)
-    expect(await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: s.entries['legal']!, baseRev: 1, fields: { imprint: { de: 'x '.repeat(1_500_000) } } }))).toMatch(REFUSAL)
+    expect(await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: s.entries['weinabend']!, baseRev: 1, fields: { description: { de: 'x'.repeat(5001) } } }))).toMatch(REFUSAL)
+    expect(await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: s.entries['legal']!, baseRev: 1, fields: { imprint: { de: 'x '.repeat(1_500_000) } } }))).toMatch(REFUSAL)
     expect(await unchanged(s, s.entries['legal']!)).toBe(1)
   })
 
@@ -1178,7 +1168,7 @@ describe('7a. entries.save refuses wrong types, unknown fields and values over t
   ])('markdown with %s never reaches the website as a link', async (_label, markdown) => {
     // The text may be stored as typed (the parser treats an unsafe target as plain text); what the website receives must hold no live script link.
     const s = await setup()
-    const code = await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: s.entries['legal']!, baseRev: 1, fields: { imprint: { de: markdown } } }))
+    const code = await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: s.entries['legal']!, baseRev: 1, fields: { imprint: { de: markdown } } }))
     if (code !== 'ok') return expect(code).toMatch(REFUSAL)
     const bundle = (await (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json()) as { bricks: { legal: { data: { imprint: unknown } } } }
     const served = JSON.stringify(bundle.bricks.legal.data.imprint)
@@ -1195,7 +1185,7 @@ describe('7a. entries.save refuses wrong types, unknown fields and values over t
       { slug: { de: 'a/b', en: 'x' } }, { slug: { de: '../../admin' } },
     ]
     for (const fields of attempts) {
-      const code = await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: event, baseRev: 1, fields } as never))
+      const code = await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: event, baseRev: 1, fields } as never))
       expect([JSON.stringify(fields), code]).toEqual([JSON.stringify(fields), expect.stringMatching(REFUSAL)])
     }
     expect(await unchanged(s, event)).toBe(1)
@@ -1205,7 +1195,7 @@ describe('7a. entries.save refuses wrong types, unknown fields and values over t
 describe('7b. entries.create refuses wrong values and keeps slugs clean', () => {
   const event = (over: Record<string, unknown> = {}) => ({ title: { de: 'Fest' }, when: { from: '2027-01-02', to: '2027-01-02' }, description: { de: 'x' }, ...over })
   const create = (s: S, data: Record<string, unknown>, brick = 'events', extra: Record<string, unknown> = {}) =>
-    s.as.owner.mutation(api.entries.create, { ...SITE, opId: opId(), brick, data, ...extra } as never)
+    s.as.owner.mutation(api.entries.create, { publish: {}, ...SITE, opId: opId(), brick, data, ...extra } as never)
 
   it('a slug sent with the data is ignored or refused: no stored slug contains "/", "." or a space', async () => {
     const s = await setup()
@@ -1246,9 +1236,8 @@ describe('7b. entries.create refuses wrong values and keeps slugs clean', () => 
     ['publish.at in the past', { publish: { at: 1000 } }],
     ['publish.at two years ahead', { publish: { at: Date.now() + 2 * 365 * 24 * 3600 * 1000 } }],
     ['publish.at a fraction', { publish: { at: Date.now() + 5000.5 } }],
-  ])('%s on a drafts collection', async (_label, extra) => {
+  ])('%s on a create', async (_label, extra) => {
     const s = await setup()
-    await enableDrafts(s)
     const before = (await rows(s, 'entries')).length
     expect(await outcome(create(s, event(), 'events', extra))).toMatch(REFUSAL)
     expect((await rows(s, 'entries')).length).toBe(before)
@@ -1277,11 +1266,11 @@ describe('7b. entries.create refuses wrong values and keeps slugs clean', () => 
     const tooMany = Array.from({ length: 25 }, (_, i) => row(i, files[0]!))
     const dupIds = [row(1, files[0]!), row(1, files[1]!)]
     for (const images of [tooMany, dupIds, [{ image: { file: files[0], alt: { de: 'Bild' } } }], [5], 'x', [{ _id: 'a'.repeat(5000), image: { file: files[0], alt: { de: 'Bild' } } }]]) {
-      expect([typeof images, await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: gallery, baseRev: 1, fields: { images } }))]).toEqual([typeof images, expect.stringMatching(REFUSAL)])
+      expect([typeof images, await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: gallery, baseRev: 1, fields: { images } }))]).toEqual([typeof images, expect.stringMatching(REFUSAL)])
     }
     expect(await unchanged(s, gallery)).toBe(1)
     // The control: two good rows work.
-    expect(await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: gallery, baseRev: 1, fields: { images: [row(1, files[0]!), row(2, files[1]!)] } }))).toBe('ok')
+    expect(await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: gallery, baseRev: 1, fields: { images: [row(1, files[0]!), row(2, files[1]!)] } }))).toBe('ok')
   })
 })
 
@@ -1312,10 +1301,10 @@ describe('7c. references to files and entries of another site, brick or state', 
       ['alt of 10 000 characters', { file: own, alt: { de: 'x'.repeat(10_000) } }], ['alt in an unknown language', { file: own, alt: { fr: 'x' } }],
     ]
     for (const [label, image] of bad) {
-      expect([label, await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: seo, baseRev: 1, fields: { image } }))]).toEqual([label, expect.stringMatching(REFUSAL)])
+      expect([label, await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: seo, baseRev: 1, fields: { image } }))]).toEqual([label, expect.stringMatching(REFUSAL)])
     }
     expect(await unchanged(s, seo)).toBe(1)
-    expect(await outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: seo, baseRev: 1, fields: { image: { file: own, alt } } }))).toBe('ok')
+    expect(await outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: seo, baseRev: 1, fields: { image: { file: own, alt } } }))).toBe('ok')
   })
 
   it('a ref field refuses an entry of another site, another brick, a removed entry and an unknown id', async () => {
@@ -1332,7 +1321,7 @@ describe('7c. references to files and entries of another site, brick or state', 
     const removed = s.entries['menu-frittaten']!
     await s.as.owner.mutation(api.entries.remove, { ...SITE, opId: opId(), entry: removed, lifeRev: 1 })
     const notice = s.entries['notice-ausgebucht']!
-    const save = (fields: Record<string, unknown>) => outcome(s.as.owner.mutation(api.entries.save, { ...SITE, opId: opId(), entry: notice, baseRev: 1, fields } as never))
+    const save = (fields: Record<string, unknown>) => outcome(s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: notice, baseRev: 1, fields } as never))
     const bad: [string, Record<string, unknown>][] = [
       ['entry of another site', { related: foreign }], ['entry of another brick', { related: s.entries['hours']! }], ['a removed entry', { related: removed }],
       ['an unknown id', { related: 'nope' }], ['a number', { related: 5 }], ['a list for a single ref', { related: [s.entries['menu-saibling']] }],
@@ -1353,12 +1342,11 @@ describe('7c. references to files and entries of another site, brick or state', 
       await ctx.db.patch(s.site, { schema })
     })
     const foreign = await s.t.run(async (ctx) => ctx.db.insert('entries', { site: s.other, brick: 'menu', kind: 'item', order: 1, data: {}, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, bytes: 2 }))
-    expect(await outcome(s.as.owner.mutation(api.entries.create, { ...SITE, opId: opId(), brick: 'notices', data: { text: { de: 'x' }, related: foreign } }))).toMatch(REFUSAL)
+    expect(await outcome(s.as.owner.mutation(api.entries.create, { publish: {}, ...SITE, opId: opId(), brick: 'notices', data: { text: { de: 'x' }, related: foreign } }))).toMatch(REFUSAL)
   })
 
   it('structural arguments: lifeRev and publish time are checked as numbers', async () => {
     const s = await setup()
-    await enableDrafts(s)
     const draft = (await s.as.owner.mutation(api.entries.create, { ...SITE, opId: opId(), brick: 'events', data: { title: { de: 'Fest' }, when: { from: '2027-01-02', to: '2027-01-02' }, description: { de: 'x' } } })) as { entry: string }
     const menu = s.entries['menu-saibling']!
     const bad = [NaN, Infinity, -1, 1.5, 2 ** 53]

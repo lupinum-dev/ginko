@@ -14,7 +14,7 @@ import { usageAs } from './files'
 import { ownAs } from './proposals'
 import { actorFor, entryOf, fail, idempotent, memberOf, type Actor } from './lib/access'
 import { searchEntries as searchAll, searchTexts } from './lib/search'
-import { builderTools, BUILDER_TOOLS, DRY_RUN, IMPORT_MAX, isBuilder, suggest, fixedTools, HISTORY_MAX, PROPOSE, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
+import { builderTools, BUILDER_TOOLS, DRY_RUN, IMPORT_MAX, isBuilder, suggest, fixedTools, HISTORY_MAX, PROPOSE, PUBLISH, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
 import type { Data } from './lib/content'
 import { leafStatus } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
@@ -144,7 +144,7 @@ async function inputSchemaOf(ctx: QueryCtx, actor: Actor, tool: TaskTool): Promi
   return taskInputSchema(schema.bricks[tool.brick]!, tool.task, { mainLocale: schema.locales[0]!, currency: schema.currency, prefill })
 }
 
-/** tools/list: the fixed tools and one tool per task the person may run; every task tool may carry `propose` and `request_id`. */
+/** tools/list: the fixed tools and one tool per task the person may run; every task tool may carry `propose` and `request_id`, a create or edit task `publish`. */
 export const tools = internalQuery({
   args: { key: v.id('agentKeys') },
   handler: async (ctx, { key }) => {
@@ -155,7 +155,7 @@ export const tools = internalQuery({
       const input = await inputSchemaOf(ctx, actor, tool)
       out.push({
         name: tool.name, description: describeTask(schema.bricks[tool.brick]!, tool.task, schema.locales[0]!),
-        inputSchema: { ...input, properties: { ...input.properties, propose: PROPOSE, request_id: REQUEST_ID } } as unknown as Json, annotations: taskHints(tool.task),
+        inputSchema: { ...input, properties: { ...input.properties, ...(tool.task.kind === 'remove' ? {} : { publish: PUBLISH }), propose: PROPOSE, request_id: REQUEST_ID } } as unknown as Json, annotations: taskHints(tool.task),
       })
     }
     return out
@@ -170,7 +170,6 @@ export const overview = internalQuery({
     const schema = actor.site.schema as Schema
     const allowed = taskTools(actor)
     const review = effectiveReview(await ctx.db.get(key), actor.site)
-    const drafts = draftBricks(actor)
     // Values the site keeps in one place; texts quote them (`:fact{name="…"}`) instead of copying them.
     const facts = (await factsOf(ctx, actor.site)).map((fact) => ({
       quote: `:fact{name="${fact.name}"}`,
@@ -188,7 +187,7 @@ export const overview = internalQuery({
       review,
       ...(review ? { hint: 'Changes made with this key wait for approval.' } : {}),
       bricks: Object.entries(schema.bricks).filter(([, b]) => !b.retired).map(([brick, b]) => ({
-        brick, label: labelIn(b.label, schema.locales[0]!, schema.locales[0]!), kind: b.kind, ...(drafts.includes(brick) ? { drafts: true } : {}),
+        brick, label: labelIn(b.label, schema.locales[0]!, schema.locales[0]!), kind: b.kind,
         tasks: allowed.filter((t) => t.brick === brick).map((t) => ({ tool: t.name, label: labelIn(t.task.label, schema.locales[0]!, schema.locales[0]!) })),
       })),
       ...(facts.length ? { facts } : {}),
@@ -387,7 +386,7 @@ const liveText = (liveFrom: string | undefined) => (liveFrom ? `On the website f
 function savedAs(result: Json, label: string): { text: string; result: Json } {
   if (proposed(result)) return { text: PROPOSED, result }
   const { change, liveFrom, pending } = result as { change?: string; liveFrom?: string; pending?: boolean }
-  // A published entry of a collection with drafts keeps the save as unpublished changes (lib/pending.ts).
+  // A save of a published entry waits as unpublished changes unless `publish` (lib/pending.ts).
   if (pending !== undefined) {
     return {
       text: pending ? `Saved: ${label}. Not on the website yet: the change waits as an unpublished change until the person publishes it in the platform.` : `Saved: ${label}. It matches the published version again, so nothing waits to be published.`,
@@ -456,17 +455,18 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   if (!tool) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name })
   const brick = schema.bricks[tool.brick]!
   const offered = await inputSchemaOf(ctx, actor, tool)
-  const unknown = Object.keys(input).filter((k) => !Object.hasOwn(offered.properties, k))
+  const unknown = Object.keys(input).filter((k) => !Object.hasOwn(offered.properties, k) && !(k === 'publish' && tool.task.kind !== 'remove'))
   if (unknown.length) fail('INVALID', 'errors.unknownOption', { unknown: unknown.join(', ') })
-  const { entry: picked, confirm, ...values } = input
+  const { entry: picked, confirm, publish: rawPublish, ...values } = input
+  const publish = publishArg(rawPublish)
   const main = schema.locales[0]!
   // Prefilled values count when the assistant leaves a field out: the tool offers them as defaults.
   if (tool.task.kind === 'create') {
     const data = { ...await prefillOf(ctx, actor, tool), ...fromToolInput(brick.fields, values, { mainLocale: main, currency: schema.currency, newRowId }) }
-    const result = await createAs(ctx, actor, { site, opId, task: tool.ref, brick: tool.brick, data })
+    const result = await createAs(ctx, actor, { site, opId, task: tool.ref, brick: tool.brick, data, ...(publish ? { publish: {} } : {}) })
     if (proposed(result)) return { text: PROPOSED, result }
     const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
-    // A collection with drafts makes a draft (SPEC 15); publishing stays with the person in the platform.
+    // Without `publish` the new entry is a draft (SPEC 15); publishing it stays with the person in the platform.
     const where = state === 'draft' ? 'Saved as a draft, not on the website yet. The person publishes it in the platform.' : liveText(liveFrom)
     const change = await lastChangeOf(ctx, id)
     return notingCopies(ctx, actor, brick.fields, values, { text: `Done: ${labelIn(tool.task.label, main, main)}. New entry ${id}. ${where} To undo: ginko_undo with change ${change?._id}.`, result: { ...(result as object), change: change?._id ?? null } })
@@ -496,7 +496,13 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   }
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
   // The assistant acts on the state it just read, so the current revision is its base.
-  return notingCopies(ctx, actor, brick.fields, values, savedAs(await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main }), labelIn(tool.task.label, main, main)))
+  return notingCopies(ctx, actor, brick.fields, values, savedAs(await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publish ? { publish: true as const } : {}) }), labelIn(tool.task.label, main, main)))
+}
+
+/** `publish` of a write tool: absent or a boolean. */
+function publishArg(value: Json | undefined): boolean {
+  if (value !== undefined && typeof value !== 'boolean') fail('INVALID', 'errors.unknownOption', { unknown: 'publish' })
+  return value === true
 }
 
 /** ginko_import collects the copies of all its items here and reads the facts once. */
@@ -524,7 +530,7 @@ async function translateThroughDoor(ctx: MutationCtx, actor: Actor, input: Recor
   const locale = schema.locales.find((l) => l === asked)
   if (!locale) fail('INVALID', 'errors.languageNotSetUpAvailable', { asked: String(asked), locales: schema.locales.slice(1).join(', ') })
   if (locale === main) fail('INVALID', 'errors.mainLanguageChangeViaTasks', { main })
-  const unknown = Object.keys(input).filter((k) => !['entry', 'locale', 'fields', 'confirm'].includes(k))
+  const unknown = Object.keys(input).filter((k) => !['entry', 'locale', 'fields', 'confirm', 'publish'].includes(k))
   if (unknown.length) fail('INVALID', 'errors.unknownOption', { unknown: unknown.join(', ') })
   if (typeof input.entry !== 'string') fail('INVALID', 'errors.entryIdMissing')
   const entry = await entryOf(ctx, actor, input.entry)
@@ -545,12 +551,12 @@ async function translateThroughDoor(ctx: MutationCtx, actor: Actor, input: Recor
   const label = `Translation (${locale}): ${roots.map((k) => labelIn(brick.fields[k]!.label, main, main)).join(', ')}`
   const result = await saveAs(ctx, actor, {
     site: actor.site.slug, opId, task: taskFor(actor, entry.brick, 'edit', roots, entry), entry: entry._id, baseRev: entry.rev, fields, locale,
-    ...(confirm.length ? { confirm: confirm as string[] } : {}), sentence: label,
+    ...(confirm.length ? { confirm: confirm as string[] } : {}), sentence: label, ...(publishArg(input.publish) ? { publish: true as const } : {}),
   })
   return savedAs(result, label)
 }
 
-/** ginko_draft: a new draft in a collection with drafts; never live (the create is a draft, so no review applies). */
+/** ginko_draft: a new draft in a collection; never live (the create is a draft, so no review applies). */
 async function draftThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
   const schema = actor.site.schema as Schema
   const brickKey = input.brick
@@ -667,7 +673,6 @@ function schemaOf(actor: Actor, only: Json | undefined) {
     return {
       brick: key, kind: def.kind, label: labelIn(def.label, main, main),
       ...(def.kind === 'collection' && def.route ? { route: def.route } : {}),
-      ...(def.kind === 'collection' && def.drafts ? { drafts: true } : {}),
       input: fieldsInputSchema(def.fields, { mainLocale: main, currency: schema.currency }),
     }
   })
@@ -675,7 +680,7 @@ function schemaOf(actor: Actor, only: Json | undefined) {
 
 /** ginko_write: any fields of an entry or single, in the main language, as the Studio saves them (no task). */
 async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string, batch?: CopyBatch): Promise<{ text: string; result: Json }> {
-  onlyKeys(input, ['brick', 'entry', 'fields'])
+  onlyKeys(input, ['brick', 'entry', 'fields', 'publish'])
   const schema = actor.site.schema as Schema
   const main = schema.locales[0]!
   const { key, def } = brickOf(actor, input.brick)
@@ -684,23 +689,22 @@ async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<st
   const entry = await targetOf(ctx, actor, key, input.entry)
   const fields = fromToolInput(def.fields, values, { mainLocale: main, currency: schema.currency, stored: entry.data as Record<string, Json>, newRowId })
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
-  const result = await saveAs(ctx, actor, { site: actor.site.slug, opId, entry: entry._id, baseRev: entry.rev, fields, locale: main })
+  const result = await saveAs(ctx, actor, { site: actor.site.slug, opId, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publishArg(input.publish) ? { publish: true as const } : {}) })
   const studio = studioLink(actor, key, def.kind === 'single' ? undefined : entry._id)
   const saved = savedAs(result, `${labelOf(schema, key, entry.data as Data)}: ${Object.keys(fields).join(', ')}`)
   return notingCopies(ctx, actor, def.fields, values, { text: saved.text, result: { ...(result as object), entry: entry._id, ...(studio ? { studio } : {}) } }, batch)
 }
 
-/** ginko_create: a new entry of a collection with any fields (no task). In a collection with drafts, a draft unless `publish`. */
+/** ginko_create: a new entry of a collection with any fields (no task). A draft unless `publish`. */
 async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string, batch?: CopyBatch): Promise<{ text: string; result: Json }> {
   onlyKeys(input, ['brick', 'fields', 'publish'])
   const schema = actor.site.schema as Schema
   const { key, def } = brickOf(actor, input.brick)
   if (def.kind !== 'collection') fail('INVALID', 'errors.createNeedsCollection', { brick: key })
-  if (input.publish !== undefined && typeof input.publish !== 'boolean') fail('INVALID', 'errors.unknownOption', { unknown: 'publish' })
   const values = objectArg(input.fields, 'fields')
   checkFields(actor, key, def, values)
   const data = fromToolInput(def.fields, values, { mainLocale: schema.locales[0]!, currency: schema.currency, newRowId })
-  const result = await createAs(ctx, actor, { site: actor.site.slug, opId, brick: key, data, ...(input.publish === true ? { publish: {} } : {}) })
+  const result = await createAs(ctx, actor, { site: actor.site.slug, opId, brick: key, data, ...(publishArg(input.publish) ? { publish: {} } : {}) })
   if (proposed(result)) return notingCopies(ctx, actor, def.fields, values, { text: PROPOSED, result }, batch)
   const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
   const change = await lastChangeOf(ctx, id)
@@ -734,11 +738,13 @@ async function importThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
       const writes = entry !== undefined || (typeof item.brick === 'string' && schema.bricks[item.brick]?.kind === 'single')
       const batch: CopyBatch = { copies: [], facts: batchFacts }
       const done = writes
-        ? await writeThroughDoor(ctx, actor, { ...rest, ...(entry === undefined ? {} : { entry }) }, `${opId}-${i}`, batch)
+        ? await writeThroughDoor(ctx, actor, { ...rest, ...(entry === undefined ? {} : { entry }), ...(publish === undefined ? {} : { publish }) }, `${opId}-${i}`, batch)
         : await createThroughDoor(ctx, actor, { ...rest, ...(publish === undefined ? {} : { publish }) }, `${opId}-${i}`, batch)
       copies.push(...batch.copies.map((copy) => ({ ...copy, item: i })))
       const r = done.result as Record<string, Json>
-      results.push({ item: i, op: writes ? 'write' : 'create', ...(r.entry ? { entry: r.entry } : {}), ...(r.proposal ? { proposal: r.proposal } : {}), ...(r.studio ? { studio: r.studio } : {}) })
+      // A draft or an unpublished change is saved but not online (SPEC 15): the answer must not promise the website.
+      const waits = r.pending === true || r.state === 'draft'
+      results.push({ item: i, op: writes ? 'write' : 'create', ...(r.entry ? { entry: r.entry } : {}), ...(r.proposal ? { proposal: r.proposal } : {}), ...(waits ? { waits: true } : {}), ...(r.studio ? { studio: r.studio } : {}) })
     } catch (error) {
       // The item that failed names itself; Convex rolls back the items before it.
       if (error instanceof ConvexError && typeof error.data === 'object' && error.data !== null) throw new ConvexError({ ...(error.data as Record<string, Json>), at: `items[${i}]` })
@@ -746,20 +752,22 @@ async function importThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
     }
   }
   // The IDs of a dry run are rolled back with it, so its answer names only what each item would do.
-  const rows = results as { item: number; op: string; proposal?: string }[]
+  const rows = results as { item: number; op: string; proposal?: string; waits?: true }[]
   const note = factCopyNote(copies, (copy) => `items[${copy.item}]`)
   if (input.dry_run === true) throw new ConvexError({ code: DRY_RUN, results: rows.map((r) => ({ item: r.item, op: r.op, ...(r.proposal ? { proposed: true } : {}) })), ...(note ? { note } : {}) })
   return { text: [importText(rows), note].filter(Boolean).join(' '), result: results }
 }
 
 /** What ginko_import says: what is live now and what waits for approval (review on), never "saved" for a proposal. */
-export function importText(rows: readonly { op: string; proposal?: string }[]): string {
-  const live = rows.filter((r) => !r.proposal)
+export function importText(rows: readonly { op: string; proposal?: string; waits?: true }[]): string {
+  const live = rows.filter((r) => !r.proposal && !r.waits)
   const created = live.filter((r) => r.op === 'create').length
-  const waiting = rows.length - live.length
+  const waiting = rows.filter((r) => r.proposal).length
+  const unpublished = rows.filter((r) => r.waits).length
   const saved = live.length ? `Saved ${live.length} items (${created} new, ${live.length - created} changed). Each one is in ginko_history and can be undone there.` : ''
+  const held = unpublished ? `${unpublished} items are saved but not on the website yet (new entries are drafts, changes wait unpublished); the person publishes them in the platform.` : ''
   const proposals = waiting ? `${waiting} items became proposals that wait for approval; nothing of them is on the website yet (ginko_proposals lists them).` : ''
-  return [saved, proposals].filter(Boolean).join(' ')
+  return [saved, held, proposals].filter(Boolean).join(' ')
 }
 
 /** ginko_upload with a URL: refuses anyone but a builder before the door fetches anything. */

@@ -12,8 +12,6 @@ export function pages<const R extends Record<string, RouteTemplate>>(o: { route:
     ...(o.source ? { source: o.source } : {}),
     max: 50,
     order: 'manual',
-    // On the platform, Speichern on a live page keeps the change unpublished until Veröffentlichen.
-    drafts: true,
     route: o.route,
     fields: {
       title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 80 }),

@@ -117,7 +117,7 @@ describe('navigation.move', () => {
   // section or puts the page inside its own subpages (a move changes several pages; only the tree moves pages).
   it('going back to an older version leaves the page where the tree put it', async () => {
     const s = await docsSite(PAGES)
-    const saved = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.ids.paging!, baseRev: 1, fields: { title: { de: 'Blättern' } } }) as { change: string }
+    const saved = await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.ids.paging!, baseRev: 1, fields: { title: { de: 'Blättern' } } }) as { change: string }
     await s.move('paging', { parent: 'setup', after: 'install' })
     const moved = await s.shape()
     await s.as.owner.mutation(api.entries.revert, { site: 'restaurant', opId: opId(), entry: s.ids.paging!, change: saved.change })
@@ -130,14 +130,10 @@ describe('navigation.move', () => {
     expect(await errorOf(s.as.owner.mutation(api.entries.move, { site: 'restaurant', opId: opId(), entry: s.ids.auth!, direction: 'up' }))).toMatchObject({ code: 'INVALID', key: 'errors.moveInNavigationTree' })
   })
 
-  // Wrong behaviour caught: with drafts on, a move of a page that has unpublished text waits with that text, the text
-  // goes online with the move, or publishing the text later puts the page back where it was.
+  // Wrong behaviour caught: a move of a page that has unpublished text waits with that text, the text goes online with
+  // the move, or publishing the text later puts the page back where it was.
   it('moves a page with unpublished text live at once; the text stays unpublished and its publish keeps the new place', async () => {
     const s = await docsSite(PAGES)
-    await s.t.run(async (ctx) => {
-      const schema = (await ctx.db.get(s.site))!.schema as Schema
-      await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, docs: { ...schema.bricks.docs!, drafts: true } as typeof docsBrick } } })
-    })
     const saved = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.ids.paging!, baseRev: 1, fields: { title: { de: 'Blättern' } } })
     expect(saved).toMatchObject({ pending: true })
     // The place never waits: only the tree moves a page, and it goes online at once.
@@ -173,7 +169,7 @@ describe('navigation.move', () => {
     expect(await errorOf(stale)).toMatchObject({ code: 'CHANGED_SINCE' })
 
     const base = await s.rev('intro')
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.ids.intro!, baseRev: base, fields: { title: { de: 'Einleitung' } } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.ids.intro!, baseRev: base, fields: { title: { de: 'Einleitung' } } })
     expect(await s.as.owner.mutation(api.navigation.move, { site: 'restaurant', opId: opId(), entry: s.ids.intro!, baseRev: base, place: { after: s.ids.setup! } })).toMatchObject({ moved: true })
   })
 

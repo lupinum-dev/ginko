@@ -1,4 +1,4 @@
-// Unpublished changes (save without publishing): in a collection with drafts, Speichern on a live entry keeps the
+// Unpublished changes (save without publishing): Speichern on a live entry, of a collection or a single, keeps the
 // changed fields in `pendingChanges` instead of the entry. The website reads only the entry, the Studio reads both
 // (`overlay`). Publishing writes them through the normal write path (entries.ts `applyPending` → `commitEntry`).
 import type { Schema } from '@lupinum/ginko/internal'
@@ -9,10 +9,9 @@ import { syncFileRefs, uploadIdsOf } from './write'
 
 export type Pending = Doc<'pendingChanges'>
 
-/** Whether a save of this entry waits as an unpublished change: a live entry of a collection with drafts. */
-export function keepsPending(schema: Schema, entry: Pick<Doc<'entries'>, 'brick' | 'state'>): boolean {
-  const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
-  return brick?.kind === 'collection' && brick.drafts === true && (entry.state ?? 'live') === 'live'
+/** Whether a save of this entry waits as an unpublished change: every live entry does (a draft takes the save itself). */
+export function keepsPending(entry: Pick<Doc<'entries'>, 'state'>): boolean {
+  return (entry.state ?? 'live') === 'live'
 }
 
 export function pendingOf(ctx: QueryCtx, entry: Id<'entries'>): Promise<Pending | null> {
@@ -61,6 +60,20 @@ export async function syncPendingRefs(ctx: MutationCtx, schema: Schema, pending:
   const brick = Object.hasOwn(schema.bricks, pending.brick) ? schema.bricks[pending.brick] : undefined
   const ids = brick ? fileIdsOf(brick.fields, pending.fields as Data, { isUploadId: uploadIdsOf(ctx) }) : new Set<string>()
   await syncFileRefs(ctx, pending.site, 'pending', pending.entry, ids)
+}
+
+/**
+ * Takes `roots` out of the unpublished changes after a save put them online at once (`entries.save` with `publish`):
+ * the published value replaces what waited, the other fields keep waiting. An empty set goes with its planned publish.
+ */
+export async function dropPendingRoots(ctx: MutationCtx, schema: Schema, held: Pending, roots: readonly string[]) {
+  if (!roots.some((r) => Object.hasOwn(held.fields, r))) return
+  const fields = Object.fromEntries(Object.entries(held.fields).filter(([r]) => !roots.includes(r)))
+  if (!Object.keys(fields).length) return dropPending(ctx, held)
+  const revs = Object.fromEntries(Object.entries(held.revs).filter(([r]) => !roots.includes(r)))
+  const prints = Object.fromEntries(Object.entries(held.prints).filter(([leaf]) => !roots.some((r) => underRoot(leaf, r))))
+  await ctx.db.patch(held._id, { fields, revs, prints })
+  await syncPendingRefs(ctx, schema, { ...held, fields })
 }
 
 /** Deletes unpublished changes with their planned publish (unless that run is the one calling) and file references. */

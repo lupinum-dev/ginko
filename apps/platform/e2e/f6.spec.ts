@@ -1,12 +1,11 @@
 // Acceptance of the F6 Studio screens: Files, Review, History detail and ⌘K (UI.md 10.7, items 1-8).
 // Item 10 (English and German): items 5 and 8 run again in an English browser, like language.spec.ts.
-// Item 9 (a draft's "Why not on the website?") needs a collection with drafts, which the restaurant does not have
-// (drafts are for blogs and news, SPEC 15); server test studio.test.ts and why-not-public.test.ts cover it.
+// Item 9 (a draft's "Why not on the website?") is covered by server test studio.test.ts and why-not-public.test.ts.
 import { execFileSync } from 'node:child_process'
 import { addDays, todayIn } from '@lupinum/ginko/internal'
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
-import { pdfBytes, pngBytes, resetContent, serverDir } from './local'
+import { pdfBytes, pngBytes, publishNow, resetContent, serverDir } from './local'
 
 const today = () => todayIn('Europe/Vienna')
 const stamp = () => Date.now().toString(36)
@@ -74,12 +73,11 @@ async function fillEvent(page: Page, title: string) {
   await page.getByRole('textbox', { name: 'Beschreibung' }).fill('Ein Abend mit Wein und Musik.')
 }
 
-/** The "Suchmaschinen" entry is one of the always-live ones: a photo picked there is shown by the website at once. */
+/** The "Suchmaschinen" single: a photo picked and published there is shown by the website. */
 async function usePhotoInSeo(page: Page, photo: string, alt: string) {
   await open(page, '/s/restaurant/all/seo')
   await pickFromLibrary(page, photo, alt)
-  await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-  await expect(toast(page)).toContainText('Gespeichert')
+  await publishNow(page)
 }
 
 test.describe('Dateien', () => {
@@ -108,8 +106,7 @@ test.describe('Dateien', () => {
     await expect(picker).toHaveCount(0)
     await expect(page.getByLabel('Bildbeschreibung')).toHaveValue('Gedeckter Tisch im Garten')
 
-    await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-    await expect(toast(page)).toContainText('Gespeichert')
+    await publishNow(page)
     await open(page, '/s/restaurant/files')
     await page.getByRole('button', { name: photo }).click()
     await expect(details(page).getByText(/Fotoabend/)).toBeVisible()
@@ -149,8 +146,7 @@ test.describe('Dateien', () => {
 
     await open(page, '/s/restaurant/all/lunch')
     await pickFromLibrary(page, pdf)
-    await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-    await expect(toast(page)).toContainText('Gespeichert')
+    await publishNow(page)
     const entryLink = page.getByRole('link', { name: pdf })
     const oldUrl = await entryLink.getAttribute('href')
 
@@ -217,8 +213,7 @@ test.describe('Dateien', () => {
     await open(editor, '/s/restaurant/all/seo')
     await editor.getByRole('button', { name: 'Englisch' }).click()
     await editor.getByRole('textbox', { name: 'Bildbeschreibung' }).fill('Dining room')
-    await editor.getByRole('button', { name: 'Speichern', exact: true }).click()
-    await expect(toast(editor)).toContainText('Gespeichert')
+    await publishNow(editor)
     await editor.close()
 
     // The Finder in the first tab was not reloaded.
@@ -268,13 +263,13 @@ test.describe('Dateien', () => {
 /** The words of the Studio that the tests read, in both languages (packages/ginko-studio/i18n, ginko-server/i18n, the gastro preset). */
 const WORDS = {
   de: {
-    locale: 'de-DE', lunchTask: 'Mittagsmenü dieser Woche', tuesday: 'Dienstag', dish: 'Gericht', rightAgain: 'Ja, stimmt', save: 'Speichern', sent: 'Zur Freigabe gesendet.',
+    locale: 'de-DE', lunchTask: 'Mittagsmenü dieser Woche', tuesday: 'Dienstag', dish: 'Gericht', rightAgain: 'Ja, stimmt', send: 'Zur Prüfung senden', sent: 'Zur Freigabe gesendet.',
     reviewLink: 'Prüfen (1 zu prüfen)', approve: 'Freigeben', approved: 'Freigegeben. Auf der Website in etwa einer Minute.', nothingWaits: 'Nichts wartet auf deine Entscheidung.',
     search: 'Suche und Aktionen', rowChanged: /Kürbisgulasch/, waiting: 'Wartet auf Freigabe', palettePlaceholder: 'Einträge und Bereiche suchen …',
     approvedByYou: 'Freigabe: Du',
   },
   en: {
-    locale: 'en-US', lunchTask: 'This week’s lunch menu', tuesday: 'Tuesday', dish: 'Dish', rightAgain: 'Yes, correct', save: 'Save', sent: 'Sent for approval.',
+    locale: 'en-US', lunchTask: 'This week’s lunch menu', tuesday: 'Tuesday', dish: 'Dish', rightAgain: 'Yes, correct', send: 'Send for review', sent: 'Sent for approval.',
     reviewLink: 'Review (1 to review)', approve: 'Approve', approved: 'Approved. On the website in about a minute.', nothingWaits: 'Nothing waits for your decision.',
     search: 'Search and actions', rowChanged: /Kürbisgulasch/, waiting: 'Waiting for approval', palettePlaceholder: 'Search entries and areas…',
     approvedByYou: 'Approval: You',
@@ -287,7 +282,7 @@ async function contextOf(browser: Browser, who: 'owner' | 'cook', lang: Lang, vi
   return browser.newContext({ baseURL, locale: WORDS[lang].locale, viewport, storageState: STATE[who] })
 }
 
-/** The cook changes Tuesday's dish in "This week's lunch menu" and saves; the task waits for an approval, so it is only proposed. */
+/** The cook changes Tuesday's dish in "This week's lunch menu" and sends it; the task waits for an approval, so it is only proposed. */
 async function cookProposes(page: Page, w: (typeof WORDS)[Lang], dish: string) {
   await open(page, '/s/restaurant')
   await page.getByRole('heading', { level: 2 }).first().waitFor()
@@ -296,7 +291,7 @@ async function cookProposes(page: Page, w: (typeof WORDS)[Lang], dish: string) {
   const tuesday = sheet.locator('li', { has: page.getByRole('heading', { name: w.tuesday }) })
   await tuesday.getByLabel(w.dish).fill(dish)
   await tuesday.getByRole('button', { name: w.rightAgain }).click()
-  await sheet.getByRole('button', { name: w.save, exact: true }).click()
+  await sheet.getByRole('button', { name: w.send, exact: true }).click()
   await expect(toast(page)).toContainText(w.sent)
 }
 
@@ -447,8 +442,7 @@ test.describe('Prüfen und Verlauf', () => {
         await open(page, '/s/restaurant/all/menu')
         await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
         await priceField().fill(value)
-        await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-        await expect(toast(page)).toContainText('Gespeichert')
+        await publishNow(page)
       }
       await setPrice('23,50')
       await setPrice('25,00')

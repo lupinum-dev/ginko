@@ -21,7 +21,7 @@ test('the owner publishes a release, and the changelog and the home page show it
   if (!await date.inputValue()) await date.fill(new Date().toISOString().slice(0, 10))
   await sheet.getByRole('textbox', { name: 'Text', exact: true }).click()
   await page.keyboard.type(text)
-  // The changelog keeps drafts, so the create task ends in the publish step (TEMPLATES 7.3).
+  // A create task ends in the publish step (TEMPLATES 7.3).
   await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
 

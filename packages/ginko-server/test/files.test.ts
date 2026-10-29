@@ -25,7 +25,7 @@ const pdf = (s: Setup, name = 'karte.pdf', content = '%PDF-1.4 karte') => upload
 /** An event whose image is `file` with the given alt text. */
 async function useImage(s: Setup, file: Id<'uploads'>, alt: Record<string, string>) {
   const created = await s.as.owner.mutation(api.entries.create, {
-    site, opId: opId(), brick: 'events',
+    site, opId: opId(), publish: {}, brick: 'events',
     // Translated, so the English bundle has the entry (an untranslated event has no English page).
     data: { title: { de: 'Weinabend', en: 'Wine evening' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi', en: 'hi' }, image: { file, alt } },
   }) as { entry: Id<'entries'> }
@@ -189,7 +189,7 @@ describe('views', () => {
       { entry, brick: 'events', title: 'Weinabend', paths: ['image'], fieldLabels: [{ de: 'Bild', en: 'Image' }], locale: 'en', missingAlt: true, deleted: false },
     ])
 
-    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev: 1, fields: { image: { file, alt: { de: 'Foto', en: 'Photo' } } }, sentence: 'x' })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry, baseRev: 1, fields: { image: { file, alt: { de: 'Foto', en: 'Photo' } } }, sentence: 'x' })
     expect(await missing()).toEqual([])
     const info = await s.as.owner.query(api.files.info, { site, file })
     expect(info.usedIn[0]).toMatchObject({ missingAlt: false })
@@ -238,7 +238,7 @@ describe('views', () => {
     const s = await setup()
     const file = await readyImage(s)
     const create = () => s.as.owner.mutation(api.entries.create, {
-      site, opId: opId(), brick: 'events',
+      site, opId: opId(), publish: {}, brick: 'events',
       data: { title: { de: 'Weinabend' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi' }, image: { file, alt: {} } },
     })
     expect((await errorOf(create())).code).toBe('INVALID')
@@ -417,7 +417,7 @@ describe('uploads.sweep with the library', () => {
       await ctx.db.patch(s.site, { schema })
     })
     const id = await readyImage(s)
-    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `![Hund]($file.${id})` } }, sentence: 'x' })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `![Hund]($file.${id})` } }, sentence: 'x' })
     vi.setSystemTime(new Date('2026-10-09T00:00:00Z'))
     for (const phase of ['storage', 'processing', 'failed', 'ready'] as const) await s.t.mutation(internal.uploads.sweep, { phase })
     expect(await s.t.run((ctx) => ctx.db.get(id))).not.toBeNull()
@@ -437,7 +437,7 @@ describe('uploads.sweep with the library', () => {
     })
     const id = await readyImage(s)
     const figure = (file: string) => `::figure\n\`\`\`yaml [props]\nsrc: $file.${file}\nalt: Hund\ncaption: Ein Hund\ncredit: Romi\n\`\`\`\n::\n`
-    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: figure(id) } }, sentence: 'x' })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: figure(id) } }, sentence: 'x' })
     expect(await fileRefsOf(s, id)).toHaveLength(1)
     const fields = (await s.t.run(async (ctx) => (await ctx.db.get(s.site))!.schema as Schema)).bricks.legal!.fields
     expect(remapFileIds(fields, { imprint: { de: figure(id) } }, new Map([[id, 'neu']]))).toEqual({ imprint: { de: figure('neu') } })
@@ -453,9 +453,9 @@ describe('uploads.sweep with the library', () => {
       await ctx.db.patch(s.site, { schema })
     })
     const snippet = '```sh\nmv "$file" "$file.bak"\nbackup="$file.bak"\n```\n'
-    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: snippet } }, sentence: 'x' })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: snippet } }, sentence: 'x' })
     await s.t.run(async (ctx) => ctx.db.patch(s.entries.legal!, { data: { ...(await ctx.db.get(s.entries.legal!))!.data, privacy: { de: snippet } } }))
-    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 2, fields: { imprint: { de: 'Neu' } }, sentence: 'x' })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry: s.entries.legal!, baseRev: 2, fields: { imprint: { de: 'Neu' } }, sentence: 'x' })
     expect(await s.t.run((ctx) => ctx.db.query('fileRefs').collect())).toEqual([])
   })
 
@@ -509,7 +509,7 @@ describe('migrations.markdownStorageUrls', () => {
     // Only the migration's own pages, which follow at once; the timers stay before anything later (sign-in expiry).
     for (let i = 0; i < 10; i++) { vi.advanceTimersByTime(1); await s.t.finishInProgressScheduledFunctions() }
     expect(await s.t.run(async (ctx) => (await ctx.db.get(s.entries.legal!))!.data.imprint)).toEqual({ de: `![Hund]($file.${id})` })
-    const stale = s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `![Hund](/api/storage/${token}) Neu` } }, sentence: 'x' })
+    const stale = s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `![Hund](/api/storage/${token}) Neu` } }, sentence: 'x' })
     expect((await errorOf(stale)).code).toBe('CHANGED_SINCE')
   })
 })
@@ -578,7 +578,7 @@ describe('history and the Files trash', () => {
     })
     const id = await readyImage(s, 'hund.jpg')
     const entry = s.entries.legal!
-    const save = (rev: number, text: string) => s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev: rev, fields: { imprint: { de: text } }, sentence: 'x' }) as Promise<{ change: string }>
+    const save = (rev: number, text: string) => s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry, baseRev: rev, fields: { imprint: { de: text } }, sentence: 'x' }) as Promise<{ change: string }>
     const withPicture = await save(1, `![Hund]($file.${id})`)
     const without = await save(2, 'Ohne Bild')
     await s.as.owner.mutation(api.files.trash, { site, files: [id] })
@@ -607,7 +607,7 @@ describe('history and the Files trash', () => {
     })
     const id = await readyImage(s, 'hund.jpg')
     const entry = s.entries.legal!
-    const save = (rev: number, text: string) => s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev: rev, fields: { imprint: { de: text } }, sentence: 'x' }) as Promise<{ change: string }>
+    const save = (rev: number, text: string) => s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry, baseRev: rev, fields: { imprint: { de: text } }, sentence: 'x' }) as Promise<{ change: string }>
     const withPicture = await save(1, `![Hund]($file.${id})`)
     await save(2, 'Ohne Bild')
     await s.as.owner.mutation(api.files.trash, { site, files: [id] })

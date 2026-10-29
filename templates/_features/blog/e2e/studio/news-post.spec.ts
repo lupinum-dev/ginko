@@ -19,7 +19,7 @@ test('the owner writes a news post and publishes it, and the news list shows it'
   if (!await date.inputValue()) await date.fill(new Date().toISOString().slice(0, 10))
   await sheet.getByRole('textbox', { name: 'Text', exact: true }).click()
   await page.keyboard.type('The river bank is clean again. Thank you to everyone who came.')
-  // The publish step of a drafts collection: "Publish" is the main action (TEMPLATES.md §7.3).
+  // The publish step of a create task: "Publish" is the main action (TEMPLATES.md §7.3).
   await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
 

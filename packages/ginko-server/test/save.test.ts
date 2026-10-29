@@ -10,7 +10,7 @@ describe('entries.save', () => {
     const { t, as, entries } = await setup()
     const entry = entries['menu-saibling']!
     const result = await as.cook.mutation(api.entries.save, {
-      site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1450 } }, sentence: 'Preis Saibling 14,50 €',
+      site: 'restaurant', opId: opId(), publish: true, task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1450 } }, sentence: 'Preis Saibling 14,50 €',
     })
     expect(result).toMatchObject({ rev: 2, contentRev: 2, warnings: [] })
     const [row, changes] = await t.run(async (ctx) => [await ctx.db.get(entry), await ctx.db.query('changes').collect()] as const)
@@ -23,7 +23,7 @@ describe('entries.save', () => {
 
   it('a retry with the same opId returns the stored result and writes nothing twice', async () => {
     const { t, as, entries } = await setup()
-    const args = { site: 'restaurant', opId: opId(), task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1450 } }, sentence: 'x' }
+    const args = { site: 'restaurant', opId: opId(), publish: true as const, task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1450 } }, sentence: 'x' }
     const first = await as.cook.mutation(api.entries.save, args)
     expect(await as.cook.mutation(api.entries.save, args)).toEqual(first)
     expect(await t.run((ctx) => ctx.db.query('changes').collect())).toHaveLength(1)
@@ -33,7 +33,7 @@ describe('entries.save', () => {
   it('the same values again change no revision and log nothing', async () => {
     const { t, as, entries } = await setup()
     const result = await as.owner.mutation(api.entries.save, {
-      site: 'restaurant', opId: opId(), entry: entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1350 } }, sentence: 'x',
+      site: 'restaurant', opId: opId(), publish: true, entry: entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1350 } }, sentence: 'x',
     })
     expect(result).toMatchObject({ rev: 1, contentRev: 1 })
     expect(await t.run((ctx) => ctx.db.query('changes').collect())).toHaveLength(0)
@@ -42,12 +42,12 @@ describe('entries.save', () => {
   it('a field changed since baseRev is a conflict with the current state; other fields are not', async () => {
     const { as, entries } = await setup()
     const entry = entries['menu-saibling']!
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 1500 } }, sentence: 'Wirtin' })
-    const conflict = await errorOf(as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1600 } }, sentence: 'Koch' }))
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 1500 } }, sentence: 'Wirtin' })
+    const conflict = await errorOf(as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1600 } }, sentence: 'Koch' }))
     // Who saved it comes along; staff see a colleague as "a member", not by email.
     expect(conflict).toMatchObject({ code: 'CHANGED_SINCE', details: { rev: 2, conflicts: ['price'], by: { price: { kind: 'member' } } } })
     // The cook edits the name from the same stale base: no conflict, the name was not touched since.
-    await expect(as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry, baseRev: 1, fields: { veg: 'vegetarian' }, sentence: 'Koch' })).resolves.toMatchObject({ rev: 3 })
+    await expect(as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.edit', entry, baseRev: 1, fields: { veg: 'vegetarian' }, sentence: 'Koch' })).resolves.toMatchObject({ rev: 3 })
   })
 
   it.each([
@@ -57,22 +57,22 @@ describe('entries.save', () => {
     { who: 'stranger', task: undefined, fields: { price: { amount: 1 } }, why: 'member of another site' },
   ] as const)('FORBIDDEN: $why', async ({ who, task, fields }) => {
     const { as, entries } = await setup()
-    const call = as[who].mutation(api.entries.save, { site: 'restaurant', opId: opId(), ...(task ? { task } : {}), entry: entries['menu-saibling']!, baseRev: 1, fields, sentence: 'x' })
+    const call = as[who].mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), ...(task ? { task } : {}), entry: entries['menu-saibling']!, baseRev: 1, fields, sentence: 'x' })
     expect((await errorOf(call)).code).toBe('FORBIDDEN')
   })
 
   it('an entry of another site is NOT_FOUND, even for its owner via the wrong site slug', async () => {
     const { as, entries } = await setup()
-    const call = as.stranger.mutation(api.entries.save, { site: 'andere', opId: opId(), entry: entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1 } }, sentence: 'x' })
+    const call = as.stranger.mutation(api.entries.save, { publish: true, site: 'andere', opId: opId(), entry: entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1 } }, sentence: 'x' })
     expect((await errorOf(call)).code).toBe('NOT_FOUND')
   })
 
   it('rejects invalid data and the fixed slug', async () => {
     const { as, entries } = await setup()
     const base = { site: 'restaurant', entry: entries['menu-saibling']!, baseRev: 1, sentence: 'x' }
-    expect(await errorOf(as.owner.mutation(api.entries.save, { ...base, opId: opId(), fields: { price: { amount: 12.5 } } }))).toMatchObject({ code: 'INVALID' })
-    expect(await errorOf(as.owner.mutation(api.entries.save, { ...base, opId: opId(), fields: { surprise: 1 } }))).toMatchObject({ code: 'INVALID' })
-    expect(await errorOf(as.owner.mutation(api.entries.save, { ...base, entry: entries.weinabend!, opId: opId(), fields: { slug: { de: 'neu' } } }))).toMatchObject({ code: 'INVALID', details: { field: 'slug' } })
+    expect(await errorOf(as.owner.mutation(api.entries.save, { publish: true, ...base, opId: opId(), fields: { price: { amount: 12.5 } } }))).toMatchObject({ code: 'INVALID' })
+    expect(await errorOf(as.owner.mutation(api.entries.save, { publish: true, ...base, opId: opId(), fields: { surprise: 1 } }))).toMatchObject({ code: 'INVALID' })
+    expect(await errorOf(as.owner.mutation(api.entries.save, { publish: true, ...base, entry: entries.weinabend!, opId: opId(), fields: { slug: { de: 'neu' } } }))).toMatchObject({ code: 'INVALID', details: { field: 'slug' } })
   })
 })
 
@@ -86,10 +86,10 @@ describe('staff change the entries they created (SPEC 2.7)', () => {
       await ctx.db.patch(cook._id, { grants: ['events.add'] })
     })
     const event = { title: { de: 'Weinabend' }, when: { from: '2026-10-25', to: '2026-10-25' }, description: { de: 'Mit Musik.' } }
-    const made = (await as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'events.add', brick: 'events', data: event })) as { entry: Id<'entries'> }
-    const theirs = (await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: event })) as { entry: Id<'entries'> }
+    const made = (await as.cook.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), task: 'events.add', brick: 'events', data: event })) as { entry: Id<'entries'> }
+    const theirs = (await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'events', data: event })) as { entry: Id<'entries'> }
     const save = (entry: Id<'entries'>, baseRev = 1) => as.cook.mutation(api.entries.save, {
-      site: 'restaurant', opId: opId(), task: 'events.add', entry, baseRev, fields: { when: { from: '2026-10-26', to: '2026-10-26' } },
+      site: 'restaurant', opId: opId(), publish: true, task: 'events.add', entry, baseRev, fields: { when: { from: '2026-10-26', to: '2026-10-26' } },
     }) as Promise<{ change: string }>
 
     expect(await as.cook.query(api.entries.get, { site: 'restaurant', entry: made.entry })).toMatchObject({ own: true })
@@ -97,7 +97,7 @@ describe('staff change the entries they created (SPEC 2.7)', () => {
     const saved = await save(made.entry)
     expect((await t.run((ctx) => ctx.db.get(made.entry)))!.data.when).toEqual({ from: '2026-10-26', to: '2026-10-26' })
     // The history marks the saves of the cook's own entry, so the Studio offers undo and revert there too.
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: theirs.entry, baseRev: 1, fields: { description: { de: 'Mit Jazz.' } } })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: theirs.entry, baseRev: 1, fields: { description: { de: 'Mit Jazz.' } } })
     const history = (await as.cook.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })).page.filter((c) => c.kind === 'save')
     expect(history.filter((c) => c.entry === made.entry || c.entry === theirs.entry).map((c) => ({ mine: c.entry === made.entry, own: c.own ?? false })))
       .toEqual([{ mine: false, own: false }, { mine: true, own: true }])
@@ -126,14 +126,14 @@ describe('translations (SPEC 3 prints)', () => {
     const printsOf = async () => (await t.run((ctx) => ctx.db.get(entry)))!.prints
     const fresh = (await printsOf()).name!.en
 
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { name: { de: 'Gebeizter Bachsaibling', en: 'Cured char' } }, sentence: 'x' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { name: { de: 'Gebeizter Bachsaibling', en: 'Cured char' } }, sentence: 'x' })
     // The whole value was sent, but English did not change: its print stays, so it is now stale.
     expect((await printsOf()).name!.en).toBe(fresh)
 
-    const stale = await errorOf(as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 2, fields: {}, confirm: ['name'], sentence: 'x' }))
+    const stale = await errorOf(as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 2, fields: {}, confirm: ['name'], sentence: 'x' }))
     expect(stale.code).toBe('INVALID') // confirm needs a foreign locale
 
-    const confirmed = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 2, fields: {}, locale: 'en', confirm: ['name'], sentence: 'Englisch bestätigt' })
+    const confirmed = await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 2, fields: {}, locale: 'en', confirm: ['name'], sentence: 'Englisch bestätigt' })
     expect(confirmed).toMatchObject({ rev: 3, contentRev: 3 })
     const confirmedPrint = (await printsOf()).name!.en
     expect(confirmedPrint).not.toBe(fresh)
@@ -147,7 +147,7 @@ describe('translations (SPEC 3 prints)', () => {
     const { t, as, entries } = await setup()
     const entry = entries['menu-saibling']!
     const before = (await t.run((ctx) => ctx.db.get(entry)))!
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { name: { en: 'Pickled char' } }, sentence: 'x' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { name: { en: 'Pickled char' } }, sentence: 'x' })
     const change = await t.run(async (ctx) => (await ctx.db.query('changes').collect())[0]!)
     await as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id })
     const after = (await t.run((ctx) => ctx.db.get(entry)))!
@@ -159,7 +159,7 @@ describe('translations (SPEC 3 prints)', () => {
   it('with locale only that language is replaced', async () => {
     const { t, as, entries } = await setup()
     const entry = entries['menu-saibling']!
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { name: { de: 'IGNORED', en: 'Pickled char' } }, sentence: 'x' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { name: { de: 'IGNORED', en: 'Pickled char' } }, sentence: 'x' })
     expect((await t.run((ctx) => ctx.db.get(entry)))!.data.name).toEqual({ de: 'Gebeizter Saibling', en: 'Pickled char' })
   })
 })
@@ -193,7 +193,7 @@ describe('revisions are whole numbers from 0 (F01)', () => {
   it.each([['NaN', NaN], ['-1', -1], ['0.5', 0.5], ['Infinity', Infinity]])('save, remove and restore refuse %s', async (_name, bad) => {
     const { as, entries } = await setup()
     const entry = entries['menu-saibling']!
-    const save = as.cook.mutation(api.entries.save, { site: 'restaurant', task: 'menu.price', opId: opId(), entry, baseRev: bad, fields: { price: { amount: 999 } }, sentence: 'x' })
+    const save = as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', task: 'menu.price', opId: opId(), entry, baseRev: bad, fields: { price: { amount: 999 } }, sentence: 'x' })
     expect((await errorOf(save)).code).toBe('INVALID')
     expect((await errorOf(as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: bad }))).code).toBe('INVALID')
     expect((await errorOf(as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry, lifeRev: bad }))).code).toBe('INVALID')
@@ -202,8 +202,8 @@ describe('revisions are whole numbers from 0 (F01)', () => {
   it('a stale baseRev is still CHANGED_SINCE', async () => {
     const { as, entries } = await setup()
     const entry = entries['menu-saibling']!
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 1500 } }, sentence: 'A' })
-    const stale = as.cook.mutation(api.entries.save, { site: 'restaurant', task: 'menu.price', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 999 } }, sentence: 'B' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 1500 } }, sentence: 'A' })
+    const stale = as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', task: 'menu.price', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 999 } }, sentence: 'B' })
     expect((await errorOf(stale)).code).toBe('CHANGED_SINCE')
   })
 })
@@ -214,16 +214,16 @@ describe('save with a locale (F02, F03)', () => {
   it('null with a foreign locale removes only that language of a translatable field', async () => {
     const { t, as, entries } = await setup()
     const entry = entries.lunch!
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { note }, sentence: 'x' })
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 2, locale: 'en', fields: { note: null }, sentence: 'x' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { note }, sentence: 'x' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 2, locale: 'en', fields: { note: null }, sentence: 'x' })
     expect((await t.run((ctx) => ctx.db.get(entry)))!.data.note).toEqual({ de: note.de })
   })
 
   it('null with the main locale (Aufheben) still removes the whole field', async () => {
     const { t, as, entries } = await setup()
     const entry = entries.lunch!
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { note }, sentence: 'x' })
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 2, locale: 'de', fields: { note: null }, sentence: 'x' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { note }, sentence: 'x' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 2, locale: 'de', fields: { note: null }, sentence: 'x' })
     expect((await t.run((ctx) => ctx.db.get(entry)))!.data.note).toBeUndefined()
   })
 
@@ -231,14 +231,14 @@ describe('save with a locale (F02, F03)', () => {
     const { t, as, entries } = await setup()
     const entry = entries['menu-saibling']!
     const before = (await t.run((ctx) => ctx.db.get(entry)))!
-    const noop = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { name: { de: 'Anders' } }, sentence: 'x' })
+    const noop = await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { name: { de: 'Anders' } }, sentence: 'x' })
     expect(noop).toMatchObject({ rev: 1, contentRev: 1 })
     expect(await t.run((ctx) => ctx.db.query('changes').collect())).toHaveLength(0)
     expect((await t.run((ctx) => ctx.db.get(entry)))!.data.name).toEqual(before.data.name)
 
     // "" takes the English name away, the German one stays.
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { name: { en: 'Char' } }, sentence: 'x' })
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 2, locale: 'en', fields: { name: { en: '' } }, sentence: 'x' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { name: { en: 'Char' } }, sentence: 'x' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 2, locale: 'en', fields: { name: { en: '' } }, sentence: 'x' })
     const after = (await t.run((ctx) => ctx.db.get(entry)))!
     expect(after.data.name).toEqual({ de: 'Gebeizter Saibling' })
   })
@@ -246,10 +246,10 @@ describe('save with a locale (F02, F03)', () => {
   it('an image is saved in English without an English alt text, and the stored alt stays', async () => {
     const s = await setup()
     const file = await readyImage(s)
-    const created = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: event({ image: { file, alt: { de: 'Foto' } } }) }) as { entry: Id<'entries'> }
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, locale: 'en', fields: { image: { file, alt: { de: 'Foto' } } }, sentence: 'x' })
+    const created = await s.as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'events', data: event({ image: { file, alt: { de: 'Foto' } } }) }) as { entry: Id<'entries'> }
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, locale: 'en', fields: { image: { file, alt: { de: 'Foto' } } }, sentence: 'x' })
     expect((await s.t.run((ctx) => ctx.db.get(created.entry)))!.data.image).toEqual({ file, alt: { de: 'Foto' } })
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, locale: 'en', fields: { image: { file, alt: { de: 'Foto', en: 'Photo' } } }, sentence: 'x' })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, locale: 'en', fields: { image: { file, alt: { de: 'Foto', en: 'Photo' } } }, sentence: 'x' })
     expect((await s.t.run((ctx) => ctx.db.get(created.entry)))!.data.image).toEqual({ file, alt: { de: 'Foto', en: 'Photo' } })
   })
 
@@ -257,11 +257,11 @@ describe('save with a locale (F02, F03)', () => {
   it('a new picture keeps only the description of the saved language; the same picture keeps every language', async () => {
     const s = await setup()
     const [laptop, forest] = [await readyImage(s), await readyImage(s)]
-    const created = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: event({ image: { file: laptop, alt: { de: 'Laptop', en: 'Laptop' } } }) }) as { entry: Id<'entries'> }
+    const created = await s.as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'events', data: event({ image: { file: laptop, alt: { de: 'Laptop', en: 'Laptop' } } }) }) as { entry: Id<'entries'> }
     const stored = async (entry: Id<'entries'>) => (await s.t.run((ctx) => ctx.db.get(entry)))!
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, locale: 'de', fields: { image: { file: laptop, alt: { de: 'Laptop auf dem Tisch' } } } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, locale: 'de', fields: { image: { file: laptop, alt: { de: 'Laptop auf dem Tisch' } } } })
     expect((await stored(created.entry)).data.image).toEqual({ file: laptop, alt: { de: 'Laptop auf dem Tisch', en: 'Laptop' } })
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 2, locale: 'de', fields: { image: { file: forest, alt: { de: 'Wald' } } } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 2, locale: 'de', fields: { image: { file: forest, alt: { de: 'Wald' } } } })
     expect((await stored(created.entry)).data.image).toEqual({ file: forest, alt: { de: 'Wald' } })
     expect((await stored(created.entry)).prints['image.alt']).toBeUndefined()
 
@@ -271,8 +271,8 @@ describe('save with a locale (F02, F03)', () => {
     // The seeded gallery names files that do not exist here.
     await s.t.run((ctx) => ctx.db.patch(gallery, { data: { images: [] }, prints: {} }))
     const row = (id: string, file: string, alt: Record<string, string>) => ({ _id: id, image: { file, alt } })
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: gallery, baseRev: 1, fields: { images: [row('rowLaptop1', laptop, { de: 'Laptop', en: 'Laptop' }), row('rowForest2', forest, { de: 'Wald', en: 'Forest' })] } })
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: gallery, baseRev: 2, locale: 'de', fields: { images: [row('rowLaptop1', lake, { de: 'See' }), row('rowForest2', forest, { de: 'Wald' })] } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: gallery, baseRev: 1, fields: { images: [row('rowLaptop1', laptop, { de: 'Laptop', en: 'Laptop' }), row('rowForest2', forest, { de: 'Wald', en: 'Forest' })] } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: gallery, baseRev: 2, locale: 'de', fields: { images: [row('rowLaptop1', lake, { de: 'See' }), row('rowForest2', forest, { de: 'Wald' })] } })
     expect((await stored(gallery)).data.images).toEqual([row('rowLaptop1', lake, { de: 'See' }), row('rowForest2', forest, { de: 'Wald', en: 'Forest' })])
   })
 })
@@ -281,22 +281,22 @@ describe('a file in an image field is an image (F04)', () => {
   it('a PDF is refused on create and save, an image upload is accepted', async () => {
     const s = await setup()
     const pdf = await upload(s, { person: 'owner' })
-    const refused = await errorOf(s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: event({ image: { file: pdf, alt: { de: 'Foto' } } }) }))
+    const refused = await errorOf(s.as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'events', data: event({ image: { file: pdf, alt: { de: 'Foto' } } }) }))
     expect(refused).toMatchObject({ code: 'INVALID', message: 'Diese Datei ist kein Bild.' })
 
-    const created = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: event() }) as { entry: Id<'entries'> }
-    const save = s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, fields: { image: { file: pdf, alt: { de: 'Foto' } } }, sentence: 'x' })
+    const created = await s.as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'events', data: event() }) as { entry: Id<'entries'> }
+    const save = s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, fields: { image: { file: pdf, alt: { de: 'Foto' } } }, sentence: 'x' })
     expect((await errorOf(save)).message).toBe('Diese Datei ist kein Bild.')
 
     const file = await readyImage(s)
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, fields: { image: { file, alt: { de: 'Foto' } } }, sentence: 'x' })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, fields: { image: { file, alt: { de: 'Foto' } } }, sentence: 'x' })
   })
 })
 
 describe('sentence and opId are bounded (F07)', () => {
   const saveWith = (s: Awaited<ReturnType<typeof setup>>, over: { opId?: string; sentence?: string }) =>
     s.as.cook.mutation(api.entries.save, {
-      site: 'restaurant', task: 'menu.price', entry: s.entries['menu-dal']!, baseRev: 1, fields: { price: { amount: 100 } },
+      site: 'restaurant', publish: true, task: 'menu.price', entry: s.entries['menu-dal']!, baseRev: 1, fields: { price: { amount: 100 } },
       opId: over.opId ?? opId(), sentence: over.sentence ?? 'Preis',
     })
 
@@ -331,7 +331,7 @@ describe('entries.save with a ref field (SPEC 2.2)', () => {
       schema.bricks.menu.fields.side = { type: 'ref', label: 'Beilage', to: 'menu', optional: true }
       await ctx.db.patch(site._id, { schema })
     })
-    const save = (side: string, baseRev = 1) => as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev, fields: { side }, sentence: 'Beilage' })
+    const save = (side: string, baseRev = 1) => as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev, fields: { side }, sentence: 'Beilage' })
     const otherBrick = Object.entries(entries).find(([key]) => !key.startsWith('menu-'))![1]
     for (const bad of [otherBrick, 'gone']) {
       const error = await errorOf(save(bad))
@@ -350,7 +350,7 @@ describe('entries.save with a ref field (SPEC 2.2)', () => {
       await ctx.db.patch(site, { schema: schema as never })
     })
     const data = { title: { de: 'Sommerfest' }, when: { from: '2026-11-20', to: '2026-11-20' }, description: { de: 'Test' } }
-    const { entry } = await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data })
+    const { entry } = await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'events', data })
     const rows = await t.run((ctx) => ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry)).collect())
     expect(Object.fromEntries(rows.map((r) => [r.locale, r.slug]))).toEqual({ de: 'sommerfest-2', en: 'sommerfest-2' })
   })
@@ -370,7 +370,7 @@ describe('budget (SPEC 3)', () => {
     })
     const before = await t.run(async (ctx) => [(await ctx.db.get(site))!.bytes, (await ctx.db.get(entry))!.bytes] as const)
     const imprint = { de: 'Absatz mit **fett** und Umlauten äöüß.\n\n'.repeat(1900), en: 'Paragraph with **bold** and umlauts äöüß.\n\n'.repeat(1900) }
-    await expect(as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { imprint } })).resolves.toMatchObject({ rev: 2 })
+    await expect(as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { imprint } })).resolves.toMatchObject({ rev: 2 })
     const [row, siteRow] = await t.run(async (ctx) => [(await ctx.db.get(entry))!, (await ctx.db.get(site))!] as const)
     expect(row.bytes).toBe(entryBytes(row.data, row.prints))
     expect(siteRow.bytes).toBe(before[0] - before[1] + row.bytes)
@@ -379,15 +379,15 @@ describe('budget (SPEC 3)', () => {
   // Wrong behaviour caught: a site over its budget (after an import or a release) refuses every save, also the one that shortens it.
   it('a save that shrinks an entry passes while the site is over its budget', async () => {
     const { t, as, entries, site } = await setup()
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev: 1, fields: { imprint: { de: 'Ein längerer Text für das Impressum.' } } })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev: 1, fields: { imprint: { de: 'Ein längerer Text für das Impressum.' } } })
     await t.run((ctx) => ctx.db.patch(site, { bytes: 5 * 1024 * 1024 }))
-    await expect(as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev: 2, fields: { imprint: { de: 'kurz' } } })).resolves.toMatchObject({ rev: 3 })
+    await expect(as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev: 2, fields: { imprint: { de: 'kurz' } } })).resolves.toMatchObject({ rev: 3 })
   })
 
   // Wrong behaviour caught: 1 byte over the site budget said "4 MB von 4 MB" while refusing the save (volume-6).
   it('a save just over the site budget names a used size above the limit', async () => {
     const { t, as, entries, site } = await setup()
-    const save = (baseRev: number, de: string) => as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev, fields: { imprint: { de } } })
+    const save = (baseRev: number, de: string) => as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev, fields: { imprint: { de } } })
     const bytes = () => t.run(async (ctx) => (await ctx.db.get(entries.legal!))!.bytes)
     // The entry's size with the longer text, then back to the shorter one.
     await save(1, 'Impressum lang')

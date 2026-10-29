@@ -267,8 +267,8 @@ describe('changes.list names who changed', () => {
   it('a member is named by email, a platform admin as kind platform', async () => {
     const { as, entries } = await setup()
     const entry = entries['menu-saibling']!
-    await as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1450 } }, sentence: 'Preis' })
-    await as.admin.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 2, fields: { price: { amount: 1500 } }, sentence: 'Preis' })
+    await as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1450 } }, sentence: 'Preis' })
+    await as.admin.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 2, fields: { price: { amount: 1500 } }, sentence: 'Preis' })
     const { page } = await as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })
     expect(page.slice(0, 2).map((c) => c.who)).toEqual([{ kind: 'platform' }, { email: 'koch@example.com' }])
   })
@@ -277,7 +277,7 @@ describe('changes.list names who changed', () => {
 describe('changes.list who and paging (Phase 9: F08, F09, F16, F17)', () => {
   const save = (s: Awaited<ReturnType<typeof setup>>, who: 'owner' | 'cook' | 'admin', baseRev: number, sentence = 'Preis') => {
     const task = who === 'cook' ? { task: 'menu.price' } : {}
-    return s.as[who].mutation(api.entries.save, { site: 'restaurant', opId: opId(), ...task, entry: s.entries['menu-saibling']!, baseRev, fields: { price: { amount: 1400 + baseRev } }, sentence })
+    return s.as[who].mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), ...task, entry: s.entries['menu-saibling']!, baseRev, fields: { price: { amount: 1400 + baseRev } }, sentence })
   }
 
   it('a member who left is kind former, only a real admin is kind platform', async () => {
@@ -321,7 +321,7 @@ describe('changes.list who and paging (Phase 9: F08, F09, F16, F17)', () => {
     const text = (k: number) => Array.from({ length: 245 }, (_, i) => `P${k}-${i}`.padEnd(200, 'x')).join('\n\n')
     let rev = 1
     for (let i = 0; i < 15; i++) {
-      const saved = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.legal!, baseRev: rev, fields: { imprint: { de: text(i) }, privacy: { de: text(i) } }, sentence: `Rechtliches ${i}` }) as { rev: number }
+      const saved = await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.entries.legal!, baseRev: rev, fields: { imprint: { de: text(i) }, privacy: { de: text(i) } }, sentence: `Rechtliches ${i}` }) as { rev: number }
       rev = saved.rev
     }
     const seen: string[] = []

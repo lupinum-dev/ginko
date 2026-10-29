@@ -18,7 +18,7 @@ afterEach(() => vi.useRealTimers())
 describe('entries.create', () => {
   it('a taken slug gets a suffix: a second "Martini-Gansl" is martini-gansl-2 in both locales', async () => {
     const { t, as } = await setup()
-    const created = await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: event('Martini-Gansl') })
+    const created = await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'events', data: event('Martini-Gansl') })
     const row = await t.run((ctx) => ctx.db.get(created.entry as Id<'entries'>))
     expect(row!.data.slug).toEqual({ de: 'martini-gansl-2', en: 'martini-gansl-2' })
     expect(created).toMatchObject({ rev: 1 })
@@ -30,9 +30,9 @@ describe('entries.create', () => {
     const { t, as, entries } = await setup()
     // notice-urlaub ran out on 2026-09-30; keep it visible so nothing can be removed.
     await t.run((ctx) => ctx.db.patch(entries['notice-urlaub']!, { data: notice('Urlaub', '2026-12-31') }))
-    await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Eins', '2026-10-30') })
-    await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Zwei', '2026-10-30') })
-    expect(await errorOf(as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Drei', '2026-10-30') }))).toMatchObject({ code: 'INVALID' })
+    await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Eins', '2026-10-30') })
+    await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Zwei', '2026-10-30') })
+    expect(await errorOf(as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Drei', '2026-10-30') }))).toMatchObject({ code: 'INVALID' })
   })
 
   it('visible.deleteExpired: the expired notice is removed first, as a remove change of actor system', async () => {
@@ -40,9 +40,9 @@ describe('entries.create', () => {
     vi.setSystemTime(new Date('2026-10-05T10:00:00Z'))
     const { t, as, entries } = await setup()
     // notice-urlaub is expired: two more notices fill the collection, the third one needs room.
-    await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Eins', '2026-10-30') })
-    await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Zwei', '2026-10-30') })
-    const created = await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Drei', '2026-10-30') })
+    await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Eins', '2026-10-30') })
+    await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Zwei', '2026-10-30') })
+    const created = await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Drei', '2026-10-30') })
     expect(created).toMatchObject({ rev: 1 })
     const [expired, live, changes] = await t.run(async (ctx) => [
       await ctx.db.get(entries['notice-urlaub']!),
@@ -59,13 +59,13 @@ describe('entries.create', () => {
     { task: 'menu.edit', why: 'staff with a granted task of another kind' },
   ])('FORBIDDEN for the cook: $why', async ({ task }) => {
     const { as } = await setup()
-    const call = as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), ...(task ? { task } : {}), brick: 'menu', data: dish('Neu') })
+    const call = as.cook.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), ...(task ? { task } : {}), brick: 'menu', data: dish('Neu') })
     expect((await errorOf(call)).code).toBe('FORBIDDEN')
   })
 
   it('the cook creates a dish with the granted add task; it lands at the end', async () => {
     const { as, t } = await setup()
-    const created = await as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish('Neu') })
+    const created = await as.cook.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish('Neu') })
     const row = await t.run((ctx) => ctx.db.get(created.entry as Id<'entries'>))
     expect(row).toMatchObject({ brick: 'menu', rev: 1, lifeRev: 1, order: 9, fieldRevs: { name: 1, price: 1 } })
   })
@@ -149,9 +149,9 @@ describe('entries.remove and restore', () => {
   it('restore on a full collection is rejected', async () => {
     const { as, entries } = await setup()
     await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: entries['notice-weinabend']!, lifeRev: 1 })
-    await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Eins', '2026-10-30') })
-    await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Zwei', '2026-10-30') })
-    await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Drei', '2026-10-30') })
+    await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Eins', '2026-10-30') })
+    await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Zwei', '2026-10-30') })
+    await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Drei', '2026-10-30') })
     expect(await errorOf(as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: entries['notice-weinabend']!, lifeRev: 2 }))).toMatchObject({ code: 'INVALID' })
   })
 
@@ -281,7 +281,7 @@ describe('tasks.prefill', () => {
     vi.setSystemTime(new Date('2026-10-17T22:30:00Z'))
     const due = { price: { amount: 2290 }, nextPrice: null, priceFrom: null }
     expect(await as.cook.query(api.tasks.prefill, { site: 'restaurant', task: 'menu.price', entry })).toEqual(due)
-    await as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: due })
+    await as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: due })
     const data = (await t.run((ctx) => ctx.db.get(entry)))!.data
     expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2290 }, undefined, undefined])
   })
@@ -290,13 +290,13 @@ describe('tasks.prefill', () => {
   // week planned for next week, because the write did not say when it shows.
   it('a save of only the planned price and a new planned week answer from when they show', async () => {
     const { t, as, entries } = await setup()
-    const price = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 1, fields: { nextPrice: { amount: 2500 }, priceFrom: '2026-11-01' } })
+    const price = await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 1, fields: { nextPrice: { amount: 2500 }, priceFrom: '2026-11-01' } })
     expect(price).toMatchObject({ liveFrom: '2026-11-01' })
     const kw42 = (await t.run((ctx) => ctx.db.get(entries['plan-kw42']!)))!.data
-    const week = await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'lunchPlans.planNext', brick: 'lunchPlans', data: { ...kw42, weekOf: '2026-10-19' } })
+    const week = await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), task: 'lunchPlans.planNext', brick: 'lunchPlans', data: { ...kw42, weekOf: '2026-10-19' } })
     // Thursday 8 October: the week of Monday 19 shows from Saturday 17.
     expect(week).toMatchObject({ state: 'live', liveFrom: '2026-10-17' })
-    const now = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 2, fields: { price: { amount: 2400 } } })
+    const now = await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 2, fields: { price: { amount: 2400 } } })
     expect(now).not.toHaveProperty('liveFrom')
   })
 
@@ -312,7 +312,7 @@ describe('tasks.prefill', () => {
     expect(days[1]).toMatchObject({ day: 'tu', dish: { de: 'Krautfleckerl mit Speck' } })
     const fields = { days: days.map((d) => (d.day === 'tu' ? { ...d, dish: { de: 'Kürbisgulasch' } } : d)) }
     // The task needs approval, also on the planned week: a proposal, then live once the owner says yes.
-    const proposed = await as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: plan, baseRev: 1, fields }) as { proposal: Id<'proposals'> }
+    const proposed = await as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: plan, baseRev: 1, fields }) as { proposal: Id<'proposals'> }
     expect(proposed).toMatchObject({ status: 'open' })
     await as.owner.mutation(api.proposals.approve, { proposal: proposed.proposal })
     expect(((await t.run((ctx) => ctx.db.get(plan)))!.data as { days: { dish: unknown }[] }).days[1]!.dish).toEqual({ de: 'Kürbisgulasch' })
@@ -320,7 +320,7 @@ describe('tasks.prefill', () => {
     // A week ahead the same week is a later one. A fresh backend: Convex time never goes back.
     vi.setSystemTime(new Date('2026-10-06T08:00:00Z'))
     const early = await setup()
-    const later = early.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: early.entries['plan-kw42']!, baseRev: 1, fields })
+    const later = early.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: early.entries['plan-kw42']!, baseRev: 1, fields })
     expect((await errorOf(later)).code).toBe('FORBIDDEN')
   })
 })
@@ -332,7 +332,7 @@ describe('the weekly task covers this week only', () => {
     // Friday: this week is the one of Monday 12 October.
     vi.setSystemTime(new Date('2026-10-16T08:00:00Z'))
     const { t, as, entries } = await setup()
-    const save = (weekOf: string) => as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: entries.lunch!, baseRev: 1, fields: { weekOf } })
+    const save = (weekOf: string) => as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: entries.lunch!, baseRev: 1, fields: { weekOf } })
     expect(await errorOf(save('2026-10-19'))).toMatchObject({ code: 'INVALID', key: 'errors.weeklyTaskThisWeek' })
     const proposed = await save('2026-10-12') as { proposal: Id<'proposals'>; status: string }
     expect(proposed.status).toBe('open')
@@ -349,9 +349,9 @@ describe('the weekly task covers this week only', () => {
     vi.setSystemTime(new Date('2026-10-16T08:00:00Z'))
     const { t, as, entries } = await setup()
     const lunch = entries.lunch!
-    const first = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
+    const first = await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
     vi.setSystemTime(new Date('2026-10-17T06:00:00Z'))
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: first.rev, fields: { weekOf: '2026-10-19', note: { de: 'Neu' } } })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: first.rev, fields: { weekOf: '2026-10-19', note: { de: 'Neu' } } })
     await as.owner.mutation(api.entries.revert, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, change: first.change })
     const data = (await t.run((ctx) => ctx.db.get(lunch)))!.data
     expect([data.weekOf, data.note]).toEqual(['2026-10-19', { de: 'Alt' }])
@@ -363,9 +363,9 @@ describe('the weekly task covers this week only', () => {
     vi.setSystemTime(new Date('2026-10-16T08:00:00Z'))
     const { t, as, entries } = await setup()
     const lunch = entries.lunch!
-    const first = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
+    const first = await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
     vi.setSystemTime(new Date('2026-10-17T06:00:00Z'))
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: first.rev, fields: { weekOf: '2026-10-19', note: { de: 'Neu' } } })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: first.rev, fields: { weekOf: '2026-10-19', note: { de: 'Neu' } } })
     const preview = async (task?: string) => ((await as.owner.query(api.entries.versionAt, { site: 'restaurant', entry: lunch, change: first.change, ...(task ? { task } : {}) })) as unknown as { diff: { field: string }[] }).diff.map((d) => d.field)
     expect(await preview()).toEqual(expect.arrayContaining(['weekOf', 'note']))
     expect(await preview('lunch.lunchWeek')).toEqual(['note'])
@@ -382,14 +382,14 @@ describe('one planned week per week', () => {
   it('a second plan for a planned week, made or moved there, is refused at the week field', async () => {
     const { t, as, entries } = await setup()
     const kw42 = (await t.run((ctx) => ctx.db.get(entries['plan-kw42']!)))!.data
-    const create = (weekOf: string) => as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'lunchPlans.planNext', brick: 'lunchPlans', data: { ...kw42, weekOf } })
+    const create = (weekOf: string) => as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), task: 'lunchPlans.planNext', brick: 'lunchPlans', data: { ...kw42, weekOf } })
     const taken = { code: 'INVALID', details: { errors: [expect.objectContaining({ path: 'weekOf', key: 'errors.weekAlreadyPlanned' })] } }
     expect(await errorOf(create('2026-10-12'))).toMatchObject(taken)
     const next = await create('2026-10-19') as { entry: Id<'entries'> }
-    const move = as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunchPlans.edit', entry: next.entry, baseRev: 1, fields: { weekOf: '2026-10-12' } })
+    const move = as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunchPlans.edit', entry: next.entry, baseRev: 1, fields: { weekOf: '2026-10-12' } })
     expect(await errorOf(move)).toMatchObject(taken)
     // The plan itself keeps its week when other fields change.
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunchPlans.edit', entry: next.entry, baseRev: 1, fields: { weekOf: '2026-10-19', note: { de: 'Mit Suppe' } } })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunchPlans.edit', entry: next.entry, baseRev: 1, fields: { weekOf: '2026-10-19', note: { de: 'Mit Suppe' } } })
   })
 
   // Wrong behaviour caught: restoring a removed plan, or undoing the move of a plan, put a second plan on a week that had
@@ -397,14 +397,14 @@ describe('one planned week per week', () => {
   it('restoring a plan or undoing its move onto a week planned again meanwhile is refused', async () => {
     const { t, as, entries } = await setup()
     const kw42 = (await t.run((ctx) => ctx.db.get(entries['plan-kw42']!)))!.data
-    const create = (weekOf: string) => as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'lunchPlans.planNext', brick: 'lunchPlans', data: { ...kw42, weekOf } }) as Promise<{ entry: Id<'entries'> }>
+    const create = (weekOf: string) => as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), task: 'lunchPlans.planNext', brick: 'lunchPlans', data: { ...kw42, weekOf } }) as Promise<{ entry: Id<'entries'> }>
     const taken = { code: 'INVALID', key: 'errors.weekAlreadyPlanned' }
     const first = await create('2026-10-19')
     const removed = await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: first.entry, lifeRev: 1 }) as { lifeRev: number }
     const second = await create('2026-10-19')
     expect(await errorOf(as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: first.entry, lifeRev: removed.lifeRev }))).toMatchObject(taken)
 
-    const moved = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunchPlans.edit', entry: second.entry, baseRev: 1, fields: { weekOf: '2026-10-26' } }) as { change: Id<'changes'> }
+    const moved = await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunchPlans.edit', entry: second.entry, baseRev: 1, fields: { weekOf: '2026-10-26' } }) as { change: Id<'changes'> }
     await create('2026-10-19')
     expect(await errorOf(as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: moved.change }))).toMatchObject(taken)
   })
@@ -416,7 +416,7 @@ describe('entries.create and lifecycle after the phase 5 review', () => {
 
   it('a translation sent with a new entry is fresh, not a fallback', async () => {
     const { t, as } = await setup()
-    const { entry } = await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: pumpkin }) as { entry: Id<'entries'> }
+    const { entry } = await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'events', data: pumpkin }) as { entry: Id<'entries'> }
     const row = (await t.run((ctx) => ctx.db.get(entry)))!
     expect(Object.keys(row.prints)).toContain('title')
     expect(row.prints.title!.en).toBe(printOf('Kürbisabend'))
@@ -431,7 +431,7 @@ describe('entries.create and lifecycle after the phase 5 review', () => {
       schema.retired['events.booking'] = { drop: true }
       await ctx.db.patch(site._id, { schema })
     })
-    const call = as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: { ...pumpkin, booking: 'not a url but retired' } })
+    const call = as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'events', data: { ...pumpkin, booking: 'not a url but retired' } })
     expect(await errorOf(call)).toMatchObject({ code: 'INVALID', details: { field: 'booking' } })
   })
 

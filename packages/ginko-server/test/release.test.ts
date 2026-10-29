@@ -442,7 +442,7 @@ describe('devPush on a fresh local backend', () => {
     expect(singles.map((e) => e.brick).sort()).toEqual(['contact', 'gallery', 'hours', 'legal', 'lunch', 'seo'])
     expect(site.entryCount).toBe(6)
     const hours = singles.find((e) => e.brick === 'hours')!
-    expect(await s.as.owner.mutation(api.entries.save, { site: 'neu', opId: opId(), entry: hours._id, baseRev: 1, fields: { closedNote: { de: 'Betriebsurlaub' } }, sentence: 'Hinweis gesetzt' }))
+    expect(await s.as.owner.mutation(api.entries.save, { publish: true, site: 'neu', opId: opId(), entry: hours._id, baseRev: 1, fields: { closedNote: { de: 'Betriebsurlaub' } }, sentence: 'Hinweis gesetzt' }))
       .toMatchObject({ rev: 2 })
   })
 })

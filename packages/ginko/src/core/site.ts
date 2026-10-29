@@ -189,7 +189,6 @@ export function collection<const F extends Fields, const R extends Record<Locale
   untranslated?: 'fallback' | 'hide'
   /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`firstDayOfWeek`). */
   plans?: { brick: string; field: FieldsOfType<F, 'date'> }
-  drafts?: boolean
   /** The status line on the Studio's Today page (see `CollectionStatus`). */
   status?: CollectionStatus<FieldsOfType<F, 'date' | 'daterange'>, keyof F & string>
 }): CollectionBrick<F, R> {

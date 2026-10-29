@@ -18,7 +18,7 @@ test('the owner closes today with a reason, and the site says so', async ({ page
   // The task starts on today: one tap for the day, then the reason.
   await expect(sheet.getByRole('button', { name: 'Heute', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await sheet.getByLabel(new RegExp(`^${CLOSED.reasonField}`)).fill(reason)
-  await sheet.getByRole('button', { name: 'Speichern' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
   // Today's hours line on the Studio names the closure and its reason.
   await expect(page.getByRole('main').getByText(reason)).toBeVisible()

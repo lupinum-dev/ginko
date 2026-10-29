@@ -40,7 +40,7 @@ describe('delete account', () => {
   it('removes memberships, invites, sessions and settings; history stays and shows "former"', async () => {
     const s = await setup()
     const entry = s.entries['menu-saibling']!
-    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1500 } } })
+    await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1500 } } })
     await s.as.cook.mutation(api.account.setLocale, { locale: 'en' })
     await s.as.cook.mutation(api.views.save, { site: 'restaurant', brick: 'menu', name: 'Meine Ansicht', query: {} })
     await s.t.run((ctx) => ctx.db.insert('invites', { site: s.other, email: 'koch@example.com', role: 'staff', grants: [], tokenHash: 'x', invitedBy: 'u-fremd', expiresAt: Date.now() + DAY }))
@@ -151,17 +151,17 @@ describe('delete site', () => {
       return [row.storageId, processed, variant]
     })
     await s.as.owner.mutation(api.files.createFolder, { site: 'restaurant', name: 'Ordner' })
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1500 } } })
-    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.entries['menu-frittaten']!, baseRev: 1, fields: { price: { amount: 999 } } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1500 } } })
+    await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.entries['menu-frittaten']!, baseRev: 1, fields: { price: { amount: 999 } } })
     // A Markdown text stores its trees (entryTrees).
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: '**Hallo**' } } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: '**Hallo**' } } })
     await s.t.run(async (ctx) => {
       const site = (await ctx.db.get(s.site))!
       const menu = (site.schema as { bricks: Record<string, { tasks?: { needsApproval?: boolean }[] }> }).bricks.menu!
       for (const task of menu.tasks ?? []) task.needsApproval = true
       await ctx.db.patch(s.site, { schema: site.schema })
     })
-    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.entries['menu-saibling']!, baseRev: 2, fields: { price: { amount: 1600 } } })
+    await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.entries['menu-saibling']!, baseRev: 2, fields: { price: { amount: 1600 } } })
     await s.as.owner.mutation(api.proposals.createRelease, { site: 'restaurant', name: 'R' })
     // After the saves above: a save of an entry with unpublished changes adds to them instead of making a proposal.
     await s.t.run((ctx) => ctx.db.insert('pendingChanges', { site: s.site, entry: s.entries['menu-saibling']! as Id<'entries'>, brick: 'menu', fields: {}, prints: {}, revs: {}, by: 'u-wirtin', since: Date.now(), at: Date.now() }))

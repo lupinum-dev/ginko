@@ -33,9 +33,9 @@ async function approvalSetup(opts: { needsApproval?: boolean } = {}) {
   const frittaten = s.entries['menu-frittaten']!
   /** The cook changes a price: a proposal when the task needs approval. */
   const cookPrice = (entry: Id<'entries'>, amount: number) =>
-    s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount } } })
+    s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount } } })
   const ownerPrice = (entry: Id<'entries'>, amount: number, baseRev = 1) =>
-    s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev, fields: { price: { amount } } })
+    s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev, fields: { price: { amount } } })
   const row = (id: Id<'entries'>) => s.t.run((ctx) => ctx.db.get(id))
   const proposalRow = (id: Id<'proposals'>) => s.t.run((ctx) => ctx.db.get(id))
   const rows = (table: 'proposals' | 'changes' | 'outbox' | 'releases') => s.t.run((ctx) => ctx.db.query(table).collect())
@@ -84,17 +84,11 @@ describe('when a write needs a yes', () => {
 
   it('editing a draft by such staff is direct: a draft is not live', async () => {
     const s = await approvalSetup()
-    await s.t.run(async (ctx) => {
-      const site = (await ctx.db.get(s.site))!
-      const schema = site.schema as Schema
-      ;(schema.bricks.menu as { drafts?: boolean }).drafts = true
-      await ctx.db.patch(s.site, { schema })
-    })
     const draft = await s.as.owner.mutation(api.entries.create, {
       site: 'restaurant', opId: opId(), brick: 'menu', data: { category: 'starters', name: { de: 'Neu' }, price: { amount: 900 }, allergens: ['A'], veg: 'none' },
     })
     expect(draft).toMatchObject({ state: 'draft' })
-    const saved = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: draft.entry as Id<'entries'>, baseRev: 1, fields: { price: { amount: 950 } }, sentence: 'x' })
+    const saved = await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry: draft.entry as Id<'entries'>, baseRev: 1, fields: { price: { amount: 950 } }, sentence: 'x' })
     expect(saved).toMatchObject({ rev: 2 })
     expect(await s.rows('proposals')).toHaveLength(0)
 
@@ -119,7 +113,7 @@ describe('when a write needs a yes', () => {
 
   it('a retry with the same opId returns the same proposal', async () => {
     const s = await approvalSetup()
-    const args = { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, sentence: 'x' }
+    const args = { site: 'restaurant', opId: opId(), publish: true as const, task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, sentence: 'x' }
     const first = await s.as.cook.mutation(api.entries.save, args)
     expect(await s.as.cook.mutation(api.entries.save, args)).toEqual(first)
     expect(await s.rows('proposals')).toHaveLength(1)
@@ -128,22 +122,11 @@ describe('when a write needs a yes', () => {
 
 describe('approving after the planned publish time', () => {
   const dish = { category: 'starters', name: { de: 'Neu' }, price: { amount: 900 }, allergens: ['A'], veg: 'none' }
-  /** The menu keeps drafts; the cook's tasks need approval. */
-  async function draftsSetup() {
-    const s = await approvalSetup()
-    await s.t.run(async (ctx) => {
-      const site = (await ctx.db.get(s.site))!
-      const schema = site.schema as Schema
-      ;(schema.bricks.menu as { drafts?: boolean }).drafts = true
-      await ctx.db.patch(s.site, { schema })
-    })
-    return s
-  }
 
   // Wrong behaviour caught: the approval was refused ("time must be in the future") and the cook's dish stayed unpublished,
   // with the proposal marked stale, because the owner took longer to decide than the cook's planned time.
   it('a scheduled publish of an existing draft goes live at once, clamped to now, and the history says why', async () => {
-    const s = await draftsSetup()
+    const s = await approvalSetup()
     const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish })
     const sent = await s.as.cook.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: draft.entry as Id<'entries'>, lifeRev: 1, at: NOW + HOUR })
     expect(sent).toMatchObject({ status: 'open' })
@@ -162,7 +145,7 @@ describe('approving after the planned publish time', () => {
   })
 
   it('a scheduled create goes live at once when approved after its time', async () => {
-    const s = await draftsSetup()
+    const s = await approvalSetup()
     const sent = await s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish, publish: { at: NOW + HOUR } })
     expect(sent).toMatchObject({ status: 'open' })
     expect(await s.t.run((ctx) => ctx.db.query('entries').collect()).then((rows) => rows.filter((r) => r.brick === 'menu' && r.data.name?.de === 'Neu'))).toHaveLength(0)
@@ -176,7 +159,7 @@ describe('approving after the planned publish time', () => {
   })
 
   it('approved before its time the entry stays a scheduled draft', async () => {
-    const s = await draftsSetup()
+    const s = await approvalSetup()
     const sent = await s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish, publish: { at: NOW + 3 * HOUR } })
     await s.advanceTo(NOW + HOUR)
     expect(await s.as.owner.mutation(api.proposals.approve, { proposal: (sent as Proposed).proposal })).toMatchObject({ status: 'applied' })
@@ -185,7 +168,7 @@ describe('approving after the planned publish time', () => {
   })
 
   it('a person calling publish with a time in the past is still refused', async () => {
-    const s = await draftsSetup()
+    const s = await approvalSetup()
     const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish })
     const error = await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry as Id<'entries'>, lifeRev: 1, at: NOW - HOUR }))
     expect(error.code).toBe('INVALID')
@@ -193,22 +176,18 @@ describe('approving after the planned publish time', () => {
 })
 
 describe('approving', () => {
-  // Wrong behaviour caught: the proposal of a copy forgets it is a copy, so on approval the create task's fields check
-  // refuses the carried-over soldOutOn and the approved copy goes stale.
-  it('an approved copy made through a create task with fields is created with what the original holds', async () => {
+  // Wrong behaviour caught: a copy through a create task with fields is refused for the carried-over soldOutOn, which
+  // the task does not list. A copy is a draft (D60), so it is written at once; its publish is what needs the yes.
+  it('a copy made through a create task with fields is a draft with what the original holds', async () => {
     const s = await approvalSetup()
     await s.t.run(async (ctx) => {
       const entry = (await ctx.db.get(s.saibling))!
       await ctx.db.patch(s.saibling, { data: { ...entry.data, soldOutOn: '2026-10-20' } })
     })
-    const before = (await s.rows('proposals')).length
-    const { proposal } = await s.as.cook.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: s.saibling }) as Proposed
-    expect((await s.rows('proposals')).length).toBe(before + 1)
-    const done = await s.as.owner.mutation(api.proposals.approve, { proposal })
-    expect(done).not.toMatchObject({ status: 'stale' })
-    expect(await s.proposalRow(proposal)).toMatchObject({ status: 'applied' })
+    const made = await s.as.cook.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: s.saibling })
+    expect(made).toMatchObject({ state: 'draft' })
     const copy = (await s.t.run((ctx) => ctx.db.query('entries').collect())).find((e) => e.brick === 'menu' && e._id !== s.saibling && e.data.soldOutOn === '2026-10-20')
-    expect(copy).toBeDefined()
+    expect(copy).toMatchObject({ state: 'draft' })
   })
 
   it('applies through the normal path: the change names the author and the approver, and it can be undone', async () => {
@@ -302,7 +281,7 @@ describe('approving', () => {
   it('create and remove proposals apply through their own operations', async () => {
     const s = await approvalSetup()
     const created = await s.as.cook.mutation(api.entries.create, {
-      site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: { category: 'starters', name: { de: 'Neu' }, price: { amount: 900 }, allergens: ['A'], veg: 'none' },
+      site: 'restaurant', opId: opId(), publish: {}, task: 'menu.add', brick: 'menu', data: { category: 'starters', name: { de: 'Neu' }, price: { amount: 900 }, allergens: ['A'], veg: 'none' },
     }) as Proposed
     const removed = await s.as.cook.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), task: 'menu.remove', entry: s.frittaten, lifeRev: 1 }) as Proposed
     expect(created.status).toBe('open')
@@ -352,7 +331,7 @@ describe('rejecting and withdrawing', () => {
 describe('the author follows up on their own proposal', () => {
   /** The cook's note on this week's lunch, through the weekly task (it needs approval in the restaurant). */
   const cookNote = (s: Setup, de: string) =>
-    s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: s.entries.lunch!, baseRev: 1, fields: { note: { de } } }) as Promise<Proposed>
+    s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: s.entries.lunch!, baseRev: 1, fields: { note: { de } } }) as Promise<Proposed>
 
   // Wrong behaviour caught: sending the week again left two open proposals of the cook for the same week, and approving
   // one made the other stale.
@@ -383,7 +362,7 @@ describe('the author follows up on their own proposal', () => {
 
     await s.as.owner.mutation(api.proposals.reject, { proposal: second.proposal, reason: 'Zu teuer.' })
     expect(await rejected()).toEqual([second.proposal])
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.lunch!, baseRev: 1, fields: { note: { de: 'Suppe inklusive, 11 Euro' } } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.entries.lunch!, baseRev: 1, fields: { note: { de: 'Suppe inklusive, 11 Euro' } } })
     expect(await own()).toBeNull()
     expect(await rejected()).toEqual([])
   })
@@ -395,7 +374,7 @@ describe('the author follows up on their own proposal', () => {
     const own = () => s.as.cook.query(api.proposals.ownFor, { site: 'restaurant', entry: s.entries.lunch! })
     await cookNote(s, 'Suppe inklusive')
     expect(await own()).toMatchObject({ status: 'open', fits: true })
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.lunch!, baseRev: 1, fields: { note: { de: 'Suppe und Salat inklusive' } } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.entries.lunch!, baseRev: 1, fields: { note: { de: 'Suppe und Salat inklusive' } } })
     expect(await own()).toMatchObject({ status: 'open', fits: false })
   })
 
@@ -535,7 +514,7 @@ describe('releases', () => {
     const s = await approvalSetup()
     const a = (await s.cookPrice(s.saibling, 1450)) as Proposed
     // Through another task: a second save through the same task would replace the first proposal.
-    const b = (await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1600 } } })) as Proposed
+    const b = (await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.edit', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1600 } } })) as Proposed
     const { release } = await s.as.owner.mutation(api.proposals.createRelease, { site: 'restaurant', name: 'Doppelt' }) as { release: Id<'releases'> }
     for (const p of [a, b]) await s.as.owner.mutation(api.proposals.addToRelease, { release, proposal: p.proposal })
     expect(await s.as.owner.mutation(api.proposals.approveRelease, { release })).toMatchObject({ status: 'stale', stale: [{ proposal: b.proposal }] })
@@ -629,7 +608,7 @@ describe('the agent door', () => {
       await ctx.db.patch(s.site, { schema, agentReview: siteSetting })
       await ctx.db.patch(key.id, { review: keySetting })
     })
-    const done = await call(s, key.key, 'task_notices_soldOut')
+    const done = await call(s, key.key, 'task_notices_soldOut', { publish: true })
     expect(done.isError).toBe(false)
     expect(done.text.startsWith(PROPOSED)).toBe(expected)
     expect((await s.rows('proposals')).length).toBe(expected ? 1 : 0)
@@ -640,7 +619,7 @@ describe('the agent door', () => {
     const s = await approvalSetup()
     const key = await s.as.owner.mutation(api.agent.createKey, { site: 'restaurant', label: 'Claude Code' })
     await s.as.owner.mutation(api.agent.setKeyReview, { site: 'restaurant', key: key.id, review: true })
-    expect(await call(s, key.key, 'task_notices_soldOut')).toEqual({ text: PROPOSED, isError: false })
+    expect(await call(s, key.key, 'task_notices_soldOut', { publish: true })).toEqual({ text: PROPOSED, isError: false })
     const [proposal] = await s.rows('proposals')
     expect(proposal).toMatchObject({ via: 'agent', agentKey: key.id, author: 'u-wirtin', status: 'open' })
     expect(await s.as.owner.mutation(api.proposals.approve, { proposal: proposal!._id })).toMatchObject({ status: 'applied' })

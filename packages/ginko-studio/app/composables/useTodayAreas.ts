@@ -91,8 +91,8 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   /** The bricks with tasks this person may do, in schema order. */
   const withTasks = computed(() => s.bricks.value.filter(([key, brick]) => (brick.tasks ?? []).some((t) => s.may(key, t))))
   /**
-   * The entries this page shows or reads its state from (small by design): the singles with tasks, the collections
-   * that plan one of them ahead, and the timed collections with tasks. Nothing else of the site is read here.
+   * The entries this page shows or reads its state from (slim rows): the singles with tasks, the collections that plan
+   * one of them ahead, and the collections with tasks (their drafts and unpublished changes). Nothing else is read here.
    */
   const shownBricks = computed(() => {
     const keys = new Set<string>()
@@ -100,7 +100,8 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       if (brick.kind === 'single') {
         keys.add(key)
         for (const [k, b] of s.bricks.value) if (b.kind === 'collection' && b.plans?.brick === key) keys.add(k)
-      } else if (isTimed(brick) || (brick.kind === 'collection' && brick.drafts === true)) {
+      } else {
+        // Every collection: its drafts and unpublished changes wait on Heute (TodayDrafts).
         keys.add(key)
         // A week planned ahead can start from the one the single shows this week ("Von dieser Woche übernehmen").
         if (brick.plans) keys.add(brick.plans.brick)
@@ -313,7 +314,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     return text ? { text, due: state!.due, hours: state!.line!.kind === 'hours' } : undefined
   }
   /** A brick that can have a status line: a skeleton holds its place while sites.today loads. */
-  const canHaveLine = (brick: Brick) => !!brick.status || (brick.kind === 'collection' && brick.drafts === true) || (brick.kind === 'single' && !!weeklyTask(brick))
+  const canHaveLine = (brick: Brick) => !!brick.status || brick.kind === 'collection' || (brick.kind === 'single' && !!weeklyTask(brick))
 
   // The person's own proposals (proposals.mine), rendered on the server so "Wartet auf dich" comes with the first
   // paint: each section says what of theirs waits for approval; a rejection is a tile with "Korrigieren" and a note in

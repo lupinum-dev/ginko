@@ -290,6 +290,7 @@
       "status": "Estado",
       "draftNote": "Todavía no está en el sitio web. Publícalo cuando esté listo.",
       "scheduledNote": "Se publica solo a esa hora.",
+      "liveNote": "Guardar aún no cambia el sitio web. Solo «Publicar…» lo hace.",
       "changesNote": "Guardado, pero aún no está en el sitio web. Muestra la versión anterior hasta que publiques.",
       "changesScheduledNote": "Los cambios se publican solos a esa hora."
     },
@@ -383,6 +384,8 @@
       "single": "Página única",
       "entries": "{count, plural, =0 {Sin entradas} one {# entrada} other {# entradas}}",
       "drafts": "{count, plural, one {# borrador} other {# borradores}}",
+      "changesCount": "{count, plural, one {# con cambios sin publicar} other {# con cambios sin publicar}}",
+      "singleChanges": "Cambios sin publicar",
       "endedCount": "{count, plural, one {# terminado} other {# terminados}}",
       "translationsOpen": "{lang}: {count} pendientes",
       "todayAt": "Hoy, {time}",

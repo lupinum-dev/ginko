@@ -290,6 +290,7 @@
       "status": "Statut",
       "draftNote": "Pas encore sur le site. Publiez-le quand il est prêt.",
       "scheduledNote": "Il sera mis en ligne automatiquement à ce moment-là.",
+      "liveNote": "Enregistrer ne change pas encore le site. Seul « Publier… » le fait.",
       "changesNote": "Enregistré, mais pas encore sur le site. Il montre la version précédente jusqu’à ce que vous publiiez.",
       "changesScheduledNote": "Les modifications passent en ligne d’elles-mêmes à ce moment-là."
     },
@@ -383,6 +384,8 @@
       "single": "Page unique",
       "entries": "{count, plural, =0 {Aucune entrée} one {# entrée} other {# entrées}}",
       "drafts": "{count, plural, one {# brouillon} other {# brouillons}}",
+      "changesCount": "{count, plural, one {# modifiée, pas encore en ligne} other {# modifiées, pas encore en ligne}}",
+      "singleChanges": "Modifié, pas encore en ligne",
       "endedCount": "{count, plural, one {# terminé} other {# terminés}}",
       "translationsOpen": "{lang} : {count} en attente",
       "todayAt": "Aujourd’hui, {time}",

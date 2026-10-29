@@ -32,7 +32,7 @@ vi.stubGlobal('useOps', () => ({}))
 const schema = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
   pages: { home: { de: '/' } },
-  bricks: { blog: collection({ label: 'Blog', drafts: true, max: 50, order: 'manual', fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }), story: f.markdown('Geschichte', { optional: true }) } }) },
+  bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }), story: f.markdown('Geschichte', { optional: true }) } }) },
 }))
 
 // Wrong behaviour caught: a new draft is asked about by a generic name (the old "Neuer Eintrag" heading), or by its brick label "Blog" while empty.
@@ -565,12 +565,12 @@ test('Alles bearbeiten on the English tab says a cleared title takes the entry o
   }
 })
 
-// Save without publishing: on a live entry of a collection with drafts, Speichern keeps the changes unpublished.
+// Save without publishing (D60): on every live entry and single, Speichern keeps the changes unpublished.
 describe('the footer of a live entry with unpublished changes', () => {
-  const plain = serializeSchema(defineSite({
+  const withSingle = serializeSchema(defineSite({
     site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
     pages: { home: { de: '/' } },
-    bricks: { hours: collection({ label: 'Zeiten', max: 50, order: 'manual', fields: { title: f.text('Titel') } }) },
+    bricks: { contact: single({ label: 'Kontakt', fields: { title: f.text('Titel') } }) },
   }))
   const pass = { template: '<div><slot /></div>' }
   const stubs = {
@@ -582,28 +582,25 @@ describe('the footer of a live entry with unpublished changes', () => {
   const entryOf = (extra: Record<string, unknown> = {}) => ({ _id: 'e1', brick: 'blog', kind: 'item' as const, order: 1, data: { title: { de: 'Herbstfest' } }, rev: 3, fieldRevs: {}, lifeRev: 1, prints: {}, ...extra })
   const buttons = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('button').map((b) => b.text())
 
-  // Wrong behaviour caught: the page says "Online" while saved changes wait, offers no way to publish or discard them
-  // (also when they were saved before the collection turned drafts off), or offers publishing on a collection without
-  // drafts, where Speichern is already live.
+  // Wrong behaviour caught: the page says "Online" while saved changes wait, offers no way to publish or discard them,
+  // a single (Startseite, Preise) has no Veröffentlichen, or a single offers to go offline.
   test.each([
-    { name: 'live, nothing waiting', key: 'blog', entry: entryOf(), status: 'Online', save: 'Speichern', publish: false, discard: false },
-    { name: 'live with unpublished changes', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true },
-    { name: 'unpublished changes planned', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'], publishAt: at } }), status: 'Änderungen online ab', save: 'Speichern', publish: 'Zeitplan ändern …', discard: true },
-    { name: 'a draft', key: 'blog', entry: entryOf({ state: 'draft' }), status: 'Entwurf', save: 'Entwurf speichern', publish: 'Veröffentlichen …', discard: false },
-    { name: 'no drafts in the collection', key: 'hours', entry: entryOf({ brick: 'hours' }), status: undefined, save: 'Speichern', publish: false, discard: false },
-    // Saved before the collection turned drafts off: they still wait, so they can still be published or discarded.
-    { name: 'changes left waiting after drafts were turned off', key: 'hours', entry: entryOf({ brick: 'hours', pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true },
-  ])('$name', async ({ key, entry, status, save, publish, discard }) => {
-    const s = key === 'hours' ? plain : schema
+    { name: 'live, nothing waiting', key: 'blog', entry: entryOf(), status: 'Online', save: 'Speichern', publish: false, discard: false, unpublish: true },
+    { name: 'live with unpublished changes', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true, unpublish: true },
+    { name: 'unpublished changes planned', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'], publishAt: at } }), status: 'Änderungen online ab', save: 'Speichern', publish: 'Zeitplan ändern …', discard: true, unpublish: true },
+    { name: 'a draft', key: 'blog', entry: entryOf({ state: 'draft' }), status: 'Entwurf', save: 'Entwurf speichern', publish: 'Veröffentlichen …', discard: false, unpublish: false },
+    { name: 'a single, nothing waiting', key: 'contact', entry: entryOf({ brick: 'contact', kind: 'single' }), status: 'Online', save: 'Speichern', publish: false, discard: false, unpublish: false },
+    { name: 'a single with unpublished changes', key: 'contact', entry: entryOf({ brick: 'contact', kind: 'single', pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true, unpublish: false },
+  ])('$name', async ({ key, entry, status, save, publish, discard, unpublish }) => {
+    const s = key === 'contact' ? withSingle : schema
     const wrapper = mount(EntryEditor, { props: { site, schema: s, brickKey: key, brick: s.bricks[key]!, entry, canRemove: false }, global: { stubs } })
     await flushPromises()
-    const badge = wrapper.find('[data-slot="badge"]')
-    if (status) expect(badge.text()).toContain(status)
-    else expect(badge.exists()).toBe(false)
+    expect(wrapper.get('[data-slot="badge"]').text()).toContain(status)
     expect(buttons(wrapper)).toContain(save)
     if (publish) expect(buttons(wrapper)).toContain(publish)
     else expect(buttons(wrapper).some((b) => b.startsWith('Veröffentlichen') || b.startsWith('Zeitplan'))).toBe(false)
     expect(buttons(wrapper).includes('Änderungen verwerfen …')).toBe(discard)
+    expect(buttons(wrapper).includes('Zurückziehen')).toBe(unpublish)
   })
 
   // Wrong behaviour caught: Veröffentlichen takes the page offline (the draft path) or puts live a version the person

@@ -148,8 +148,8 @@ describe('scheduled entries', () => {
   const site = serializeSchema(defineSite({
     site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', pages: { home: { en: '/' } },
     bricks: {
-      posts: collection({ label: 'Posts', source: 'files', max: 50, drafts: true, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
-      events: collection({ label: 'Events', source: 'files', max: 50, drafts: true, order: { field: 'date', dir: 'asc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
+      posts: collection({ label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
+      events: collection({ label: 'Events', source: 'files', max: 50, order: { field: 'date', dir: 'asc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
     },
   }))
   const files = {

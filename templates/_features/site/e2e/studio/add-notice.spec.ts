@@ -15,7 +15,7 @@ test('the owner adds a notice and the home page shows it', async ({ page, reques
   await page.getByRole('button', { name: NOTICE.createTask }).click()
   const sheet = page.getByRole('dialog')
   await sheet.getByLabel(new RegExp(NOTICE.textField)).fill(text)
-  await sheet.getByRole('button', { name: 'Speichern' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
 
   await expect.poll(async () => (await request.get(`${studio.siteUrl}/`)).text(), { timeout: 60_000 }).toContain(text)

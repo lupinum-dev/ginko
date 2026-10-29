@@ -41,7 +41,7 @@ describe('agent door', () => {
     expect((await rpc(s, key, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1' } })).body.result.protocolVersion).toBe('2025-06-18')
 
     const before = await notices(s)
-    const done = await call(s, key, 'task_notices_soldOut')
+    const done = await call(s, key, 'task_notices_soldOut', { publish: true })
     expect(done.isError).toBe(false)
     expect(await notices(s)).toHaveLength(before.length + 1)
 
@@ -60,8 +60,8 @@ describe('agent door', () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
     const before = await notices(s)
-    const first = await call(s, key, 'task_notices_soldOut', { request_id: 'retry-1' })
-    const again = await call(s, key, 'task_notices_soldOut', { request_id: 'retry-1' })
+    const first = await call(s, key, 'task_notices_soldOut', { publish: true, request_id: 'retry-1' })
+    const again = await call(s, key, 'task_notices_soldOut', { publish: true, request_id: 'retry-1' })
     expect(first.isError).toBe(false)
     expect(again).toEqual(first)
     expect(await notices(s)).toHaveLength(before.length + 1)
@@ -72,17 +72,31 @@ describe('agent door', () => {
   it('a name Convex refuses is named in the answer', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
-    expect(await call(s, key, 'task_notices_soldOut', { 'Überschrift': 'x' })).toEqual({
+    expect(await call(s, key, 'task_notices_soldOut', { publish: true, 'Überschrift': 'x' })).toEqual({
       text: 'The name “Überschrift” is not allowed: names use ASCII letters, digits and signs and do not start with $.',
       data: undefined,
       isError: true,
     })
   })
 
+  // Wrong behaviour caught: an assistant's change goes online although the person never asked for it (SPEC 15, D60),
+  // or the answer claims the website shows it.
+  it('without publish a new entry is a draft and a change waits unpublished, and the answers say so', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    const before = await notices(s)
+    const made = await call(s, key, 'task_notices_soldOut')
+    expect(made.text).toContain('Saved as a draft, not on the website yet.')
+    const price = await call(s, key, 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 25 })
+    expect(price.text).toContain('Not on the website yet')
+    expect(await notices(s)).toEqual(before)
+    expect((await s.t.run((ctx) => ctx.db.get(s.entries['menu-schnitzel']!)))!.data.price).toEqual({ amount: 2190 })
+  })
+
   it('a price in euros is stored in cents and the change names the key', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
-    const done = await call(s, key, 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 19.9 })
+    const done = await call(s, key, 'task_menu_price', { publish: true, entry: s.entries['menu-schnitzel'], price: 19.9 })
     expect(done.isError).toBe(false)
     const [entry, change] = await s.t.run(async (ctx) => [
       await ctx.db.get(s.entries['menu-schnitzel']!),
@@ -99,7 +113,7 @@ describe('agent door', () => {
   it('a price set on or after the day of a planned price replaces the spent plan', async () => {
     vi.setSystemTime(new Date('2026-10-18T10:00:00Z'))
     const s = await setup()
-    const done = await call(s, await keyOf(s, 'owner'), 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 23.5 })
+    const done = await call(s, await keyOf(s, 'owner'), 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 23.5, publish: true })
     expect(done.text).toContain('Live on the website in about a minute.')
     const data = (await entryRow(s, s.entries['menu-schnitzel']!))!.data
     expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2350 }, undefined, undefined])
@@ -114,7 +128,7 @@ describe('agent door', () => {
     const key = await keyOf(s, 'owner')
     const tools = (await rpc(s, key, 'tools/list')).body.result.tools as { name: string; inputSchema: { properties: Record<string, { default?: unknown }> } }[]
     expect(tools.find((t) => t.name === 'task_hours_closedToday')!.inputSchema.properties.closedOn!.default).toBe('2026-10-09')
-    expect((await call(s, key, 'task_hours_closedToday', { closedNote: 'Wegen einer Hochzeit' })).isError).toBe(false)
+    expect((await call(s, key, 'task_hours_closedToday', { publish: true, closedNote: 'Wegen einer Hochzeit' })).isError).toBe(false)
     expect((await s.t.run((ctx) => ctx.db.get(s.entries.hours!)))!.data).toMatchObject({ closedOn: '2026-10-09' })
   })
 
@@ -126,7 +140,7 @@ describe('agent door', () => {
     expect(taskTools.length).toBeGreaterThan(0)
     expect(taskTools.every((n) => n.startsWith('task_menu_') || n.startsWith('task_lunch_'))).toBe(true)
     const before = await notices(s)
-    const refused = await call(s, key, 'task_notices_soldOut')
+    const refused = await call(s, key, 'task_notices_soldOut', { publish: true })
     expect(refused.isError).toBe(true)
     expect(await notices(s)).toEqual(before)
   })
@@ -167,7 +181,7 @@ describe('agent door', () => {
 
 const names = async (s: Setup, key: string) => ((await rpc(s, key, 'tools/list')).body.result.tools as { name: string }[]).map((t) => t.name)
 const saveOwner = (s: Setup, entry: Id<'entries'>, fields: Record<string, unknown>, baseRev: number) =>
-  s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev, fields, sentence: 'Test' }) as Promise<{ change: string; rev: number }>
+  s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev, fields, sentence: 'Test' }) as Promise<{ change: string; rev: number }>
 const entryRow = (s: Setup, id: Id<'entries'>) => s.t.run((ctx) => ctx.db.get(id))
 const grantCook = (s: Setup, grants: string[]) => s.t.run(async (ctx) => {
   const member = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', 'u-koch').eq('site', s.site)).unique()
@@ -180,16 +194,14 @@ const patchSchema = (s: Setup, edit: (schema: Schema) => void) => s.t.run(async 
 })
 
 describe('agent door: tool catalog', () => {
-  it('a staff key lists only the tools it may use: no draft without drafts, no revert or translate without an edit or create task', async () => {
+  it('a staff key lists only the tools it may use: no draft without a create task, no revert or translate without an edit or create task', async () => {
     const s = await setup()
     const cook = await keyOf(s, 'cook')
     const plain = await names(s, cook)
     expect(plain).toContain('ginko_revert')
-    expect(plain).not.toContain('ginko_draft')
 
-    // Only "Gericht hinzufügen" is left, and menu has drafts now. Revert and translate stay for the dishes the cook adds.
+    // Only "Gericht hinzufügen" is left. Revert and translate stay for the dishes the cook adds.
     await grantCook(s, ['menu.add'])
-    await patchSchema(s, (schema) => { (schema.bricks.menu as { drafts?: boolean }).drafts = true })
     const narrow = await names(s, cook)
     expect(narrow).toContain('ginko_draft')
     expect(narrow).toContain('ginko_revert')
@@ -209,12 +221,12 @@ describe('agent door: tool catalog', () => {
     const s = await setup()
     await grantCook(s, ['events.add'])
     const key = await keyOf(s, 'cook')
-    const made = await call(s, key, 'task_events_add', { title: 'Weinabend', when: { from: '2026-10-25', to: '2026-10-25' }, description: 'Mit Musik.' })
+    const made = await call(s, key, 'task_events_add', { publish: true, title: 'Weinabend', when: { from: '2026-10-25', to: '2026-10-25' }, description: 'Mit Musik.' })
     expect(made.isError).toBe(false)
-    const own = await call(s, key, 'ginko_translate', { entry: made.data.entry, locale: 'en', fields: { title: 'Wine evening' } })
+    const own = await call(s, key, 'ginko_translate', { publish: true, entry: made.data.entry, locale: 'en', fields: { title: 'Wine evening' } })
     expect(own.isError).toBe(false)
     expect((await entryRow(s, made.data.entry))!.data.title).toEqual({ de: 'Weinabend', en: 'Wine evening' })
-    const others = await call(s, key, 'ginko_translate', { entry: s.entries.weinabend, locale: 'en', fields: { title: 'Wine evening' } })
+    const others = await call(s, key, 'ginko_translate', { publish: true, entry: s.entries.weinabend, locale: 'en', fields: { title: 'Wine evening' } })
     expect(others.isError).toBe(true)
   })
 
@@ -222,7 +234,6 @@ describe('agent door: tool catalog', () => {
   // and skips asking (MCP: destructiveHint false means only additive updates); or a write offers no retry key.
   it('marks reads read-only, only create tasks and drafts additive, every other write destructive, and offers request_id on every write', async () => {
     const s = await setup()
-    await patchSchema(s, (schema) => { (schema.bricks.menu as { drafts?: boolean }).drafts = true })
     const tools = (await rpc(s, await keyOf(s, 'owner'), 'tools/list')).body.result.tools as { name: string; inputSchema: { properties: Record<string, unknown> }; annotations: Record<string, boolean> }[]
     const hints = Object.fromEntries(tools.map((t) => [t.name, t.annotations]))
     const read = { readOnlyHint: true, openWorldHint: false }
@@ -249,6 +260,7 @@ describe('agent door: tool catalog', () => {
     expect((await call(s, key, 'ginko_search', { query: 'Kuerbiscremesuppe', brick: 'events' })).data).toEqual([])
   })
 
+  // Wrong behaviour caught: "show me first" without publish lands as unpublished changes, so nobody is asked (D60).
   it('propose: true makes an owner\'s task call a proposal and writes nothing', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
@@ -266,12 +278,12 @@ describe('agent door: tool catalog', () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
     const entry = s.entries['menu-schnitzel']!
-    const refused = await call(s, key, 'ginko_translate', { entry, locale: 'de', fields: { name: 'Schnitzel' } })
+    const refused = await call(s, key, 'ginko_translate', { publish: true, entry, locale: 'de', fields: { name: 'Schnitzel' } })
     expect(refused.isError).toBe(true)
     expect(refused.text).toContain('main language')
-    expect((await call(s, key, 'ginko_translate', { entry, locale: 'en', fields: { price: 3 } })).isError).toBe(true)
+    expect((await call(s, key, 'ginko_translate', { publish: true, entry, locale: 'en', fields: { price: 3 } })).isError).toBe(true)
 
-    const done = await call(s, key, 'ginko_translate', { entry, locale: 'en', fields: { name: 'Veal schnitzel' } })
+    const done = await call(s, key, 'ginko_translate', { publish: true, entry, locale: 'en', fields: { name: 'Veal schnitzel' } })
     expect(done.isError).toBe(false)
     expect((await entryRow(s, entry))!.data.name).toEqual({ de: 'Wiener Schnitzel vom Kalb', en: 'Veal schnitzel' })
     expect((await s.t.run((ctx) => ctx.db.query('changes').order('desc').first()))).toMatchObject({ via: 'agent', fields: ['name'] })
@@ -283,7 +295,7 @@ describe('agent door: tool catalog', () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
     const entry = s.entries['menu-schnitzel']!
-    await call(s, key, 'ginko_translate', { entry, locale: 'en', fields: { name: 'Veal schnitzel' } })
+    await call(s, key, 'ginko_translate', { publish: true, entry, locale: 'en', fields: { name: 'Veal schnitzel' } })
     expect((await call(s, key, 'ginko_read', { brick: 'menu', locale: 'en' })).data.stale?.[entry]).toBeUndefined()
     await saveOwner(s, entry, { name: { de: 'Schnitzel Wiener Art', en: 'Veal schnitzel' } }, 2)
     const read = await call(s, key, 'ginko_read', { brick: 'menu', locale: 'en' })
@@ -292,7 +304,6 @@ describe('agent door: tool catalog', () => {
     expect([item.data.name, item.fallback]).toEqual(['Veal schnitzel', []])
 
     // Taken back to a draft, it is off the website: neither its item nor its outdated text is reported.
-    await patchSchema(s, (schema) => { (schema.bricks.menu as { drafts?: boolean }).drafts = true })
     const lifeRev = (await s.t.run((ctx) => ctx.db.get(entry)))!.lifeRev
     await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry, lifeRev })
     const drafted = await call(s, key, 'ginko_read', { brick: 'menu', locale: 'en' })
@@ -310,7 +321,7 @@ describe('agent door: tool catalog', () => {
       schema.bricks.legal.fields.imprint.max = 300_000
       await ctx.db.patch(s.site, { schema })
     })
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `${'Impressum '.repeat(28_000)}Ende` } } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `${'Impressum '.repeat(28_000)}Ende` } } })
     const read = await call(s, key, 'ginko_read', { brick: 'legal' })
     expect(read.isError).toBe(false)
     expect(JSON.stringify(read.data)).toContain('Ende')
@@ -318,7 +329,6 @@ describe('agent door: tool catalog', () => {
 
   it('ginko_draft creates a draft that is not on the website', async () => {
     const s = await setup()
-    await patchSchema(s, (schema) => { (schema.bricks.events as { drafts?: boolean }).drafts = true })
     const key = await keyOf(s, 'owner')
     const done = await call(s, key, 'ginko_draft', { brick: 'events', fields: { title: 'Erntedank', when: { from: '2026-11-20', to: '2026-11-20' }, description: 'Mit Musik.' } })
     expect(done.isError).toBe(false)
@@ -332,7 +342,7 @@ describe('agent door: tool catalog', () => {
     const file = await upload(s, { type: 'image/jpeg', content: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]), name: 'foto.jpg', ready: false })
     await s.t.run(async (ctx) => ctx.db.patch(file, { status: 'ready', processedId: (await ctx.db.get(file))!.storageId }))
     const created = await s.as.owner.mutation(api.entries.create, {
-      site: 'restaurant', opId: opId(), brick: 'events',
+      site: 'restaurant', opId: opId(), publish: {}, brick: 'events',
       data: { title: { de: 'Weinabend' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi' }, image: { file, alt: { de: 'Wein' } } },
     }) as { entry: Id<'entries'> }
     const usage = await call(s, await keyOf(s, 'owner'), 'ginko_file_usage', { file })
@@ -382,9 +392,9 @@ describe('agent door: tool catalog', () => {
       vi.setSystemTime(new Date('2026-10-16T08:00:00Z'))
       const s = await setup()
       const lunch = s.entries.lunch!
-      const first = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
+      const first = await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
       vi.setSystemTime(new Date('2026-10-17T06:00:00Z'))
-      await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: first.rev, fields: { weekOf: '2026-10-19', note: { de: 'Neu' } } })
+      await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: first.rev, fields: { weekOf: '2026-10-19', note: { de: 'Neu' } } })
       return { s, lunch, first }
     }
 
@@ -428,18 +438,18 @@ describe('agent door: tool catalog', () => {
     const key = await keyOf(s, 'owner')
     const entry = s.entries['menu-saibling']!
     const statuses = async () => (await s.t.run((ctx) => ctx.db.query('proposals').collect())).map((p) => p.status)
-    await call(s, key, 'task_menu_edit', { entry, price: 25 })
-    await call(s, key, 'task_menu_edit', { entry, description: 'Mit Erdäpfeln' })
+    await call(s, key, 'task_menu_edit', { publish: true, entry, price: 25 })
+    await call(s, key, 'task_menu_edit', { publish: true, entry, description: 'Mit Erdäpfeln' })
     expect(await statuses()).toEqual(['open', 'open'])
-    await call(s, key, 'task_menu_edit', { entry, description: 'Mit Petersilerdäpfeln' })
+    await call(s, key, 'task_menu_edit', { publish: true, entry, description: 'Mit Petersilerdäpfeln' })
     expect(await statuses()).toEqual(['open', 'withdrawn', 'open'])
   })
 
   it('ginko_proposals lists only the caller\'s own proposals, even for an owner who could see all', async () => {
     const s = await setup()
     const [owner, cook] = [await keyOf(s, 'owner'), await keyOf(s, 'cook')]
-    await call(s, owner, 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 25, propose: true })
-    await call(s, cook, 'task_menu_price', { entry: s.entries['menu-saibling'], price: 30, propose: true })
+    await call(s, owner, 'task_menu_price', { publish: true, entry: s.entries['menu-schnitzel'], price: 25, propose: true })
+    await call(s, cook, 'task_menu_price', { publish: true, entry: s.entries['menu-saibling'], price: 30, propose: true })
     const mine = await call(s, owner, 'ginko_proposals')
     expect(mine.data).toMatchObject([{ status: 'open', brick: 'menu', entry: s.entries['menu-schnitzel'], via: 'agent' }])
     expect(mine.text).toBe('1 proposals wait for approval.')
@@ -458,7 +468,7 @@ describe('agent door: builder tools (owners and admins)', () => {
     expect(await names(s, await keyOf(s, 'owner'))).toEqual(expect.arrayContaining(builder))
     const cook = await keyOf(s, 'cook')
     expect((await names(s, cook)).filter((n) => builder.includes(n))).toEqual([])
-    const refused = await call(s, cook, 'ginko_write', { brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { description: 'x' } })
+    const refused = await call(s, cook, 'ginko_write', { publish: true, brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { description: 'x' } })
     expect(refused).toMatchObject({ isError: true, text: 'The tool “ginko_write” does not exist or is not one of your tasks.' })
     expect((await call(s, cook, 'ginko_schema')).isError).toBe(true)
   })
@@ -475,7 +485,7 @@ describe('agent door: builder tools (owners and admins)', () => {
   // Wrong behaviour caught: an owner's assistant could only change the fields some task happens to cover.
   it('ginko_write changes any field in euros and names the entry in the Studio', async () => {
     const s = await setup()
-    const done = await call(s, await keyOf(s, 'owner'), 'ginko_write', { brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { price: 21.5, description: 'Mit Preiselbeeren' } })
+    const done = await call(s, await keyOf(s, 'owner'), 'ginko_write', { brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { price: 21.5, description: 'Mit Preiselbeeren' }, publish: true })
     expect(done.isError).toBe(false)
     expect((await schnitzel(s))!.data).toMatchObject({ price: { amount: 2150 }, description: { de: 'Mit Preiselbeeren' } })
     expect(done.text).toContain('To undo: ginko_undo with change')
@@ -495,10 +505,10 @@ describe('agent door: builder tools (owners and admins)', () => {
     expect(await call(s, await keyOf(s, 'owner'), tool, args)).toMatchObject({ isError: true, text })
   })
 
-  it('ginko_create makes a live entry in a collection without drafts', async () => {
+  it('ginko_create with publish makes a live entry', async () => {
     const s = await setup()
     const before = await notices(s)
-    const done = await call(s, await keyOf(s, 'owner'), 'ginko_create', { brick: 'notices', fields: { text: 'Neue Karte ab Montag', until: '2099-01-01' } })
+    const done = await call(s, await keyOf(s, 'owner'), 'ginko_create', { brick: 'notices', fields: { text: 'Neue Karte ab Montag', until: '2099-01-01' }, publish: true })
     expect(done.isError).toBe(false)
     const after = await notices(s)
     expect(after).toHaveLength(before.length + 1)
@@ -511,8 +521,8 @@ describe('agent door: builder tools (owners and admins)', () => {
     const key = await keyOf(s, 'owner')
     const before = { notices: await notices(s), schnitzel: (await schnitzel(s))!.data }
     const items = [
-      { brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { description: 'Neu' } },
-      { brick: 'notices', fields: { text: 'Ruhetag am Montag', until: '2099-01-01' } },
+      { brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { description: 'Neu' }, publish: true },
+      { brick: 'notices', fields: { text: 'Ruhetag am Montag', until: '2099-01-01' }, publish: true },
     ]
     const dry = await call(s, key, 'ginko_import', { items, dry_run: true })
     expect(dry).toMatchObject({ isError: false, text: 'Dry run: all 2 items would be saved. Nothing was saved.' })
@@ -535,7 +545,7 @@ describe('agent door: builder tools (owners and admins)', () => {
     const s = await setup()
     await s.t.run((ctx) => ctx.db.patch(s.site, { agentReview: true }))
     const key = await keyOf(s, 'owner')
-    const items = [{ brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { description: 'Neu' } }, { brick: 'notices', fields: { text: 'Ruhetag', until: '2099-01-01' } }]
+    const items = [{ brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { description: 'Neu' }, publish: true }, { brick: 'notices', fields: { text: 'Ruhetag', until: '2099-01-01' }, publish: true }]
     expect((await call(s, key, 'ginko_import', { items, dry_run: true })).text).toBe('Dry run: all 2 items would become proposals that wait for approval. Nothing was saved.')
     const done = await call(s, key, 'ginko_import', { items })
     expect(done.text).toBe('2 items became proposals that wait for approval; nothing of them is on the website yet (ginko_proposals lists them).')
@@ -637,12 +647,12 @@ describe('agent door: facts', () => {
     await withFacts(s)
     const key = await keyOf(s, 'owner')
     // A `basic` text cannot hold a fact, so the assistant is not told to quote one there.
-    expect((await call(s, key, 'ginko_write', { brick: 'legal', fields: { privacy: PHONE } })).text).not.toContain('Note:')
-    const copied = await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: PHONE } })
+    expect((await call(s, key, 'ginko_write', { publish: true, brick: 'legal', fields: { privacy: PHONE } })).text).not.toContain('Note:')
+    const copied = await call(s, key, 'ginko_write', { publish: true, brick: 'legal', fields: { imprint: PHONE } })
     expect(copied.isError).toBe(false)
     expect(copied.text).toContain(note('imprint'))
     // A quote, or the value shown as code, is no copy.
-    const quoted = await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: 'Telefon: :fact{name="contact.phone"}, als Text `+43 662 000 000`' } })
+    const quoted = await call(s, key, 'ginko_write', { publish: true, brick: 'legal', fields: { imprint: 'Telefon: :fact{name="contact.phone"}, als Text `+43 662 000 000`' } })
     expect(quoted.text).not.toContain('Note:')
   })
 
@@ -650,7 +660,7 @@ describe('agent door: facts', () => {
     const s = await setup()
     await withFacts(s)
     const key = await keyOf(s, 'owner')
-    const items = [{ brick: 'notices', fields: { text: 'Ruhetag', until: '2099-01-01' } }, { brick: 'legal', fields: { imprint: PHONE } }]
+    const items = [{ brick: 'notices', fields: { text: 'Ruhetag', until: '2099-01-01' }, publish: true }, { brick: 'legal', fields: { imprint: PHONE }, publish: true }]
     expect((await call(s, key, 'ginko_import', { items, dry_run: true })).text).toBe(`Dry run: all 2 items would be saved. Nothing was saved. ${note('items[1] imprint')}`)
     expect((await call(s, key, 'ginko_import', { items })).text).toContain(note('items[1] imprint'))
   })
@@ -700,8 +710,8 @@ describe('agent door: English for the model', () => {
   it('ginko_history words a row with msg in English and keeps the German sentence of a row from before msg', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
-    await call(s, key, 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 19.9 })
-    await call(s, key, 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 20.5 })
+    await call(s, key, 'task_menu_price', { publish: true, entry: s.entries['menu-schnitzel'], price: 19.9 })
+    await call(s, key, 'task_menu_price', { publish: true, entry: s.entries['menu-schnitzel'], price: 20.5 })
     const [newest, older] = (await call(s, key, 'ginko_history', { limit: 2 })).data as { change: string; sentence: string }[]
     expect(newest!.sentence).toBe('Price changed in “Wiener Schnitzel vom Kalb”')
     // A legacy row has the German sentence only; the model gets it as it is.
@@ -715,7 +725,7 @@ describe('agent door: English for the model', () => {
     vi.stubEnv('SITE_URL', 'https://ginko.test')
     const s = await setup()
     await s.t.run((ctx) => ctx.db.insert('userSettings', { user: 'u-wirtin', remindByMail: false, locale: 'en' }))
-    await call(s, await keyOf(s, 'owner'), 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 25, propose: true })
+    await call(s, await keyOf(s, 'owner'), 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 25, propose: true, publish: true })
     await s.t.mutation(internal.proposals.sendDigest, { site: s.site })
     const [mail] = await s.t.run((ctx) => ctx.db.query('outbox').collect())
     expect(mail!.text).toContain('Price changed in “Wiener Schnitzel vom Kalb”')

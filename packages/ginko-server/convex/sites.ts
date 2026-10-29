@@ -12,6 +12,7 @@ import { statesOf } from './lib/status'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { leafStatus } from './lib/translation'
 import { titleOf } from './lib/list'
+import { pendingBySite } from './lib/pending'
 import type { Data } from './lib/content'
 
 /**
@@ -41,7 +42,7 @@ export const mine = query({
 
 /**
  * The status lines of Today (UI.md 3) for the bricks this person has a task on, in schema order: each brick's line
- * (`status` on the brick, or the drafts of a drafts collection) and whether its section is due. Bricks with neither are
+ * (`status` on the brick, or the drafts of a collection) and whether its section is due. Bricks with neither are
  * left out. Staff count only their own drafts.
  */
 export const today = query({
@@ -327,7 +328,7 @@ export const translationStatus = query({
 
 /**
  * The areas of the site as the Studio lists them (Content overview, area list): per brick in config order the number
- * of entries (drafts included, removed ones not), drafts, ended entries (not visible today), open translations (one
+ * of entries (drafts included, removed ones not), drafts, live entries with unpublished changes, ended entries (not visible today), open translations (one
  * per entry and foreign language with a missing or outdated text, counted like `translationStatus`) and when its
  * content last changed. Staff see the bricks of their tasks only, like `translationStatus`. One read per brick.
  */
@@ -339,23 +340,25 @@ export const areas = query({
     const foreign = schema.locales.slice(1)
     const today = todayIn(schema.timeZone)
     const opens = (key: string, tasks: readonly { id: string }[] = []) => actor.role !== 'staff' || tasks.some((t) => actor.grants.includes(`${key}.${t.id}`))
-    const out: { brick: string; kind: 'single' | 'collection'; count: number; drafts: number; ended: number; translations: number; changedAt: number | null }[] = []
+    const held = await pendingBySite(ctx, actor.site._id)
+    const out: { brick: string; kind: 'single' | 'collection'; count: number; drafts: number; changes: number; ended: number; translations: number; changedAt: number | null }[] = []
     for (const [key, def] of ordered(schema.bricks)) {
       if (def.retired || !opens(key, def.tasks)) continue
       const rows = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', key)).collect())
         .filter((row) => !row.deletedAt)
-      let drafts = 0, ended = 0, translations = 0, changedAt: number | null = null
+      let drafts = 0, changes = 0, ended = 0, translations = 0, changedAt: number | null = null
       for (const row of rows) {
         const at = row.contentAt ?? row._creationTime
         if (changedAt === null || at > changedAt) changedAt = at
         if (row.state === 'draft') { drafts += 1; continue }
+        if (held.has(row._id)) changes += 1
         if (!isVisible(def, row.data as Data, today)) { ended += 1; continue }
         for (const locale of foreign) {
           const status = leafStatus(schema, key, row, locale)
           if (status.missing.length || status.outdated.length) translations += 1
         }
       }
-      out.push({ brick: key, kind: def.kind, count: rows.length, drafts, ended, translations, changedAt })
+      out.push({ brick: key, kind: def.kind, count: rows.length, drafts, changes, ended, translations, changedAt })
     }
     return out
   },

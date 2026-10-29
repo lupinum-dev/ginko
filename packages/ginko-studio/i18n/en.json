@@ -290,6 +290,7 @@
       "status": "Status",
       "draftNote": "Not on the website yet. Publish it when it is ready.",
       "scheduledNote": "It goes online by itself at that time.",
+      "liveNote": "Saving does not change the website yet. Only “Publish …” does.",
       "changesNote": "Saved, but not on the website yet. It shows the previous version until you publish.",
       "changesScheduledNote": "The changes go online on their own at that time."
     },
@@ -383,6 +384,8 @@
       "single": "Single page",
       "entries": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
       "drafts": "{count, plural, one {# draft} other {# drafts}}",
+      "changesCount": "{count, plural, one {# changed, not online yet} other {# changed, not online yet}}",
+      "singleChanges": "Changed, not online yet",
       "endedCount": "{count} ended",
       "translationsOpen": "{lang}: {count} open",
       "todayAt": "Today, {time}",

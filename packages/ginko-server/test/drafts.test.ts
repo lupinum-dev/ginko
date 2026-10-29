@@ -1,5 +1,6 @@
-// Drafts of collection entries against SPEC 15: create/publish/unpublish/publishDue, the bundle,
-// revisions, rights, and the readers that must treat a draft apart (retention, backup).
+// Drafts and unpublished changes against SPEC 15 (D60: every collection and single, no `drafts` option):
+// create/publish/unpublish/publishDue, the bundle, revisions, rights, and the readers that must treat a draft apart
+// (retention, backup).
 import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
@@ -18,18 +19,12 @@ const dish = (name: string) => ({ category: 'starters', name: { de: name }, pric
 
 type Bundle = { contentRev: number; bricks: Record<string, { items?: { id: string; data: Record<string, unknown>; urls?: Record<string, string>; updatedAt?: string }[] }> }
 
-/** The restaurant with drafts switched on for events (routed), menu (staff tasks) and notices (expiring). */
+/** The restaurant on a fake clock: events (routed), menu (staff tasks) and notices (expiring) are the collections used. */
 async function draftSetup() {
   // Fake timers must run before anything is scheduled: the scheduler of convex-test uses setTimeout.
   vi.useFakeTimers()
   vi.setSystemTime(NOW)
   const s = await setup()
-  await s.t.run(async (ctx) => {
-    const site = (await ctx.db.get(s.site))!
-    const schema = site.schema as Schema
-    for (const key of ['events', 'menu', 'notices']) (schema.bricks[key] as { drafts?: boolean }).drafts = true
-    await ctx.db.patch(s.site, { schema })
-  })
   const bundle = async (): Promise<Bundle> => (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json() as Promise<Bundle>
   const row = (id: string) => s.t.run((ctx) => ctx.db.get(id as Id<'entries'>))
   const siteRow = () => s.t.run((ctx) => ctx.db.get(s.site))
@@ -89,7 +84,7 @@ describe('drafts in the public bundle', () => {
     expect(edited.updatedAt).toBe(new Date(NOW + 4 * HOUR).toISOString())
   })
 
-  it('publish: {} on a drafts collection is live at once', async () => {
+  it('publish: {} is live at once', async () => {
     const s = await draftSetup()
     const live = await s.createDraft('Sofort', {})
     expect(live).toMatchObject({ state: 'live' })
@@ -97,15 +92,6 @@ describe('drafts in the public bundle', () => {
     expect(idsOf(await s.bundle())).toContain(live.entry)
   })
 
-  it('a collection without drafts ignores publish: the entry is live and no job is scheduled', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(NOW)
-    const s = await setup()
-    const created = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish('Neu'), publish: { at: NOW + HOUR } })
-    expect(created).toMatchObject({ state: 'live' })
-    expect(await s.t.run((ctx) => ctx.db.get(created.entry as Id<'entries'>))).toMatchObject({ lifeRev: 1 })
-    expect(await s.t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect())).toHaveLength(0)
-  })
 })
 
 describe('scheduled publishing', () => {
@@ -281,9 +267,10 @@ describe('preconditions', () => {
     expect((await errorOf(s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 3 }))).code).toBe('INVALID')
   })
 
-  it('unpublish on a collection without drafts is INVALID', async () => {
+  // Wrong behaviour caught: a single taken offline, so the page that shows it loses its content.
+  it('unpublish of a single is INVALID: a single stays online', async () => {
     const s = await setup()
-    expect((await errorOf(s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: s.entries.weinabend!, lifeRev: 1 }))).code).toBe('INVALID')
+    expect(await errorOf(s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: s.entries.legal!, lifeRev: 1 }))).toMatchObject({ code: 'INVALID', key: 'errors.singleStaysOnline' })
   })
 })
 
@@ -517,20 +504,77 @@ describe('unpublished changes of a live entry (save without publishing)', () => 
 
   // Wrong behaviour caught: after the collection turned drafts off, the editor still showed the waiting values but a
   // save went live and left them waiting, so the form kept snapping back to them with no way to publish or discard.
-  it('changes still waiting after drafts were turned off keep collecting saves and can be published', async () => {
+  // Wrong behaviour caught: a site released with 0.12 (`drafts: false` stored) cannot release again, or its collection
+  // still saves live because the old key is read.
+  it('a released schema with drafts: false still loads and releases, and its collection now keeps changes', async () => {
     const s = await draftSetup()
     const entry = await liveEvent(s)
-    await save(s, entry, 1, { title: { de: 'Wartet' } })
-    await s.t.run(async (ctx) => {
-      const schema = (await ctx.db.get(s.site))!.schema as Schema
-      ;(schema.bricks.events as { drafts?: boolean }).drafts = false
-      await ctx.db.patch(s.site, { schema })
+    const site = (await s.siteRow())!
+    const old = structuredClone(site.schema as Schema)
+    ;(old.bricks.events as { drafts?: boolean }).drafts = false
+    ;(old.bricks.menu as { drafts?: boolean }).drafts = true
+    await s.t.run((ctx) => ctx.db.patch(s.site, { schema: old }))
+    expect(await save(s, entry, 1, { title: { de: 'Wartet' } })).toMatchObject({ pending: true })
+
+    // The next release leaves the key out, as serializeSchema now does.
+    const next = structuredClone(site.schema as Schema)
+    next.bricks.events!.label = 'Termine'
+    await s.t.mutation(internal.release.release, {
+      site: s.site, actor: 'pushkey:test', commit: 'c'.repeat(40), expectedSchemaRev: site.schemaRev, expectedContentRev: site.contentRev, schema: next, writes: [],
     })
+    expect((await s.siteRow())!.schema.bricks.events).not.toHaveProperty('drafts')
     expect(await save(s, entry, 2, { description: { de: 'Auch' } })).toMatchObject({ pending: true })
-    expect(await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })).toMatchObject({ data: { title: { de: 'Wartet' }, description: { de: 'Auch' } }, pending: { fields: expect.arrayContaining(['title', 'description']) } })
     expect(await liveTitle(s, entry)).toBe('Weinabend')
     await publish(s, entry, { rev: 3 })
     expect(await liveTitle(s, entry)).toBe('Wartet')
+  })
+
+  // Wrong behaviour caught: Speichern on a single (Startseite, Preise, Öffnungszeiten) changes the website at once.
+  it('a single keeps unpublished changes until publish, and Verwerfen returns to the website\'s version', async () => {
+    const s = await draftSetup()
+    const legal = s.entries.legal!
+    const imprint = async () => ((await s.bundle()).bricks.legal as unknown as { data: { imprint: string } }).data.imprint
+    const before = await imprint()
+    const contentRev = (await s.siteRow())!.contentRev
+    expect(await save(s, legal, 1, { imprint: { de: 'Neues Impressum' } })).toMatchObject({ rev: 2, contentRev, pending: true })
+    expect(await imprint()).toEqual(before)
+    expect(await s.as.owner.query(api.entries.single, { site: 'restaurant', brick: 'legal' })).toMatchObject({ data: { imprint: { de: 'Neues Impressum' } }, pending: { fields: ['imprint'] } })
+    // A single without a task on Heute still says so in Inhalte, so the change is not forgotten.
+    expect((await s.as.owner.query(api.sites.areas, { site: 'restaurant' })).find((a) => a.brick === 'legal')).toMatchObject({ changes: 1 })
+
+    await s.as.owner.mutation(api.entries.discard, { site: 'restaurant', opId: opId(), entry: legal, rev: 2 })
+    expect(await pendingRows(s)).toEqual([])
+    await save(s, legal, 3, { imprint: { de: 'Neues Impressum' } })
+    await publish(s, legal, { rev: 4 })
+    expect(JSON.stringify(await imprint())).toContain('Neues Impressum')
+    expect((await s.siteRow())!.contentRev).toBe(contentRev + 1)
+    expect(await pendingRows(s)).toEqual([])
+  })
+
+  // Wrong behaviour caught: the conflict panel offers the website's old value as "the new state" while someone's saved
+  // change waits, so "Neuen Stand übernehmen" throws that change away, and it names nobody.
+  it('a conflict with someone else\'s unpublished change shows their saved value and who saved it', async () => {
+    const s = await draftSetup()
+    const dish = s.entries['menu-schnitzel']!
+    await save(s, dish, 1, { price: { amount: 2500 } })
+    const error = await errorOf(save(s, dish, 1, { price: { amount: 2300 } }, 'cook', 'menu.price'))
+    expect(error).toMatchObject({ code: 'CHANGED_SINCE', details: { conflicts: ['price'], data: { price: { amount: 2500 } }, by: { price: expect.anything() } } })
+  })
+
+  // Wrong behaviour caught: a Today task's Veröffentlichen puts the person's other waiting fields online unseen, or
+  // leaves its own field waiting so a later publish overwrites it with the older value.
+  it('a save with publish goes online with only its fields; the other unpublished fields keep waiting', async () => {
+    const s = await draftSetup()
+    const entry = await liveEvent(s)
+    await save(s, entry, 1, { title: { de: 'Wartet' }, description: { de: 'Wartet auch' } })
+    const now = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 2, fields: { title: { de: 'Sofort' } }, publish: true })
+    expect(now).toMatchObject({ change: expect.any(String) })
+    expect(now).not.toHaveProperty('pending')
+    expect(await liveTitle(s, entry)).toBe('Sofort')
+    const item = (await s.bundle()).bricks.events!.items!.find((i) => i.id === entry)!
+    expect(JSON.stringify(item.data.description)).not.toContain('Wartet auch')
+    expect(await pendingRows(s)).toMatchObject([{ fields: { description: { de: 'Wartet auch' } } }])
+    expect(Object.keys((await pendingRows(s))[0]!.fields)).toEqual(['description'])
   })
 
   // Wrong behaviour caught: "Diese Version wiederherstellen" compared the old version with the live one, so with a

@@ -58,7 +58,6 @@ export default defineSite({
     // bricks with a task).
     posts: {
       ...posts({ source: 'files', authors: 'people', route: localized('/news/[slug]'), label: { de: 'Journal', en: 'Journal' } }),
-      drafts: true,
       status: { age: 'date' },
       tasks: [{ id: 'write', kind: 'create', label: { de: 'Journalbeitrag schreiben', en: 'Write a journal entry' } }],
     },

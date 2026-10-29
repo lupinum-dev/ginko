@@ -103,9 +103,11 @@ const allowed: Row[] = [
       node(s, 'bricks.events').order = { field: 'when', dir: 'desc' }
     },
   },
+  // 0.12 and older stored `drafts` (true or false); the next release leaves it out (SPEC 15, every collection has drafts).
   {
-    name: 'drafts turned on for a collection',
-    mutate: (s) => { node(s, 'bricks.menu').drafts = true },
+    name: 'drafts, stored by an older release, left out',
+    prod: (s) => { node(s, 'bricks.menu').drafts = false; node(s, 'bricks.events').drafts = true },
+    mutate: (s) => { delete node(s, 'bricks.menu').drafts; delete node(s, 'bricks.events').drafts },
   },
   {
     name: 'labels, hints, describe and itemLabel changed',

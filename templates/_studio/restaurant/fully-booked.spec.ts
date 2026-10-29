@@ -16,7 +16,7 @@ test('the owner marks tonight as fully booked, the reservations page says so, an
   const sheet = page.getByRole('dialog')
   // The task is prefilled with today as the last day; the owner only has to save (the text is replaced to find it again).
   await sheet.getByLabel(new RegExp(BOOKED.textField)).fill(text)
-  await sheet.getByRole('button', { name: 'Speichern' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
   // The Studio lists the notice with how long it runs.
   const row = page.getByRole('main').getByRole('listitem').filter({ hasText: text })

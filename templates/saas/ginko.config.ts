@@ -94,7 +94,6 @@ export default defineSite({
     // goes online. In the Studio, "Write a post" on Today.
     posts: {
       ...posts({ source: 'files', authors: 'people', route: localized('/news/[slug]') }),
-      drafts: true,
       tasks: [{ id: 'write', kind: 'create', label: { de: 'Beitrag schreiben', en: 'Write a post', fr: 'Écrire un article' } }],
     },
     // The people who write the posts (content/people/). No photos: the site shows initials.

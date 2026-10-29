@@ -3,7 +3,7 @@
 // site shows both. A speaker without a bio makes the Studio's speakers line say so (§7 `missing: 'bio'`). Both tests
 // remove what they added. Own to the events template; run by `pnpm templates test events --platform`.
 import { expect, test, type Page } from '@playwright/test'
-import { job, studio } from '../../../scripts/templates/e2e/studio.ts'
+import { job, publishNow, studio } from '../../../scripts/templates/e2e/studio.ts'
 
 // The template's names come from templates/_studio/events/jobs.json: "speaker": { brick, section, field, path } (the
 // people brick key, its heading and the label of its optional field on Today, both as the German Studio shows them, the speakers page) and "programme":
@@ -13,14 +13,12 @@ const PROGRAMME = job('programme', ['brick', 'event', 'path'])
 
 const area = (brick: string) => `/s/${studio.site}/all/${brick}`
 
-/** Opens "Neu" in an area (Inhalte), fills what `fill` sets, saves, and returns the address of the saved entry. */
+/** Opens "Neu" in an area (Inhalte), fills what `fill` sets, publishes, and returns the address of the new entry. */
 async function create(page: Page, brick: string, fill: () => Promise<void>) {
   await page.goto(area(brick), { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Neu', exact: true }).click()
   await fill()
-  await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-  // The saved message (ops.saved + ops.liveHint); the short status word next to Speichern shows only for a moment.
-  await expect(page.getByText('Gespeichert. Auf der Website in etwa einer Minute.')).toBeVisible()
+  await publishNow(page)
   await expect(page).toHaveURL(new RegExp(`${area(brick)}/[^/]+$`))
   return new URL(page.url()).pathname
 }

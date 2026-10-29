@@ -3,7 +3,7 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { deflateSync, crc32 } from 'node:zlib'
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { newestMail } from '../../../scripts/outbox.ts'
 import de from '../../../packages/ginko-server/i18n/de.json' with { type: 'json' }
 import en from '../../../packages/ginko-server/i18n/en.json' with { type: 'json' }
@@ -66,6 +66,16 @@ export async function openQuick(page: Page) {
 }
 
 /** A small valid PNG; `shade` makes its bytes (and so its hash) differ from other photos. */
+/**
+ * "Veröffentlichen …" then "Jetzt" in Alles bearbeiten (SPEC 15): typed input is saved on the way and goes online with
+ * the unpublished changes. Speichern alone keeps them off the website.
+ */
+export async function publishNow(page: Page) {
+  await page.getByRole('button', { name: 'Veröffentlichen …' }).first().click()
+  await page.getByRole('button', { name: 'Jetzt veröffentlichen' }).first().click()
+  await expect(page.locator('[data-sonner-toast]').filter({ hasText: /veröffentlicht/i }).first()).toBeVisible()
+}
+
 export function pngBytes(shade: number): Buffer {
   const chunk = (type: string, data: Buffer) => {
     const head = Buffer.alloc(4)

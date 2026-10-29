@@ -22,8 +22,8 @@ async function fixtures(s: S) {
   const entry = s.entries['menu-saibling']!
   const file = await upload(s, { person: 'owner', ready: true })
   const folder = await s.as.owner.mutation(api.files.createFolder, { site: 'restaurant', name: 'GEHEIM-ORDNER' })
-  const save = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries['menu-frittaten']!, baseRev: 1, fields: { price: { amount: 1111 } } }) as { change: string }
-  const proposal = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1500 } } }) as { proposal: string }
+  const save = await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.entries['menu-frittaten']!, baseRev: 1, fields: { price: { amount: 1111 } } }) as { change: string }
+  const proposal = await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1500 } } }) as { proposal: string }
   const release = (await s.as.owner.mutation(api.proposals.createRelease, { site: 'restaurant', name: 'GEHEIM-RELEASE' }) as { release: string }).release
   const member = await s.t.run(async (ctx) => (await ctx.db.query('memberships').collect()).find((m) => m.user === 'u-koch')!._id)
   const invite = (await s.as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'geheim@example.com', role: 'staff', grants: [] }) as { invite: string }).invite

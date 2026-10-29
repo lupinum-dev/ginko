@@ -18,7 +18,7 @@ test('the owner publishes a release, and the changelog lists it first', async ({
   if (!await date.inputValue()) await date.fill(new Date().toISOString().slice(0, 10))
   await page.getByRole('textbox', { name: 'Text', exact: true }).click()
   await page.keyboard.type(text)
-  // The changelog keeps drafts: a new release is saved as a draft first, then published.
+  // A new release is saved as a draft first, then published.
   await page.getByRole('button', { name: 'Entwurf speichern', exact: true }).click()
   await page.getByRole('button', { name: 'Veröffentlichen …', exact: true }).click()
   await page.getByRole('button', { name: 'Jetzt veröffentlichen', exact: true }).click()

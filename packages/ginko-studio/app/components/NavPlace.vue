@@ -18,7 +18,7 @@ const crumbs = computed(() => {
   let rows: OutlineRow[] = pages
   const id = props.entry ?? NEW
   if (id === NEW) {
-    // A new page is stored last, without section or parent (entries.create), a draft where the area has drafts; then
+    // A new page is stored last, without section or parent (entries.create), as a draft; then
     // it moves to its place.
     rows = [...rows, { id, ...(props.newDraft ? { draft: true } : {}) }]
     const plan = props.place && placePlan(rows, id, props.place)

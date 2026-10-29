@@ -8,14 +8,9 @@ import { cookGrants, errorOf, opId, setup } from './setup'
 const BROKEN = '[Karte]($page.unknown)'
 const OK = '[Karte]($page.menu)'
 
-/** The restaurant with drafts on for events; `description` of an event is Markdown. */
+/** The restaurant; `description` of an event is Markdown. */
 async function linkSetup() {
   const s = await setup()
-  await s.t.run(async (ctx) => {
-    const schema = (await ctx.db.get(s.site))!.schema as Schema
-    ;(schema.bricks.events as { drafts?: boolean }).drafts = true
-    await ctx.db.patch(s.site, { schema })
-  })
   const create = (description: string, publish?: object) => s.as.owner.mutation(api.entries.create, {
     site: 'restaurant', opId: opId(), brick: 'events', data: { title: { de: 'Fest' }, when: { from: '2026-11-20', to: '2026-11-20' }, description: { de: description } }, ...(publish ? { publish } : {}),
   })

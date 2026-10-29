@@ -334,7 +334,7 @@ describe('checks that never hide a broken entry', () => {
     site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
     bricks: {
       authors: collection({ label: 'Authors', source: 'files', max: 5, order: 'manual', fields: { name: f.text('Name') } }),
-      posts: collection({ label: 'Posts', source: 'files', max: 50, drafts: true, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date'), author: f.ref('Author', { to: 'authors' }) } }),
+      posts: collection({ label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date'), author: f.ref('Author', { to: 'authors' }) } }),
       hours: single({
         label: 'Hours', source: 'files',
         fields: { exceptions: f.list('Exceptions', { itemLabel: 'Day', fields: { reason: f.text('Reason') }, max: 10, optional: true }) },

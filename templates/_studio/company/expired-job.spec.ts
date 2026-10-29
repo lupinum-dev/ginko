@@ -23,9 +23,9 @@ async function postJob(page: Page, title: string, lastDay: string) {
   await sheet.getByLabel(/^Ausgeschrieben bis/).fill(lastDay)
   await sheet.getByRole('textbox', { name: 'Beschreibung', exact: true }).click()
   await page.keyboard.type('Gate seven test job, removed at the end of the run.')
-  await sheet.getByRole('button', { name: 'Speichern' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
-  const toast = page.locator('[data-sonner-toast]').filter({ hasText: 'Gespeichert' })
+  const toast = page.locator('[data-sonner-toast]').filter({ hasText: 'Veröffentlicht' })
   await expect(toast).toBeVisible()
   return (await toast.innerText()).replace(/\s+/g, ' ').trim()
 }

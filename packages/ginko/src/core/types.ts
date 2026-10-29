@@ -220,9 +220,7 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   untranslated?: 'fallback' | 'hide'
   /** Entries of this collection plan weeks of the single brick `brick`; `field` (a date field here) holds the first day of the week (`week.firstDay`). A planned week counts as entered for the weekly upkeep rule. */
   plans?: { brick: string; field: string }
-  /** Entries can be saved as drafts and are shown only once published. */
-  drafts?: boolean
-  /** The status line on the Studio's Today page (see `CollectionStatus`). Without one, a collection with drafts shows its drafts and scheduled entries. */
+  /** The status line on the Studio's Today page (see `CollectionStatus`). Without one, the collection shows its drafts and scheduled entries. */
   status?: CollectionStatus
   /** @internal Platform-managed: set when the brick is listed in `retired`. Do not set it. */
   retired?: true

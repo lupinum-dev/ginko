@@ -149,7 +149,7 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
       else if (onlyNewLocalesAdded(before.route, after.route, newLocales)) ok(`${key}.route`, 'routeAdded', msg('diff.routeAddedLocale'))
       else no(`${key}.route`, 'routeChanged', msg('diff.routeChanged', { key }), fx('keepRoute'))
     }
-    for (const k of ['order', 'visible', 'untranslated', 'plans', 'drafts'] as const) {
+    for (const k of ['order', 'visible', 'untranslated', 'plans'] as const) {
       if (stableJson(before[k] ?? null) !== stableJson(after[k] ?? null)) ok(`${key}.${k}`, k, msg('diff.valueChanged', { name: k }))
     }
   }
