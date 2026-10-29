@@ -147,6 +147,16 @@ describe('4. locales and currency', () => {
     expect(checkSite(site({}, { seo: { color } }))).toEqual(expected)
   })
 
+  // Wrong behaviour caught: a platform with a path or plain http would send every content request to a wrong address,
+  // or over an unencrypted connection; the site would answer 503 only after deploy.
+  it.each([
+    ['https://cms.example.com', []], ['https://cms.example.com/', []], ['http://localhost:3100', []],
+    ['https://cms.example.com/s/linde', ['platform: invalid address “https://cms.example.com/s/linde” (expected the Studio\'s https:// origin, such as “https://cms.example.com”; http:// only for localhost).']],
+    ['http://cms.example.com', ['platform: invalid address “http://cms.example.com” (expected the Studio\'s https:// origin, such as “https://cms.example.com”; http:// only for localhost).']],
+  ])('platform %s', (platform, expected) => {
+    expect(checkSite(site({}, { platform }))).toEqual(expected)
+  })
+
   // Wrong behaviour caught: a typo in seo.noindex keeps the page in the sitemap and in search, without a word.
   it.each([
     [['home'], []],
