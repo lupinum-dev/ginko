@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
 import { dirname, extname, join, resolve, sep } from 'node:path'
 import type { Json } from '@lupinum/ginko'
-import { imageInfo } from '@lupinum/ginko/internal'
+import { imageInfo, imageSizeProps } from '@lupinum/ginko/internal'
 
 /** Where content-addressed images are served from; the Nuxt module copies the registered files to this folder. */
 export const IMAGE_URL_PREFIX = '/_ginko/img/'
@@ -31,8 +31,8 @@ export interface ImageCx {
   renames: Map<string, string>
   /** Component tag → its image props (`f.image` fields); those props hold image paths. */
   imageProps: Record<string, readonly string[]>
-  /** Component tags that declare `width` and `height`; their image `src` gets the pixel size. */
-  sized: ReadonlySet<string>
+  /** Component tag → its image props that get the pixel size: the component declares both size props (`imageSizeProps`). */
+  sized: Record<string, readonly string[]>
   fail: (message: string) => void
 }
 
@@ -67,7 +67,7 @@ export function rewriteImages(nodes: Json[] | undefined, cx: ImageCx): void {
     } else if (Object.hasOwn(cx.imageProps, tag)) {
       for (const prop of cx.imageProps[tag]!) {
         if (typeof node[1][prop] !== 'string') continue
-        rewriteImage(node[1], cx, prop, prop === 'src' && cx.sized.has(tag) ? 'keep' : 'none')
+        rewriteImage(node[1], cx, prop, cx.sized[tag]?.includes(prop) ? 'keep' : 'none')
       }
     }
     rewriteImages(node.slice(2) as Json[], cx)
@@ -77,10 +77,11 @@ export function rewriteImages(nodes: Json[] | undefined, cx: ImageCx): void {
 /** `set` overwrites the size (plain `img`); `keep` only fills a size the author left out; `none` leaves it alone. */
 type SizeMode = 'set' | 'keep' | 'none'
 
-function setSize(props: Record<string, Json>, info: { width: number; height: number }, mode: SizeMode): void {
+function setSize(props: Record<string, Json>, prop: string, info: { width: number; height: number }, mode: SizeMode): void {
   if (mode === 'none') return
-  if (mode === 'set' || props.width === undefined) props.width = info.width
-  if (mode === 'set' || props.height === undefined) props.height = info.height
+  const [w, h] = imageSizeProps(prop)
+  if (mode === 'set' || props[w] === undefined) props[w] = info.width
+  if (mode === 'set' || props[h] === undefined) props[h] = info.height
 }
 
 function rewriteImage(props: Record<string, Json>, cx: ImageCx, prop: string, mode: SizeMode): void {
@@ -91,7 +92,7 @@ function rewriteImage(props: Record<string, Json>, cx: ImageCx, prop: string, mo
     const root = resolve(cx.publicDir)
     const abs = resolve(root, clean.replace(/^\/+/, ''))
     const info = abs.startsWith(root + sep) && isFile(abs) ? imageInfo(head(abs, 64 * 1024)) : undefined
-    if (info) setSize(props, info, mode)
+    if (info) setSize(props, prop, info, mode)
     return
   }
   const root = resolve(cx.contentDir)
@@ -108,7 +109,7 @@ function rewriteImage(props: Record<string, Json>, cx: ImageCx, prop: string, mo
   cx.images.set(url, abs)
   cx.renames.set(src, url)
   props[prop] = url
-  setSize(props, info, mode)
+  setSize(props, prop, info, mode)
   // Plain Markdown images only: the WebP copies (variants.ts) and the original, as GinkoImage does for image values.
   const copies = mode === 'set' ? variantFiles(abs, hash, info.width) : []
   if (copies.length) {

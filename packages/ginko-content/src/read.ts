@@ -5,7 +5,7 @@ import type {
   Brick, Field, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, routeUrls, todayIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, imageSizeProps, isTranslatable, printOf, sha256, slugify, routeUrls, todayIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -360,9 +360,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
   const files: Record<string, FileInfo> = {}
   const images = new Map<string, string>()
   const components = Object.entries(schema.components ?? {})
-  // Component image props (`f.image`) hold content image paths; `width` + `height` components get the pixel size.
+  // Component image props (`f.image`) hold content image paths; those whose size props the component declares get the pixel size.
   const imageProps = Object.fromEntries(components.map(([tag, def]) => [tag, Object.entries(def.props ?? {}).filter(([, field]) => field.type === 'image').map(([name]) => name)]))
-  const sized = new Set(components.filter(([, def]) => def.props && 'width' in def.props && 'height' in def.props).map(([tag]) => tag))
+  const sized = Object.fromEntries(components.map(([tag, def]) => [tag, imageProps[tag]!.filter((prop) => imageSizeProps(prop).every((p) => Object.hasOwn(def.props ?? {}, p)))]))
   const main = schema.locales[0]!
   const times = await fileTimes(contentDir)
   // URLs of the entries read so far, over all bricks: bricks with the same route can clash too.

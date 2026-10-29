@@ -38,6 +38,7 @@ const schema = serializeSchema(defineSite({
   },
   components: {
     figure: { kind: 'block', label: 'Bild', describe: 'Bild mit Maßen', props: { src: f.image('Bild'), width: f.number('Breite', { min: 1, max: 10000, step: 1, optional: true }), height: f.number('Höhe', { min: 1, max: 10000, step: 1, optional: true }) } },
+    card: { kind: 'block', label: 'Karte', describe: 'Karte mit Bild', props: { image: f.image('Bild', { optional: true }), imageWidth: f.number('Bildbreite', { min: 1, max: 10000, step: 1, optional: true }), imageHeight: f.number('Bildhöhe', { min: 1, max: 10000, step: 1, optional: true }) } },
   },
 }))
 
@@ -243,15 +244,16 @@ describe('images in Markdown', () => {
   // Bug caught: a relative image prop of a component reached validate() unchanged, so it failed as an unsafe URL.
   it('moves an image prop of a component to a content-addressed URL with its size', async () => {
     const r = await read({
-      'content/pages/1.a.md': md('title: A', '::figure{src="./cover.svg"}\n::'),
+      'content/pages/1.a.md': md('title: A', '::figure{src="./cover.svg"}\n::\n\n::card{image="./cover.svg"}\n::'),
       'content/pages/cover.svg': svg,
     })
     expect(r.errors).toEqual([])
     const [url] = [...r.images.keys()]
     expect(url).toMatch(/^\/_ginko\/img\/[0-9a-f]{16}\.svg$/)
     const body = JSON.stringify((r.entries.pages![0]!.data.body as { de: { nodes: unknown[] } }).de.nodes)
-    expect(body).toContain(`"src":"${url}"`)
-    expect(body).toContain('"width":40')
+    expect(body).toContain(`{"src":"${url}","width":40,"height":30}`)
+    // Bug caught: only `src` got a size, so a card image (`image`) made the page move while it loaded.
+    expect(body).toContain(`{"image":"${url}","imageWidth":40,"imageHeight":30}`)
   })
 
   it.each([

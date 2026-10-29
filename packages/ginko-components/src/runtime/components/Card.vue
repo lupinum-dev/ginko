@@ -9,6 +9,8 @@ import { isExternal, isOn, useLink } from './interactive-utils'
 // in a small tile above the title; an external link shows an arrow in the corner.
 const props = defineProps<{
   title?: string; description?: string; footer?: string; href?: string; image?: string; icon?: string; horizontal?: boolean | string
+  /** The image's pixel size (filled from the file), so the browser reserves its space before it loads. */
+  imageWidth?: number | string; imageHeight?: number | string
   /** Colour of the icon tile: a status colour or the primary colour; without it the tile stays neutral. */
   iconColor?: 'primary' | 'info' | 'success' | 'warning' | 'error'
   appearance?: 'quiet' | 'tint'
@@ -26,7 +28,7 @@ const link = useLink()
     :data-icon-color="icon && iconColor ? iconColor : undefined"
     :data-appearance="appearance"
   >
-    <img v-if="image" class="ginko-card-image" :src="image" alt="" loading="lazy">
+    <img v-if="image" class="ginko-card-image" :src="image" alt="" :width="imageWidth" :height="imageHeight" loading="lazy" decoding="async">
     <div class="ginko-card-main">
       <span v-if="icon" class="ginko-card-icon"><SiteIcon :name="icon" /></span>
       <p v-if="title" class="ginko-card-title">

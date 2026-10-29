@@ -195,6 +195,14 @@ describe('registry and components', () => {
     expect(sized).toContain('width="800" height="600" loading="lazy"')
   })
 
+  // Wrong behaviour caught: the card image and the figure's enlarged copy had no size, so the page moved while they loaded.
+  test('the card image and the zoomed figure keep the size from the tree', async () => {
+    const card = await render('::card{title="A" image="/a.jpg" imageWidth="800" imageHeight="600"}\n::')
+    expect(card).toMatch(/<img class="ginko-card-image" src="\/a.jpg" alt="" width="800" height="600"/)
+    const figure = await render('::figure{src="/a.jpg" alt="A" width="800" height="600"}\n::')
+    expect(figure).toMatch(/<dialog[^]*<img src="\/a.jpg" alt="A" width="800" height="600"/)
+  })
+
   test('a figure shows the image and the caption; zoom="false" has no dialog', async () => {
     const zoom = await render(components.figure.editor.example)
     expect(zoom).toContain('<dialog')

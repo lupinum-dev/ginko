@@ -159,6 +159,15 @@ export function imagePropsOf(components: ComponentRegistry | undefined): Record<
   return Object.fromEntries(Object.entries(components ?? {}).map(([tag, def]) => [tag, Object.entries(def.props ?? {}).filter(([, field]) => field.type === 'image').map(([name]) => name)]))
 }
 
+/**
+ * The props that carry the pixel size of a component's image prop: `width` and `height` for `src` (figure), else
+ * `<prop>Width` and `<prop>Height` (card's `image`: `imageWidth`, `imageHeight`). Filled only when the component
+ * declares both, so the browser can reserve the image's space before it loads.
+ */
+export function imageSizeProps(prop: string): readonly [string, string] {
+  return prop === 'src' ? ['width', 'height'] : [`${prop}Width`, `${prop}Height`]
+}
+
 /** The `$file.<id>` references that `resolveFileRefs` could not resolve (no such file, or not processed yet), with a label (the image's alt text, else its tag). */
 export function brokenFileRefs(nodes: readonly Json[]): { id: string; label: string }[] {
   const out: { id: string; label: string }[] = []
@@ -206,9 +215,9 @@ const percent = (share: number) => `${Math.round(Math.min(1, Math.max(0, share))
  * The bundle with every `$file.<id>` of its Markdown trees resolved through `files` (the bundle's ready uploads):
  * - `img`: the file's URL, its pixel size, a `srcset` of its variants and the original, and the library description
  *   of the bundle's language when the image has none of its own (`effectiveAlt`).
- * - a component image prop: the URL; for `src` also the file's `width` and `height` when the author set neither (and
- *   the component declares both), an empty `alt` (when it declares one) from the library, the `srcset` of its variants
- *   and its focus point as `focal` (an `object-position`, such as `50% 20%`).
+ * - a component image prop: the URL and the file's pixel size (`imageSizeProps`) when the author set neither and the
+ *   component declares both; for `src` also an empty `alt` (when it declares one) from the library, the `srcset` of its
+ *   variants and its focus point as `focal` (an `object-position`, such as `50% 20%`).
  * - a link: the file's URL.
  * An unknown or not yet ready file loses its URL and gets `data-broken: true`, like a route link that cannot be resolved.
  */
@@ -237,11 +246,13 @@ export function resolveFileRefs(bundle: Bundle, schema: Pick<Schema, 'components
         if (file.width && file.height) Object.assign(props, { width: file.width, height: file.height })
         if (srcset) Object.assign(props, { srcset, sizes: '100vw' })
         if (!String(props.alt ?? '').trim() && library) props.alt = library
-      } else if (use.prop === 'src' && declared) {
+      } else if (declared) {
         // Only both together: one size of the author's with one of the file's would distort the picture.
-        if ('width' in declared && 'height' in declared && file.width && file.height && props.width === undefined && props.height === undefined) {
-          Object.assign(props, { width: file.width, height: file.height })
+        const [w, h] = imageSizeProps(use.prop)
+        if (w in declared && h in declared && file.width && file.height && props[w] === undefined && props[h] === undefined) {
+          Object.assign(props, { [w]: file.width, [h]: file.height })
         }
+        if (use.prop !== 'src') continue
         if ('alt' in declared && !String(props.alt ?? '').trim() && library) props.alt = library
         // The component picks its own `sizes`: it knows how wide it shows the picture.
         if (srcset) props.srcset = srcset

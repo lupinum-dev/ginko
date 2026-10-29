@@ -128,6 +128,9 @@ export const interactiveComponents = defineComponents({
         optional: true,
       }),
       image: f.image({ de: 'Bild', en: 'Image' }, { optional: true }),
+      // The image's pixel size, filled from the file (imageSizeProps), so the card keeps its height while the image loads.
+      imageWidth: f.number({ de: 'Bildbreite in Pixeln', en: 'Image width in pixels' }, { min: 1, max: 10000, step: 1, optional: true }),
+      imageHeight: f.number({ de: 'Bildhöhe in Pixeln', en: 'Image height in pixels' }, { min: 1, max: 10000, step: 1, optional: true }),
       horizontal: f.boolean({ de: 'Bild neben dem Text', en: 'Image beside the text' }, { optional: true }),
       appearance,
     },

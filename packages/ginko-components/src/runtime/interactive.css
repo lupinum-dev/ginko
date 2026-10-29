@@ -122,7 +122,10 @@ details[open] > .ginko-disclosure-summary::after { transform: rotate(-135deg); }
 :is(.ginko-card-body, .ginko-read-more-body) :is(a, button, input, select, textarea, summary, [tabindex]) { position: relative; z-index: 1; }
 .ginko-card[data-horizontal] { flex-direction: row; }
 .ginko-card[data-horizontal] .ginko-card-image { width: 40%; height: auto; max-height: none; }
-.ginko-card-image { display: block; width: 100%; max-height: 12rem; object-fit: cover; border-bottom: 1px solid var(--border, var(--ginko-default-border)); }
+/* `height: auto` keeps the image's own proportions with its width and height attributes; an image of unknown size gets
+   the full 12rem at once (what most photos reach), so the card does not grow when it loads. */
+.ginko-card-image { display: block; width: 100%; height: auto; max-height: 12rem; object-fit: cover; border-bottom: 1px solid var(--border, var(--ginko-default-border)); }
+.ginko-card:not([data-horizontal]) .ginko-card-image:not([width]) { height: 12rem; }
 .ginko-card[data-horizontal] .ginko-card-image { border-bottom: 0; border-inline-end: 1px solid var(--border, var(--ginko-default-border)); }
 .ginko-card-main { display: flex; flex: 1; flex-direction: column; gap: 0.25rem; padding: 1.25rem; }
 .ginko-card-icon {

@@ -122,7 +122,7 @@ Interactive components (`registry-interactive.ts`, styles in `interactive.css`):
 | `collapse` | block | with `title`: a `<details>` section, `open` sets the initial state; without `title`: long content (usually code) is cut off behind a fade with a "Show all n lines" button |
 | `steps` | block | `mode` numbered (default), check; every heading directly inside starts a step |
 | `cards` | block, children `card` | `cols` 1 to 3 (default 2) |
-| `card` | block | `title`; `description`; `footer`; `href`; `icon`* (in a tile above the title); `iconColor` primary, info, success, warning, error; `image`; `horizontal` |
+| `card` | block | `title`; `description`; `footer`; `href`; `icon`* (in a tile above the title); `iconColor` primary, info, success, warning, error; `image`; `imageWidth`, `imageHeight` (pixels, filled from the file); `horizontal` |
 | `read-more` | block | `href` (required); `title` (the link text; the address if empty); `icon`*; several in a row join into one list |
 | `inline-toc` | block | `title`; `depth` 2 to 4; `open` (closed by default); reads the toc of the page that `<GinkoMarkdown>` renders, and renders nothing without headings |
 
