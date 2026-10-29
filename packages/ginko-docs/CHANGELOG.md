@@ -1,5 +1,19 @@
 # @lupinum/ginko-docs
 
+## 0.12.0
+
+### Minor Changes
+
+- [#86](https://github.com/lupinum-dev/ginko/pull/86) [`8d0c4c0`](https://github.com/lupinum-dev/ginko/commit/8d0c4c01e7ba2eaf715e917b2c031c5ffef7d120) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change docs pages stored on the platform to show no "Edit this page" link to the Studio by default; set `docs.studioEditLink: true` in `app.config.ts` to keep it.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @lupinum/ginko@0.12.0
+  - @lupinum/ginko-components@0.12.0
+  - @lupinum/ginko-content@0.12.0
+  - @lupinum/ginko-i18n@0.12.0
+
 ## 0.11.0
 
 ### Patch Changes
