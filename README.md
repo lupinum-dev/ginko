@@ -28,8 +28,8 @@ Documentation: [ginko-docs.vercel.app](https://ginko-docs.vercel.app). Requireme
 | [`create-ginko`](packages/create-ginko) | `npm create ginko`: starts a new site |
 
 The hosted platform lives here too, but is not published: `packages/ginko-server` (Convex backend),
-`packages/ginko-studio` (the editing app), `packages/ginko-editor` (its rich text editor),
-`packages/ginko-preset-agency`, and `apps/platform` (the host). `sites/` holds the demo sites and
+`packages/ginko-studio` (the editing app), `packages/ginko-editor` (its rich text editor)
+and `apps/platform` (the host). `sites/` holds the demo sites and
 `contracts/` their published schemas.
 
 ## Work on it

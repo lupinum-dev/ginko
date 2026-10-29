@@ -9,8 +9,7 @@ up to 0.3.x on npm, so the packages start at 0.3.0 and the first minor changeset
 names each one with how to update; a patch never breaks anything. The quality bar is a 1.0 all the same:
 no public name we expect to change, docs that work as written.
 
-`@lupinum/ginko-server`, `@lupinum/ginko-studio`, `@lupinum/ginko-editor` and
-`@lupinum/ginko-preset-agency` stay `private`: they run only on the platform that Lupinum hosts.
+`@lupinum/ginko-server`, `@lupinum/ginko-studio` and `@lupinum/ginko-editor` stay `private`: they run only on the platform that Lupinum hosts.
 No published package may depend on them.
 
 ## Every change

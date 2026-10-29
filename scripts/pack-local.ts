@@ -9,7 +9,7 @@ const root = join(import.meta.dirname, '..')
 const out = join(root, '.packs')
 rmSync(out, { recursive: true, force: true })
 mkdirSync(out)
-for (const dir of ['ginko', 'ginko-i18n', 'ginko-content', 'ginko-components', 'ginko-docs', 'ginko-preset-agency']) {
+for (const dir of ['ginko', 'ginko-i18n', 'ginko-content', 'ginko-components', 'ginko-docs']) {
   const file = execSync(`pnpm pack --pack-destination ${out}`, { cwd: join(root, 'packages', dir), encoding: 'utf8' }).trim().split('\n').at(-1)!
   // Stable names, so the site's package.json does not change with the version.
   renameSync(file.startsWith('/') ? file : join(out, file), join(out, `${dir}.tgz`))

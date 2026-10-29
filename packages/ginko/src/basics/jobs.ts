@@ -1,5 +1,5 @@
 // Job ads. Each ad needs `validUntil` and leaves lists, pages, the sitemap and the JSON-LD after that day by itself
-// (`visible until validUntil`), so an expired job cannot stay online. The stored names are the agency preset's.
+// (`visible until validUntil`), so an expired job cannot stay online.
 import { f } from '../core/fields.ts'
 import { collection, type RouteTemplate } from '../core/site.ts'
 import type { Locale } from '../core/types.ts'
