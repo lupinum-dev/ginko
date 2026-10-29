@@ -87,7 +87,7 @@ describe('fetchBundle when the platform is down', () => {
       await expect(fetchBundle({ ...config, platform: '' }, 'de', undefined)).rejects.toMatchObject({ statusCode: 503, message: 'Content temporarily unavailable' })
     }
     expect(fetch).not.toHaveBeenCalled()
-    expect(error.mock.calls).toEqual([[expect.stringContaining('NUXT_PUBLIC_GINKO_PLATFORM is not set')]])
+    expect(error.mock.calls).toEqual([[expect.stringContaining('platform address is not set')]])
     error.mockRestore()
   })
 

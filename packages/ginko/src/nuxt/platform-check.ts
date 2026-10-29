@@ -2,7 +2,7 @@
 export interface PlatformBuildInput {
   /** The site has bricks that read from the platform (not only `source: 'files'`). */
   needsPlatform: boolean
-  /** `NUXT_PUBLIC_GINKO_PLATFORM`. */
+  /** `NUXT_PUBLIC_GINKO_PLATFORM`, else `platform` of ginko.config.ts. */
   platform: string | undefined
   /** `NUXT_GINKO_REVALIDATE_TOKEN`. */
   token: string | undefined
@@ -23,7 +23,7 @@ export function platformBuildCheck({ needsPlatform, platform, token, vercelEnv }
   if (!needsPlatform) return { warnings }
   let error: string | undefined
   if (!platform) {
-    const message = `[ginko] NUXT_PUBLIC_GINKO_PLATFORM is not set, so this site cannot load its content from the platform and every page with platform content would answer 503. Set NUXT_PUBLIC_GINKO_PLATFORM to the platform address for Production and Preview (on Vercel: Project Settings, Environment Variables), then build again. See ${DOCS}.`
+    const message = `[ginko] The platform address is not set, so this site cannot load its content from the platform and every page with platform content would answer 503. Set platform in ginko.config.ts to the Studio's address, or set NUXT_PUBLIC_GINKO_PLATFORM for Production and Preview (on Vercel: Project Settings, Environment Variables), then build again. See ${DOCS}.`
     if (vercelEnv === 'production') error = message
     else warnings.push(message)
   }

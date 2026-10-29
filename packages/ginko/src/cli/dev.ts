@@ -102,7 +102,8 @@ export async function runDev(input: DevInput): Promise<number> {
 
   // 2. Local platform and the site.
   start('platform', 'pnpm', ['--filter', '@ginko/platform', 'dev'], repoDir, env)
-  start('site', 'pnpm', ['exec', 'nuxt', 'dev'], siteDir, env)
+  // The site reads this local platform, also when its config names a hosted one (`platform`).
+  start('site', 'pnpm', ['exec', 'nuxt', 'dev'], siteDir, { ...env, NUXT_PUBLIC_GINKO_PLATFORM: 'http://localhost:3100' })
 
   // 3. Push the schema now and after every change of the config. A failed push is shown, the processes keep running.
   // The watcher starts first, so a save during the first push is not lost.

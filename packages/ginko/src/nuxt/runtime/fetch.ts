@@ -44,7 +44,7 @@ export function unreachableMessage(config: GinkoPublicConfig, url: string): stri
   if (!local) return 'Content temporarily unavailable'
   const bricks = Object.entries(schema.bricks).filter(([, brick]) => brick.source !== 'files').map(([name]) => name)
   const origin = new URL(url).origin
-  return `Ginko cannot get content from the platform at ${origin}, which the brick(s) ${bricks.map((b) => `"${b}"`).join(', ')} read from. Fix: add source: 'files' to read them from Markdown files, or start the platform / set NUXT_PUBLIC_GINKO_PLATFORM.`
+  return `Ginko cannot get content from the platform at ${origin}, which the brick(s) ${bricks.map((b) => `"${b}"`).join(', ')} read from. Fix: add source: 'files' to read them from Markdown files, or start the platform, or set platform in ginko.config.ts (or NUXT_PUBLIC_GINKO_PLATFORM) to the hosted Studio.`
 }
 
 /** Logged once per server process: a deployment without the platform address answers every platform page with 503. */
@@ -60,7 +60,7 @@ export const SITE_TOKEN_HEADER = 'x-ginko-site-token'
 export async function fetchBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined, siteToken?: string): Promise<Bundle> {
   if (!config.platform) {
     // Only production has no default address; the visitor still gets the plain 503, the log names the cause.
-    if (!missingPlatformLogged) console.error('[ginko] NUXT_PUBLIC_GINKO_PLATFORM is not set, so every page with platform content answers 503. Set it to the platform address in the environment of this deployment.')
+    if (!missingPlatformLogged) console.error('[ginko] The platform address is not set, so every page with platform content answers 503. Set platform in ginko.config.ts, or NUXT_PUBLIC_GINKO_PLATFORM in the environment of this deployment.')
     missingPlatformLogged = true
     throw new PlatformError('Content temporarily unavailable')
   }

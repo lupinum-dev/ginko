@@ -28,6 +28,12 @@ export interface SiteInput {
    * to it). Canonical URLs, the sitemap and share images start with it.
    */
   url: string
+  /**
+   * The hosted Ginko platform the site reads its content from: the Studio's address, such as
+   * `https://cms.example.com`. Not part of the schema contract. `NUXT_PUBLIC_GINKO_PLATFORM` overrides it (`pnpm local:dev`
+   * sets the local platform that way). Without both, dev reads the local platform on http://localhost:3100.
+   */
+  platform?: string
   timeZone: string
   /** The site's locales. The first entry is the main locale: the default for content, routes and plain-path pages. */
   locales: readonly [Locale, ...Locale[]]

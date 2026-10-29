@@ -240,7 +240,7 @@ export function mainLocale(schema: Pick<Schema, 'locales'>): Locale {
 
 // The top-level keys of a site config, typed against `SiteInput`: a new or renamed key fails the type check here.
 const SITE_KEYS = {
-  site: true, name: true, url: true, timeZone: true, locales: true, languages: true, firstDayOfWeek: true, currency: true,
+  site: true, name: true, url: true, platform: true, timeZone: true, locales: true, languages: true, firstDayOfWeek: true, currency: true,
   pages: true, bricks: true, linkCheck: true, redirects: true, seo: true, agents: true, components: true, migrations: true,
   retired: true, country: true, calendar: true, facts: true,
 } satisfies Record<keyof SiteInput, true>
@@ -256,6 +256,9 @@ export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site
   if (site.country !== undefined && !/^[A-Z]{2}$/.test(String(site.country))) problems.push(`country: invalid country “${String(site.country)}” (expected an ISO 3166-1 code such as “AT” or “DE”).`)
   if (site.calendar !== undefined && typeof site.calendar !== 'function' && !CALENDAR_NAMES.includes(site.calendar)) {
     problems.push(`calendar: unknown calendar “${String(site.calendar)}” (expected AT, DE, SG, none or a function (year) => holidays).`)
+  }
+  if (site.platform !== undefined && !isPlatformAddress(site.platform)) {
+    problems.push(`platform: invalid address “${String(site.platform)}” (expected the Studio's https:// origin, such as “https://cms.example.com”; http:// only for localhost).`)
   }
   // The share cards' brand colour; any other format would draw them grey without a word.
   const color = site.seo?.color
@@ -682,6 +685,18 @@ function isSiteUrl(value: unknown): boolean {
   try {
     const url = new URL(value)
     return (url.protocol === 'https:' || url.protocol === 'http:') && url.href === url.origin + url.pathname
+  } catch {
+    return false
+  }
+}
+
+/** An origin without path: the site appends `/bundle/…` to it. Plain http only for the machine itself. */
+function isPlatformAddress(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  try {
+    const url = new URL(value)
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    return (url.protocol === 'https:' || (url.protocol === 'http:' && local)) && value.replace(/\/$/, '') === url.origin
   } catch {
     return false
   }

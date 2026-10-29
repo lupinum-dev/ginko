@@ -33,7 +33,7 @@ declare module '@nuxt/schema' {
  *   import ginko from './ginko.config.ts'
  *   export default defineNuxtConfig({ modules: ['@lupinum/ginko/nuxt'], ginko })
  *
- * The platform origin comes from `NUXT_PUBLIC_GINKO_PLATFORM` (default in dev: http://localhost:3100).
+ * The platform origin: `NUXT_PUBLIC_GINKO_PLATFORM`, else `platform` of the site, else in dev http://localhost:3100.
  */
 export default defineNuxtModule<SiteInput>({
   meta: { name: '@lupinum/ginko', configKey: 'ginko', compatibility: { nuxt: '^4.6.0 || ^5.0.0-0' } },
@@ -57,10 +57,9 @@ export default defineNuxtModule<SiteInput>({
     // A production build without the platform address would deploy a site that answers 503. Not in dev, and not in
     // `nuxi prepare` (typecheck), which has no deploy environment.
     if (!nuxt.options.dev && !nuxt.options._prepare) {
-      // Only the variable counts: the module writes `public.ginko.platform` itself (below), so the site cannot set it in nuxt.config.
       const check = platformBuildCheck({
         needsPlatform: sources.platform,
-        platform: process.env.NUXT_PUBLIC_GINKO_PLATFORM,
+        platform: process.env.NUXT_PUBLIC_GINKO_PLATFORM || site.platform,
         token: process.env.NUXT_GINKO_REVALIDATE_TOKEN,
         vercelEnv: process.env.VERCEL_ENV,
       })
@@ -76,7 +75,8 @@ export default defineNuxtModule<SiteInput>({
       name: site.name,
       // The site's production address, for absolute links such as hreflang alternates and canonical URLs.
       url: schema.url,
-      platform: nuxt.options.dev ? 'http://localhost:3100' : '',
+      // The variable overrides it at run time (Nuxt maps NUXT_PUBLIC_GINKO_PLATFORM onto this key).
+      platform: site.platform?.replace(/\/$/, '') ?? (nuxt.options.dev ? 'http://localhost:3100' : ''),
       locales: schema.locales,
       mainLocale: schema.locales[0]!,
       // The language tag per locale (`languages`, else the code): numbers, money and dates of facts.
