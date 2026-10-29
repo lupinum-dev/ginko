@@ -1,5 +1,15 @@
 # @lupinum/ginko
 
+## 0.15.0
+
+### Patch Changes
+
+- [#92](https://github.com/lupinum-dev/ginko/pull/92) [`586e83a`](https://github.com/lupinum-dev/ginko/commit/586e83a0d3f04a5f61e002d7e6950855b61b2b22) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix pages moving while images load: the card image (`::card{image}`) now gets the image's width and height (`imageWidth`, `imageHeight`), and so does the enlarged image of a figure.
+
+- [#92](https://github.com/lupinum-dev/ginko/pull/92) [`586e83a`](https://github.com/lupinum-dev/ginko/commit/586e83a0d3f04a5f61e002d7e6950855b61b2b22) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix links to a draft or unpublished entry: the page now shows the link text without a link, instead of an address such as `$docs.kosten` that opens a 404.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.15.0
+
 ## 0.14.0
 
 ### Minor Changes

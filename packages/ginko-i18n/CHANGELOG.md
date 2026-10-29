@@ -1,5 +1,9 @@
 # @lupinum/ginko-i18n
 
+## 0.15.0
+
+No changes in this release.
+
 ## 0.14.0
 
 No changes in this release.

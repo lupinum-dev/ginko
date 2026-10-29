@@ -1,5 +1,19 @@
 # @lupinum/ginko-docs
 
+## 0.15.0
+
+### Minor Changes
+
+- [#92](https://github.com/lupinum-dev/ginko/pull/92) [`586e83a`](https://github.com/lupinum-dev/ginko/commit/586e83a0d3f04a5f61e002d7e6950855b61b2b22) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the `ginkoDocs: { brick }` option (with `docsCollection({ brick })`), so a site can name its docs brick otherwise than `docs`, for example `wissen`.
+
+### Patch Changes
+
+- Updated dependencies [[`586e83a`](https://github.com/lupinum-dev/ginko/commit/586e83a0d3f04a5f61e002d7e6950855b61b2b22), [`586e83a`](https://github.com/lupinum-dev/ginko/commit/586e83a0d3f04a5f61e002d7e6950855b61b2b22)]:
+  - @lupinum/ginko@0.15.0
+  - @lupinum/ginko-content@0.15.0
+  - @lupinum/ginko-components@0.15.0
+  - @lupinum/ginko-i18n@0.15.0
+
 ## 0.14.0
 
 ### Patch Changes
