@@ -30,7 +30,7 @@ test('the owner enters a closure with a reason, and the contact page lists it', 
   await row.getByLabel(/^Grund/).fill(reason)
   // A new exception is a closure unless the owner says otherwise.
   await expect(row.getByRole('switch', { name: /^Geschlossen/ }).or(row.getByRole('checkbox', { name: /^Geschlossen/ }))).toBeChecked()
-  await sheet.getByRole('button', { name: 'Speichern' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
   await expect(sheet).toHaveCount(0)
 
   try {
@@ -49,7 +49,7 @@ test('the owner enters a closure with a reason, and the contact page lists it', 
     // A row's title is its reason.
     const added = sheet.locator('[data-row]').filter({ hasText: reason })
     await added.getByRole('button', { name: /entfernen$/ }).click()
-    await sheet.getByRole('button', { name: 'Speichern' }).click()
+    await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
     await expect(sheet).toHaveCount(0)
   }
 })

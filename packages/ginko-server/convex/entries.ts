@@ -12,7 +12,7 @@ import { fieldLabelAt, fileIdsOf, mergeField, nextPrints, refIdsIn, rootOf, tree
 import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
 import { DEFAULT_LOCALE, isLocale, t, type MessageKey } from './lib/i18n'
-import { dropPending, keepsPending, overlay, pendingBySite, pendingInfo, pendingOf, syncPendingRefs, type Pending } from './lib/pending'
+import { dropPending, dropPendingRoots, keepsPending, overlay, pendingBySite, pendingInfo, pendingOf, syncPendingRefs, type Pending } from './lib/pending'
 import { countersOf, DELETED_KEPT, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
@@ -45,10 +45,14 @@ function current(entry: Doc<'entries'>): Json {
  * Who made the newest change of each conflicting root, for the conflict panel ("anna@… hat „…“ hinzugefügt").
  * Only the changes after the person's base are read, newest first, and only on this failing path.
  */
-async function conflictAuthors(ctx: QueryCtx, actor: Actor, entry: Doc<'entries'>, roots: string[], baseRev: number): Promise<Record<string, Who>> {
+async function conflictAuthors(ctx: QueryCtx, actor: Actor, entry: Doc<'entries'>, roots: string[], baseRev: number, held: Pending | null): Promise<Record<string, Who>> {
   const names = await labeler(ctx, actor)
   const by: Record<string, Who> = {}
   const open = new Set(roots)
+  // A field saved as an unpublished change after the base has no history line yet: its saver is the last one.
+  for (const root of roots) {
+    if (held && (held.revs[root] ?? 0) > baseRev && open.delete(root)) by[root] = await names.who(held.by)
+  }
   for await (const change of ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry._id)).order('desc')) {
     if (!open.size || (change.entryRev !== undefined && change.entryRev <= baseRev)) break
     for (const root of change.fields ?? []) {
@@ -73,6 +77,11 @@ const saveArgs = {
   confirm: v.optional(v.array(v.string())),
   /** Ignored: the server words the history line itself (`saveMsg`). Still accepted so older callers keep working. */
   sentence: v.optional(v.string()),
+  /**
+   * true: a save of a live entry goes online at once instead of waiting as unpublished changes (a task's
+   * "Veröffentlichen", an assistant asked to publish). Only the saved fields go; other unpublished ones keep waiting.
+   */
+  publish: v.optional(v.literal(true)),
 }
 
 export const save = mutation({ args: saveArgs, handler: async (ctx, args) => saveAs(ctx, await actorFor(ctx, args.site), args) })
@@ -173,24 +182,30 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   if (entry.deletedAt) fail('CHANGED_SINCE', 'errors.thisEntryDeletedSince', undefined, current(entry))
   // A base above the entry's revision was never read, so it cannot vouch for anything.
   if (args.baseRev > entry.rev) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, current(entry))
-  const conflicts = roots.filter((r) => (entry.fieldRevs[r] ?? 0) > args.baseRev)
-  if (conflicts.length) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, { ...(current(entry) as object), conflicts, by: await conflictAuthors(ctx, actor, entry, conflicts, args.baseRev) })
-
-  // A live entry of a collection with drafts keeps the save as unpublished changes: the form showed them, so they are the base.
-  // Changes still waiting after drafts were turned off keep waiting too, so the person can publish or discard them.
   const held = await pendingOf(ctx, entry._id)
-  const toPending = keepsPending(schema, entry) || held !== null
+  const conflicts = roots.filter((r) => (entry.fieldRevs[r] ?? 0) > args.baseRev)
+  // The conflict panel shows what the Studio shows: unpublished changes over the live version.
+  if (conflicts.length) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, { ...(current(entry) as object), data: overlay(entry, held).data as Json, conflicts, by: await conflictAuthors(ctx, actor, entry, conflicts, args.baseRev, held) })
+
+  // A live entry keeps the save as unpublished changes (SPEC 15): the form showed them, so they are the base.
+  // "Show me first" (`forceProposal`) asks for a yes to go online, so it publishes once approved.
+  const publishNow = args.publish === true || actor.forceProposal === true
+  const toPending = keepsPending(entry) && !publishNow
   // A navigation tree's place goes online at once and only through the tree (navigation.move): never into pending changes.
   if (toPending && isNavTree(entry.brick, schema.bricks[entry.brick]!) && ['parent', 'section', 'tab'].some((k) => Object.hasOwn(args.fields, k))) fail('INVALID', 'errors.moveInNavigationTree')
   const shown = overlay(entry, held)
-  const before = shown.data
+  // Published at once, the save writes over the website's version: the other fields stay as they are online.
+  const base = toPending ? shown : { data: entry.data as Data, prints: entry.prints }
+  const before = base.data
   const data: Data = { ...before }
   for (const [key, value] of Object.entries(args.fields)) {
     const field = brick.fields[key]!
+    // The form's value (an unpublished one included) is what the input changed.
+    const was = shown.data[key]
     // Cleared in a foreign language: only that language's value goes, the main language stays.
     const merged = value === null
-      ? (locale && locale !== main && isTranslatable(field) ? withoutLocale(before[key], locale) : undefined)
-      : mergeField(field, before[key], value as Json, locale)
+      ? (locale && locale !== main && isTranslatable(field) ? withoutLocale(was, locale) : undefined)
+      : mergeField(field, was, value as Json, locale)
     if (merged === undefined) delete data[key]
     else data[key] = merged
   }
@@ -198,11 +213,13 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   for (const leaf of confirm) {
     if (!leavesOf(brick.fields[rootOf(leaf)]!, data[rootOf(leaf)], rootOf(leaf)).has(leaf)) fail('INVALID', 'errors.leafNotTranslatable', { leaf }, { leaf })
   }
-  const prints = nextPrints({ fields: brick.fields, roots, before, after: data, prints: shown.prints, main, confirm: confirm.length ? { locale: locale!, leaves: confirm } : undefined })
+  const prints = nextPrints({ fields: brick.fields, roots, before, after: data, prints: base.prints, main, confirm: confirm.length ? { locale: locale!, leaves: confirm } : undefined })
 
   // A root counts as changed when its value or one of its prints changed.
-  const changed = roots.filter((r) => !same(data[r], before[r]) || !same(printsOf(prints, r), printsOf(shown.prints, r)))
+  const changed = roots.filter((r) => !same(data[r], before[r]) || !same(printsOf(prints, r), printsOf(base.prints, r)))
   if (!changed.length) {
+    // Published as it is online: what waited for these fields is no longer wanted.
+    if (held && !toPending) await dropPendingRoots(ctx, schema, held, roots)
     const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
     return unchanged
   }
@@ -225,7 +242,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   if (await needsProposal(ctx, actor, 'save', args.task, taskBrick, entry)) {
     const pick = (d: Data) => Object.fromEntries(changed.filter((r) => d[r] !== undefined).map((r) => [r, d[r]!]))
     return await propose(ctx, actor, {
-      op: 'save', brick: entry.brick, entry: entry._id, args: args as unknown as Json,
+      op: 'save', brick: entry.brick, entry: entry._id, args: (publishNow ? { ...args, publish: true } : args) as unknown as Json,
       base: { rev: entry.rev, fieldRevs: Object.fromEntries(changed.map((r) => [r, entry.fieldRevs[r] ?? 0])) },
       before: pick(before) as Json, after: pick(data) as Json, ...history,
     })
@@ -236,6 +253,8 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
     kind: onlyConfirm ? 'confirm' : 'save', history, opId: args.opId,
   })
   if (moved.length) await moveSlugRows(ctx, actor, entry, locale!, moved)
+  // What is online now no longer waits; the other unpublished fields do.
+  if (held) await dropPendingRoots(ctx, schema, held, changed)
   // What the other languages show now (the Studio's message after saving); a draft is not on the website.
   const translation = stateOf(entry) === 'draft' ? [] : translationNotes(schema, entry.brick, { _id: entry._id, data, prints }, before, changed, locale)
   // A week planned ahead or a planned price shows later than "in about a minute": the Studio says from when.
@@ -657,7 +676,8 @@ export const revert = mutation({ args: revertArgs, handler: async (ctx, args) =>
 
 /**
  * Goes back to the version after `change` as a new, normal save: rights, validation, prints, file
- * references, proposals and undo all apply. Only fields that differ from now are written.
+ * references, proposals and undo all apply. Only fields that differ from now are written. Like undo it goes online at
+ * once (D60): going back is a repair of what the website shows; those fields leave any unpublished changes.
  */
 export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof revertArgs>) {
   return idempotent(ctx, actor, args, async () => {
@@ -674,7 +694,7 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, now, { ...now, ...fields })
     const saved = await saveNow(ctx, actor, {
       site: args.site, opId: args.opId, ...(args.task === undefined ? {} : { task: args.task }),
-      entry: entry._id, baseRev: entry.rev, fields,
+      entry: entry._id, baseRev: entry.rev, fields, publish: true,
     }, msg('history.revert', { when: change.at }))
     // A revert that needs a yes writes nothing, so the files go back to the trash: taking a file out of it is the
     // owner's step (files.restore). The approval then refuses until someone restored the file.
@@ -851,10 +871,11 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     if (c.treeBytes + trees.bytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
     const files = fileIdsOf(brick.fields, data, { isUploadId: uploadIdsOf(ctx) })
     await checkFiles(ctx, actor.site._id, files, fileIdsOf(brick.fields, data, { only: 'image' }))
-    // Without `drafts` an entry is always live. With it, only `publish: {}` goes live at once.
-    const lateAt = lapsed(actor, args.publish?.at)
-    const draft = brick.drafts === true && (args.publish === undefined || (args.publish.at !== undefined && !lateAt))
-    const at = draft ? args.publish?.at : undefined
+    // A new entry is a draft (SPEC 15); only `publish: {}` puts it live at once. "Show me first" asks to go online.
+    const publish = args.publish ?? (actor.forceProposal ? {} : undefined)
+    const lateAt = lapsed(actor, publish?.at)
+    const draft = publish === undefined || (publish.at !== undefined && !lateAt)
+    const at = draft ? publish?.at : undefined
     // Checked before anything is written, so a late failure (apply of a proposal) leaves no half-done removal behind.
     if (at !== undefined) checkFuture(at)
 
@@ -864,7 +885,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       if (!draft || at !== undefined) await checkNewLinks(ctx, actor.site, [{ entry: { _id: 'proposed' as Id<'entries'>, brick: args.brick }, fields: brick.fields, before: {}, after: data, isNew: true }])
       return await propose(ctx, actor, {
         // A copy keeps its flag, so applying the proposal skips the fields check like the direct write.
-        op: 'create', brick: args.brick, args: (opts.copy ? { ...args, copy: true } : args) as unknown as Json, base: {}, after: data as Json,
+        op: 'create', brick: args.brick, args: { ...args, ...(publish ? { publish } : {}), ...(opts.copy ? { copy: true } : {}) } as unknown as Json, base: {}, after: data as Json,
         ...recorded(msg('history.createProposal', { title: labelOf(schema, args.brick, data) }), schema),
       })
     }
@@ -961,7 +982,7 @@ export const duplicate = mutation({ args: duplicateArgs, handler: async (ctx, ar
 
 /**
  * Creates a copy of an entry. Rights, limits, checks, file references and the approval policy are
- * those of `create`; in a collection with `drafts` the copy is a draft. Staff names the create task.
+ * those of `create`; the copy is a draft. Staff names the create task.
  */
 export async function duplicateAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof duplicateArgs>) {
   const entry = await entryOf(ctx, actor, args.entry)
@@ -1138,7 +1159,8 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
   return idempotent(ctx, actor, args, async () => {
     const entry = await entryOf(ctx, actor, args.entry)
     const schema = actor.site.schema as Schema
-    structuralBrick(schema, entry.brick)
+    // A single is always live: publishing it means its unpublished changes.
+    brickOf(schema, entry)
     authorizeWriter(actor, schema, { task: args.task, brick: entry.brick })
     if (entry.deletedAt || entry.lifeRev !== args.lifeRev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
     if (stateOf(entry) !== 'draft') return await publishPending(ctx, actor, entry, args)
@@ -1190,15 +1212,16 @@ export async function unpublishAs(ctx: MutationCtx, actor: Actor, args: ObjectTy
   return idempotent(ctx, actor, args, async () => {
     const entry = await entryOf(ctx, actor, args.entry)
     const schema = actor.site.schema as Schema
-    const brick = structuralBrick(schema, entry.brick)
+    const brick = brickOf(schema, entry)
     authorizeWriter(actor, schema, { task: args.task, brick: entry.brick })
     if (entry.deletedAt || entry.lifeRev !== args.lifeRev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
-    if (!brick.drafts) fail('INVALID', 'errors.collectionHasNoDrafts', undefined, { brick: entry.brick })
     const wasLive = stateOf(entry) === 'live'
     if (!wasLive && entry.publishAt === undefined) fail('INVALID', 'errors.entryAlreadyDraft', undefined, lifeStateOf(entry))
     const held = wasLive ? await pendingOf(ctx, entry._id) : null
     // One step back: planned unpublished changes lose their time first, as a scheduled draft does; the entry stays online.
     if (held?.publishAt !== undefined) return await unschedulePending(ctx, actor, entry, held, args)
+    // A single has no draft state: it can lose a planned time, never go offline.
+    if (brick.kind === 'single') fail('INVALID', 'errors.singleStaysOnline', undefined, lifeStateOf(entry))
 
     const label = labelOf(schema, entry.brick, entry.data as Data)
     if (await needsProposal(ctx, actor, 'unpublish', args.task, entry.brick, entry)) {

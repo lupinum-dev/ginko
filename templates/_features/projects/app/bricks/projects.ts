@@ -44,7 +44,6 @@ function detailed<const R extends Record<string, RouteTemplate>>(o: Options<R>) 
   return collection({
     ...common(o),
     fields: { ...fields(), ...details(), body: body() },
-    drafts: true,
     tasks: [
       { id: 'edit', kind: 'edit', pick: true, fields: ['title', 'summary', 'client', 'year', 'place', 'scope', 'image', 'photos', 'body'], label: editLabel },
       { id: 'photos', kind: 'edit', pick: true, fields: ['image', 'photos'], label: { de: 'Fotos hinzufügen', en: 'Add photos', fr: 'Ajouter des photos' } },

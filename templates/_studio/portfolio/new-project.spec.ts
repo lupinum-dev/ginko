@@ -37,7 +37,7 @@ test('the owner adds a project with described photos, and its page shows them', 
   }
   await sheet.getByRole('textbox', { name: 'Text', exact: true }).click()
   await page.keyboard.type('Shelves along the hallway, a reading corner and one lamp over the table.')
-  // Projects keep drafts, so the create task ends in the publish step (TEMPLATES 7.3).
+  // A create task ends in the publish step (TEMPLATES 7.3).
   await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
   await expect(sheet).toHaveCount(0)
 

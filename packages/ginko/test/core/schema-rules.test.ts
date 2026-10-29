@@ -434,15 +434,20 @@ describe('markdown field rules', () => {
   })
 })
 
-describe('drafts must be a boolean', () => {
-  it('a non-boolean drafts value is reported with its path', () => {
-    const input = site({}, { bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual', drafts: 'yes' as unknown as boolean }) } })
-    expect(problemsOf(input)).toEqual(['menu: drafts must be true or false.'])
+// Wrong behaviour caught: a site whose config (or stored schema, from 0.12 or older) still says `drafts` cannot be
+// checked or released after the option was removed (SPEC 15: every collection keeps changes until published).
+describe('drafts, no option since 0.13', () => {
+  const menu = { ...collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }), drafts: false }
+  it('a config that still says drafts passes the check, and its schema leaves the key out', () => {
+    const input = site({}, { bricks: { menu: menu as never } })
+    expect(problemsOf(input)).toEqual([])
+    expect(serializeSchema(input).bricks.menu).not.toHaveProperty('drafts')
   })
 
-  it('drafts on a single brick is refused', () => {
-    const input = site({}, { bricks: { hours: { ...single({ label: 'Zeiten', fields: { note: f.text('Hinweis') } }), drafts: true } as never } })
-    expect(problemsOf(input)).toEqual(['hours: drafts are only allowed for collections.'])
+  it('a stored schema with drafts passes checkSchema', () => {
+    const stored = serializeSchema(site({}, { bricks: { menu: menu as never } }))
+    ;(stored.bricks.menu as { drafts?: boolean }).drafts = false
+    expect(checkSchema(stored)).toEqual([])
   })
 })
 

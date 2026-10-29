@@ -1,9 +1,9 @@
-<!-- The drafts of one collection on Heute (TEMPLATES 7.2), and its live entries with unpublished changes: staff see the
-     drafts they made and the changes they saved last, owners and admins all of them;
+<!-- The drafts of one collection on Heute (TEMPLATES 7.2), and its live entries with unpublished changes (of a single:
+     its one entry): staff see the drafts they made and the changes they saved last, owners and admins all of them;
      newest first, at most five, each with the one step that moves it on. The step follows the person's task: with
      needsApproval the draft goes to review, otherwise it goes online. -->
 <script setup lang="ts">
-import type { CollectionBrick } from '@lupinum/ginko'
+import type { Brick } from '@lupinum/ginko'
 import type { Entry } from '../composables/useSiteData'
 import { opErrorOf } from '../composables/useOps'
 import { taskRef, titleOf, type Task } from '../utils/content'
@@ -13,7 +13,7 @@ import { Button } from '@studio/components/ui/button'
 const props = defineProps<{
   slug: string
   brickKey: string
-  brick: CollectionBrick
+  brick: Brick
   /** Every entry of the brick the page read (live ones too). */
   entries: readonly Entry[]
   /** The tasks of this brick the person may do. */

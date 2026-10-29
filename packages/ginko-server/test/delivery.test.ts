@@ -29,7 +29,7 @@ async function withBlog(s: Setup, bodyMax?: number) {
     await ctx.db.patch(cook._id, { grants: [...cook.grants, 'blog.add'] })
   })
   return (i: number, body: string) => s.as.cook.mutation(api.entries.create, {
-    site: 'restaurant', opId: opId(), task: 'blog.add', brick: 'blog',
+    site: 'restaurant', opId: opId(), publish: {}, task: 'blog.add', brick: 'blog',
     data: { title: { de: `Beitrag ${i}` }, date: '2026-10-01', author: 'Koch', description: { de: 'Kurz' }, body: { de: body } },
   }) as Promise<{ entry: string }>
 }
@@ -93,7 +93,7 @@ describe('GET /bundle/<site>', () => {
 
   it('a markdown field stored as a string is delivered as a parsed tree', async () => {
     const { t, as, entries } = await setup()
-    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev: 1, fields: { imprint: { de: '**Hallo**' } }, sentence: 'Impressum' })
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev: 1, fields: { imprint: { de: '**Hallo**' } }, sentence: 'Impressum' })
     const bundle = (await (await t.fetch('/bundle/restaurant?format=3&locale=de')).json()) as { bricks: { legal: { data: { imprint: { nodes: unknown[] } } } } }
     expect(Array.isArray(bundle.bricks.legal.data.imprint.nodes)).toBe(true)
     expect(JSON.stringify(bundle.bricks.legal.data.imprint.nodes)).toContain('Hallo')
@@ -167,7 +167,7 @@ describe('GET /bundle/<site>', () => {
   it('migrateStorage moves every entry\'s trees to entryTrees and sets the site\'s counters to the sums', async () => {
     const s = await setup()
     const entry = s.entries.legal!
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { imprint: { de: '**Hallo**' } }, sentence: 'Impressum' })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { imprint: { de: '**Hallo**' } }, sentence: 'Impressum' })
     const trees = () => s.t.run(async (ctx) => (await ctx.db.query('entryTrees').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).map((part) => part.json).join(''))
     const saved = await trees()
     const savedAt = (await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).first()))!.at
@@ -207,7 +207,7 @@ describe('GET /bundle/<site>', () => {
     const entry = s.entries['menu-saibling']!
     // Saved an hour after it was created; a year later retention deleted the change rows.
     vi.setSystemTime(NOW + 60 * 60 * 1000)
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 1500 } } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 1500 } } })
     vi.setSystemTime(NOW + 366 * DAY)
     await s.t.run(async (ctx) => { for (const change of await ctx.db.query('changes').collect()) await ctx.db.delete(change._id) })
     const bundle = await s.t.run(async (ctx) => bundleOf(ctx, (await ctx.db.get(s.site))!, 'de'))

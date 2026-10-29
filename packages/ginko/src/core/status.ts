@@ -54,7 +54,7 @@ export function brickStatus(
   const title = (data: Record<string, Json>) => entryTitle(brick, data, main) ?? null
   const soon = addDays(today, WINDOW)
   if (!status) {
-    if (brick.kind !== 'collection' || !brick.drafts) return { line: null, due: false }
+    if (brick.kind !== 'collection') return { line: null, due: false }
     const drafts = entries.filter((e) => e.state === 'draft')
     const scheduled = drafts.filter((e) => e.publishAt !== undefined).length
     return drafts.length ? { line: { kind: 'drafts', drafts: drafts.length - scheduled, scheduled }, due: false } : { line: null, due: false }

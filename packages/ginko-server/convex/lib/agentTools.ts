@@ -1,7 +1,7 @@
 // The tool catalog of the agent door (SPEC 16), kept apart from the calls in agent.ts: which tools exist
 // for a person, how the model is told about them, and the pure helpers some of them use (search text).
 // A tool is listed only when the person may use it; agent.ts checks the same list again at call time.
-import type { Brick, CollectionBrick, Json, Task } from '@lupinum/ginko'
+import type { Brick, Json, Task } from '@lupinum/ginko'
 import { labelOf, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import { createdBy, type Actor } from './access'
@@ -51,13 +51,22 @@ export function taskFor(actor: Actor, brick: string, kind: Task['kind'], fields:
 /** Whether the person changes existing entries at all: owners and admins always, staff with an `edit` task, or a `create` task for the entries they made. */
 export const mayEdit = (actor: Actor): boolean => actor.role !== 'staff' || taskTools(actor).some((t) => t.task.kind === 'edit' || t.task.kind === 'create')
 
-/** The collections whose entries start as drafts and where this person may create entries. */
+/** The collections where this person may create entries (every new entry starts as a draft). */
 export function draftBricks(actor: Actor): string[] {
   const schema = actor.site.schema as Schema
   return Object.entries(schema.bricks)
-    .filter(([key, def]) => def.kind === 'collection' && (def as CollectionBrick).drafts === true && !def.retired && (actor.role !== 'staff' || taskFor(actor, key, 'create') !== undefined))
+    .filter(([key, def]) => def.kind === 'collection' && !def.retired && (actor.role !== 'staff' || taskFor(actor, key, 'create') !== undefined))
     .map(([key]) => key)
 }
+
+/**
+ * `publish` on every tool that creates or changes content (SPEC 15): a new entry is a draft and a change to a published
+ * entry waits as unpublished changes until the person publishes it, unless the person asked for it to go online now.
+ */
+export const PUBLISH = {
+  type: 'boolean',
+  description: 'true: goes on the website at once. Only when the person asked for that. Without it a new entry is a draft and a change waits unpublished; the person publishes it in the platform.',
+} as const
 
 /** `propose` on every write tool: "show me first". */
 export const PROPOSE = { type: 'boolean', description: 'true: do not change anything now; show the change to the person as a proposal they approve.' } as const
@@ -154,6 +163,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
           locale: { type: 'string', enum: foreign, description: 'Target language' },
           fields: { type: 'object', description: 'Field name → translated text, e.g. { "name": "Pumpkin soup" }' },
           confirm: { type: 'array', items: { type: 'string' }, description: 'Field names whose translation stays valid as it is' },
+          publish: PUBLISH,
           propose: PROPOSE,
           request_id: REQUEST_ID,
         }, ['entry', 'locale']),
@@ -227,24 +237,24 @@ export function builderTools(actor: Actor): ToolDef[] {
     {
       name: 'ginko_schema',
       description: 'The fields of every brick (or one) as JSON Schema, in the form ginko_write, ginko_create and ginko_import take them, '
-        + 'with kind, label, route and whether new entries start as drafts. Read it before you write.',
+        + 'with kind, label and route. Read it before you write.',
       inputSchema: object({ brick: { type: 'string', description: 'Only this brick' } }),
       annotations: READS,
     },
     {
       name: 'ginko_write',
       description: `Changes fields of an entry, or of a single brick, in the main language (${main}). Fields you leave out stay as they are; null removes an optional value. `
-        + `${values} Foreign languages go through ginko_translate. In a collection with drafts, a change to a published entry waits as an unpublished change; the person publishes it in the platform.`,
-      inputSchema: object({ brick, entry, fields, propose: PROPOSE, request_id: REQUEST_ID }, ['brick', 'fields']),
+        + `${values} Foreign languages go through ginko_translate. The change waits unpublished until the person publishes it in the platform, unless publish is true.`,
+      inputSchema: object({ brick, entry, fields, publish: PUBLISH, propose: PROPOSE, request_id: REQUEST_ID }, ['brick', 'fields']),
       annotations: WRITES,
     },
     {
       name: 'ginko_create',
       description: `Creates an entry in a collection. ${values} The address (slug) comes from the title. `
-        + 'In a collection with drafts the entry is a draft unless publish is true.',
+        + 'The entry is a draft unless publish is true.',
       inputSchema: object({
         brick, fields,
-        publish: { type: 'boolean', description: 'Only for a collection with drafts: true puts the entry on the website at once.' },
+        publish: PUBLISH,
         propose: PROPOSE, request_id: REQUEST_ID,
       }, ['brick', 'fields']),
       annotations: ADDS,
@@ -256,7 +266,7 @@ export function builderTools(actor: Actor): ToolDef[] {
       inputSchema: object({
         items: {
           type: 'array', minItems: 1, maxItems: IMPORT_MAX,
-          items: object({ brick, entry, fields, publish: { type: 'boolean' } }, ['brick', 'fields']),
+          items: object({ brick, entry, fields, publish: PUBLISH }, ['brick', 'fields']),
         },
         dry_run: { type: 'boolean', description: 'true: check only, save nothing.' },
         request_id: REQUEST_ID,

@@ -13,7 +13,7 @@ type Diff = { field: string; label: string; kind: string; before: Json; after: J
 /** The owner saves `fields` of an entry at its current revision and returns the new change. */
 async function save(s: Backend, entry: Id<'entries'>, fields: Record<string, Json>, extra: { locale?: string } = {}) {
   const rev = (await s.t.run((ctx) => ctx.db.get(entry)))!.rev
-  const result = (await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: rev, fields, sentence: 'Test', ...extra })) as { change: Id<'changes'> }
+  const result = (await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: rev, fields, sentence: 'Test', ...extra })) as { change: Id<'changes'> }
   return result.change
 }
 
@@ -77,13 +77,8 @@ describe('changes.list filters', () => {
 
   it('by "me" is the signed-in person\'s changes, by "ai" the agent door\'s; brick narrows both', async () => {
     const s = await setup()
-    await s.t.run(async (ctx) => {
-      const schema = (await ctx.db.get(s.site))!.schema as Schema
-      ;(schema.bricks.events as { drafts?: boolean }).drafts = true
-      await ctx.db.patch(s.site, { schema })
-    })
     await save(s, s.entries['menu-saibling']!, { price: { amount: 1450 } })
-    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.entries['menu-frittaten']!, baseRev: 1, fields: { price: { amount: 900 } }, sentence: 'x' })
+    await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.entries['menu-frittaten']!, baseRev: 1, fields: { price: { amount: 900 } }, sentence: 'x' })
     const key = (await s.as.owner.mutation(api.agent.createKey, { site: 'restaurant', label: 'Claude Code' })).key
     const draft = await s.t.fetch('/mcp', {
       method: 'POST',
@@ -208,7 +203,7 @@ describe('entries.revert', () => {
   // The Studio offers going back to a creation (the entry as it was made): the server must take it like any change.
   it('a creation can be gone back to', async () => {
     const s = await setup()
-    const { entry } = (await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: { text: { de: 'Heute Ruhetag' } } })) as { entry: Id<'entries'> }
+    const { entry } = (await s.as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: { text: { de: 'Heute Ruhetag' } } })) as { entry: Id<'entries'> }
     await save(s, entry, { text: { de: 'Morgen Ruhetag' } })
     const created = (await changeRows(s)).find((r) => r.kind === 'create' && r.entry === entry)!
     expect((await versionAt(s, entry, created._id)).fields).toEqual(['text'])

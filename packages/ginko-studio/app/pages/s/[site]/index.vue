@@ -190,7 +190,8 @@ async function lift(flag: TodayFlag, key: string) {
   try {
     const brick = s.schema.value!.bricks[key]!
     const fields = Object.fromEntries(flag.task.fields.filter((f) => brick.fields[f]?.optional).map((f) => [f, null]))
-    await ops.saveEntry({ entry: flag.entry._id, baseRev: flag.entry.rev, fields, task: taskRef(key, flag.task), locale: s.main.value, op: ops.opId(), main: s.main.value })
+    // Aufheben ends what the website shows now ("Heute geschlossen"), so it goes online at once like the task did.
+    await ops.saveEntry({ entry: flag.entry._id, baseRev: flag.entry.rev, fields, task: taskRef(key, flag.task), locale: s.main.value, op: ops.opId(), main: s.main.value, publish: true })
   } catch (e) {
     useToast().show((e as { message: string }).message, { tone: 'err' })
   } finally {

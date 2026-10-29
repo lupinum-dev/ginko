@@ -24,7 +24,7 @@ test('the owner changes the prices of a plan, and the pricing page shows both', 
   const sheet = page.getByRole('dialog')
   await sheet.getByLabel(/^Preis pro Monat/).fill(PRICE.monthly)
   await sheet.getByLabel(/^Preis pro Jahr/).fill(PRICE.yearly)
-  await sheet.getByRole('button', { name: 'Speichern' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
   await expect(sheet).toHaveCount(0)
 
   // Wrong behaviour caught: one of the two prices stays old on the page (the task saves only one), or search engines

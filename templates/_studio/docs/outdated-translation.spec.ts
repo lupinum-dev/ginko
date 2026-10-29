@@ -3,21 +3,20 @@
 // page as outdated; the owner opens it from there, adds the German sentence, and the German page shows it and leaves
 // the list. Run by `pnpm templates test docs --platform`.
 import { expect, test, type Page } from '@playwright/test'
-import { job, studio } from '../../../scripts/templates/e2e/studio.ts'
+import { job, publishNow, studio } from '../../../scripts/templates/e2e/studio.ts'
 
 // The docs site's names for this job come from "docPage": { brick, title, path, translatedPath, language, bodyField }
 // in jobs.json: the docs brick, a page that has a German translation, its English and German addresses, the Studio's
 // name of the second language and the label of the page text.
 const DOC = job('docPage', ['brick', 'title', 'path', 'translatedPath', 'language', 'bodyField'])
 
-/** Adds a paragraph at the end of the open entry's text and saves it. */
+/** Adds a paragraph at the end of the open entry's text and publishes it (a saved change is not online yet). */
 async function appendAndSave(page: Page, sentence: string) {
   const body = page.getByLabel(DOC.bodyField, { exact: true })
   await body.click()
   await page.keyboard.press('ControlOrMeta+End')
   await page.keyboard.type(`\n\n${sentence}`)
-  await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-  await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
+  await publishNow(page)
 }
 
 /** The German section of Inhalte > Übersetzungen and the page's row in it. */

@@ -44,7 +44,6 @@ export default defineSite({
     // In the Studio, Today lists the drafts and the scheduled posts.
     posts: {
       ...posts({ source: 'files', authors: 'people', route: localized('/posts/[slug]') }),
-      drafts: true,
       tasks: [{ id: 'write', kind: 'create', label: { en: 'Write a post', de: 'Beitrag schreiben', fr: 'Écrire un article' } }],
     },
     // The two writers, each with a page that lists their posts (content/people/). No photos: the site shows initials.

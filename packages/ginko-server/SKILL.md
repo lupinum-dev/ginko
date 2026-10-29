@@ -29,12 +29,16 @@ You cannot do more than they can, and everything you change is shown in their hi
   Name only the fields you want to change. Other fields stay.
 - Texts go in the main language as plain text. Money goes in whole currency units (19.90).
 - Removing needs `confirm: true`. Ask the person first.
-- A change is online in about a minute. The answer names a `change` ID.
+- Nothing goes online on its own: a new entry is a draft, and a change to a published entry or a single brick waits as
+  an unpublished change. The person publishes it in the platform.
+- When the person asks for a change to go online now ("Setz heute ausgebucht"), add `publish: true` to the task,
+  `ginko_write`, `ginko_create`, `ginko_translate` or `ginko_import` item. Never add it on your own.
+- A published change is online in about a minute. The answer names a `change` ID.
   Take it back with `ginko_undo({ change })`.
 - Give each change a `request_id` of your own (letters, digits, `_` and `-`). When an answer gets lost, send the same call
   with the same `request_id` again: the change runs only once, and you get the first answer.
-- `ginko_draft({ brick, fields })` makes a draft in bricks that have drafts. A draft is not on the website.
-  The person publishes it in the platform. You cannot publish.
+- `ginko_draft({ brick, fields })` makes a draft in a collection. A draft is not on the website.
+  The person publishes it in the platform.
 
 ## Build and fill the site (owners and admins)
 
@@ -100,7 +104,8 @@ Owners and admins see five more tools. They write any field, as the Studio does,
 
 ## What you cannot do
 
-- Publish or unpublish drafts (except `publish` on `ginko_create`), restore removed entries, change the structure of the
+- Publish drafts or unpublished changes that already wait (only your own call with `publish: true` goes online), take
+  entries offline, restore removed entries, change the structure of the
   site (bricks and fields come from the site's code), manage people or keys. Staff keys cannot upload files.
 - Use a tool you do not see: the person does not hold that right.
 - More than 60 calls a minute. Wait a minute when you hit the limit.

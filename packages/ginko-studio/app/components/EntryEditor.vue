@@ -297,26 +297,24 @@ function resetForm() {
   try { localStorage.removeItem(SPLIT_WIDTH) } catch { /* nothing stored */ }
 }
 // Before sideMode: with the panel bar already shown (a move within the Studio), the tab watcher below reads it during setup.
-// Drafts (SPEC 15): only collections that ask for them. A draft is saved without going online;
-// "Veröffentlichen …" puts it online now or at a time; a live entry can be taken back to a draft.
+// Drafts (SPEC 15): a new entry of a collection is saved without going online; "Veröffentlichen …" puts it online now
+// or at a time; a live entry of a collection can be taken back to a draft. A single is always online.
 const timeZone = computed(() => props.schema.timeZone)
-const drafts = computed(() => props.brick.kind === 'collection' && props.brick.drafts === true)
+const offlineable = computed(() => props.brick.kind === 'collection')
 const state = computed(() => props.entry?.state ?? 'live')
-// A draft stays a draft when the collection later turns drafts off (SPEC 15), so it can still be published.
-const isDraft = computed(() => (props.entry ? state.value === 'draft' : drafts.value))
+const isDraft = computed(() => (props.entry ? state.value === 'draft' : offlineable.value))
 /**
- * Save without publishing: on a live entry of a collection with drafts, Speichern keeps the changes unpublished;
- * Veröffentlichen puts them live (now or later), Verwerfen goes back to the version on the website. Changes saved
- * before the collection turned drafts off keep waiting (the server saves into them), so they stay publishable here.
+ * Save without publishing: on every live entry and single, Speichern keeps the changes unpublished; Veröffentlichen
+ * puts them live (now or later), Verwerfen goes back to the version on the website.
  */
 const pending = computed(() => (state.value === 'live' ? props.entry?.pending : undefined))
-const keepsChanges = computed(() => !!props.entry && state.value === 'live' && (drafts.value || !!pending.value))
+const keepsChanges = computed(() => !!props.entry && state.value === 'live')
 /** The planned time of a scheduled draft, or of a live entry's unpublished changes. */
 const scheduledAt = computed(() => props.entry?.publishAt ?? pending.value?.publishAt)
 /** "Veröffentlichen …": a draft, or unpublished changes (saved, or typed and saved on the way). */
 const publishable = computed(() => isDraft.value || (keepsChanges.value && (!!pending.value || dirty.value)))
 const statusText = computed(() => {
-  if (!props.entry || (!drafts.value && state.value === 'live' && !pending.value)) return ''
+  if (!props.entry) return ''
   if (pending.value) {
     return pending.value.publishAt
       ? t('entry.status.changesFrom', { when: whenText(pending.value.publishAt, timeZone.value, format) })
@@ -328,8 +326,8 @@ const statusText = computed(() => {
     : t('entry.status.draft')
 })
 const statusVariant = computed(() => (pending.value || (state.value !== 'live' && props.entry?.publishAt) ? 'warning' : state.value === 'live' ? 'success' : 'soft'))
-/** The right column's status card: for entries that can be drafts, or that have a status to show. */
-const statusCard = computed(() => !!statusText.value || drafts.value)
+/** The right column's status card: online, unpublished changes, draft or scheduled; a new entry starts as a draft. */
+const statusCard = computed(() => !!statusText.value || offlineable.value)
 const wideSide = useMediaQuery('(min-width: 1280px)')
 /** The right column: from 1280px while the preview is closed (the preview takes that room when open), when it has something to show. */
 const sideMode = computed(() => bar.value && wideSide.value && !showPreview.value && (statusCard.value || !!sideImage.value || sideSlug.value.length > 0 || sideGroups.value.length > 0))
@@ -498,7 +496,8 @@ watch(() => props.entry?._id, () => {
 /** The status card's line under the badge: what a draft or a scheduled entry means for the website. */
 const statusNote = computed(() => {
   if (pending.value) return pending.value.publishAt ? t('entry.side.changesScheduledNote') : t('entry.side.changesNote')
-  if (!props.entry || state.value === 'live') return ''
+  if (!props.entry) return ''
+  if (state.value === 'live') return t('entry.side.liveNote')
   return props.entry.publishAt ? t('entry.side.scheduledNote') : t('entry.side.draftNote')
 })
 /** Publishing belongs to the brick's create and edit tasks (staff need one of them). */
@@ -786,7 +785,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <p v-if="problem" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ problem }}</p>
         <p v-if="readOnly" class="rounded-md bg-muted px-3 py-2.5 text-muted-foreground" role="status">{{ readOnlyNote }}</p>
 
-        <NavPlace v-if="navTree" :slug="site.slug" :brick-key="brickKey" :entry="entry?._id" :place="place" :language="locale" :new-draft="brick.kind === 'collection' && brick.drafts === true" />
+        <NavPlace v-if="navTree" :slug="site.slug" :brick-key="brickKey" :entry="entry?._id" :place="place" :language="locale" :new-draft="brick.kind === 'collection'" />
         <EntryFields v-bind="fieldProps" :entries="mainUngrouped" @update="setField" />
         <template v-if="tabbed">
           <Tabs v-if="mainGroups.length" v-model="activeTab">
@@ -832,7 +831,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
               <span v-else-if="dirty && !busy" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
             </template>
             <Button type="button" variant="ghost" class="ml-auto" :aria-pressed="showPreview" @click="togglePreview">{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}</Button>
-            <template v-if="drafts && entry && state === 'live' && !removed">
+            <template v-if="offlineable && entry && state === 'live' && !removed">
               <Button v-if="!askUnpublish" type="button" variant="ghost" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
               <span v-else class="flex basis-full flex-wrap items-center gap-2">
                 {{ t('entry.unpublish.warning', { title }) }}
@@ -877,7 +876,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           />
           <div v-else-if="!removed" class="flex flex-wrap gap-2">
             <Button v-if="publishable" type="button" variant="outline" size="sm" :disabled="busy" @click="openPublish">{{ scheduledAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
-            <Button v-if="drafts && entry && state === 'live' && !askUnpublish" type="button" variant="ghost" size="sm" class="text-muted-foreground" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
+            <Button v-if="offlineable && entry && state === 'live' && !askUnpublish" type="button" variant="ghost" size="sm" class="text-muted-foreground" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
           </div>
           <div v-if="askUnpublish" class="grid gap-2.5 border-t pt-3">
             <p class="text-sm">{{ t('entry.unpublish.warning', { title }) }}</p>
@@ -910,7 +909,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <component :is="showPreview ? EyeOffIcon : EyeIcon" aria-hidden="true" />{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}
       </Button>
       <Button v-if="publishable && !publishing && !removed && !sideMode" type="button" variant="outline" class="h-9" :disabled="busy" @click="openPublish">{{ scheduledAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
-      <Button v-if="drafts && entry && state === 'live' && !removed && !sideMode && !askUnpublish" type="button" variant="ghost" class="h-9 text-muted-foreground" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
+      <Button v-if="offlineable && entry && state === 'live' && !removed && !sideMode && !askUnpublish" type="button" variant="ghost" class="h-9 text-muted-foreground" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
       <Button v-if="!readOnly" type="submit" :form="formId" class="h-9" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'entry-shrunk' : undefined" :aria-disabled="saveBlocked ? 'true' : undefined">{{ saveLabel }}</Button>
     </Teleport>
 

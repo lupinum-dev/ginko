@@ -35,8 +35,8 @@ export function errorLine(e: ContentError): string {
 
 export interface ReadOptions {
   /**
-   * `false` leaves out entries marked `draft: true`, and scheduled entries: in a collection with drafts that lists its
-   * entries newest first by a date (`drafts: true`, `order: { field, dir: 'desc' }`), an entry dated after `today`.
+   * `false` leaves out entries marked `draft: true`, and scheduled entries: in a collection that lists its entries
+   * newest first by a date (`order: { field, dir: 'desc' }`), an entry dated after `today`.
    * Default `true` (dev shows both).
    */
   drafts?: boolean
@@ -780,12 +780,12 @@ function slugKeyOf(brick: Brick): string | undefined {
 }
 
 /**
- * The date field that schedules an entry: in a collection with drafts that lists its entries newest first by a date
- * (posts, a changelog), an entry dated after the build day is not published yet. A list in date order from the
+ * The date field that schedules an entry: in a collection that lists its entries newest first by a date (posts, a
+ * changelog), an entry dated after the build day is not published yet. A list in date order from the
  * oldest (events) shows coming dates on purpose, so it has none.
  */
 function scheduleKeyOf(brick: Brick): string | undefined {
-  if (brick.kind !== 'collection' || brick.drafts !== true || brick.order === 'manual' || brick.order.dir !== 'desc') return undefined
+  if (brick.kind !== 'collection' || brick.order === 'manual' || brick.order.dir !== 'desc') return undefined
   return brick.fields[brick.order.field]?.type === 'date' ? brick.order.field : undefined
 }
 

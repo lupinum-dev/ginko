@@ -1,5 +1,6 @@
 // Shared by the gate 7 specs (templates/_features/<feature>/e2e/studio/*.spec.ts, templates/_studio/<template>/*.spec.ts):
 // where the Studio and the site are, and the template's own names for a job.
+import { expect, type Page } from '@playwright/test'
 export const studio = {
   /** The site's slug on the platform; the Studio opens it at /s/<slug>. */
   site: process.env.TEMPLATE_SITE ?? '',
@@ -19,3 +20,13 @@ export function studioJob<Field extends string>(all: Record<string, Record<strin
 }
 
 export const job = <Field extends string>(key: string, fields: readonly Field[]) => studioJob(JSON.parse(process.env.TEMPLATE_STUDIO ?? '{}'), key, fields)
+
+/**
+ * "Veröffentlichen …" then "Jetzt" in Inhalte (SPEC 15): typed input is saved on the way and goes online. Speichern
+ * alone keeps a change off the website, and a new entry is a draft until it is published.
+ */
+export async function publishNow(page: Page) {
+  await page.getByRole('button', { name: 'Veröffentlichen …' }).first().click()
+  await page.getByRole('button', { name: 'Jetzt veröffentlichen' }).first().click()
+  await expect(page.locator('[data-sonner-toast]').filter({ hasText: /veröffentlicht/i }).first()).toBeVisible()
+}

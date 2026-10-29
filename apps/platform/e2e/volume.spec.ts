@@ -26,7 +26,7 @@ test('an open entry receives less than 50 KB when someone saves another entry', 
   await other.getByRole('link', { name: 'Frittatensuppe', exact: true }).click()
   await other.getByRole('textbox', { name: 'Beschreibung' }).fill('Mit Schnittlauch')
   await other.getByRole('button', { name: 'Speichern' }).click()
-  await expect(other.getByText('Gespeichert', { exact: true })).toBeVisible()
+  await expect(other.getByText('Gespeichert, noch nicht online', { exact: true })).toBeVisible()
   // Let the update reach the first tab too.
   await page.waitForTimeout(1000)
   await other.close()

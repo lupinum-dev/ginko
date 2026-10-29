@@ -54,7 +54,6 @@ export default defineSite({
     // online; in the Studio, volunteers' posts go live after a check, and Today shows how old the newest post is.
     posts: {
       ...posts({ source: 'files', authors: 'people', route: localized('/news/[slug]') }),
-      drafts: true,
       status: { age: 'date' },
       tasks: [{ id: 'write', kind: 'create', label: { en: 'Write a news post', de: 'Neuigkeit schreiben', fr: 'Écrire une actualité' }, needsApproval: true }],
     },

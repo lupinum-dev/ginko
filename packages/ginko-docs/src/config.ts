@@ -43,7 +43,7 @@ const NAVIGATION = l('Navigation', 'Navigation', 'Navegación', 'Navigation')
  * `navExtras: false` leaves out Tab, Badge and Icon, which most sites do not use: editors then see only the text and
  * where the page sits (section, parent page, short title).
  */
-export function docsCollection(opts: { locales: Locales; label?: string; max?: number; base?: `/${string}`; source?: DocsSource; navExtras?: boolean; drafts?: boolean }) {
+export function docsCollection(opts: { locales: Locales; label?: string; max?: number; base?: `/${string}`; source?: DocsSource; navExtras?: boolean }) {
   const { locales } = opts
   const base = opts.base ?? '/docs'
   return collection({
@@ -51,8 +51,6 @@ export function docsCollection(opts: { locales: Locales; label?: string; max?: n
     ...sourceOf(opts.source),
     max: opts.max ?? 500,
     order: 'manual',
-    // A page can be new or half-finished: on the platform Speichern keeps changes unpublished until Veröffentlichen.
-    drafts: opts.drafts ?? true,
     route: localized(locales, `${base}/[slug]`),
     fields: withExtras(opts.navExtras !== false, {
       title: f.text(l('Titel', 'Title', 'Título', 'Titre')),

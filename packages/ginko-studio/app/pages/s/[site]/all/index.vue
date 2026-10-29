@@ -46,7 +46,12 @@ const foreign = computed(() => s.schema.value?.locales.slice(1) ?? [])
 const openText = (count: number) => foreign.value.length === 1
   ? t('site.all.translationsOpen', { lang: languageName(foreign.value[0]!, uiLocale.value), count })
   : t('nav.translationsOpen', { count })
-const extras = (a: { drafts: number; ended: number }) => [a.drafts ? t('site.all.drafts', { count: a.drafts }) : '', a.ended ? t('site.all.endedCount', { count: a.ended }) : ''].filter(Boolean).join(' · ')
+/** Drafts, saved changes that are not online yet (SPEC 15), ended entries: what the area holds that the website does not show. */
+const extras = (a: { kind: 'single' | 'collection'; drafts: number; changes: number; ended: number }) => [
+  a.drafts ? t('site.all.drafts', { count: a.drafts }) : '',
+  a.changes ? (a.kind === 'single' ? t('site.all.singleChanges') : t('site.all.changesCount', { count: a.changes })) : '',
+  a.ended ? t('site.all.endedCount', { count: a.ended }) : '',
+].filter(Boolean).join(' · ')
 const grid = 'grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,1fr)] items-center gap-4 px-4'
 </script>
 

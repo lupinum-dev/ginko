@@ -305,22 +305,22 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
      * Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. The message also says
      * what the other languages show now (the server's `translation`), named from the site's `main` locale.
      */
-    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string }) {
+    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string; publish?: true }) {
       try {
-        const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm })
+        const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm, publish: args.publish })
         // A change that needs a yes writes nothing yet (SPEC 17): say so instead of "Saved".
         if (isProposal(result)) {
           sentForApproval()
           return { proposal: result.proposal }
         }
         const change = 'change' in result ? result.change : undefined
-        // A live entry of a collection with drafts keeps the save unpublished: the message says so, and there is nothing to undo on the website.
+        // A live entry keeps the save unpublished unless `publish`: the message says so, and there is nothing to undo on the website.
         if ('pending' in result) {
           show(result.pending ? t('ops.changesSaved') : t('ops.savedLikeLive'))
           return { proposal: undefined, rev: result.rev }
         }
         // A draft is not on the website, so the message does not promise it (SPEC 15).
-        const text = args.draft ? t('ops.draftSaved') : [t('ops.saved'), liveText(result), noteOf('translation' in result ? result.translation : undefined, args.main)].filter(Boolean).join(' ')
+        const text = args.draft ? t('ops.draftSaved') : [args.publish ? t('ops.published') : t('ops.saved'), liveText(result), noteOf('translation' in result ? result.translation : undefined, args.main)].filter(Boolean).join(' ')
         show(text, change ? { action: { label: t('ops.undo'), run: () => undoChange(change, args.task) } } : {})
         return { proposal: undefined, rev: result.rev }
       } catch (error) {
@@ -335,7 +335,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           sentForApproval()
           return { proposal: result.proposal }
         }
-        // A collection with drafts makes a draft unless asked to publish (SPEC 15); the message says which.
+        // A new entry is a draft unless asked to publish (SPEC 15); the message says which.
         const lead = args.publish ? t('ops.published') : args.label ?? t('ops.created')
         const text = result.state === 'live' ? [lead, liveText(result), noteOf(result.translation, args.main)].filter(Boolean).join(' ')
           : result.publishAt !== undefined ? t('ops.scheduledGoesLive', { date: whenText(result.publishAt, args.timeZone ?? 'Europe/Vienna', format) })

@@ -325,7 +325,7 @@ test('a drafts collection lists its drafts apart from what is on the website, st
     pages: { home: { de: '/' } },
     bricks: {
       notices: collection({
-        label: 'Hinweise', max: 20, order: 'manual', drafts: true,
+        label: 'Hinweise', max: 20, order: 'manual',
         fields: { text: f.text('Text'), until: f.date('Gilt bis', { optional: true }) },
         visible: { mode: 'until', field: 'until' },
         tasks: [{ id: 'add', label: 'Hinweis hinzufügen', kind: 'create' }],

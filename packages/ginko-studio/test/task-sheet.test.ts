@@ -441,20 +441,19 @@ describe('languages', () => {
   })
 })
 
-// The publish step (TEMPLATES 7.3): what a create task on a collection with drafts offers, and the save each button makes.
+// The publish step (TEMPLATES 7.3, D60): what a create task and an edit of a live entry offer, and the save each button makes.
 describe('publish step', () => {
   const posts = serializeSchema(defineSite({
     site: 'blog', name: 'Blog', url: 'https://blog.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
     pages: { home: { de: '/' } },
     bricks: {
       posts: collection({
-        label: 'Beiträge', max: 50, order: 'manual', drafts: true, fields: { title: f.text('Titel', { translate: false }) },
+        label: 'Beiträge', max: 50, order: 'manual', fields: { title: f.text('Titel', { translate: false }) },
         tasks: [{ id: 'write', label: 'Beitrag schreiben', kind: 'create' }, { id: 'fix', label: 'Beitrag ändern', kind: 'edit', fields: ['title'], pick: true }],
       }),
-      notes: collection({ label: 'Notizen', max: 50, order: 'manual', fields: { title: f.text('Titel', { translate: false }) }, tasks: [{ id: 'add', label: 'Notiz anlegen', kind: 'create' }] }),
     },
   }))
-  const mountStep = (key: 'posts' | 'notes', opts: { task?: number; approval?: boolean; entry?: unknown } = {}) => {
+  const mountStep = (key: 'posts', opts: { task?: number; approval?: boolean; entry?: unknown } = {}) => {
     const brick = posts.bricks[key]!
     return mount(TaskSheet, {
       props: { site: 'blog', brickKey: key, brick, task: brick.tasks![opts.task ?? 0]!, main: 'de', locales: ['de'], schema: posts, approval: opts.approval, entry: opts.entry as never },
@@ -472,15 +471,17 @@ describe('publish step', () => {
   /** What the last save sent: the publish argument of the create call. */
   const sentPublish = () => (ops.createEntry.mock.calls.at(-1) as unknown as [{ publish?: { at?: number } }])[0].publish
 
-  // Wrong behaviour caught: a collection without drafts shows publish buttons for something that is live anyway, or a
-  // drafts collection keeps one "Speichern" that quietly makes a draft nobody finds.
+  const stored = (state?: 'draft') => ({ _id: 'p1', brick: 'posts', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { title: 'Alt' }, ...(state ? { state } : {}) })
+
+  // Wrong behaviour caught: a create keeps one "Speichern" that quietly makes a draft nobody finds, a quick edit of a
+  // live entry has no one-press way online, or a draft's edit offers to publish it from the task.
   test.each([
-    ['without drafts', 'notes', 0, false, ['Speichern', 'Abbrechen']],
-    ['with drafts', 'posts', 0, false, ['Veröffentlichen', 'Als Entwurf speichern', 'Später veröffentlichen', 'Abbrechen']],
-    ['with drafts and needsApproval', 'posts', 0, true, ['Zur Prüfung senden', 'Als Entwurf speichern', 'Später veröffentlichen', 'Abbrechen']],
-    ['an edit task on a drafts collection', 'posts', 1, false, ['Speichern', 'Abbrechen']],
-  ] as const)('the footer %s', async (_, key, task, approval, buttons) => {
-    const wrapper = mountStep(key, { task, approval, entry: task === 1 ? { _id: 'p1', brick: 'posts', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { title: 'Alt' } } : undefined })
+    ['of a create task', 0, false, undefined, ['Veröffentlichen', 'Als Entwurf speichern', 'Später veröffentlichen', 'Abbrechen']],
+    ['of a create task with needsApproval', 0, true, undefined, ['Zur Prüfung senden', 'Als Entwurf speichern', 'Später veröffentlichen', 'Abbrechen']],
+    ['of an edit of a live entry', 1, false, 'live', ['Veröffentlichen', 'Speichern', 'Abbrechen']],
+    ['of an edit of a draft', 1, false, 'draft', ['Speichern', 'Abbrechen']],
+  ] as const)('the footer %s', async (_, task, approval, state, buttons) => {
+    const wrapper = mountStep('posts', { task, approval, entry: state ? stored(state === 'draft' ? 'draft' : undefined) : undefined })
     answer({ data: {} })
     await flushPromises()
     expect(footer(wrapper)).toEqual(buttons)
@@ -563,6 +564,20 @@ describe('publish step', () => {
     await press(wrapper, 'Später veröffentlichen')
     expect(footer(wrapper)).toEqual(['Planen', 'Als Entwurf speichern', 'Später veröffentlichen', 'Abbrechen'])
     expect(wrapper.get('[data-test="publish-later"]').findAll('button')).toHaveLength(0)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: a task's Veröffentlichen left the change waiting unpublished, or its Speichern (and Ctrl+S)
+  // put it on the website.
+  test.each([['Veröffentlichen', true], ['Speichern', undefined], ['Ctrl+S', undefined]] as const)('"%s" on an edit of a live entry saves with publish %j', async (how, publish) => {
+    const wrapper = mountStep('posts', { task: 1, entry: stored() })
+    await open(wrapper)
+    if (how === 'Ctrl+S') await wrapper.get('form').trigger('keydown', { key: 's', ctrlKey: true })
+    else await press(wrapper, how)
+    await flushPromises()
+    expect(ops.saveEntry).toHaveBeenCalledTimes(1)
+    const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ publish?: true; fields: unknown }]
+    expect([sent.fields, sent.publish]).toEqual([{ title: 'Neuer Beitrag' }, publish])
     wrapper.unmount()
   })
 

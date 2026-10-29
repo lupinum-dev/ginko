@@ -14,15 +14,14 @@ const site = 'restaurant'
 
 afterEach(() => vi.useRealTimers())
 
-/** The restaurant at a fixed time; `drafts` switches drafts on for events, `release` marks the schema as released. */
-async function studioSetup(opts: { drafts?: boolean; release?: boolean } = {}) {
+/** The restaurant at a fixed time; `release` marks the schema as released. */
+async function studioSetup(opts: { release?: boolean } = {}) {
   vi.useFakeTimers()
   vi.setSystemTime(NOW)
   const s = await setup()
   await s.t.run(async (ctx) => {
     const row = (await ctx.db.get(s.site))!
     const schema = row.schema as Schema
-    if (opts.drafts) (schema.bricks.events as { drafts?: boolean }).drafts = true
     await ctx.db.patch(s.site, { schema, ...(opts.release ? { release: { commit: 'abc', schemaRev: 1, contentRev: 1, at: NOW } } : {}) })
   })
   const patchSchema = (change: (schema: Schema) => void) => s.t.run(async (ctx) => {
@@ -82,7 +81,7 @@ describe('search.studio', () => {
     await s.remove(s.entries['menu-schnitzel']!)
     expect((await s.as.owner.query(api.search.studio, { site, query: 'schnitzel' })).entries.map((e) => e.brick)).toEqual(['gallery'])
 
-    await s.as.stranger.mutation(api.entries.create, { site: 'andere', opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: 'Zwiebelrostbraten' }, price: { amount: 1800 }, allergens: [], veg: 'none' } })
+    await s.as.stranger.mutation(api.entries.create, { publish: {}, site: 'andere', opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: 'Zwiebelrostbraten' }, price: { amount: 1800 }, allergens: [], veg: 'none' } })
     expect((await s.as.owner.query(api.search.studio, { site, query: 'zwiebelrostbraten' })).entries).toEqual([])
     expect((await s.as.stranger.query(api.search.studio, { site: 'andere', query: 'zwiebelrostbraten' })).entries).toHaveLength(1)
     expect((await errorOf(s.as.stranger.query(api.search.studio, { site, query: 'schnitzel' }))).code).toBe('FORBIDDEN')
@@ -93,7 +92,7 @@ describe('search.studio', () => {
   it('finds a word inside a compound, after the word-start matches', async () => {
     const s = await studioSetup()
     const dish = (name: string) => ({ category: 'desserts', name: { de: name }, price: { amount: 700 }, allergens: [], veg: 'none' })
-    await s.as.owner.mutation(api.entries.create, { site, opId: opId(), brick: 'menu', data: dish('Strudelteig') })
+    await s.as.owner.mutation(api.entries.create, { publish: {}, site, opId: opId(), brick: 'menu', data: dish('Strudelteig') })
     const labels = async (query: string) => (await s.as.owner.query(api.search.studio, { site, query })).entries.map((e) => e.label)
     expect(await labels('strudel')).toEqual(['Strudelteig', 'Topfenstrudel', 'Alle Gerichte inklusive Beilagensalat.'])
     expect((await labels('schni'))[0]).toBe('Wiener Schnitzel vom Kalb')
@@ -103,7 +102,7 @@ describe('search.studio', () => {
   })
 
   it('marks drafts and scheduled drafts, and clamps the limit', async () => {
-    const s = await studioSetup({ drafts: true })
+    const s = await studioSetup()
     await s.createEvent('Wildwoche')
     await s.createEvent('Wildabend', {}, { at: NOW + DAY })
     const hits = (await s.as.owner.query(api.search.studio, { site, query: 'wild' })).entries
@@ -197,7 +196,7 @@ describe('entries.duplicate', () => {
       menu.fields.tags = { type: 'list', label: 'Zutaten', itemLabel: 'Zutat', of: { word: { type: 'text', label: 'Wort', translate: false, max: 40 } }, max: 5, optional: true }
     })
     const created = await s.as.owner.mutation(api.entries.create, {
-      site, opId: opId(), brick: 'menu',
+      site, opId: opId(), publish: {}, brick: 'menu',
       data: { category: 'mains', name: { de: 'Gulasch' }, price: { amount: 1400 }, allergens: [], veg: 'none', tags: [{ _id: 'row0000001', word: 'Rind' }, { _id: 'row0000002', word: 'Paprika' }] },
     }) as { entry: Id<'entries'> }
     const copy = await s.as.owner.mutation(api.entries.duplicate, { site, opId: opId(), entry: created.entry }) as { entry: Id<'entries'> }
@@ -213,14 +212,14 @@ describe('entries.duplicate', () => {
   it('leaves a label unchanged when " (Kopie)" would not fit', async () => {
     const s = await studioSetup()
     const long = 'a'.repeat(120)
-    const created = await s.as.owner.mutation(api.entries.create, { site, opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: long }, price: { amount: 100 }, allergens: [], veg: 'none' } }) as { entry: Id<'entries'> }
+    const created = await s.as.owner.mutation(api.entries.create, { publish: {}, site, opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: long }, price: { amount: 100 }, allergens: [], veg: 'none' } }) as { entry: Id<'entries'> }
     const copy = await s.as.owner.mutation(api.entries.duplicate, { site, opId: opId(), entry: created.entry }) as { entry: Id<'entries'> }
     expect((await s.row(copy.entry))!.data.name).toEqual({ de: long })
   })
 
   // Wrong behaviour caught: the copy of a draft goes live at once, or the copy of a live entry in a drafts brick is public without review.
-  it('is a draft in a drafts brick, also when the original is live', async () => {
-    const s = await studioSetup({ drafts: true })
+  it('is a draft, also when the original is live', async () => {
+    const s = await studioSetup()
     const live = await s.createEvent('Fest', {}, {}) as { entry: Id<'entries'> }
     expect((await s.row(live.entry))!.state).toBeUndefined()
     const copy = await s.as.owner.mutation(api.entries.duplicate, { site, opId: opId(), entry: live.entry }) as { entry: Id<'entries'>; state: string }
@@ -228,17 +227,15 @@ describe('entries.duplicate', () => {
     expect((await s.row(copy.entry))!.state).toBe('draft')
   })
 
-  // Wrong behaviour caught: flagged staff duplicates around the approval, or staff without a create task duplicates at all.
-  it('becomes a proposal for flagged staff and needs a create task', async () => {
+  // Wrong behaviour caught: flagged staff duplicates around the approval (the copy goes online unreviewed), or staff
+  // without a create task duplicates at all.
+  it('is a draft for flagged staff, which needs no yes until it is published, and needs a create task', async () => {
     const s = await studioSetup()
     await s.patchSchema((schema) => { for (const task of schema.bricks.menu!.tasks ?? []) (task as { needsApproval?: boolean }).needsApproval = true })
-    const count = () => s.t.run(async (ctx) => (await ctx.db.query('entries').collect()).length)
-    const before = await count()
     const result = await s.as.cook.mutation(api.entries.duplicate, { site, opId: opId(), task: 'menu.add', entry: s.entries['menu-saibling']! })
-    expect(result).toMatchObject({ status: 'open' })
-    expect(await count()).toBe(before)
-    const proposals = await s.t.run((ctx) => ctx.db.query('proposals').collect())
-    expect(proposals).toEqual([expect.objectContaining({ op: 'create', brick: 'menu', author: people.cook, sentence: '„Gebeizter Saibling (Kopie)“ anlegen' })])
+    expect(result).toMatchObject({ state: 'draft' })
+    expect(await s.t.run((ctx) => ctx.db.query('proposals').collect())).toEqual([])
+    expect(await s.as.cook.mutation(api.entries.publish, { site, opId: opId(), task: 'menu.add', entry: (result as { entry: string }).entry, lifeRev: 1 })).toMatchObject({ status: 'open' })
 
     expect((await errorOf(s.as.cook.mutation(api.entries.duplicate, { site, opId: opId(), task: 'menu.remove', entry: s.entries['menu-saibling']! }))).code).toBe('FORBIDDEN')
     expect((await errorOf(s.as.cook.mutation(api.entries.duplicate, { site, opId: opId(), entry: s.entries['menu-saibling']! }))).code).toBe('FORBIDDEN')
@@ -380,7 +377,7 @@ describe('sites.translationStatus', () => {
   // because of them, or lists a draft that is not on the website yet (admin-4, A11), or a past event the site no
   // longer shows in any language, so weekly events pile up as open translations.
   it('leaves out removed entries, drafts and past events, and lists the entries with a gap', async () => {
-    const s = await studioSetup({ drafts: true })
+    const s = await studioSetup()
     const base = (await s.as.owner.query(api.sites.translationStatus, { site })).bricks.find((b) => b.brick === 'events')!.locales.en!
     const draft = await s.createEvent('Entwurf ohne Übersetzung')
     const live = await s.createEvent('Wildwoche', {}, {})
@@ -414,14 +411,14 @@ describe('the answer of a save says what the other languages show', () => {
   // or says nothing about the German text a new FAQ question or an outdated translation shows there (romi-4, P5).
   it('a hidden page, a new text shown in the main language, an outdated translation, and nothing for a date', async () => {
     const s = await studioSetup()
-    const created = await s.createEvent('Wildwoche') as { entry: Id<'entries'>; translation: unknown }
+    const created = await s.createEvent('Wildwoche', {}, {}) as { entry: Id<'entries'>; translation: unknown }
     expect(created.translation).toEqual([{ locale: 'en', page: 'hidden', missing: 2, outdated: 0 }])
     const save = (entry: Id<'entries'>, fields: Record<string, unknown>, baseRev = 1) =>
-      s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev, locale: 'de', fields }) as Promise<{ translation: unknown }>
+      s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry, baseRev, locale: 'de', fields }) as Promise<{ translation: unknown }>
     expect((await save(created.entry, { title: { de: 'Wildwochen' } })).translation).toEqual([{ locale: 'en', page: 'hidden', missing: 1, outdated: 0 }])
     expect((await save(created.entry, { when: { from: '2026-11-21', to: '2026-11-21' } }, 2)).translation).toEqual([])
 
-    const dish = await s.as.owner.mutation(api.entries.create, { site, opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: 'Kürbisgulasch' }, price: { amount: 1490 }, allergens: [], veg: 'vegan' } }) as { translation: unknown }
+    const dish = await s.as.owner.mutation(api.entries.create, { publish: {}, site, opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: 'Kürbisgulasch' }, price: { amount: 1490 }, allergens: [], veg: 'vegan' } }) as { translation: unknown }
     expect(dish.translation).toEqual([{ locale: 'en', page: 'shown', missing: 1, outdated: 0 }])
     expect((await save(s.entries['menu-saibling']!, { name: { de: 'Gebeizter Bachsaibling' } })).translation).toEqual([{ locale: 'en', page: 'shown', missing: 0, outdated: 1 }])
   })
@@ -429,7 +426,7 @@ describe('the answer of a save says what the other languages show', () => {
   // Wrong behaviour caught: a German-only draft goes online through "Veröffentlichen" and the message does not say
   // that its page is missing on the English site (romi-4, reached through publishing).
   it('publishing a draft now says it too; a scheduled publish says nothing yet', async () => {
-    const s = await studioSetup({ drafts: true })
+    const s = await studioSetup()
     const publish = (entry: Id<'entries'>, at?: number) =>
       s.as.owner.mutation(api.entries.publish, { site, opId: opId(), entry, lifeRev: 1, ...(at ? { at } : {}) }) as Promise<{ translation: unknown }>
     const now = await s.createEvent('Wildwoche')
@@ -443,7 +440,7 @@ describe('the answer of a save says what the other languages show', () => {
     const s = await studioSetup()
     await s.patchSchema((schema) => { schema.locales.push('fr') })
     const save = (locale: string, fields: Record<string, unknown>, baseRev: number) =>
-      s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries['menu-frittaten']!, baseRev, locale, fields }) as Promise<{ translation: unknown }>
+      s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry: s.entries['menu-frittaten']!, baseRev, locale, fields }) as Promise<{ translation: unknown }>
     expect((await save('en', { name: { en: 'Pancake soup' } }, 1)).translation).toEqual([])
     expect((await save('de', { name: { de: 'Frittatensuppe vom Rind' } }, 2)).translation).toEqual([
       { locale: 'en', page: 'shown', missing: 0, outdated: 1 }, { locale: 'fr', page: 'shown', missing: 1, outdated: 0 },
@@ -457,7 +454,7 @@ describe('the address of a page in another language', () => {
   it('comes from the translated title until the page is online there, then stays', async () => {
     const s = await studioSetup()
     const saveEnglish = (entry: Id<'entries'>, baseRev: number, fields: Record<string, unknown>) =>
-      s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev, locale: 'en', fields })
+      s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry, baseRev, locale: 'en', fields })
     const slugRows = (entry: Id<'entries'>) => s.t.run(async (ctx) =>
       (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).map((r) => `${r.locale}:${r.slug}`).sort())
     const slugOf = async (entry: Id<'entries'>) => (await s.row(entry))!.data.slug
@@ -487,11 +484,11 @@ describe('the address of a page in another language', () => {
   })
 })
 
-describe('the address of a page in another language, with drafts', () => {
+describe('the address of a page in another language, in unpublished changes', () => {
   // Wrong behaviour caught: the English address made from a title saved as an unpublished change is lost, or moves
   // online before the change is published.
   it('waits with the saved title and moves when the changes are published', async () => {
-    const s = await studioSetup({ drafts: true })
+    const s = await studioSetup()
     const slugRows = (entry: Id<'entries'>) => s.t.run(async (ctx) =>
       (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).map((r) => `${r.locale}:${r.slug}`).sort())
     const wild = await s.createEvent('Wildwoche')
@@ -512,7 +509,7 @@ describe('entries.whyNotPublic', () => {
     s.as.owner.query(api.entries.whyNotPublic, { site, entry, ...(locale ? { locale } : {}) })
 
   it('a draft', async () => {
-    const s = await studioSetup({ drafts: true, release: true })
+    const s = await studioSetup({ release: true })
     const draft = await s.createEvent('Wildwoche')
     const result = await why(s, draft.entry)
     expect(codes(result)).toEqual(['draft'])
@@ -521,7 +518,7 @@ describe('entries.whyNotPublic', () => {
   })
 
   it('a scheduled draft, with the time in the time zone of the site', async () => {
-    const s = await studioSetup({ drafts: true, release: true })
+    const s = await studioSetup({ release: true })
     // 2026-10-09 10:00 UTC is 12:00 in Vienna (summer time).
     const scheduled = await s.createEvent('Wildwoche', {}, { at: NOW + DAY })
     const result = await why(s, scheduled.entry)
@@ -560,7 +557,7 @@ describe('entries.whyNotPublic', () => {
   // Wrong behaviour caught: "Für en sind veraltet Übersetzungen.": a language code instead of its name, and broken German.
   it('an outdated translation names the language and says the website keeps it', async () => {
     const s = await studioSetup({ release: true })
-    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries['menu-marillen']!, baseRev: 1, locale: 'de', fields: { name: { de: 'Marillenknödel mit Butterbrösel' } } })
+    await s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry: s.entries['menu-marillen']!, baseRev: 1, locale: 'de', fields: { name: { de: 'Marillenknödel mit Butterbrösel' } } })
     const result = await why(s, s.entries['menu-marillen']!, 'en')
     expect(codes(result)).toEqual(['no_route', 'translation_fallback'])
     const reason = result.reasons[1]!

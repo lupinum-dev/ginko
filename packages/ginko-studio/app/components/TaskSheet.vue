@@ -2,11 +2,12 @@
      opId per attempt. Conflicts keep the person's input and show the new state next to it. On a site
      with more languages, a switch shows the texts to translate; one Speichern stores every language. The person's own
      proposal on the entry (SPEC 17) is where an edit starts while it waits; a rejected one can be reopened. A create task
-     on a collection with drafts ends in a publish step (TEMPLATES 7.3): Veröffentlichen, Als Entwurf speichern, Später veröffentlichen. -->
+     ends in a publish step (TEMPLATES 7.3): Veröffentlichen, Als Entwurf speichern, Später veröffentlichen. An edit of a
+     live entry offers Veröffentlichen (only its fields go online) and Speichern (they wait unpublished, SPEC 15). -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, leavesOf, stableJson, weeklyTask, type Schema } from '@lupinum/ginko/internal'
+import { defaultsFor, isHourPlans, isShown, leavesOf, stableJson, weeklyTask, type Schema } from '@lupinum/ginko/internal'
 import { textIn, TRANSLATION } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
@@ -317,8 +318,11 @@ async function finish(ok: boolean) {
   // A proposal keeps the sheet open with the person's input and the waiting line; the toast already said where it went.
   if (ok && !dirty.value && !waiting.value) emit('close')
 }
-// The publish step (TEMPLATES 7.3): a create task on a collection with drafts asks what happens to the new entry.
-const publishStep = computed(() => isCreate.value && props.brick.kind === 'collection' && props.brick.drafts === true)
+// The publish step (TEMPLATES 7.3): a create task asks what happens to the new entry; an edit of a live entry whether
+// the change goes online now or waits unpublished. Only the Veröffentlichen button publishes.
+const publishStep = computed(() => isCreate.value || (!!props.entry && props.entry.state !== 'draft'))
+// A planned week or hours from a date take effect on their own date: "Später veröffentlichen" would be a second time.
+const laterOffered = computed(() => isCreate.value && props.brick.kind === 'collection' && !props.brick.plans && !isHourPlans(props.brick))
 const later = ref(false)
 const at = ref('')
 /** The instant `at` names (ScheduleField); undefined while it names none or two. */
@@ -332,14 +336,18 @@ function toggleLater() {
   if (later.value && !at.value) at.value = `${msToZoned(Date.now() + 24 * HOUR, props.schema.timeZone).slice(0, 10)}T09:00`
   if (later.value) nextTick(() => document.getElementById('sheet-publish-at')?.focus())
 }
-/** What a save does with the new entry: `publish` goes online now (or waits for a yes), `draft` stays off the website, `later` is planned. */
+/**
+ * What a save does: `publish` goes online now (or waits for a yes), `draft` stays off the website (a new entry is a
+ * draft, a change waits unpublished), `later` plans a new entry.
+ */
 type Step = 'publish' | 'draft' | 'later'
 async function save(step: Step = 'publish') {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || !ready.value || removedHere.value) return
   laterProblem.value = ''
-  let publish: { at?: number } | undefined
-  if (publishStep.value && step !== 'draft') {
+  let publish: { at?: number } | true | undefined
+  if (publishStep.value && !isCreate.value) publish = step === 'draft' ? undefined : true
+  else if (publishStep.value && step !== 'draft') {
     if (step === 'later') {
       const problem = scheduleProblem(at.value, props.schema.timeZone, picked.value, Date.now())
       if (problem) {
@@ -525,8 +533,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             <!-- On the publish step only a press on this button publishes (Enter in a field saves a draft, like Ctrl+S); with the time open it plans instead, so there is one primary per state. -->
             <Button :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : publishStep ? (approval ? t('entry.publish.review') : later ? t('entry.publish.schedule') : t('entry.publish.go')) : t('entry.save.save') }}</Button>
             <template v-if="publishStep">
-              <Button type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ t('entry.publish.asDraft') }}</Button>
-              <Button type="button" variant="outline" :aria-expanded="later" @click="toggleLater">{{ t('entry.publish.laterOpen') }}</Button>
+              <Button type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ isCreate ? t('entry.publish.asDraft') : t('entry.save.save') }}</Button>
+              <Button v-if="laterOffered" type="button" variant="outline" :aria-expanded="later" @click="toggleLater">{{ t('entry.publish.laterOpen') }}</Button>
             </template>
             <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
           </template>

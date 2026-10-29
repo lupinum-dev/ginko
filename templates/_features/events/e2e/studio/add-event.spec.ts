@@ -19,7 +19,7 @@ test('the owner adds an event, and the events page lists it', async ({ page }) =
   await sheet.getByLabel(/^Beginn/).fill('18:00')
   await sheet.getByRole('textbox', { name: 'Beschreibung', exact: true }).click()
   await page.keyboard.type('An evening to plan the next season together.')
-  await sheet.getByRole('button', { name: 'Speichern' }).click()
+  await sheet.getByRole('button', { name: 'Veröffentlichen' }).click()
   await expect(sheet).toHaveCount(0)
 
   // Wrong behaviour caught: an event saved in the Studio that the site does not list (or lists without its page).

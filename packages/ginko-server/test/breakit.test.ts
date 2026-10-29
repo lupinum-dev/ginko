@@ -32,7 +32,7 @@ describe('replay and concurrency', () => {
   it('a baseRev above the real entry revision (a state that never existed) is refused', async () => {
     // Otherwise fieldRevs > baseRev never holds and the save overwrites changes it never saw.
     const { as, entries } = await setup()
-    expect((await errorOf(as.owner.mutation(api.entries.save, { site: restaurantSlug, opId: opId(), entry: entries['menu-saibling']!, baseRev: 99, fields: { price: { amount: 1500 } }, sentence: 'x' }))).code).toBe('CHANGED_SINCE')
+    expect((await errorOf(as.owner.mutation(api.entries.save, { publish: true, site: restaurantSlug, opId: opId(), entry: entries['menu-saibling']!, baseRev: 99, fields: { price: { amount: 1500 } }, sentence: 'x' }))).code).toBe('CHANGED_SINCE')
   })
 })
 
@@ -42,6 +42,6 @@ describe('hostile values', () => {
   ])('a text with a %s is refused', async (_label, text) => {
     const { as } = await setup()
     const data = { text: { de: text }, until: '2026-10-30' }
-    expect((await errorOf(as.owner.mutation(api.entries.create, { site: restaurantSlug, opId: opId(), brick: 'notices', data }))).code).toBe('INVALID')
+    expect((await errorOf(as.owner.mutation(api.entries.create, { publish: {}, site: restaurantSlug, opId: opId(), brick: 'notices', data }))).code).toBe('INVALID')
   })
 })
