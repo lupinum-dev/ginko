@@ -8,7 +8,7 @@ import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, authorizeWriter, byOf, checkRev, createdBy, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
-import { fieldLabelAt, fileIdsOf, mergeField, nextPrints, refIdsIn, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
+import { fieldLabelAt, fileIdsOf, mergeField, newOrder, nextPrints, refIdsIn, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
 import { DEFAULT_LOCALE, isLocale, t, type MessageKey } from './lib/i18n'
@@ -893,7 +893,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     for (const expired of removing) {
       await softRemove(ctx, c, expired, args.opId, SYSTEM, recorded(msg('history.expiredRemoved', { title: labelOf(schema, args.brick, expired.data) }), schema))
     }
-    const order = Math.max(0, ...rows.map((r) => r.order)) + 1
+    const order = newOrder(args.brick, brick, rows.map((r) => r.order))
     const entry = await ctx.db.insert('entries', {
       site: actor.site._id, brick: args.brick, kind: 'item', order, data, rev: 1,
       fieldRevs: Object.fromEntries(Object.keys(brick.fields).map((name) => [name, 1])), lifeRev: 1, prints, bytes: size, treeBytes: trees.bytes,
@@ -1053,7 +1053,7 @@ export const restore = mutation({
       const trees = await treesOf(brick.fields, entry.data as Data)
       if (c.treeBytes + trees.bytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
 
-      const order = Math.max(0, ...rows.map((r) => r.order)) + 1
+      const order = newOrder(entry.brick, brick, rows.map((r) => r.order))
       const now = Date.now()
       await ctx.db.patch(entry._id, {
         deletedAt: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, order, treeBytes: trees.bytes, ...(entry.state === 'draft' ? {} : { contentAt: now }),
@@ -1323,7 +1323,7 @@ async function movedOrder(ctx: QueryCtx, entry: Doc<'entries'>, direction: 'up' 
   const rows = ctx.db.query('entries')
     .withIndex('by_site_brick_order', (q) => (direction === 'up' ? q.eq('site', entry.site).eq('brick', entry.brick).lt('order', entry.order) : q.eq('site', entry.site).eq('brick', entry.brick).gt('order', entry.order)))
     .order(direction === 'up' ? 'desc' : 'asc')
-  // Removed entries keep their order values (a restore puts them last); they are passed over.
+  // Removed entries keep their order values (a restore puts them first again); they are passed over.
   const live: number[] = []
   for await (const row of rows) {
     if (row.deletedAt !== undefined) continue

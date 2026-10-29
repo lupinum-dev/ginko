@@ -63,11 +63,15 @@ describe('entries.create', () => {
     expect((await errorOf(call)).code).toBe('FORBIDDEN')
   })
 
-  it('the cook creates a dish with the granted add task; it lands at the end', async () => {
+  // Wrong behaviour caught: a new entry of a manually ordered collection lands at the bottom, and the editor moves it
+  // up one click at a time.
+  it('the cook creates a dish with the granted add task; it comes first and the others keep their order', async () => {
     const { as, t } = await setup()
+    const before = (await as.owner.query(api.entries.list, { site: 'restaurant', brick: 'menu' })).rows.map((r) => r._id)
     const created = await as.cook.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish('Neu') })
     const row = await t.run((ctx) => ctx.db.get(created.entry as Id<'entries'>))
-    expect(row).toMatchObject({ brick: 'menu', rev: 1, lifeRev: 1, order: 9, fieldRevs: { name: 1, price: 1 } })
+    expect(row).toMatchObject({ brick: 'menu', rev: 1, lifeRev: 1, order: 0, fieldRevs: { name: 1, price: 1 } })
+    expect((await as.owner.query(api.entries.list, { site: 'restaurant', brick: 'menu' })).rows.map((r) => r._id)).toEqual([created.entry, ...before])
   })
 })
 
@@ -144,6 +148,16 @@ describe('entries.remove and restore', () => {
     await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })
     expect(await errorOf(as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 }))).toMatchObject({ code: 'CHANGED_SINCE' })
     await expect(as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry, lifeRev: 2 })).resolves.toMatchObject({ entry })
+  })
+
+  // Wrong behaviour caught: a restored entry lands at the bottom of a manually ordered collection, not where a new one goes.
+  it('a restored menu entry comes first and the others keep their order', async () => {
+    const { as, entries } = await setup()
+    const entry = entries['menu-schnitzel']!
+    await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })
+    const others = (await as.owner.query(api.entries.list, { site: 'restaurant', brick: 'menu' })).rows.map((r) => r._id)
+    await as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry, lifeRev: 2 })
+    expect((await as.owner.query(api.entries.list, { site: 'restaurant', brick: 'menu' })).rows.map((r) => r._id)).toEqual([entry, ...others])
   })
 
   it('restore on a full collection is rejected', async () => {

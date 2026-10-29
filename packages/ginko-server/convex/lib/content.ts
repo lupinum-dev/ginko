@@ -1,7 +1,7 @@
 // Pure content rules of the write path (SPEC part 3 "Übersetzungs-Abdrücke", 4.2 save).
 // No Convex here, so every rule is testable with plain data.
-import type { Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { effectiveAlt, factNamesIn, fileImagesWithoutAlt, fileRefsIn, isTranslatable, leavesOf, markdownTrees, printOf, stableJson, type Prints, type Schema } from '@lupinum/ginko/internal'
+import type { CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
+import { effectiveAlt, factNamesIn, fileImagesWithoutAlt, fileRefsIn, isNavTree, isTranslatable, leavesOf, markdownTrees, printOf, stableJson, type Prints, type Schema } from '@lupinum/ginko/internal'
 
 export type { Prints }
 
@@ -292,6 +292,15 @@ export async function treesOf(fields: Fields, data: Data): Promise<{ json: strin
   const trees = await markdownTrees(fields, data)
   const json = Object.keys(trees).length ? JSON.stringify(trees) : ''
   return { json, bytes: new TextEncoder().encode(json).byteLength }
+}
+
+/**
+ * The order value of a new or restored entry (SPEC 4.2): first, so the editor finds it at the top of the list and the
+ * site shows it first in a manually ordered collection. A navigation tree stores it last instead: it joins the last
+ * section until it is placed (NavPlace). `orders` are those of every row of the brick, removed ones included.
+ */
+export function newOrder(key: string, brick: CollectionBrick, orders: number[]): number {
+  return isNavTree(key, brick) ? Math.max(0, ...orders) + 1 : Math.min(1, ...orders) - 1
 }
 
 /** The texts of a Markdown value: one string, or one per language. */

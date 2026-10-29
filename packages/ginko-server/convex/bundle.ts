@@ -5,6 +5,7 @@ import { servedBundle, todayIn, type Bundle, type FileInfo, type MarkdownTrees, 
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, internalQuery, type QueryCtx } from './_generated/server'
+import { newOrder } from './lib/content'
 import { readTrees } from './lib/trees'
 
 /** SPEC 6: 600 requests per minute and site. */
@@ -116,9 +117,10 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
       const updatedAt = new Date(row.contentAt ?? row._creationTime).toISOString()
       return { id: row._id, order: row.order, data: override ?? row.data, prints: row.prints, ...(trees ? { trees } : {}), updatedAt }
     }))
-    // An entry that does not exist yet (a create that is only proposed) joins its collection at the end.
+    // An entry that does not exist yet (a create that is only proposed) joins its collection where entries.create puts it.
+    const brick = schema.bricks[key]!
     for (const item of added) {
-      if (item.brick === key) list.push({ id: item.id, order: Math.max(0, ...list.map((e) => e.order ?? 0)) + 1, data: item.data, prints: {}, updatedAt: new Date().toISOString() })
+      if (item.brick === key && brick.kind === 'collection') list.push({ id: item.id, order: newOrder(key, brick, list.map((e) => e.order ?? 0)), data: item.data, prints: {}, updatedAt: new Date().toISOString() })
     }
     entries[key] = list
   }
