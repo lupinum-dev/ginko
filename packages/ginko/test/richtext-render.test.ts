@@ -22,6 +22,14 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(html).toContain('href="https://example.com"')
   })
 
+  // Bug caught: a link to a draft page rendered as `<a href="$docs.kosten">`, a relative link to a 404.
+  test('a route link that names no published page shows as its text', async () => {
+    const { value } = await parseMarkdown('Siehe [Kosten]($docs.kosten) und [Karte](/speisekarte).')
+    const html = await render(value)
+    expect(html).toContain('Siehe Kosten und <a href="/speisekarte">Karte</a>.')
+    expect(html).not.toContain('$docs')
+  })
+
   test('idPrefix keeps the ids of several bodies on one page apart, links included', async () => {
     const { value } = await parseMarkdown('## Fixed\n\nSee [below](#fixed).')
     const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(GinkoMarkdown, { value, idPrefix: 'v1-2-0' }) }) }))
