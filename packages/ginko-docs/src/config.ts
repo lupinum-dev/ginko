@@ -41,9 +41,10 @@ const NAVIGATION = l('Navigation', 'Navigation', 'Navegación', 'Navigation')
 /**
  * `base`: where the docs live, default `/docs` (e.g. `/handbook` inside a larger site). `source`: see `DocsSource`.
  * `navExtras: false` leaves out Tab, Badge and Icon, which most sites do not use: editors then see only the text and
- * where the page sits (section, parent page, short title).
+ * where the page sits (section, parent page, short title). `brick`: the key of this brick in `bricks`, default `docs`;
+ * a site that names it otherwise (`wissen`) sets the same key as `ginkoDocs: { brick }` in nuxt.config.ts.
  */
-export function docsCollection(opts: { locales: Locales; label?: string; max?: number; base?: `/${string}`; source?: DocsSource; navExtras?: boolean }) {
+export function docsCollection(opts: { locales: Locales; label?: string; max?: number; base?: `/${string}`; source?: DocsSource; navExtras?: boolean; brick?: string }) {
   const { locales } = opts
   const base = opts.base ?? '/docs'
   return collection({
@@ -67,7 +68,7 @@ export function docsCollection(opts: { locales: Locales; label?: string; max?: n
         hint: l('Beginnt eine Gruppe in der Navigation; die folgenden Seiten gehören dazu', 'Starts a group in the navigation; the pages after it belong to it', 'Empieza un grupo en la navegación; las páginas siguientes pertenecen a él', 'Commence un groupe dans la navigation ; les pages suivantes en font partie'),
       }),
       /** Nests the entry under another doc in the side navigation and the breadcrumbs. */
-      parent: f.ref(l('Übergeordnete Seite', 'Parent page', 'Página superior', 'Page parente'), { to: 'docs', optional: true, group: NAVIGATION }),
+      parent: f.ref(l('Übergeordnete Seite', 'Parent page', 'Página superior', 'Page parente'), { to: opts.brick ?? 'docs', optional: true, group: NAVIGATION }),
       /** Section tab above the side navigation; a page without one follows the tab of the page before it. Children follow their parent. */
       tab: f.text(l('Reiter', 'Tab', 'Pestaña', 'Onglet'), { optional: true, max: 30, group: NAVIGATION }),
       /** A short label next to the entry in the side navigation, e.g. "New". */

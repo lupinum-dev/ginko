@@ -81,6 +81,19 @@ function dropUnsafe(node: Tree, components: Record<string, unknown>, registry: A
 }
 
 /**
+ * A route link (`$docs.kosten`) that names no published page stays as written in the tree (the link check reports it,
+ * resolveRouteLinks marks it `data-broken`), for example a link to a draft. As an address the browser would open
+ * `$docs.kosten` relative to the page, a 404, so the link shows as its text until the target is published.
+ */
+function unwrapRouteLinks(node: Tree): Tree[] {
+  if (!Array.isArray(node)) return [node]
+  const [tag, props, ...children] = node as [string | null, Record<string, unknown>, ...Tree[]]
+  const rest = children.flatMap(unwrapRouteLinks)
+  if (tag === 'a' && typeof props?.href === 'string' && props.href.startsWith('$')) return rest
+  return [[tag, props, ...rest] as Tree]
+}
+
+/**
  * Every `id` with `prefix-` in front, and every `#` link to one: several Markdown bodies on one page (the releases of a
  * changelog) would otherwise repeat heading ids such as `fixed`, and a link would jump to the first one.
  */
@@ -109,7 +122,7 @@ export const GinkoMarkdown = defineComponent({
     return () => {
       if (!props.value) return null
       const components = { ...sourceOnly, ...props.components }
-      const safe = props.value.nodes.flatMap((node) => dropUnsafe(node, components, props.registry)).map(labelCheckboxes)
+      const safe = props.value.nodes.flatMap((node) => dropUnsafe(node, components, props.registry)).flatMap(unwrapRouteLinks).map(labelCheckboxes)
       const nodes = props.idPrefix ? safe.map((node) => prefixIds(node, props.idPrefix)) : safe
       return h(MarkdownDocument, { value: { nodes: nodes as never }, components })
     }

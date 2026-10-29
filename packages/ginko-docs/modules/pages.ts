@@ -4,24 +4,36 @@ import { addServerHandler, createResolver, defineNuxtModule, useLogger } from '@
 import type { NuxtModule } from 'nuxt/schema'
 import { layerRoutes, type SiteOptions } from '../shared/layerRoutes.ts'
 
+export interface DocsModuleOptions {
+  /** The key of the docs brick in ginko.config.ts (`bricks: { wissen: docsCollection(...) }`). Default `docs`. */
+  brick: string
+}
+
 // Typed here so the build can write its declaration without naming @nuxt/schema's internal path.
-const docsPages: NuxtModule = defineNuxtModule({
-  meta: { name: '@lupinum/ginko-docs/pages' },
-  setup(_, nuxt) {
+const docsPages: NuxtModule<DocsModuleOptions> = defineNuxtModule<DocsModuleOptions>({
+  meta: { name: '@lupinum/ginko-docs/pages', configKey: 'ginkoDocs' },
+  defaults: { brick: 'docs' },
+  setup(options, nuxt) {
     const { resolve } = createResolver(import.meta.url)
     const logger = useLogger('ginko-docs')
     // The site's ginko.config.ts, passed to the Ginko module as `ginko` in nuxt.config.ts.
     const site = (nuxt.options as { ginko?: SiteOptions }).ginko
     // The addresses follow from the site config alone, so they are set here, before Nuxt writes the runtime config.
     // The app links to them, whoever serves the page (the layer or the site's own page).
-    const { addresses } = layerRoutes(site, [])
-    nuxt.options.runtimeConfig.public.ginkoDocs = { blog: addresses.blog ?? '', changelog: addresses.changelog ?? '' }
+    const { brick } = options
+    const { addresses } = layerRoutes(site, [], brick)
+    nuxt.options.runtimeConfig.public.ginkoDocs = { brick, blog: addresses.blog ?? '', changelog: addresses.changelog ?? '' }
+    const docs = site?.bricks?.[brick]
+    if (site?.bricks && !docs) logger.warn(`ginko.config.ts has no brick \`${brick}\`, so the docs are empty. Fix: name the docs brick \`${brick}\`, or set \`ginkoDocs: { brick: '<key>' }\` in nuxt.config.ts.`)
+    // docsCollection's "Parent page" field points at its own brick, so both must know the key.
+    const parent = docs?.fields?.parent?.to
+    if (parent && parent !== brick) logger.warn(`The docs brick \`${brick}\` has a "Parent page" field that points at \`${parent}\`. Fix: \`docsCollection({ brick: '${brick}', ... })\`.`)
     let announced = false
     // `pages:resolved`, not `pages:extend`: it runs after every `pages:extend` hook (the templates' page-paths module has
     // given each page its address by then), so "the site has a page there" is decided on the final list. Dev runs it on
     // every page change; the pages are added each time, the feed handlers and warnings once.
     nuxt.hook('pages:resolved', (pages) => {
-      const r = layerRoutes(site, pages)
+      const r = layerRoutes(site, pages, brick)
       for (const page of r.pages) pages.push({ ...page, file: resolve(`../app/docs-pages/${page.file}`) })
       if (announced) return
       announced = true

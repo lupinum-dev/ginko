@@ -36,7 +36,7 @@ describe('page helpers', () => {
 
   // Wrong behaviour caught: every visitor of a public site with Studio pages sees "Edit this page" pointing at the Studio.
   it('a platform page links to the Studio only when the site opts in', () => {
-    const options = { platform: 'https://studio.example', site: 'rolfing' }
+    const options = { platform: 'https://studio.example', site: 'rolfing', brick: 'docs' }
     expect(docsPageEditUrl({ id: 'k17' }, options)).toBeUndefined()
     expect(docsPageEditUrl({ id: 'k17' }, { ...options, studioEditLink: true })).toBe('https://studio.example/s/rolfing/all/docs/k17')
     expect(docsPageEditUrl({ id: 'k17', source: 'x.md' }, { ...options, repository: { url: 'https://github.com/a/b' } })).toBe('https://github.com/a/b/edit/main/x.md')

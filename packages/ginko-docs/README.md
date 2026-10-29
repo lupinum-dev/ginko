@@ -49,8 +49,8 @@ pages; a site can add its own components next to it (see "Inside an existing sit
 Limits of the layer:
 
 - It finds its content by brick key, so keep these names: `docs` (docsCollection), `home` (docsHome), `posts` and
-  `authors` (blogCollections), `changelog` (changelogCollection). Only `docs` is required. One site has one docs
-  collection.
+  `authors` (blogCollections), `changelog` (changelogCollection). Only the docs brick is required. One site has one docs
+  collection. The docs brick may have another key (see below); the others may not.
 - The docs move with `base`; the blog is always at `/blog` and the changelog at `/changelog` (with the language
   prefix in other languages, for example `/de/blog`).
 
@@ -61,11 +61,22 @@ import ginko from './ginko.config.ts'
 export default defineNuxtConfig({ extends: ['@lupinum/ginko-docs'], modules: ['@lupinum/ginko/nuxt'], ginko })
 ```
 
+A site that names its docs brick otherwise, such as `wissen` for a German site, sets the key in two places: on the
+brick (its "Parent page" field points at its own brick) and as the layer's option. Route links then use the same key:
+`$wissen.kosten`.
+
+```ts
+// ginko.config.ts
+bricks: { wissen: docsCollection({ locales, base: '/wissen', brick: 'wissen' }) }
+// nuxt.config.ts
+export default defineNuxtConfig({ extends: ['@lupinum/ginko-docs'], modules: ['@lupinum/ginko/nuxt'], ginko, ginkoDocs: { brick: 'wissen' } })
+```
+
 ## Configure
 
 Options go in the site's `app.config.ts`. All are optional. Internal paths in `nav`, `footer.links` and `banner.href`
 follow the reader's language (`/guide` becomes `/de/guide`); absolute URLs stay as written. A route link names the page
-instead of its address, as in Markdown: `$docs.<page>` (a docs page by its file name, such as `$docs.webhooks`, or its
+instead of its address, as in Markdown: `$docs.<page>` (a docs page by its file name, such as `$docs.webhooks`, with the docs brick's key, or its
 slug) and `$page.<key>` (a page of `pages` in `ginko.config.ts`, such as `$page.changelog`), with an optional `#anchor`.
 It leads to the page in the reader's language, also when a translation has another slug.
 
@@ -119,7 +130,7 @@ Each docs page's frontmatter can set, besides `title` and `description`:
 | `navTitle` | A short title for the side navigation, the breadcrumbs and the previous/next links, when the title is too long there. |
 | `section` | Starts a group in the side navigation with this heading; the pages after it belong to it until the next `section`. |
 | `tab` | Starts a tab above the side navigation (for example "Guide" and "Reference"); pages follow the tab before them. |
-| `parent` | Nests the page under another one (`parent: docs/<name>`: the entry id, the file name without number, locale and extension). |
+| `parent` | Nests the page under another one (`parent: docs/<name>`: the entry id with the docs brick's key, the file name without number, locale and extension). |
 | `icon` | An Iconify name, e.g. `lucide:rocket`, before the title in the navigation. Main locale only. |
 | `badge` | A short label after the title, e.g. "New". |
 

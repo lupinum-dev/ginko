@@ -20,9 +20,9 @@ export function docsStudioUrl(platform: string | undefined, site: string, brick:
  * "Edit this page" of a docs page. A page from a file links to its repository file; a page stored on the platform
  * links to the Studio only when the site opts in (`studioEditLink`), since visitors of a public site have no use for it.
  */
-export function docsPageEditUrl(doc: { id: string, source?: string }, options: { repository?: Parameters<typeof docsEditUrl>[0], studioEditLink?: boolean, platform?: string, site: string }): string | undefined {
+export function docsPageEditUrl(doc: { id: string, source?: string }, options: { repository?: Parameters<typeof docsEditUrl>[0], studioEditLink?: boolean, platform?: string, site: string, brick: string }): string | undefined {
   if (doc.source) return docsEditUrl(options.repository, doc.source)
-  return options.studioEditLink ? docsStudioUrl(options.platform, options.site, 'docs', doc.id) : undefined
+  return options.studioEditLink ? docsStudioUrl(options.platform, options.site, options.brick, doc.id) : undefined
 }
 
 /**
@@ -66,14 +66,15 @@ export function docsMainPath(route: Partial<Record<string, string>> | undefined,
 
 /**
  * A route link outside Markdown (the start page's links and cards, `nav`, `footer.links`, `banner.href`):
- * `$docs.<page>` names a docs page by its file name or slug, `$page.<key>` a page of `pages` in ginko.config.ts; an
+ * `$<brick>.<page>` names a docs page by its file name or slug (`$docs.webhooks`, or `$wissen.kosten` when the docs brick
+ * is `wissen`), `$page.<key>` a page of `pages` in ginko.config.ts; an
  * `#anchor` is kept. The same notation as in Markdown, so the link follows the reader's language and survives a
  * changed slug. Undefined when `raw` is no route link or names nothing.
  */
-export function docsRouteLink(raw: string, find: { doc: (ref: string) => string | undefined, page: (key: string) => string | undefined }): string | undefined {
-  const match = /^\$(docs|page)\.([^#]+)(#.*)?$/.exec(raw)
-  if (!match) return undefined
-  const path = match[1] === 'docs' ? find.doc(match[2]!) : find.page(match[2]!)
+export function docsRouteLink(raw: string, find: { doc: (ref: string) => string | undefined, page: (key: string) => string | undefined }, brick = 'docs'): string | undefined {
+  const match = /^\$([^.#]+)\.([^#]+)(#.*)?$/.exec(raw)
+  if (!match || (match[1] !== brick && match[1] !== 'page')) return undefined
+  const path = match[1] === 'page' ? find.page(match[2]!) : find.doc(match[2]!)
   return path === undefined ? undefined : path + (match[3] ?? '')
 }
 

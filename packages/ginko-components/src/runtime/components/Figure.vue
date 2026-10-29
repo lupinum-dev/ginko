@@ -49,7 +49,7 @@ function onBackdrop(event: MouseEvent) { if (event.target === dialog.value) clos
     <figcaption v-if="caption" class="ginko-figure-caption">{{ caption }}</figcaption>
     <dialog v-if="zoomOn()" ref="dialog" class="ginko-figure-dialog" :aria-label="alt" @close="onClose" @click="onBackdrop">
       <!-- The whole picture at full size: no crop, no smaller copy. -->
-      <img :src="src" :alt="alt" loading="lazy" decoding="async">
+      <img :src="src" :alt="alt" :width="width" :height="height" loading="lazy" decoding="async">
       <p v-if="caption" class="ginko-figure-dialog-caption">{{ caption }}</p>
       <button type="button" class="ginko-figure-close" :aria-label="t('media.close')" @click="close">&times;</button>
     </dialog>

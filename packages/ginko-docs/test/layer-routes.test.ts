@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { docsRouteLink } from '../app/lib/docsPage'
 import { layerRoutes, type PageLike } from '../shared/layerRoutes'
 import docsSite from '../../../sites/docs/ginko.config.ts'
 
@@ -25,6 +26,15 @@ describe('layerRoutes', () => {
       pages: [{ name: 'docs-slug', path: '/help/:slug()', file: 'doc.vue' }, { name: 'docs', path: '/help', file: 'docs.vue' }],
       noAddress: [],
     })
+  })
+
+  // Wrong behaviour caught: a site that names its wiki brick `wissen` (German brick keys) gets no wiki pages, and its
+  // `$wissen.<page>` links lead to the start page.
+  it('a docs brick under another key (ginkoDocs.brick) gets its pages and route links', () => {
+    const site = { locales: ['de'], bricks: { wissen: { route: { de: '/wissen/[slug]' } } } }
+    expect(layerRoutes(site, [], 'wissen').pages.map((p) => p.path)).toEqual(['/wissen/:slug()', '/wissen', '/'])
+    const find = { doc: (ref: string) => (ref === 'kosten' ? '/wissen/kosten' : undefined), page: () => undefined }
+    expect([docsRouteLink('$wissen.kosten', find, 'wissen'), docsRouteLink('$docs.kosten', find, 'wissen')]).toEqual(['/wissen/kosten', undefined])
   })
 
   it('posts at another route get the layer blog there, not at /blog', () => {
