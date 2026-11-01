@@ -204,7 +204,7 @@ test.describe('Wirtin', () => {
     const sheet = page.locator('dialog[open]')
     await sheet.getByRole('button', { name: 'Ausnahme hinzufügen' }).click()
     const row = sheet.locator('[data-row]').last()
-    await row.getByLabel('Grund').fill('Betriebsurlaub – ab 18. November sind wir wieder für euch da.')
+    await row.getByLabel('Grund').fill('Betriebsurlaub – die Küche bleibt bis zum 17. November geschlossen, ab dem 18. November sind wir mit der neuen Herbstkarte, dem Mittagstisch und den Abenden auf der Terrasse wieder für euch da.')
     const remove = row.getByRole('button', { name: /entfernen$/ })
     await expect(remove).toBeVisible()
     const [sheetBox, removeBox] = await Promise.all([sheet.boundingBox(), remove.boundingBox()])
