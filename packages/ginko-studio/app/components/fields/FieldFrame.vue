@@ -1,7 +1,8 @@
 <!-- The one frame around every field: label ("(optional)" in muted text), hint under the label, the
      control, the errors (destructive colour, role="alert"). The control gets `describedBy` and
      `invalid` from the slot, so the wiring of ids lives here and nowhere else. A `source` slot puts
-     the main-language text next to the control (above it on phones). `inline` is for switches:
+     the main-language text next to the control when the field is at least 36rem wide (above it when narrower: phones,
+     a narrow sheet or a split editor). `inline` is for switches:
      control first, label beside it. `group` is for fields without one input (the label is then
      referenced with aria-labelledby, not `for`). Every field has its label above the control and its hint under it
      (design A, 2026-10-20: one label style in every form). -->
@@ -54,9 +55,11 @@ const describedBy = computed(() => [props.hint ? `${props.id}-hint` : '', props.
       <component :is="group ? 'p' : Label" :id="`${id}-label`" :for="group ? undefined : id" :class="['text-sm leading-snug font-medium', labelHidden && 'sr-only']">
         <span>{{ label }}<span v-if="optional" class="font-normal text-muted-foreground">{{ ' ' + t('fields.optional') }}</span></span>
       </component>
-      <div v-if="$slots.source" class="grid gap-3 lg:grid-cols-2 lg:items-start">
-        <slot name="source" />
-        <div :class="['grid gap-2', short && 'max-w-[13.5rem]']"><slot :described-by="describedBy" :invalid="invalid" /></div>
+      <div v-if="$slots.source" class="@container">
+        <div class="grid gap-3 @min-[36rem]:grid-cols-2 @min-[36rem]:items-start">
+          <slot name="source" />
+          <div :class="['grid gap-2', short && 'max-w-[13.5rem]']"><slot :described-by="describedBy" :invalid="invalid" /></div>
+        </div>
       </div>
       <div v-else-if="short" class="grid max-w-[13.5rem]"><slot :described-by="describedBy" :invalid="invalid" /></div>
       <slot v-else :described-by="describedBy" :invalid="invalid" />
