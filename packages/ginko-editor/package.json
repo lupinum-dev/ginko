@@ -45,15 +45,15 @@
   },
   "dependencies": {
     "@lupinum/ginko": "workspace:^",
-    "@tiptap/core": "3.32.0",
-    "@tiptap/extension-blockquote": "3.32.0",
-    "@tiptap/extension-code": "3.32.0",
-    "@tiptap/extension-document": "3.32.0",
-    "@tiptap/extension-image": "3.32.0",
-    "@tiptap/extension-list": "3.32.0",
-    "@tiptap/extension-table": "3.32.0",
-    "@tiptap/pm": "3.32.0",
-    "@tiptap/starter-kit": "3.32.0"
+    "@tiptap/core": "3.32.2",
+    "@tiptap/extension-blockquote": "3.32.2",
+    "@tiptap/extension-code": "3.32.2",
+    "@tiptap/extension-document": "3.32.2",
+    "@tiptap/extension-image": "3.32.2",
+    "@tiptap/extension-list": "3.32.2",
+    "@tiptap/extension-table": "3.32.2",
+    "@tiptap/pm": "3.32.2",
+    "@tiptap/starter-kit": "3.32.2"
   },
   "devDependencies": {
     "@lupinum/ginko-components": "workspace:*",
@@ -61,6 +61,6 @@
     "happy-dom": "21.0.4",
     "unbuild": "3.6.1",
     "vue": "3.5.44",
-    "vue-tsc": "3.3.13"
+    "vue-tsc": "3.3.14"
   }
 }
