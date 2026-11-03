@@ -892,7 +892,21 @@
       "altFromLibrary": "Laissez vide pour utiliser la description des fichiers.",
       "noneToTranslate": "Pas encore de photo, donc rien à traduire.",
       "chooseInMain": "Pour changer l’image elle-même, passez en {name}.",
-      "drop": "Ou déposez une photo ici."
+      "drop": "Ou déposez une photo ici.",
+      "frames": {
+        "title": "Comment le site affiche la photo",
+        "hint": "Cliquez sur l’élément le plus important de la photo : chaque cadrage garde ce point visible, partout où la photo apparaît.",
+        "hintStaff": "Les propriétaires et les admins définissent le point focal que chaque cadrage garde visible.",
+        "point": "Point focal à {x} % de la gauche et {y} % du haut. Déplacez-le avec les flèches.",
+        "failed": "Le point focal n’a pas été enregistré. Veuillez réessayer.",
+        "square": "Carré",
+        "portrait": "Portrait",
+        "landscape": "Paysage",
+        "wide": "Panoramique",
+        "turnedLying": "La photo est en paysage : une grande partie est coupée sur les côtés.",
+        "turnedUpright": "La photo est en portrait : une grande partie est coupée en haut et en bas.",
+        "small": "Seulement {width} × {height} pixels dans le cadrage : elle peut paraître floue."
+      }
     },
     "money": {
       "negative": "Un prix ne peut pas être négatif.",

@@ -892,7 +892,21 @@
       "altFromLibrary": "Leave empty to use the description from Files.",
       "noneToTranslate": "No photo yet, so nothing to translate.",
       "chooseInMain": "You change the picture itself in {name}.",
-      "drop": "Or drop a photo here."
+      "drop": "Or drop a photo here.",
+      "frames": {
+        "title": "How the website shows the photo",
+        "hint": "Click the most important spot in the photo: every frame keeps this point in view, wherever the photo appears.",
+        "hintStaff": "Owners and admins set the focus point that every frame keeps in view.",
+        "point": "Focus point at {x} % from the left and {y} % from the top. Move it with the arrow keys.",
+        "failed": "The focus point was not saved. Please try again.",
+        "square": "Square",
+        "portrait": "Portrait",
+        "landscape": "Landscape",
+        "wide": "Panorama",
+        "turnedLying": "The photo is landscape: much is cut off at the sides.",
+        "turnedUpright": "The photo is portrait: much is cut off at the top and bottom.",
+        "small": "Only {width} × {height} pixels in the frame: it may look blurred."
+      }
     },
     "money": {
       "negative": "A price cannot be negative.",

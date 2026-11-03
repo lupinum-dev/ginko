@@ -892,7 +892,21 @@
       "altFromLibrary": "Leer lassen, dann gilt die Beschreibung aus den Dateien.",
       "noneToTranslate": "Noch kein Foto, also nichts zu übersetzen.",
       "chooseInMain": "Das Bild selbst änderst du auf {name}.",
-      "drop": "Oder ziehe ein Foto hierher."
+      "drop": "Oder ziehe ein Foto hierher.",
+      "frames": {
+        "title": "So zeigt die Website das Foto",
+        "hint": "Klicke auf das Wichtigste im Foto: Jeder Ausschnitt behält diesen Punkt im Bild, überall, wo das Foto vorkommt.",
+        "hintStaff": "Den Fokuspunkt, den jeder Ausschnitt im Bild behält, setzen Inhaber und Admins.",
+        "point": "Fokuspunkt bei {x} % von links und {y} % von oben. Mit den Pfeiltasten verschieben.",
+        "failed": "Der Fokuspunkt wurde nicht gespeichert. Bitte versuche es noch einmal.",
+        "square": "Quadrat",
+        "portrait": "Hochformat",
+        "landscape": "Querformat",
+        "wide": "Panorama",
+        "turnedLying": "Das Foto liegt quer: Links und rechts fällt viel weg.",
+        "turnedUpright": "Das Foto ist hochkant: Oben und unten fällt viel weg.",
+        "small": "Nur {width} × {height} Pixel im Bild: kann unscharf wirken."
+      }
     },
     "money": {
       "negative": "Ein Preis kann nicht negativ sein.",

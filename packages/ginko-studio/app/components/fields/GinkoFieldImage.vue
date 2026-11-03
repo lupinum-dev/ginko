@@ -15,13 +15,14 @@ import { computed, defineAsyncComponent, inject, ref, shallowRef, watch } from '
 import { ImageOff, ImagePlus, Library, RefreshCw, Trash2 } from '@lucide/vue'
 import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
-import { acceptOf } from '@lupinum/ginko/internal'
+import { acceptOf, imageFrames } from '@lupinum/ginko/internal'
 import { useGinkoAssets, useUpload } from '@lupinum/ginko-editor'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
 import { Label } from '@studio/components/ui/label'
 import { refuseImage } from '../editor/useImageUploads'
 import type { Chosen } from '../files/LibraryPickerBody.vue'
+import ImageFrames from './ImageFrames.vue'
 
 const props = defineProps<{
   id: string; field: Field; modelValue: Json | undefined; invalid: boolean; describedBy?: string; locale: string
@@ -72,6 +73,11 @@ const preview = assets.details(computed(() => (fileId.value ? [fileId.value] : [
 const libraryAlt = computed(() => (fileId.value ? preview.value?.[fileId.value]?.alt?.[props.locale]?.trim() : undefined) || '')
 const ready = computed(() => (fileId.value ? preview.value?.[fileId.value] : undefined))
 const processing = computed(() => state.value?.status === 'processing')
+/** The frames the site crops this photo to; the field then shows the whole photo with its focus point and each frame. */
+const frames = computed(() => (props.field.type === 'image' ? imageFrames(props.field.aspect) : []))
+/** The photo in the card or tile: cropped around its focus point; a gallery tile in the shape of the list's frame. */
+const previewStyle = computed(() => (ready.value?.focus ? { objectPosition: `${ready.value.focus.x * 100}% ${ready.value.focus.y * 100}%` } : undefined))
+const tileStyle = computed(() => (props.tile && frames.value[0] ? { aspectRatio: frames.value[0].aspect.replace(':', ' / ') } : undefined))
 /** The general hint is printed once by a list of photos; the note about the Files description stays with its photo. */
 const ownHint = computed(() => !!libraryAlt.value || (!listHint && !props.tile))
 const altDescribedBy = computed(() => [ownHint.value ? altHintId.value : listHint, props.describedBy].filter(Boolean).join(' '))
@@ -141,8 +147,16 @@ defineExpose({ pick, openLibrary: () => { libraryOpen.value = true } })
 
     <!-- The photo: a card at most 28rem wide (a tile fills its cell), cut to fill; the actions of a tile sit on it. -->
     <!-- While the file loads, its place is kept (no jump when it arrives); a file that is gone says so. -->
-    <figure v-if="fileId && !sending" class="group/photo relative m-0 overflow-hidden rounded-lg border bg-muted" :class="[tile ? 'aspect-[4/3]' : 'aspect-video w-full max-w-md', (ready === undefined || (ready === null && processing)) && 'animate-pulse']">
-      <img v-if="ready" class="block size-full object-cover" :src="ready.url" :alt="altText.trim() || libraryAlt">
+    <!-- With frames (not in a gallery tile): the whole photo to set the focus point on, and the frames under it. -->
+    <div v-if="fileId && !sending && !tile && frames.length && ready" class="relative w-full max-w-md">
+      <ImageFrames :id="id" :file-id="fileId" :file="ready" :frames="frames" />
+      <Button
+        v-if="!altOnly" type="button" variant="secondary" size="icon-sm" class="absolute top-1.5 right-1.5 bg-background/90 shadow-sm backdrop-blur-sm hover:text-destructive"
+        :disabled="sending" :title="t('fields.remove')" @click="remove"
+      ><Trash2 aria-hidden="true" /><span class="sr-only">{{ t('fields.remove') }}</span></Button>
+    </div>
+    <figure v-else-if="fileId && !sending" class="group/photo relative m-0 overflow-hidden rounded-lg border bg-muted" :class="[tile ? (tileStyle ? '' : 'aspect-[4/3]') : 'aspect-video w-full max-w-md', (ready === undefined || (ready === null && processing)) && 'animate-pulse']" :style="tileStyle">
+      <img v-if="ready" class="block size-full object-cover" :src="ready.url" :alt="altText.trim() || libraryAlt" :style="previewStyle">
       <p v-else-if="ready === null && !processing && state?.status !== 'failed'" class="flex size-full items-center justify-center gap-2 p-3 text-[13px] text-muted-foreground"><ImageOff class="size-4 shrink-0" aria-hidden="true" />{{ t('editor.image.missing') }}</p>
       <Button
         v-if="!tile && !altOnly" type="button" variant="secondary" size="icon-sm" class="absolute top-1.5 right-1.5 bg-background/90 shadow-sm backdrop-blur-sm hover:text-destructive"

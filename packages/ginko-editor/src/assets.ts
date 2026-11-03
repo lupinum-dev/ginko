@@ -29,6 +29,11 @@ export interface GinkoAssets {
   details(ids: Ref<string[]>): Ref<Record<string, UploadDetails | null> | undefined>
   /** Uploads a file and resolves with its id. Rejects when `signal` aborts. */
   upload(kind: 'image' | 'file', file: File, signal: AbortSignal): Promise<string>
+  /**
+   * The focus point of a library photo (0..1 from the top left), which every use of the photo shares. `allowed`: this
+   * person may change it (on the platform owner and admin). Absent: the host offers no way to set it.
+   */
+  focus?: { allowed: Ref<boolean>; set(file: string, focus: { x: number; y: number }): Promise<void> }
 }
 
 export const GINKO_ASSETS: InjectionKey<GinkoAssets> = Symbol('ginko:assets')

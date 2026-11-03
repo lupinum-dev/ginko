@@ -892,7 +892,21 @@
       "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos.",
       "noneToTranslate": "Aún no hay foto, así que no hay nada que traducir.",
       "chooseInMain": "La imagen en sí se cambia en la versión en {name}.",
-      "drop": "O arrastra una foto aquí."
+      "drop": "O arrastra una foto aquí.",
+      "frames": {
+        "title": "Así muestra la web la foto",
+        "hint": "Haz clic en lo más importante de la foto: cada encuadre mantiene ese punto a la vista, en todos los lugares donde aparece la foto.",
+        "hintStaff": "Los propietarios y los administradores fijan el punto focal que cada encuadre mantiene a la vista.",
+        "point": "Punto focal al {x} % desde la izquierda y al {y} % desde arriba. Muévelo con las flechas.",
+        "failed": "No se guardó el punto focal. Inténtalo de nuevo.",
+        "square": "Cuadrado",
+        "portrait": "Vertical",
+        "landscape": "Horizontal",
+        "wide": "Panorámico",
+        "turnedLying": "La foto es horizontal: se recorta mucho por los lados.",
+        "turnedUpright": "La foto es vertical: se recorta mucho por arriba y por abajo.",
+        "small": "Solo {width} × {height} píxeles en el encuadre: puede verse borrosa."
+      }
     },
     "money": {
       "negative": "Un precio no puede ser negativo.",
