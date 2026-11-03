@@ -2,10 +2,7 @@
 // while the image loads. Registered by the Ginko module in every site. With variants, it also writes a srcset so phones download small files.
 // A field with a frame (`f.image(…, { aspect })`) is cropped to it around the photo's focus point, as the Studio previews it.
 import { defineComponent, h, type PropType } from 'vue'
-import { imageFrames, ORIGINAL_FRAME, type ImageFrame, type ImageValue } from '../../internal.ts'
-
-/** `object-position` for a focus point, so a cropped image keeps that point in view. */
-const positionOf = (focus: { x: number; y: number }) => `${Math.round(focus.x * 1000) / 10}% ${Math.round(focus.y * 1000) / 10}%`
+import { focusPosition, frameStyle, imageFrames, ORIGINAL_FRAME, type ImageFrame, type ImageValue } from '../../internal.ts'
 
 /** `srcset` from the variants, then the original at its real width (only when the width is known). */
 const srcsetOf = (image: ImageValue) => [
@@ -56,9 +53,8 @@ export const GinkoImage = defineComponent({
       // In a frame, width and height have its shape (the browser keeps that space free, with or without a CSS reset);
       // the photo fills it, cut around its focus point.
       const height = frame && image.width ? Math.round(image.width / frame.ratio) : image.height
-      const style = frame
-        ? { aspectRatio: frame.aspect.replace(':', ' / '), objectFit: 'cover', objectPosition: image.focus ? positionOf(image.focus) : '50% 50%' }
-        : image.focus ? { objectPosition: positionOf(image.focus) } : undefined
+      const position = image.focus ? focusPosition(image.focus) : undefined
+      const style = frame ? frameStyle(frame.aspect, 'cover', position) : position ? { objectPosition: position } : undefined
       return h('img', {
         src: image.url,
         alt: image.alt,

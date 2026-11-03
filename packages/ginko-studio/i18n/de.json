@@ -749,7 +749,12 @@
       "replace": "Bild ersetzen",
       "replaceSubmit": "Ersetzen",
       "caption": "Bildunterschrift",
-      "actions": "Bild"
+      "actions": "Bild",
+      "format": "Format",
+      "formatOriginal": "Original",
+      "fit": "Zuschnitt",
+      "fitCover": "Füllend",
+      "fitContain": "Eingepasst"
     },
     "text": {
       "tooLong": "Der Text ist zu lang (höchstens {max} Zeichen).",

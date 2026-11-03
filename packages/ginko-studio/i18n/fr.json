@@ -749,7 +749,12 @@
       "replace": "Remplacer l’image",
       "replaceSubmit": "Remplacer",
       "caption": "Légende",
-      "actions": "Image"
+      "actions": "Image",
+      "format": "Format",
+      "formatOriginal": "Original",
+      "fit": "Recadrage",
+      "fitCover": "Remplir",
+      "fitContain": "Ajuster"
     },
     "text": {
       "tooLong": "Le texte est trop long ({max} caractères au maximum).",

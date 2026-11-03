@@ -749,7 +749,12 @@
       "replace": "Reemplazar imagen",
       "replaceSubmit": "Reemplazar",
       "caption": "Pie de foto",
-      "actions": "Imagen"
+      "actions": "Imagen",
+      "format": "Formato",
+      "formatOriginal": "Original",
+      "fit": "Recorte",
+      "fitCover": "Rellenar",
+      "fitContain": "Ajustar"
     },
     "text": {
       "tooLong": "El texto es demasiado largo (máximo {max} caracteres).",

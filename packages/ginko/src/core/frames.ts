@@ -53,6 +53,21 @@ export function aspectProblems(path: string, aspect: unknown): string[] {
   ])
 }
 
+/** How a photo fills its frame: `cover` cuts it to the frame around its focus point, `contain` shows all of it inside. */
+export type FrameFill = 'cover' | 'contain'
+export const FRAME_FILLS: readonly FrameFill[] = ['cover', 'contain']
+
+/** `object-position` of a focus point (0..1 from the top left), one decimal: `25% 60%`. */
+export const focusPosition = (focus: { x: number; y: number }) => `${Math.round(focus.x * 1000) / 10}% ${Math.round(focus.y * 1000) / 10}%`
+
+/**
+ * The CSS that puts a photo in the frame `aspect`, as `<GinkoImage>`, a picture in a text and the Studio show it: the
+ * frame's shape, and for `cover` the photo cut around `position` (an `object-position`; the middle without one).
+ */
+export function frameStyle(aspect: AspectRatio, fill: FrameFill = 'cover', position?: string): Record<string, string> {
+  return { aspectRatio: aspect.replace(':', ' / '), objectFit: fill, ...(fill === 'cover' ? { objectPosition: position ?? '50% 50%' } : {}) }
+}
+
 /**
  * The longest side, in pixels, that the cropped part of a photo should have: enough for a sharp picture across a
  * laptop screen or on a phone's sharp display, and the width of a share image (1200 × 630).

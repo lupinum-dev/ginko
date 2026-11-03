@@ -9,6 +9,7 @@ import { TriangleAlert } from '@lucide/vue'
 import { useI18n } from '#imports'
 import { frameFit, type ImageFrame } from '@lupinum/ginko/internal'
 import { useGinkoAssets, type UploadDetails } from '@lupinum/ginko-editor'
+import { frameLabel } from '../../utils/frames'
 
 const props = defineProps<{
   id: string
@@ -83,18 +84,13 @@ onBeforeUnmount(() => {
   void save()
 })
 
-/** "Hochformat 3:4": the frame's shape in words, then its ratio. */
-function shapeOf(frame: ImageFrame) {
-  const shape = Math.abs(frame.ratio - 1) < 0.02 ? 'square' : frame.ratio < 1 ? 'portrait' : frame.ratio >= 2 ? 'wide' : 'landscape'
-  return `${t(`fields.image.frames.${shape}`)} ${frame.aspect}`
-}
 const tiles = computed(() => props.frames.map((frame) => {
   const fit = props.file.width && props.file.height ? frameFit(props.file.width, props.file.height, frame.ratio) : undefined
   const warning = !fit ? null
     : fit.turned ? t(frame.ratio < 1 ? 'fields.image.frames.turnedLying' : 'fields.image.frames.turnedUpright')
     : fit.small ? t('fields.image.frames.small', { width: fit.width, height: fit.height })
     : null
-  return { key: frame.name ?? frame.aspect, label: shapeOf(frame), aspect: frame.aspect.replace(':', ' / '), warning }
+  return { key: frame.name ?? frame.aspect, label: frameLabel(frame.aspect, t), aspect: frame.aspect.replace(':', ' / '), warning }
 }))
 /** One frame gets a larger tile: it is the only place the site shows the photo. */
 const tileHeight = computed(() => (props.frames.length === 1 ? 'h-28' : 'h-20'))

@@ -749,7 +749,12 @@
       "replace": "Replace image",
       "replaceSubmit": "Replace",
       "caption": "Caption",
-      "actions": "Image"
+      "actions": "Image",
+      "format": "Format",
+      "formatOriginal": "Original",
+      "fit": "Crop",
+      "fitCover": "Fill",
+      "fitContain": "Fit"
     },
     "text": {
       "tooLong": "The text is too long (at most {max} characters).",

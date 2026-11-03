@@ -6,6 +6,7 @@ import { MarkdownDocument } from '@comark/vue'
 import type { MarkdownTree } from './core/index.ts'
 import { attributeProblem, type AttributeRegistry } from './core/markdown.ts'
 import { BLOCKED_TAGS } from './core/components.ts'
+import { aspectRatio, frameStyle, type AspectRatio } from './core/frames.ts'
 
 // KaTeX and mermaid.js are not part of Ginko's bundle, so math and mermaid nodes show their source:
 // math as `<code class="math">`, mermaid as `<pre class="mermaid">` (the markup mermaid.js looks for).
@@ -97,6 +98,25 @@ function unwrapRouteLinks(node: Tree): Tree[] {
  * Every `id` with `prefix-` in front, and every `#` link to one: several Markdown bodies on one page (the releases of a
  * changelog) would otherwise repeat heading ids such as `fixed`, and a link would jump to the first one.
  */
+/**
+ * A picture with a frame (`![…](…){aspect="4:3"}`) gets the frame's CSS, as `<GinkoImage>` writes it: the shape, and
+ * the photo cut around its focus point (`focal`, from its library file) or, with `fit="contain"`, shown whole. Its
+ * `height` takes the frame's shape too, so the browser keeps the right space free. Runs after `dropUnsafe`: the values
+ * passed the allowlist, and `style` is written here, never taken from the text.
+ */
+function frameImages(node: Tree): Tree {
+  if (!Array.isArray(node)) return node
+  const [tag, props, ...children] = node as [string | null, Record<string, Tree>, ...Tree[]]
+  if (tag !== 'img') return [tag, props, ...children.map(frameImages)] as Tree
+  const { aspect, fit, focal, ...rest } = props
+  const ratio = aspectRatio(aspect)
+  const position = typeof focal === 'string' ? focal : undefined
+  if (ratio === undefined) return (position ? [tag, { ...rest, style: { objectPosition: position } }] : [tag, rest]) as unknown as Tree
+  const width = Number(rest.width)
+  const height = width > 0 ? { height: Math.round(width / ratio) } : {}
+  return [tag, { ...rest, ...height, style: frameStyle(aspect as AspectRatio, fit === 'contain' ? 'contain' : 'cover', position) }] as unknown as Tree
+}
+
 function prefixIds(node: Tree, prefix: string): Tree {
   if (!Array.isArray(node)) return node
   const [tag, props, ...children] = node as [string | null, Record<string, unknown>, ...Tree[]]
@@ -122,7 +142,7 @@ export const GinkoMarkdown = defineComponent({
     return () => {
       if (!props.value) return null
       const components = { ...sourceOnly, ...props.components }
-      const safe = props.value.nodes.flatMap((node) => dropUnsafe(node, components, props.registry)).flatMap(unwrapRouteLinks).map(labelCheckboxes)
+      const safe = props.value.nodes.flatMap((node) => dropUnsafe(node, components, props.registry)).flatMap(unwrapRouteLinks).map(labelCheckboxes).map(frameImages)
       const nodes = props.idPrefix ? safe.map((node) => prefixIds(node, props.idPrefix)) : safe
       return h(MarkdownDocument, { value: { nodes: nodes as never }, components })
     }

@@ -213,8 +213,8 @@ const percent = (share: number) => `${Math.round(Math.min(1, Math.max(0, share))
 
 /**
  * The bundle with every `$file.<id>` of its Markdown trees resolved through `files` (the bundle's ready uploads):
- * - `img`: the file's URL, its pixel size, a `srcset` of its variants and the original, and the library description
- *   of the bundle's language when the image has none of its own (`effectiveAlt`).
+ * - `img`: the file's URL, its pixel size, a `srcset` of its variants and the original, the library description
+ *   of the bundle's language when the image has none of its own (`effectiveAlt`), and its focus point as `focal`.
  * - a component image prop: the URL and the file's pixel size (`imageSizeProps`) when the author set neither and the
  *   component declares both; for `src` also an empty `alt` (when it declares one) from the library, the `srcset` of its
  *   variants and its focus point as `focal` (an `object-position`, such as `50% 20%`).
@@ -246,6 +246,7 @@ export function resolveFileRefs(bundle: Bundle, schema: Pick<Schema, 'components
         if (file.width && file.height) Object.assign(props, { width: file.width, height: file.height })
         if (srcset) Object.assign(props, { srcset, sizes: '100vw' })
         if (!String(props.alt ?? '').trim() && library) props.alt = library
+        if (file.focus) props.focal = `${percent(file.focus.x)} ${percent(file.focus.y)}`
       } else if (declared) {
         // Only both together: one size of the author's with one of the file's would distort the picture.
         const [w, h] = imageSizeProps(use.prop)

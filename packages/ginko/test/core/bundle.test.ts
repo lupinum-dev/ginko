@@ -400,14 +400,14 @@ it('servedBundle resolves $file references in texts to the file, its size, varia
     ['f1', { url: 'https://cdn.example/f1.webp', name: 'hund.jpg', size: 9, width: 2400, height: 1600, focus: { x: 0.25, y: 0.1234 }, variants: [{ width: 480, url: 'https://cdn.example/f1-480.webp' }], alt: { de: 'Ein Hund' } }],
     ['f2', { url: 'https://cdn.example/karte.pdf', name: 'karte.pdf', size: 3 }],
   ])
-  const text = '![]($file.f1)\n\n![Eigenes]($file.gone)\n\n[Karte]($file.f2)\n\n::figure{src="$file.f1"}\n::\n'
+  const text = '![]($file.f1){aspect="4:3"}\n\n![Eigenes]($file.gone)\n\n[Karte]($file.f2)\n\n::figure{src="$file.f1"}\n::\n'
   const bundle = await servedBundle({
     schema: s, requestedLocale: 'de', entries: { legal: [{ id: 'legal', data: { imprint: { de: text } } }] }, files: (id) => files.get(id),
     schemaRev: 1, contentRev: 1, generatedAt: '2026-10-08T00:00:00.000Z', today: TODAY,
   })
   const brick = bundle.bricks.legal
   expect(brick?.kind === 'single' && (brick.data.imprint as MarkdownTree).nodes).toEqual([
-    ['p', {}, ['img', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600, srcset: 'https://cdn.example/f1-480.webp 480w, https://cdn.example/f1.webp 2400w', sizes: '100vw' }]],
+    ['p', {}, ['img', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', aspect: '4:3', width: 2400, height: 1600, srcset: 'https://cdn.example/f1-480.webp 480w, https://cdn.example/f1.webp 2400w', sizes: '100vw', focal: '25% 12.3%' }]],
     ['p', {}, ['img', { alt: 'Eigenes', 'data-broken': true, 'data-broken-file': 'gone' }]],
     ['p', {}, ['a', { href: 'https://cdn.example/karte.pdf' }, 'Karte']],
     ['figure', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600, srcset: 'https://cdn.example/f1-480.webp 480w, https://cdn.example/f1.webp 2400w', focal: '25% 12.3%' }],

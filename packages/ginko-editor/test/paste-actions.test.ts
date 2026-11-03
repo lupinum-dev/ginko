@@ -6,7 +6,7 @@ import { Slice } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
 import { describe, expect, test, vi } from 'vitest'
 import {
-  cancelUpload, createGinkoEditor, docProblems, figureTag, finishUpload, isUploading, linkCardTag, makeFigure, makeLinkCard, sourceProblems, startUpload,
+  cancelUpload, createGinkoEditor, docProblems, figureTag, finishUpload, imageFrameOf, isUploading, linkCardTag, makeFigure, makeLinkCard, setImageFrame, sourceProblems, startUpload,
   type GinkoEditorOptions, type GinkoRichEditor,
 } from '../src/core/index.ts'
 
@@ -98,6 +98,33 @@ describe('a picture with a caption', () => {
     const at = makeFigure(handle.editor, pos, tag!, components, 'Hof')
     expect(handle.editor.state.doc.nodeAt(at!)?.attrs.tag).toBe('figure')
     expect(await handle.markdown()).toBe(markdown)
+  })
+})
+
+describe('the frame of a picture in a text', () => {
+  const imageAt = (handle: GinkoRichEditor) => {
+    let pos = -1
+    handle.editor.state.doc.descendants((node, at) => { if (node.type.name === 'image') pos = at })
+    return pos
+  }
+  // Wrong behaviour caught: a frame chosen in the image menu that is lost on save, a frame that stays in the text after
+  // "Original", the menu closing after one choice, and a figure that forgets the shape the picture had.
+  test('is written to the text, changed and removed from the menu, and keeps the picture selected', async () => {
+    const handle = await open('Eins ![Hof](/hof.png){aspect="4:3" fit="contain"}\n', 'rich')
+    const pos = imageAt(handle)
+    expect(imageFrameOf(handle.editor.state.doc.nodeAt(pos)!)).toEqual({ aspect: '4:3', fit: 'contain' })
+    expect(await handle.markdown()).toBe('Eins ![Hof](/hof.png){aspect="4:3" fit="contain"}\n')
+    setImageFrame(handle.editor, pos, { aspect: '16:9', fit: 'cover' })
+    expect(handle.editor.state.selection.from).toBe(pos)
+    expect(await handle.markdown()).toBe('Eins ![Hof](/hof.png){aspect="16:9"}\n')
+    setImageFrame(handle.editor, pos, { aspect: undefined, fit: 'contain' })
+    expect(await handle.markdown()).toBe('Eins ![Hof](/hof.png)\n')
+  })
+
+  test('goes with the picture into the figure block', async () => {
+    const handle = await open('![Hof](/hof.png){aspect="3:4" fit="contain"}\n', 'page')
+    makeFigure(handle.editor, imageAt(handle), 'figure', components, 'Hof')
+    expect(await handle.markdown()).toBe('::figure\n```yaml [props]\nsrc: /hof.png\nalt: Hof\naspect: portrait\nfit: contain\n```\n::\n')
   })
 })
 

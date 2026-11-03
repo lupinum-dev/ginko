@@ -145,4 +145,16 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(html).toContain('<strong>x</strong>')
     expect(html).toContain('<aside as="tip">Hinweis</aside>')
   })
+
+  // Wrong behaviour caught: a picture set to 4:3 in the editor shows uncropped on the site, crops away its focus point,
+  // or reserves the photo's own height (the page jumps when it loads); a text cannot smuggle its own style in.
+  test('a picture with a frame gets the frame, its focus point and the frame’s height', async () => {
+    const { value, problems } = await parseMarkdown('![A](/a.jpg){aspect="16:9"} ![B](/b.jpg){aspect="1:1" fit="contain"} ![C](/c.jpg){aspect="3/2"}')
+    expect(problems).toEqual(['Die Eigenschaft „aspect“ ist nicht erlaubt.'])
+    const nodes = value.nodes as never as [string, object, ...[string, Record<string, unknown>][]][]
+    Object.assign(nodes[0]![2]![1], { width: 1600, height: 1200, focal: '25% 60%', style: 'position:fixed' })
+    const html = await render(value)
+    expect(html).toContain('<img src="/a.jpg" alt="A" width="1600" height="900" style="aspect-ratio: 16 / 9; object-fit: cover; object-position: 25% 60%;">')
+    expect(html).toContain('<img src="/b.jpg" alt="B" style="aspect-ratio: 1 / 1; object-fit: contain;">')
+  })
 })

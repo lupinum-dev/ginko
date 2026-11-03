@@ -1,5 +1,5 @@
 export * from './types.ts'
-export { aspectRatio, imageFrames, frameFit, aspectProblems, ORIGINAL_FRAME, FRAME_MIN_PIXELS, type ImageFrame, type FrameFit } from './frames.ts'
+export { aspectRatio, imageFrames, frameFit, frameStyle, focusPosition, aspectProblems, ORIGINAL_FRAME, FRAME_MIN_PIXELS, FRAME_FILLS, type ImageFrame, type FrameFit, type FrameFill } from './frames.ts'
 export { f, isTranslatable, effectiveMax, isShown, effectiveProfile, effectiveAlt, ALT_MAX, ALT_INVISIBLE } from './fields.ts'
 export { defineSite, single, collection, withoutFiles, siteForContent, type WithoutFiles, type SiteInput, type Migration, type MigrationContext, type RouteTemplate } from './site.ts'
 export { serializeSchema, platformSchema, migrationFingerprint, checkSchema, checkSite, isHourPlans, isTimeZone, mainLocale, ordered, grantGroups, SCHEMA_LIMITS } from './schema.ts'
