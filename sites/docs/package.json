@@ -7,7 +7,7 @@
     "@lupinum/ginko-content": "workspace:*",
     "@lupinum/ginko-docs": "workspace:*",
     "@lupinum/ginko-i18n": "workspace:*",
-    "nuxt": "4.6.2",
+    "nuxt": "4.6.3",
     "sharp": "^0.35.5",
     "vue": "3.5.44"
   },
@@ -19,9 +19,9 @@
     "postinstall": "nuxt prepare"
   },
   "devDependencies": {
-    "@takumi-rs/core": "2.17.1",
+    "@takumi-rs/core": "2.19.0",
     "nuxt-og-image": "7.0.7",
     "typescript": "6.0.3",
-    "vue-tsc": "3.3.13"
+    "vue-tsc": "3.3.14"
   }
 }
