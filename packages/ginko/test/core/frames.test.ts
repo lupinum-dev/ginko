@@ -6,7 +6,7 @@ import { checkSchema, diffSchema, frameFit, resolveEntry, serializeSchema, type 
 // them to `<GinkoImage>`, and a typo must fail the check instead of leaving every photo uncropped.
 
 const base = (): Schema => structuredClone(serializeSchema(restaurant))
-const eventImage = (s: Schema) => (s.bricks.events!.fields as Record<string, Record<string, unknown>>).image!
+const eventImage = (s: Schema) => s.bricks.events!.fields.image as unknown as Record<string, unknown>
 
 describe('aspect in the schema check', () => {
   it.each([

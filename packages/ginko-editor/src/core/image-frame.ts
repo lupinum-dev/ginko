@@ -1,7 +1,7 @@
 // The frame of a picture in a text (`![…](…){aspect="4:3" fit="contain"}`): the shapes the image menu offers, and the
 // attributes on the image node (its `props`, written back to the text as they are). The site renders them with the
 // same CSS as `<GinkoImage>` (markdown-view.ts in @lupinum/ginko).
-import { aspectRatio, type AspectRatio, type FrameFill } from '@lupinum/ginko/internal'
+import { isAspectRatio, type AspectRatio, type FrameFill } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import type { Node as PmNode } from '@tiptap/pm/model'
 import { NodeSelection } from '@tiptap/pm/state'
@@ -24,7 +24,7 @@ export interface TextImageFrame {
 /** The frame of an image node; a frame the parser would refuse counts as none. */
 export function imageFrameOf(node: PmNode): TextImageFrame {
   const props = (node.attrs.props ?? {}) as Record<string, unknown>
-  const aspect = aspectRatio(props.aspect) === undefined ? undefined : props.aspect as AspectRatio
+  const aspect = isAspectRatio(props.aspect) ? props.aspect : undefined
   return { aspect, fit: aspect && props.fit === 'contain' ? 'contain' : 'cover' }
 }
 

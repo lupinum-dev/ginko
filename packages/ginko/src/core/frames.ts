@@ -28,13 +28,15 @@ export function aspectRatio(aspect: unknown): number | undefined {
   return ratio >= 1 / RATIO_LIMIT && ratio <= RATIO_LIMIT ? ratio : undefined
 }
 
+/** A valid frame shape (`aspectRatio` knows it). */
+export const isAspectRatio = (value: unknown): value is AspectRatio => aspectRatio(value) !== undefined
+
 /** The frames of an image field in config order; none without `aspect` (the site shows the photo as it is). */
 export function imageFrames(aspect: ImageField['aspect'] | undefined): ImageFrame[] {
   if (aspect === undefined) return []
   const entries: [string | undefined, unknown][] = typeof aspect === 'string' ? [[undefined, aspect]] : Object.entries(aspect)
   return entries.flatMap(([name, value]) => {
-    const ratio = aspectRatio(value)
-    return ratio === undefined ? [] : [{ name, aspect: value as AspectRatio, ratio }]
+    return isAspectRatio(value) ? [{ name, aspect: value, ratio: aspectRatio(value)! }] : []
   })
 }
 

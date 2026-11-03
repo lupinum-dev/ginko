@@ -6,7 +6,7 @@ import { MarkdownDocument } from '@comark/vue'
 import type { MarkdownTree } from './core/index.ts'
 import { attributeProblem, type AttributeRegistry } from './core/markdown.ts'
 import { BLOCKED_TAGS } from './core/components.ts'
-import { aspectRatio, frameStyle, type AspectRatio } from './core/frames.ts'
+import { aspectRatio, frameStyle, isAspectRatio } from './core/frames.ts'
 
 // KaTeX and mermaid.js are not part of Ginko's bundle, so math and mermaid nodes show their source:
 // math as `<code class="math">`, mermaid as `<pre class="mermaid">` (the markup mermaid.js looks for).
@@ -109,12 +109,11 @@ function frameImages(node: Tree): Tree {
   const [tag, props, ...children] = node as [string | null, Record<string, Tree>, ...Tree[]]
   if (tag !== 'img') return [tag, props, ...children.map(frameImages)] as Tree
   const { aspect, fit, focal, ...rest } = props
-  const ratio = aspectRatio(aspect)
   const position = typeof focal === 'string' ? focal : undefined
-  if (ratio === undefined) return (position ? [tag, { ...rest, style: { objectPosition: position } }] : [tag, rest]) as unknown as Tree
+  if (!isAspectRatio(aspect)) return (position ? [tag, { ...rest, style: { objectPosition: position } }] : [tag, rest]) as unknown as Tree
   const width = Number(rest.width)
-  const height = width > 0 ? { height: Math.round(width / ratio) } : {}
-  return [tag, { ...rest, ...height, style: frameStyle(aspect as AspectRatio, fit === 'contain' ? 'contain' : 'cover', position) }] as unknown as Tree
+  const height = width > 0 ? { height: Math.round(width / aspectRatio(aspect)!) } : {}
+  return [tag, { ...rest, ...height, style: frameStyle(aspect, fit === 'contain' ? 'contain' : 'cover', position) }] as unknown as Tree
 }
 
 function prefixIds(node: Tree, prefix: string): Tree {
