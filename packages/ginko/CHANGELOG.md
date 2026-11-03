@@ -1,5 +1,21 @@
 # @lupinum/ginko
 
+## 0.15.1
+
+### Patch Changes
+
+- [#100](https://github.com/lupinum-dev/ginko/pull/100) [`a27c119`](https://github.com/lupinum-dev/ginko/commit/a27c1191824ca9caaa2e84c4a1a81e78b19e99c7) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change dependencies to their latest non-major versions: new sites start on Nuxt 4.6.3, which fixes a security issue where dot segments in a request path bypass server middleware and route rules (GHSA-9v7c-q64q-vv33), and the packages require `@nuxt/kit` 4.6.3, `shiki` 4.6 and current icon sets. Existing sites should update `nuxt` to 4.6.3 too.
+
+- [#99](https://github.com/lupinum-dev/ginko/pull/99) [`f49df2f`](https://github.com/lupinum-dev/ginko/commit/f49df2f31154a621a7ec7c0ce82d0c037689633b) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix missing pages showing raw JSON on Vercel: when curl, a monitor or a bot requested a missing address first, the page cache kept Nuxt's JSON error and served it to every browser. A cached address now always answers an error with the site's error page as HTML; `/api/`, `.json` addresses and `/__ginko/` keep Nuxt's choice.
+
+- [#94](https://github.com/lupinum-dev/ginko/pull/94) [`f237499`](https://github.com/lupinum-dev/ginko/commit/f237499e22f93bd33f34436bc835eb09ad447e13) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Make `NUXT_PUBLIC_GINKO_NOINDEX=true` work on sites with the Nuxt SEO modules. `@nuxtjs/robots` writes robots.txt and the robots header there, and Ginko told it only about preview hosts, so a demo on its own address stayed indexable. Ginko now marks every host of such a deployment as not indexable in nuxt-site-config.
+
+- [#101](https://github.com/lupinum-dev/ginko/pull/101) [`498fe18`](https://github.com/lupinum-dev/ginko/commit/498fe1854ee30c99cae12e370aef82df0040f8d4) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change the hosted platform's sign-in to Better Auth 1.7.12 (through `@lupinum/better-convex-nuxt` 1.0.0-rc.8): stricter checks of the sign-in token keys, current cookie rules and safer account flows. Sign-in with an email code works as before.
+
+- [#99](https://github.com/lupinum-dev/ginko/pull/99) [`f49df2f`](https://github.com/lupinum-dev/ginko/commit/f49df2f31154a621a7ec7c0ce82d0c037689633b) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix cramped task sheets in the Studio on large screens: the sheet now grows with the screen (up to 60rem), and a field shows the main-language text beside its input only when the field itself is wide enough ([#96](https://github.com/lupinum-dev/ginko/issues/96)).
+- Updated dependencies [[`a27c119`](https://github.com/lupinum-dev/ginko/commit/a27c1191824ca9caaa2e84c4a1a81e78b19e99c7)]:
+  - @lupinum/ginko-i18n@0.15.1
+
 ## 0.15.0
 
 ### Patch Changes

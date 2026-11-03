@@ -1,5 +1,11 @@
 # @lupinum/ginko-i18n
 
+## 0.15.1
+
+### Patch Changes
+
+- [#100](https://github.com/lupinum-dev/ginko/pull/100) [`a27c119`](https://github.com/lupinum-dev/ginko/commit/a27c1191824ca9caaa2e84c4a1a81e78b19e99c7) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change dependencies to their latest non-major versions: new sites start on Nuxt 4.6.3, which fixes a security issue where dot segments in a request path bypass server middleware and route rules (GHSA-9v7c-q64q-vv33), and the packages require `@nuxt/kit` 4.6.3, `shiki` 4.6 and current icon sets. Existing sites should update `nuxt` to 4.6.3 too.
+
 ## 0.15.0
 
 No changes in this release.
