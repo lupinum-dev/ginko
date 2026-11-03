@@ -144,7 +144,7 @@ function resolveValue(field: Field, value: Json, path: string, state: State): un
       const v = value as { file: string; alt: Json }
       const file = state.ctx.files(v.file)
       if (!file) return undefined
-      return { url: file.url, alt: altOf(v.alt, file.alt, `${path}.alt`, state, field), width: file.width ?? 0, height: file.height ?? 0, ...(file.focus ? { focus: file.focus } : {}), ...(file.variants?.length ? { variants: file.variants } : {}) }
+      return { url: file.url, alt: altOf(v.alt, file.alt, `${path}.alt`, state, field), width: file.width ?? 0, height: file.height ?? 0, ...(file.focus ? { focus: file.focus } : {}), ...(file.variants?.length ? { variants: file.variants } : {}), ...(field.aspect ? { aspect: field.aspect } : {}) }
     }
     case 'file': {
       const file = state.ctx.files((value as { file: string }).file)

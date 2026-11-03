@@ -107,8 +107,8 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
 
 type Report = (path: string, kind: string, message: Described, fix?: Described, snippet?: string) => void
 
-// Presentation only: texts and the config position (`pos`) never change stored data.
-const TEXT_KEYS = ['label', 'hint', 'unit', 'itemLabel', 'describe', 'group', 'pos']
+// Presentation only: texts, the config position (`pos`) and an image's frame never change stored data.
+const TEXT_KEYS = ['label', 'hint', 'unit', 'itemLabel', 'describe', 'group', 'pos', 'aspect']
 
 function unknownChanges(at: string, a: object, b: object, known: Set<string>, no: Report) {
   const x = a as Record<string, unknown>
@@ -203,6 +203,8 @@ function diffField(at: string, old: Field, next: Field, newFills: Set<string>, o
   if (!sameLabel(old.hint ?? '', next.hint ?? '')) ok(at, 'text', msg('diff.textChanged'))
   if (!sameLabel(old.group ?? '', next.group ?? '')) ok(at, 'text', msg('diff.textChanged'))
   if (o.unit !== n.unit) ok(at, 'text', msg('diff.textChanged'))
+  // A frame only changes how the site crops the photo; the stored value stays.
+  if (stableJson((o.aspect ?? null) as Json) !== stableJson((n.aspect ?? null) as Json)) ok(at, 'aspect', msg('diff.valueChanged', { name: 'aspect' }))
   // Effective limits: removing `max: 500` from a text field means 200 again, which is a lowering.
   const [maxA, maxB] = [effectiveMax(old), effectiveMax(next)]
   if (maxB < maxA) no(at, 'maxLowered', msg('diff.maxLowered', { at }), fx('keepMax'))
