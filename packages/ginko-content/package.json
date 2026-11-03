@@ -42,7 +42,7 @@
   "dependencies": {
     "comark": "0.8.1",
     "js-yaml": "^5.4.3",
-    "shiki": "^4.3.1"
+    "shiki": "^4.6.0"
   },
   "devDependencies": {
     "@lupinum/ginko": "workspace:*",

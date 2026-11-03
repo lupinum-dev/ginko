@@ -37,7 +37,7 @@
     "@types/node": "^24.19.1",
     "@vitejs/plugin-vue": "6.0.10",
     "happy-dom": "21.0.4",
-    "pkg-pr-new": "0.0.92",
+    "pkg-pr-new": "0.0.93",
     "publint": "0.3.25",
     "typescript": "6.0.3",
     "unbuild": "3.6.1",

@@ -17,7 +17,7 @@
     "@lupinum/ginko-content": "^0.9.0",
     "@lupinum/ginko-docs": "^0.9.0",
     "@lupinum/ginko-i18n": "^0.9.0",
-    "@takumi-rs/core": "^2.17.1",
+    "@takumi-rs/core": "^2.19.0",
     "nuxt": "^4.6.3",
     "nuxt-og-image": "^7.0.7",
     "vue": "^3.5.44"
@@ -25,9 +25,9 @@
   "devDependencies": {
     "@nuxt/eslint": "^1.17.0",
     "@types/node": "^24.0.0",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "typescript": "^6.0.3",
-    "vue-tsc": "^3.3.13"
+    "vue-tsc": "^3.3.14"
   },
   "engines": {
     "node": "^22.22.3 || ^24.15.0 || >=26"

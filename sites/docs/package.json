@@ -19,9 +19,9 @@
     "postinstall": "nuxt prepare"
   },
   "devDependencies": {
-    "@takumi-rs/core": "2.17.1",
+    "@takumi-rs/core": "2.19.0",
     "nuxt-og-image": "7.0.7",
     "typescript": "6.0.3",
-    "vue-tsc": "3.3.13"
+    "vue-tsc": "3.3.14"
   }
 }
