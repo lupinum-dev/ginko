@@ -369,8 +369,17 @@ describe('replace', () => {
     }
     expect(await imageOf()).not.toHaveProperty('focus')
 
+    // Sites cache the text trees per revision: a new point of a used photo is new content.
+    const rev = async () => (await s.t.run((ctx) => ctx.db.query('sites').first()))!.contentRev
+    const revBefore = await rev()
     await s.as.owner.mutation(api.files.setFocus, { site, file, focus: { x: 0.3, y: 0.7 } })
     expect(await imageOf()).toMatchObject({ focus: { x: 0.3, y: 0.7 } })
+    expect(await rev()).toBe(revBefore + 1)
+    await s.as.owner.mutation(api.files.setFocus, { site, file, focus: { x: 0.3, y: 0.7 } })
+    expect(await rev()).toBe(revBefore + 1)
+    const unused = await readyImage(s, 'frei.jpg', [0xff, 0xd8, 0xff, 0xe0, 9, 9, 9])
+    await s.as.owner.mutation(api.files.setFocus, { site, file: unused, focus: { x: 0.1, y: 0.1 } })
+    expect(await rev()).toBe(revBefore + 1)
     expect((await s.as.owner.query(api.uploads.urls, { site, ids: [file] }))[file]).toMatchObject({ focus: { x: 0.3, y: 0.7 } })
 
     const next = await readyImage(s, 'neu.jpg', [0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])

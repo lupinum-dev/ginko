@@ -422,7 +422,10 @@ export const rename = mutation({
   },
 })
 
-/** Sets (or with null, clears) the focus point of an image: x and y from 0 to 1. */
+/**
+ * Sets (or with null, clears) the focus point of an image: x and y from 0 to 1. The bundle carries the point (and the
+ * text trees, cached per revision, carry it as `focal`): a changed point of a used file raises contentRev like a save.
+ */
 export const setFocus = mutation({
   args: { site: v.string(), file: v.string(), focus: v.union(v.object({ x: v.number(), y: v.number() }), v.null()) },
   handler: async (ctx, args) => {
@@ -431,7 +434,9 @@ export const setFocus = mutation({
     if (kindOfUpload(row) !== 'image') fail('INVALID', 'errors.onlyImageHasFocus')
     const { focus } = args
     if (focus && !(focus.x >= 0 && focus.x <= 1 && focus.y >= 0 && focus.y <= 1)) fail('INVALID', 'errors.focusPointOutsideImage')
+    if (focus?.x === row.focus?.x && focus?.y === row.focus?.y) return null
     await ctx.db.patch(row._id, { focus: focus ?? undefined })
+    if ((await entryRefsOf(ctx, row._id)).length) await ctx.db.patch(actor.site._id, { contentRev: actor.site.contentRev + 1 })
     return null
   },
 })
