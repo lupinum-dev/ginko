@@ -14,7 +14,7 @@
     "@lupinum/ginko-server": "workspace:*",
     "@lupinum/ginko-studio": "workspace:*",
     "convex": "catalog:",
-    "nuxt": "4.6.2",
+    "nuxt": "4.6.3",
     "vue": "3.5.44"
   },
   "devDependencies": {

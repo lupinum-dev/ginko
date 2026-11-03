@@ -31,6 +31,8 @@ minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
 minimumReleaseAgeExclude:
   - '@lupinum/*'
+  # Renovate security update: nuxt@4.6.3
+  - nuxt@4.6.3
 
 # One version for the platform packages (apps/platform, ginko-server, ginko-studio). The Better Auth
 # packages must match the exact peer version that @lupinum/better-convex-nuxt names.

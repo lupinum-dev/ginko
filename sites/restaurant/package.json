@@ -6,7 +6,7 @@
     "@fontsource/alegreya": "5.3.0",
     "@fontsource/alegreya-sans": "5.3.0",
     "@lupinum/ginko": "workspace:*",
-    "nuxt": "4.6.2",
+    "nuxt": "4.6.3",
     "vue": "3.5.44",
     "@lupinum/ginko-preset-gastro": "workspace:*"
   },
