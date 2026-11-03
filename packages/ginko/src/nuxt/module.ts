@@ -125,6 +125,8 @@ export default defineNuxtModule<SiteInput>({
     // The pages of `seo.noindex` in every locale; the sitemap leaves them out by key (sitemap-xml.ts).
     const noindex = (site.seo?.noindex ?? []).flatMap((key) => Object.values(schema.pages[key] ?? {}).filter((path) => path !== undefined))
     nuxt.options.routeRules = ginkoRouteRules(nuxt.options.routeRules ?? {}, { noindex, platform: sources.platform }) as typeof nuxt.options.routeRules
+    // A cached address answers an error as HTML, whoever asks first.
+    addServerHandler({ middleware: true, handler: resolve(`./runtime/server/html-errors.${runtimeExt}`) })
 
     // Generated share cards (nuxt-og-image): only with that module installed and one renderer for it. `#ginko/og`
     // is the one place that reaches nuxt-og-image, so a site without it never imports it.
