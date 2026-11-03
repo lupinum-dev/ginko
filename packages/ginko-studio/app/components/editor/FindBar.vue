@@ -1,8 +1,11 @@
-<!-- Find and replace inside the field: a small bar above the text. The search itself lives in the editor core (search.ts);
-     this bar sets the term, steps through the matches and replaces. Esc closes it and clears the highlights. -->
+<!-- Find and replace inside the field: a row in the toolbar's sticky bar. The search itself lives in the editor core (search.ts);
+     this bar sets the term, steps through the matches and replaces. Esc closes it and clears the highlights. A click on a
+     button leaves the focus where it was (the search field), so Enter goes on to the next match. Two rows on one grid:
+     the search field with its counter, Zurück and Weiter above the replace field, Ersetzen and Alle ersetzen. -->
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from '#imports'
+import { useElementSize } from '@vueuse/core'
 import { searchInfo } from '@lupinum/ginko-editor'
 import type { Editor } from '@tiptap/core'
 import { Button } from '@studio/components/ui/button'
@@ -17,6 +20,9 @@ const tick = useEditorTick(() => props.editor)
 const term = ref('')
 const replacement = ref('')
 const searchEl = ref<InstanceType<typeof Input>>()
+/** The counter sits in the search field; the field's text stops before it, however long the counter's text is. */
+const counterEl = ref<HTMLElement>()
+const { width: counterWidth } = useElementSize(counterEl)
 const info = computed(() => { void tick.value; return searchInfo(props.editor) })
 /** How many places the last "Alle ersetzen" changed; shown instead of the counter, which then says "Keine Treffer". */
 const replaced = ref<number>()
@@ -64,15 +70,19 @@ const nothing = computed(() => info.value.total === 0)
 </script>
 
 <template>
-  <div v-if="open" role="search" class="flex flex-wrap items-center gap-1.5 border-b bg-background p-1.5" @keydown.esc.stop.prevent="close">
-    <Input ref="searchEl" :model-value="term" class="h-8 min-w-32 flex-1 [@media(pointer:coarse)]:h-11" :placeholder="t('editor.find.search')" :aria-label="t('editor.find.search')" @update:model-value="onTerm" @keydown.enter.prevent="onSearchEnter" />
-    <Input v-model="replacement" class="h-8 min-w-32 flex-1 [@media(pointer:coarse)]:h-11" :placeholder="t('editor.find.replaceWith')" :aria-label="t('editor.find.replaceWith')" @keydown.enter.prevent="step(() => editor.commands.replaceCurrent(replacement))" />
-    <span class="min-w-16 text-xs whitespace-nowrap text-muted-foreground" aria-live="polite">{{ counter }}</span>
-    <div class="flex flex-wrap items-center gap-1">
-      <Button type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11" :disabled="nothing" @click="step(() => editor.commands.findPrev())">{{ t('editor.find.prev') }}</Button>
-      <Button type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11" :disabled="nothing" @click="step(() => editor.commands.findNext())">{{ t('editor.find.next') }}</Button>
-      <Button type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11" :disabled="nothing" @click="step(() => editor.commands.replaceCurrent(replacement))">{{ t('editor.find.replace') }}</Button>
-      <Button type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11" :disabled="nothing" @click="replaceAll">{{ t('editor.find.replaceAll') }}</Button>
+  <!-- -mx-1/px-1: the divider runs from edge to edge of the bar, as the bar's own border does. -->
+  <div v-if="open" role="search" class="-mx-1 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-1 border-t px-1 pt-1" @keydown.esc.stop.prevent="close">
+    <div class="relative min-w-0">
+      <Input
+        ref="searchEl" :model-value="term" class="h-8 [@media(pointer:coarse)]:h-11" :style="counter ? { paddingRight: `${counterWidth + 20}px` } : undefined"
+        :placeholder="t('editor.find.search')" :aria-label="t('editor.find.search')" @update:model-value="onTerm" @keydown.enter.prevent="onSearchEnter"
+      />
+      <span ref="counterEl" class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs whitespace-nowrap text-muted-foreground tabular-nums" aria-live="polite">{{ counter }}</span>
     </div>
+    <Button type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11" :disabled="nothing" @mousedown.prevent @click="step(() => editor.commands.findPrev())">{{ t('editor.find.prev') }}</Button>
+    <Button type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11" :disabled="nothing" @mousedown.prevent @click="step(() => editor.commands.findNext())">{{ t('editor.find.next') }}</Button>
+    <Input v-model="replacement" class="h-8 [@media(pointer:coarse)]:h-11" :placeholder="t('editor.find.replaceWith')" :aria-label="t('editor.find.replaceWith')" @keydown.enter.prevent="step(() => editor.commands.replaceCurrent(replacement))" />
+    <Button type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11" :disabled="nothing" @mousedown.prevent @click="step(() => editor.commands.replaceCurrent(replacement))">{{ t('editor.find.replace') }}</Button>
+    <Button type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11" :disabled="nothing" @mousedown.prevent @click="replaceAll">{{ t('editor.find.replaceAll') }}</Button>
   </div>
 </template>

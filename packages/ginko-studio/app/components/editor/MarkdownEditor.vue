@@ -244,10 +244,11 @@ watch(() => props.modelValue, (value) => {
 /**
  * Room kept around the caret when the page scrolls to it. Read each time ProseMirror scrolls, so it follows the layout:
  * above, the Studio's sticky top bar (`--studio-header-height`) and the sticky toolbar; below, the save bar a phone keeps
- * at the bottom (wide screens save in the top bar and show the bar only for a notice).
+ * at the bottom (wide screens save in the top bar and show the bar only for a notice), or the toolbar docked there when it
+ * is taller (with the search open).
  */
-/** The toolbar above the text; not while it is docked at the bottom of a phone screen. */
-const toolbarEl = () => frameEl.value?.querySelector<HTMLElement>('[role="toolbar"]:not([data-docked])')
+/** The sticky bar above the text: the toolbar and the open search. Not while it is docked at the bottom of a phone screen. */
+const toolbarEl = () => frameEl.value?.querySelector<HTMLElement>('[data-toolbar-bar]:not([data-docked])')
 const scrollMargin = {
   get top() {
     const el = frameEl.value
@@ -255,7 +256,10 @@ const scrollMargin = {
     const header = (Number.parseFloat(raw) || 0) * (raw.endsWith('rem') ? 16 : 1)
     return header + (toolbarEl()?.offsetHeight ?? 0) + 16
   },
-  get bottom() { return typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 72 : 120 },
+  get bottom() {
+    const save = typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 72 : 120
+    return Math.max(save, (frameEl.value?.querySelector<HTMLElement>('[data-docked]')?.offsetHeight ?? 0) + 16)
+  },
   left: 0,
   right: 0,
 }
@@ -434,8 +438,10 @@ const frame = 'relative rounded-lg border border-input/80 bg-background dark:bor
 
     <!-- Rich text -->
     <div v-else-if="mode === 'rich' && editor" ref="frameEl" :data-invalid="invalid" :class="frame" @focusin="onFocusIn" @focusout="onFocusOut(); flush()" @keydown.capture="onFrameKey">
-      <EditorToolbar v-model:link-open="linkOpen" v-model:image-open="imageOpen" v-model:find-open="findOpen" :editor="editor" :profile="profile" :items="items" :docked="docked" @source="toggleSource" />
-      <FindBar v-model:open="findOpen" :editor="editor" />
+      <!-- The search sits in the toolbar's sticky bar, so its counter and buttons stay in view while it scrolls to a match. -->
+      <EditorToolbar v-model:link-open="linkOpen" v-model:image-open="imageOpen" v-model:find-open="findOpen" :editor="editor" :profile="profile" :items="items" :docked="docked" @source="toggleSource">
+        <FindBar v-model:open="findOpen" :editor="editor" />
+      </EditorToolbar>
       <!-- EditorContent wants the Vue flavour of Editor; it only adds fields that EditorContent fills itself. -->
       <EditorContent :editor="editor as VueEditor" :class="['ginko-editor', multiline ? 'is-multiline' : 'is-inline', long && 'is-long', dragHandle && multiline && 'has-handle']" />
       <DragHandle v-if="dragHandle && multiline" :editor="editor" class="ginko-drag-handle">
