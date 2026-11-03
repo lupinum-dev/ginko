@@ -900,8 +900,8 @@
       "drop": "Oder ziehe ein Foto hierher.",
       "frames": {
         "title": "So zeigt die Website das Foto",
-        "hint": "Klicke auf das Wichtigste im Foto: Jeder Ausschnitt behält diesen Punkt im Bild, überall, wo das Foto vorkommt.",
-        "hintStaff": "Den Fokuspunkt, den jeder Ausschnitt im Bild behält, setzen Inhaber und Admins.",
+        "hint": "Klicke oder tippe auf das Wichtigste im Foto: Jeder Ausschnitt behält diesen Punkt im Bild, überall, wo das Foto vorkommt.",
+        "hintStaff": "Welcher Teil des Fotos in jedem Ausschnitt bleibt, legen Inhaber und Admins fest.",
         "point": "Fokuspunkt bei {x} % von links und {y} % von oben. Mit den Pfeiltasten verschieben.",
         "failed": "Der Fokuspunkt wurde nicht gespeichert. Bitte versuche es noch einmal.",
         "square": "Quadrat",
@@ -910,7 +910,12 @@
         "wide": "Panorama",
         "turnedLying": "Das Foto liegt quer: Links und rechts fällt viel weg.",
         "turnedUpright": "Das Foto ist hochkant: Oben und unten fällt viel weg.",
-        "small": "Nur {width} × {height} Pixel im Bild: kann unscharf wirken."
+        "small": "Nur {width} × {height} Pixel im Bild: kann unscharf wirken.",
+        "open": "Ausschnitt",
+        "dialog": "Ausschnitt",
+        "done": "Fertig",
+        "turnedShort": "Wird stark beschnitten",
+        "smallShort": "Kann unscharf wirken"
       }
     },
     "money": {
@@ -1215,7 +1220,6 @@
       "notUsed": "Wird nirgends verwendet.",
       "altDefault": "Gilt überall, wo das Foto keine eigene Beschreibung hat."
     },
-    "focusHint": "Klicke auf das Foto, um den Fokuspunkt zu setzen.",
     "replace": "Datei ersetzen …",
     "replaceNote": "Jede Seite, die sie verwendet, zeigt die neue Datei. Die alte Datei bleibt 30 Tage erhalten.",
     "download": "Herunterladen",

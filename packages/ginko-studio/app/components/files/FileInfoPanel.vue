@@ -15,6 +15,7 @@ import { fieldsText } from './util'
 import { sizeText } from '../../utils/size'
 import { whoText } from '../../utils/who'
 import { whenFull } from '../../utils/when'
+import FocusPicker from '../fields/FocusPicker.vue'
 
 const props = defineProps<{ id: string; lib: FilesLibrary; locales: string[]; inTrash: boolean }>()
 const emit = defineEmits<{ remove: []; moveTo: []; restore: [] }>()
@@ -51,13 +52,8 @@ function saveName() {
   void run(() => props.lib.rename(props.id, given).then(() => { savedName.value = true }))
 }
 
-function focusAt(event: MouseEvent) {
-  if (!canManage.value || !info.value || info.value.kind !== 'image' || props.inTrash) return
-  const box = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  if (!box.width || !box.height) return
-  const clamp = (n: number) => Math.min(1, Math.max(0, n))
-  void run(() => props.lib.setFocus(props.id, { x: clamp((event.clientX - box.left) / box.width), y: clamp((event.clientY - box.top) / box.height) }))
-}
+const savedFocus = ref(false)
+const saveFocus = async (point: { x: number; y: number }) => { await props.lib.setFocus(props.id, point) }
 
 const picker = ref<HTMLInputElement | null>(null)
 const replacing = ref(false)
@@ -101,19 +97,13 @@ const uploaded = computed(() => (info.value ? whenFull(info.value.createdAt, sit
 <template>
   <div v-if="info" class="grid content-start gap-5">
     <div class="grid gap-2">
-      <div v-if="info.kind === 'image' && info.url" class="grid place-items-center rounded-lg bg-muted/60 p-2">
-        <div class="relative w-fit max-w-full" :class="canManage && !inTrash ? 'cursor-crosshair' : ''" @click="focusAt">
-          <img :src="info.url" alt="" class="block max-h-56 max-w-full rounded-md object-contain">
-          <span
-            v-if="info.focus"
-            class="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow"
-            :style="{ left: `${info.focus.x * 100}%`, top: `${info.focus.y * 100}%` }"
-            data-testid="focus-point"
-          />
-        </div>
-      </div>
+      <!-- The same point picker as an image field with frames: a click, a drag, a tap or the arrow keys. -->
+      <FocusPicker
+        v-if="info.kind === 'image' && info.url" v-model:stored="savedFocus" :src="info.url" :saved="info.focus" :editable="canManage && !inTrash" :save="saveFocus"
+        :described-by="canManage && !inTrash ? 'file-focus-hint' : undefined"
+      />
       <div v-else class="grid h-32 place-items-center rounded-lg bg-muted"><FileTextIcon class="size-12 text-muted-foreground" aria-hidden="true" /></div>
-      <p v-if="canManage && info.kind === 'image' && !inTrash" class="m-0 text-xs text-muted-foreground">{{ t('files.focusHint') }}</p>
+      <p v-if="canManage && info.kind === 'image' && !inTrash" id="file-focus-hint" class="m-0 text-xs text-muted-foreground">{{ t('fields.image.frames.hint') }}<span v-if="savedFocus" aria-hidden="true"> {{ t('files.info.saved') }}.</span></p>
     </div>
 
     <!-- The actions right under the preview: Replace is the job people come for (new lunch PDF, new team photo). -->
