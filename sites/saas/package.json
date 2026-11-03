@@ -7,7 +7,7 @@
     "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/public-sans": "5.3.0",
     "@lupinum/ginko": "workspace:*",
-    "nuxt": "4.6.2",
+    "nuxt": "4.6.3",
     "vue": "3.5.44"
   },
   "scripts": {

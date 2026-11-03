@@ -54,7 +54,7 @@
     "client-zip": "2.5.1",
     "clsx": "2.1.1",
     "convex": "catalog:",
-    "nuxt": "4.6.2",
+    "nuxt": "4.6.3",
     "reka-ui": "2.11.0",
     "shadcn-nuxt": "2.8.2",
     "tailwind-merge": "3.7.0",
