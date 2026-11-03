@@ -15,7 +15,7 @@ import { computed, defineAsyncComponent, inject, ref, shallowRef, watch } from '
 import { ImageOff, ImagePlus, Library, RefreshCw, Trash2 } from '@lucide/vue'
 import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
-import { acceptOf, imageFrames } from '@lupinum/ginko/internal'
+import { acceptOf, focusPosition, imageFrames } from '@lupinum/ginko/internal'
 import { useGinkoAssets, useUpload } from '@lupinum/ginko-editor'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
@@ -76,7 +76,7 @@ const processing = computed(() => state.value?.status === 'processing')
 /** The frames the site crops this photo to; the field then shows the whole photo with its focus point and each frame. */
 const frames = computed(() => (props.field.type === 'image' ? imageFrames(props.field.aspect) : []))
 /** The photo in the card or tile: cropped around its focus point; a gallery tile in the shape of the list's frame. */
-const previewStyle = computed(() => (ready.value?.focus ? { objectPosition: `${ready.value.focus.x * 100}% ${ready.value.focus.y * 100}%` } : undefined))
+const previewStyle = computed(() => (ready.value?.focus ? { objectPosition: focusPosition(ready.value.focus) } : undefined))
 const tileStyle = computed(() => (props.tile && frames.value[0] ? { aspectRatio: frames.value[0].aspect.replace(':', ' / ') } : undefined))
 /** The general hint is printed once by a list of photos; the note about the Files description stays with its photo. */
 const ownHint = computed(() => !!libraryAlt.value || (!listHint && !props.tile))

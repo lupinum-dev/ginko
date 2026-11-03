@@ -7,9 +7,9 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { TriangleAlert } from '@lucide/vue'
 import { useI18n } from '#imports'
-import { frameFit, type ImageFrame } from '@lupinum/ginko/internal'
+import { focusPosition, frameFit, type ImageFrame } from '@lupinum/ginko/internal'
 import { useGinkoAssets, type UploadDetails } from '@lupinum/ginko-editor'
-import { frameLabel } from '../../utils/frames'
+import { frameShape } from '../../utils/frames'
 
 const props = defineProps<{
   id: string
@@ -27,7 +27,6 @@ type Point = { x: number; y: number }
 const moving = ref<Point | null>(null)
 const error = ref(false)
 const focus = computed<Point>(() => moving.value ?? props.file.focus ?? { x: 0.5, y: 0.5 })
-const position = (p: Point) => `${Math.round(p.x * 1000) / 10}% ${Math.round(p.y * 1000) / 10}%`
 /** The pointer is down on the photo: the saved point coming back must not end the move. */
 let dragging = false
 watch(() => props.file.focus, (saved) => {
@@ -90,7 +89,7 @@ const tiles = computed(() => props.frames.map((frame) => {
     : fit.turned ? t(frame.ratio < 1 ? 'fields.image.frames.turnedLying' : 'fields.image.frames.turnedUpright')
     : fit.small ? t('fields.image.frames.small', { width: fit.width, height: fit.height })
     : null
-  return { key: frame.name ?? frame.aspect, label: frameLabel(frame.aspect, t), aspect: frame.aspect.replace(':', ' / '), warning }
+  return { key: frame.name ?? frame.aspect, label: `${t(`fields.image.frames.${frameShape(frame.aspect)}`)} ${frame.aspect}`, aspect: frame.aspect.replace(':', ' / '), warning }
 }))
 /** One frame gets a larger tile: it is the only place the site shows the photo. */
 const tileHeight = computed(() => (props.frames.length === 1 ? 'h-28' : 'h-20'))
@@ -128,7 +127,7 @@ const percent = (n: number) => Math.round(n * 100)
       <ul class="m-0 flex list-none flex-wrap items-start gap-x-3 gap-y-2.5 p-0">
         <li v-for="tile in tiles" :key="tile.key" class="grid max-w-full min-w-0 gap-1" data-testid="frame">
           <div class="max-w-full overflow-hidden rounded-md border bg-muted" :class="tileHeight" :style="{ aspectRatio: tile.aspect }">
-            <img :src="file.url" alt="" class="block size-full object-cover" :style="{ objectPosition: position(focus) }">
+            <img :src="file.url" alt="" class="block size-full object-cover" :style="{ objectPosition: focusPosition(focus) }">
           </div>
           <span class="text-xs text-muted-foreground tabular-nums">{{ tile.label }}</span>
           <span v-if="tile.warning" class="flex max-w-48 gap-1 text-xs leading-snug text-amber-700 dark:text-amber-400"><TriangleAlert class="mt-px size-3.5 shrink-0" aria-hidden="true" />{{ tile.warning }}</span>

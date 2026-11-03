@@ -12,7 +12,7 @@ import type { FrameFill } from '@lupinum/ginko/internal'
 import { Button } from '@studio/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@studio/components/ui/native-select'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
-import { frameLabel } from '../../utils/frames'
+import { frameShape } from '../../utils/frames'
 import { useEditorTick } from './context.ts'
 
 const props = defineProps<{
@@ -35,12 +35,16 @@ const picture = computed(() => {
   return isPicture(selection) ? { pos: selection.from, src: String(selection.node.attrs.src ?? ''), alt: String(selection.node.attrs.alt ?? '').trim(), frame: imageFrameOf(selection.node) } : undefined
 })
 /** Format and Zuschnitt: the picture keeps its selection, so the menu stays for the next choice. */
-function setAspect(value: unknown) {
-  const shown = picture.value
-  if (!shown) return
-  const aspect = TEXT_IMAGE_FRAMES.find((f) => f.aspect === value)?.aspect
-  setImageFrame(props.editor, shown.pos, { aspect, fit: shown.frame.fit })
-}
+const aspectChoice = computed({
+  get: () => picture.value?.frame.aspect ?? '',
+  set(value: unknown) {
+    const shown = picture.value
+    if (!shown) return
+    const aspect = TEXT_IMAGE_FRAMES.find((f) => f.aspect === value)?.aspect
+    setImageFrame(props.editor, shown.pos, { aspect, fit: shown.frame.fit })
+  },
+})
+const shapeLabel = (aspect: string) => `${t(`fields.image.frames.${frameShape(aspect)}`)} ${aspect}`
 function setFit(value: unknown) {
   const shown = picture.value
   if (!shown?.frame.aspect || (value !== 'cover' && value !== 'contain')) return
@@ -82,12 +86,9 @@ const button = 'h-8 px-2 [@media(pointer:coarse)]:h-11'
       </div>
       <!-- The frame the site shows the picture in: a shape, then whether it is cut to fill it or shown whole. -->
       <div v-if="picture" class="flex flex-wrap items-center gap-1.5 border-t px-1 pt-1.5 pb-0.5">
-        <NativeSelect
-          :model-value="picture.frame.aspect ?? ''" class="h-8 py-1 text-[13px] pointer-coarse:h-11" :aria-label="t('editor.image.format')"
-          @update:model-value="setAspect"
-        >
+        <NativeSelect v-model="aspectChoice" class="h-8 py-1 text-[13px] pointer-coarse:h-11" :aria-label="t('editor.image.format')">
           <NativeSelectOption value="">{{ t('editor.image.formatOriginal') }}</NativeSelectOption>
-          <NativeSelectOption v-for="f in TEXT_IMAGE_FRAMES" :key="f.aspect" :value="f.aspect">{{ frameLabel(f.aspect, t) }}</NativeSelectOption>
+          <NativeSelectOption v-for="f in TEXT_IMAGE_FRAMES" :key="f.aspect" :value="f.aspect">{{ shapeLabel(f.aspect) }}</NativeSelectOption>
         </NativeSelect>
         <ToggleGroup
           v-if="picture.frame.aspect" type="single" variant="segmented" :model-value="picture.frame.fit" :aria-label="t('editor.image.fit')"
