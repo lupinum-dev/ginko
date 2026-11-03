@@ -95,10 +95,6 @@ function unwrapRouteLinks(node: Tree): Tree[] {
 }
 
 /**
- * Every `id` with `prefix-` in front, and every `#` link to one: several Markdown bodies on one page (the releases of a
- * changelog) would otherwise repeat heading ids such as `fixed`, and a link would jump to the first one.
- */
-/**
  * A picture with a frame (`![…](…){aspect="4:3"}`) gets the frame's CSS, as `<GinkoImage>` writes it: the shape, and
  * the photo cut around its focus point (`focal`, from its library file) or, with `fit="contain"`, shown whole. Its
  * `height` takes the frame's shape too, so the browser keeps the right space free. Runs after `dropUnsafe`: the values
@@ -116,6 +112,10 @@ function frameImages(node: Tree): Tree {
   return [tag, { ...rest, ...height, style: frameStyle(aspect, fit === 'contain' ? 'contain' : 'cover', position) }] as unknown as Tree
 }
 
+/**
+ * Every `id` with `prefix-` in front, and every `#` link to one: several Markdown bodies on one page (the releases of a
+ * changelog) would otherwise repeat heading ids such as `fixed`, and a link would jump to the first one.
+ */
 function prefixIds(node: Tree, prefix: string): Tree {
   if (!Array.isArray(node)) return node
   const [tag, props, ...children] = node as [string | null, Record<string, unknown>, ...Tree[]]

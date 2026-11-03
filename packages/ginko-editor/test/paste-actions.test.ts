@@ -3,7 +3,7 @@
 import { components } from '@lupinum/ginko-components/registry'
 import { coreMessage, type MarkdownProfile } from '@lupinum/ginko/internal'
 import { Slice } from '@tiptap/pm/model'
-import { TextSelection } from '@tiptap/pm/state'
+import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { describe, expect, test, vi } from 'vitest'
 import {
   cancelUpload, createGinkoEditor, docProblems, figureTag, finishUpload, imageFrameOf, isUploading, linkCardTag, makeFigure, makeLinkCard, setImageFrame, sourceProblems, startUpload,
@@ -115,6 +115,7 @@ describe('the frame of a picture in a text', () => {
     expect(imageFrameOf(handle.editor.state.doc.nodeAt(pos)!)).toEqual({ aspect: '4:3', fit: 'contain' })
     expect(await handle.markdown()).toBe('Eins ![Hof](/hof.png){aspect="4:3" fit="contain"}\n')
     setImageFrame(handle.editor, pos, { aspect: '16:9', fit: 'cover' })
+    expect(handle.editor.state.selection).toBeInstanceOf(NodeSelection)
     expect(handle.editor.state.selection.from).toBe(pos)
     expect(await handle.markdown()).toBe('Eins ![Hof](/hof.png){aspect="16:9"}\n')
     setImageFrame(handle.editor, pos, { aspect: undefined, fit: 'contain' })

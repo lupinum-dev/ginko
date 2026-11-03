@@ -803,7 +803,7 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       if (field.max !== undefined && !(Number.isInteger(field.max) && field.max > 0)) problems.push(`${path}: max must be greater than 0.`)
       break
     }
-    case 'image': if (field.aspect !== undefined) problems.push(...aspectProblems(path, field.aspect)); break
+    case 'image': if (field.aspect !== undefined) problems.push(...aspectProblems(path, field.aspect, RESERVED_KEYS)); break
     case 'file': if (!(field.maxBytes > 0 && field.maxBytes <= limitOf('file'))) problems.push(`${path}: maxBytes at most ${formatMb(limitOf('file'))} MB.`); break
     case 'time':
       if (field.after !== undefined && (!topLevel || siblings[field.after]?.type !== 'time' || field.after === path.split('.').pop())) {

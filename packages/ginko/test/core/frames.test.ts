@@ -5,7 +5,12 @@ import { checkSchema, diffSchema, frameFit, resolveEntry, serializeSchema, type 
 // Image frames (`f.image(…, { aspect })`): the release must accept them on configs that had none, the bundle must carry
 // them to `<GinkoImage>`, and a typo must fail the check instead of leaving every photo uncropped.
 
-const base = (): Schema => structuredClone(serializeSchema(restaurant))
+// The restaurant config without frames on its event photo, whatever the demo site sets: each test adds its own.
+const base = (): Schema => {
+  const s = structuredClone(serializeSchema(restaurant))
+  delete (s.bricks.events!.fields.image as { aspect?: unknown }).aspect
+  return s
+}
 const eventImage = (s: Schema) => s.bricks.events!.fields.image as unknown as Record<string, unknown>
 
 describe('aspect in the schema check', () => {
@@ -26,6 +31,7 @@ describe('aspect in the schema check', () => {
     ['no frames at all', {}, 'events.image.aspect: 1 to 8 frames.'],
     ['a bad ratio among named frames', { card: '3x2' }, 'events.image.aspect.card: “3x2” is no frame'],
     ['the reserved name original', { original: '1:1' }, 'events.image.aspect: “original” is no frame name'],
+    ['a name of every object', { constructor: '1:1' }, 'events.image.aspect: “constructor” is no frame name'],
     ['a list instead of names', ['3:2'], 'events.image.aspect: write one ratio'],
   ])('rejects %s', (_name, aspect, problem) => {
     const s = base()

@@ -153,7 +153,10 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(problems).toEqual(['Die Eigenschaft „aspect“ ist nicht erlaubt.'])
     const nodes = value.nodes as never as [string, object, ...[string, Record<string, unknown>][]][]
     Object.assign(nodes[0]![2]![1], { width: 1600, height: 1200, focal: '25% 60%', style: 'position:fixed' })
+    const unframed = nodes[0]!.slice(2).find((n) => Array.isArray(n) && (n[1] as { src?: string }).src === '/c.jpg') as [string, Record<string, unknown>]
+    Object.assign(unframed[1], { style: 'position:fixed' })
     const html = await render(value)
+    expect(html).not.toContain('position:fixed')
     expect(html).toContain('<img src="/a.jpg" alt="A" width="1600" height="900" style="aspect-ratio: 16 / 9; object-fit: cover; object-position: 25% 60%;">')
     expect(html).toContain('<img src="/b.jpg" alt="B" style="aspect-ratio: 1 / 1; object-fit: contain;">')
   })

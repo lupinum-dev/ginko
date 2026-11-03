@@ -23,9 +23,11 @@ function frameOf(image: ImageValue, name: string | undefined): ImageFrame | unde
     const key = `${image.url} ${name}`
     if (!warned.has(key)) {
       warned.add(key)
-      console.warn(name === undefined || !named.length
-        ? `[ginko] <GinkoImage> shows ${image.url} uncropped: name its frame with frame="${named.join('" or frame="')}".`
-        : `[ginko] <GinkoImage> has no frame “${name}” for ${image.url}; the field has ${named.join(', ')}. It is shown uncropped.`)
+      console.warn(!named.length
+        ? `[ginko] <GinkoImage> shows ${image.url} uncropped: its field has one frame (${frames[0]!.aspect}) without a name; leave out frame="${name}".`
+        : name === undefined
+          ? `[ginko] <GinkoImage> shows ${image.url} uncropped: name its frame with frame="${named.join('" or frame="')}".`
+          : `[ginko] <GinkoImage> has no frame “${name}” for ${image.url}; the field has ${named.join(', ')}. It is shown uncropped.`)
     }
   }
   return frame

@@ -5,6 +5,7 @@
 import type { Bundle } from './bundle.ts'
 import type { ComponentRegistry } from './components.ts'
 import { effectiveAlt } from './fields.ts'
+import { focusPosition } from './frames.ts'
 import { mapTrees } from './links.ts'
 import type { FileInfo } from './resolve.ts'
 import type { Field, Fields, Json, Schema } from './types.ts'
@@ -208,8 +209,6 @@ export function fileRefUses(nodes: readonly Json[], components: ComponentRegistr
   return out
 }
 
-/** A share from 0 to 1 as a CSS percentage with one decimal. */
-const percent = (share: number) => `${Math.round(Math.min(1, Math.max(0, share)) * 1000) / 10}%`
 
 /**
  * The bundle with every `$file.<id>` of its Markdown trees resolved through `files` (the bundle's ready uploads):
@@ -246,7 +245,7 @@ export function resolveFileRefs(bundle: Bundle, schema: Pick<Schema, 'components
         if (file.width && file.height) Object.assign(props, { width: file.width, height: file.height })
         if (srcset) Object.assign(props, { srcset, sizes: '100vw' })
         if (!String(props.alt ?? '').trim() && library) props.alt = library
-        if (file.focus) props.focal = `${percent(file.focus.x)} ${percent(file.focus.y)}`
+        if (file.focus) props.focal = focusPosition(file.focus)
       } else if (declared) {
         // Only both together: one size of the author's with one of the file's would distort the picture.
         const [w, h] = imageSizeProps(use.prop)
@@ -257,7 +256,7 @@ export function resolveFileRefs(bundle: Bundle, schema: Pick<Schema, 'components
         if ('alt' in declared && !String(props.alt ?? '').trim() && library) props.alt = library
         // The component picks its own `sizes`: it knows how wide it shows the picture.
         if (srcset) props.srcset = srcset
-        if (file.focus) props.focal = `${percent(file.focus.x)} ${percent(file.focus.y)}`
+        if (file.focus) props.focal = focusPosition(file.focus)
       }
     }
     return copy

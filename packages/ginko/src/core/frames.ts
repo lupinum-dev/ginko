@@ -40,8 +40,11 @@ export function imageFrames(aspect: ImageField['aspect'] | undefined): ImageFram
   })
 }
 
-/** What `checkSchema` says about an `aspect` option at `path`; empty when it is valid. */
-export function aspectProblems(path: string, aspect: unknown): string[] {
+/**
+ * What `checkSchema` says about an `aspect` option at `path`; empty when it is valid. `reserved`: names no key may
+ * take (`constructor`, …), as for pages, bricks and fields.
+ */
+export function aspectProblems(path: string, aspect: unknown, reserved: ReadonlySet<string> = new Set()): string[] {
   const ratioProblem = (at: string, value: unknown) => aspectRatio(value) === undefined
     ? [`${at}: “${String(value)}” is no frame; write width:height, such as '3:2' or '1.91:1' (between 1:10 and 10:1).`]
     : []
@@ -50,7 +53,7 @@ export function aspectProblems(path: string, aspect: unknown): string[] {
   const entries = Object.entries(aspect)
   if (entries.length === 0 || entries.length > MAX_FRAMES) return [`${path}.aspect: 1 to ${MAX_FRAMES} frames.`]
   return entries.flatMap(([name, value]) => [
-    ...(!FRAME_NAME.test(name) || name === ORIGINAL_FRAME ? [`${path}.aspect: “${name}” is no frame name; use letters and digits, starting with a lowercase letter (not “${ORIGINAL_FRAME}”).`] : []),
+    ...(!FRAME_NAME.test(name) || name === ORIGINAL_FRAME || reserved.has(name) ? [`${path}.aspect: “${name}” is no frame name; use letters and digits, starting with a lowercase letter (not “${ORIGINAL_FRAME}”).`] : []),
     ...ratioProblem(`${path}.aspect.${name}`, value),
   ])
 }
@@ -59,8 +62,9 @@ export function aspectProblems(path: string, aspect: unknown): string[] {
 export type FrameFill = 'cover' | 'contain'
 export const FRAME_FILLS: readonly FrameFill[] = ['cover', 'contain']
 
-/** `object-position` of a focus point (0..1 from the top left), one decimal: `25% 60%`. */
-export const focusPosition = (focus: { x: number; y: number }) => `${Math.round(focus.x * 1000) / 10}% ${Math.round(focus.y * 1000) / 10}%`
+/** `object-position` of a focus point (0..1 from the top left, clamped to the photo), one decimal: `25% 60%`. */
+export const focusPosition = (focus: { x: number; y: number }) => `${percent(focus.x)} ${percent(focus.y)}`
+const percent = (share: number) => `${Math.round(Math.min(1, Math.max(0, share)) * 1000) / 10}%`
 
 /**
  * The CSS that puts a photo in the frame `aspect`, as `<GinkoImage>`, a picture in a text and the Studio show it: the
