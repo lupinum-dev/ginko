@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 // Find and replace in the headless core.
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { createGinkoEditor, searchInfo } from '../src/core/index.ts'
 
-const open = async (text: string) => {
-  const handle = await createGinkoEditor({ text, profile: 'basic', element: document.createElement('div') })
+const open = async (text: string, element: HTMLElement = document.createElement('div')) => {
+  const handle = await createGinkoEditor({ text, profile: 'basic', element })
   if (handle.mode !== 'rich') throw new Error(`expected rich: ${handle.problems}`)
   return handle
 }
@@ -61,6 +61,31 @@ describe('find and replace', () => {
     handle.editor.commands.replaceCurrent('Kiwi')
     expect(await handle.markdown()).toBe('Kiwi und apfel\n\n- **Apfel** pur\n- Birne\n\nAPFELMUS\n')
     expect(searchInfo(handle.editor)).toMatchObject({ total: 3, current: 1 })
+  })
+
+  // Reported in a long text: "1 von 1" was counted, but neither typing nor "Weiter" scrolled there. ProseMirror's own
+  // scrollIntoView does nothing while the focus is outside the editor, and it is in the search field.
+  test('typing and next select the match and scroll the page to it while the search field keeps the focus', async () => {
+    const handle = await open(TEXT, document.body)
+    const field = document.body.appendChild(document.createElement('input'))
+    field.focus()
+    // happy-dom has no layout: the match is placed far below the window (768px high).
+    vi.spyOn(handle.editor.view, 'coordsAtPos').mockReturnValue({ top: 2000, bottom: 2020, left: 10, right: 50 })
+    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {})
+    try {
+      handle.editor.commands.setSearch('apfelmus')
+      const { from, to } = handle.editor.state.selection
+      expect(handle.editor.state.doc.textBetween(from, to)).toBe('APFELMUS')
+      expect(scrollBy).toHaveBeenLastCalledWith(0, 2020 - 768 + 5)
+      scrollBy.mockClear()
+      handle.editor.commands.findNext()
+      expect(scrollBy).toHaveBeenCalledOnce()
+      expect(document.activeElement).toBe(field)
+    } finally {
+      scrollBy.mockRestore()
+      handle.destroy()
+      field.remove()
+    }
   })
 
   test('a block without a match stays byte for byte', async () => {

@@ -1,10 +1,11 @@
 // Find and replace inside one field. A ProseMirror plugin keeps the term, the matches and the current match;
 // matches are shown as decorations (`ginko-match`, and `ginko-match-current` on the current one).
 // Replacing is a normal transaction on the matched text only, so untouched blocks stay byte for byte (see editor.ts).
+// Every command selects the place it goes to and scrolls it into view itself (see `scrollToPos`).
 import { Extension, type Editor } from '@tiptap/core'
 import type { Node as PmNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state'
-import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 
 export interface SearchMatch { from: number; to: number }
 
@@ -18,10 +19,14 @@ export interface SearchState {
 
 export interface SearchOptions { caseSensitive?: boolean }
 
-const EMPTY: SearchState = { term: '', caseSensitive: false, matches: [], current: -1 }
-export const searchKey = new PluginKey<SearchState>('ginkoSearch')
+/** The plugin's state: the search, and a count of the commands that went somewhere, which the plugin view scrolls to. */
+interface PluginState extends SearchState { reveals: number }
 
-type Meta = { term: string; caseSensitive: boolean; current?: number } | { current: number }
+const EMPTY: PluginState = { term: '', caseSensitive: false, matches: [], current: -1, reveals: 0 }
+export const searchKey = new PluginKey<PluginState>('ginkoSearch')
+
+type Meta = { term: string; caseSensitive: boolean; current: number } | { current: number }
+const REVEAL = 'ginkoSearchReveal'
 
 /** All matches in the text of each textblock. A match does not span two blocks; an inline atom (picture, box) counts as one character that never matches. */
 export function findMatches(doc: PmNode, term: string, caseSensitive: boolean): SearchMatch[] {
@@ -50,7 +55,7 @@ function build(doc: PmNode, term: string, caseSensitive: boolean, current: numbe
   return { term, caseSensitive, matches, current: clamp(current, matches.length) }
 }
 
-/** The state of the search at the cursor: first match at or after `from`, else the first. */
+/** The match at the cursor: first match at or after `from`, else the first. */
 const nearest = (matches: SearchMatch[], from: number) => {
   const i = matches.findIndex((m) => m.to > from)
   return matches.length ? (i === -1 ? 0 : i) : -1
@@ -58,9 +63,48 @@ const nearest = (matches: SearchMatch[], from: number) => {
 
 export const getSearch = (state: EditorState): SearchState => searchKey.getState(state) ?? EMPTY
 
-function select(tr: Transaction, match: SearchMatch | undefined) {
-  if (!match) return tr
-  return tr.setSelection(TextSelection.create(tr.doc, match.from, match.to)).scrollIntoView()
+/** Selects `from`–`to` and scrolls there once the view has it. */
+const selectRange = (tr: Transaction, from: number, to: number) => tr.setSelection(TextSelection.create(tr.doc, from, to)).setMeta(REVEAL, true)
+const select = (tr: Transaction, match: SearchMatch | undefined) => (match ? selectRange(tr, match.from, match.to) : tr)
+
+type Sides = number | { top: number; right: number; bottom: number; left: number }
+const side = (value: Sides | undefined, name: 'top' | 'right' | 'bottom' | 'left', fallback: number) =>
+  value === undefined ? fallback : typeof value === 'number' ? value : value[name]
+
+/**
+ * Scrolls `pos` into view in each scrolling box around the editor and in the window, keeping the editor's
+ * `scrollThreshold` and `scrollMargin` clear (sticky bars), as ProseMirror does for the selection. ProseMirror's own
+ * `tr.scrollIntoView()` does nothing while the focus is outside the editor, and here it is in the search field.
+ */
+function scrollToPos(view: EditorView, pos: number) {
+  let rect = view.coordsAtPos(pos)
+  const threshold = view.someProp('scrollThreshold')
+  const margin = view.someProp('scrollMargin')
+  const win = view.dom.ownerDocument.defaultView
+  if (!win) return
+  for (let el: HTMLElement | null = view.dom.parentElement; el; el = el.parentElement) {
+    const atTop = el === win.document.body
+    const box = atTop ? { top: 0, left: 0, bottom: win.innerHeight, right: win.innerWidth } : el.getBoundingClientRect()
+    const move = (start: 'top' | 'left', end: 'bottom' | 'right') => {
+      if (rect[start] < box[start] + side(threshold, start, 0)) return rect[start] - box[start] - side(margin, start, 5)
+      if (rect[end] > box[end] - side(threshold, end, 0)) return rect[end] - box[end] + side(margin, end, 5)
+      return 0
+    }
+    const dy = move('top', 'bottom')
+    const dx = move('left', 'right')
+    if (atTop) {
+      if (dx || dy) win.scrollBy(dx, dy)
+      break
+    }
+    const { scrollTop, scrollLeft } = el
+    el.scrollTop += dy
+    el.scrollLeft += dx
+    const movedY = el.scrollTop - scrollTop
+    const movedX = el.scrollLeft - scrollLeft
+    rect = { top: rect.top - movedY, bottom: rect.bottom - movedY, left: rect.left - movedX, right: rect.right - movedX }
+    // A fixed box (a dialog) does not move with the page: nothing outside it needs to scroll.
+    if (getComputedStyle(el).position === 'fixed') break
+  }
 }
 
 function go(state: EditorState, tr: Transaction, step: 1 | -1, dispatch: boolean): boolean {
@@ -76,7 +120,7 @@ function go(state: EditorState, tr: Transaction, step: 1 | -1, dispatch: boolean
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     ginkoSearch: {
-      /** Sets the term (empty clears it). Case-insensitive unless `caseSensitive`. The current match is the first one at or after the cursor. */
+      /** Sets the term (empty clears it). Case-insensitive unless `caseSensitive`. The current match is the first one at or after the cursor; it is selected and scrolled to. */
       setSearch: (term: string, options?: SearchOptions) => ReturnType
       findNext: () => ReturnType
       findPrev: () => ReturnType
@@ -93,7 +137,12 @@ export const SearchExtension = Extension.create({
   addCommands() {
     return {
       setSearch: (term, options) => ({ tr, dispatch }) => {
-        if (dispatch) tr.setMeta(searchKey, { term, caseSensitive: options?.caseSensitive ?? false } satisfies Meta).setMeta('addToHistory', false)
+        if (dispatch) {
+          const caseSensitive = options?.caseSensitive ?? false
+          const matches = findMatches(tr.doc, term, caseSensitive)
+          const current = nearest(matches, tr.selection.from)
+          select(tr.setMeta(searchKey, { term, caseSensitive, current } satisfies Meta).setMeta('addToHistory', false), matches[current])
+        }
         return true
       },
       findNext: () => ({ state, tr, dispatch }) => go(state, tr, 1, !!dispatch),
@@ -120,28 +169,31 @@ export const SearchExtension = Extension.create({
           for (const m of [...search.matches].reverse()) tr.insertText(text, m.from, m.to)
           // Later matches are replaced first, so the first one still starts where it did.
           const first = search.matches[0]!
-          tr.setSelection(TextSelection.create(tr.doc, first.from, first.from + text.length)).scrollIntoView()
+          selectRange(tr, first.from, first.from + text.length)
         }
         return true
       },
     }
   },
   addProseMirrorPlugins() {
-    return [new Plugin<SearchState>({
+    return [new Plugin<PluginState>({
       key: searchKey,
       state: {
         init: () => EMPTY,
         apply(tr, old, _before, after) {
+          const reveals = old.reveals + (tr.getMeta(REVEAL) ? 1 : 0)
           const meta = tr.getMeta(searchKey) as Meta | undefined
-          if (meta && 'term' in meta) {
-            const built = build(after.doc, meta.term, meta.caseSensitive, 0)
-            return { ...built, current: meta.current !== undefined ? clamp(meta.current, built.matches.length) : nearest(built.matches, after.selection.from) }
-          }
-          if (meta) return { ...old, current: clamp(meta.current, old.matches.length) }
-          if (tr.docChanged && old.term) return build(after.doc, old.term, old.caseSensitive, old.current)
-          return old
+          if (meta && 'term' in meta) return { ...build(after.doc, meta.term, meta.caseSensitive, meta.current), reveals }
+          if (meta) return { ...old, current: clamp(meta.current, old.matches.length), reveals }
+          if (tr.docChanged && old.term) return { ...build(after.doc, old.term, old.caseSensitive, old.current), reveals }
+          return reveals === old.reveals ? old : { ...old, reveals }
         },
       },
+      view: () => ({
+        update(view, before) {
+          if (searchKey.getState(view.state)?.reveals !== searchKey.getState(before)?.reveals) scrollToPos(view, view.state.selection.head)
+        },
+      }),
       props: {
         decorations(state) {
           const { matches, current } = getSearch(state)

@@ -4,7 +4,8 @@
      editor's schema has is shown, so each Markdown profile gets its own set. The row fits its own width (a phone, a
      sheet, a column next to the preview): bold, italic and link always stay in it, the other tools follow in a fixed
      order as long as they fit, and the rest is in "Weitere Werkzeuge" (⋯), so every tool is reachable at every width.
-     With room to spare the block type shows its word and the Markdown switch its name. -->
+     With room to spare the block type shows its word and the Markdown switch its name. The default slot goes below the
+     row, in the same sticky (or docked) bar: the search. -->
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from '#imports'
@@ -129,7 +130,12 @@ const bar = ref<HTMLElement>()
 let observer: ResizeObserver | undefined
 onMounted(() => {
   if (typeof ResizeObserver === 'undefined' || !bar.value) return
-  observer = new ResizeObserver(([entry]) => { if (entry) width.value = entry.contentRect.width })
+  observer = new ResizeObserver(([entry]) => {
+    if (!entry) return
+    width.value = entry.contentRect.width
+    // Docked, a bar that grows (the search opens) moves up, so it stays above the keyboard.
+    if (place.value && bar.value) { barHeight.value = bar.value.offsetHeight; measure() }
+  })
   observer.observe(bar.value)
 })
 onBeforeUnmount(() => observer?.disconnect())
@@ -163,7 +169,7 @@ const style = computed(() => (place.value ? { transform: `translate(${place.valu
   <TooltipProvider :delay-duration="300">
     <div v-if="place" aria-hidden="true" :style="{ height: `${barHeight}px` }" />
     <div
-      ref="bar" :style="style" :data-docked="place ? '' : undefined" class="grid gap-1 bg-background p-1"
+      ref="bar" :style="style" data-toolbar-bar :data-docked="place ? '' : undefined" class="grid grid-cols-[minmax(0,1fr)] gap-1 bg-background p-1"
       :class="place ? 'fixed top-0 left-0 z-40 border-t pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgb(0_0_0/0.08)]' : 'sticky top-(--studio-header-height,0px) z-[5] rounded-t-lg border-b'"
     >
       <div role="toolbar" :aria-label="t('editor.toolbar.label')" class="flex items-center gap-0.5">
@@ -196,6 +202,7 @@ const style = computed(() => (place.value ? { transform: `translate(${place.valu
         <TableBar v-if="table" :editor="editor" :at="table" :wide="fit.tableWide" />
         <div v-if="sourceInRow" class="ml-auto shrink-0 pl-2"><SourceToggle :pressed="false" :word="fit.sourceWord" @toggle="emit('source')" /></div>
       </div>
+      <slot />
     </div>
   </TooltipProvider>
 </template>
