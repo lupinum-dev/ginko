@@ -1,5 +1,16 @@
 # @lupinum/ginko
 
+## 0.16.0
+
+### Minor Changes
+
+- [#104](https://github.com/lupinum-dev/ginko/pull/104) [`d207ad7`](https://github.com/lupinum-dev/ginko/commit/d207ad799be1eb09b70734673578feb5ca5b75c8) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add frames for images: `f.image(…, { aspect: '3:4' })` or named frames (`{ card: '3:2', header: '21:9' }`). `<GinkoImage>` crops to the field's frame around the photo's focus point (`frame="card"` picks a named one), the Studio shows the photo in every frame and sets the focus point there (also from a gallery tile, a picture in a text and Files), and a picture in a text takes a frame too (`{aspect="4:3" fit="contain"}`, Format and Zuschnitt in the image menu).
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes

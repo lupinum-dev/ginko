@@ -1,5 +1,12 @@
 # @lupinum/ginko-content
 
+## 0.16.0
+
+### Patch Changes
+
+- Updated dependencies [[`d207ad7`](https://github.com/lupinum-dev/ginko/commit/d207ad799be1eb09b70734673578feb5ca5b75c8)]:
+  - @lupinum/ginko@0.16.0
+
 ## 0.15.1
 
 ### Patch Changes
