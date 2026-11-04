@@ -26,3 +26,22 @@ describe('GinkoImage focus point', () => {
     expect(await render({ image })).not.toContain('style=')
   })
 })
+
+describe('GinkoImage frames', () => {
+  const photo = { url: '/a.jpg', alt: 'A', width: 1600, height: 1200, focus: { x: 0.25, y: 0.6 } }
+  const cropped = (aspect: string, height: number) => `<img src="/a.jpg" alt="A" width="1600" height="${height}" style="aspect-ratio:${aspect};object-fit:cover;object-position:25% 60%;" loading="lazy" decoding="async">`
+  const uncropped = '<img src="/a.jpg" alt="A" width="1600" height="1200" style="object-position:25% 60%;" loading="lazy" decoding="async">'
+  test.each([
+    ['the field’s only ratio, with no frame named', { image: { ...photo, aspect: '3:4' } }, cropped('3 / 4', 2133)],
+    ['a named frame', { image: { ...photo, aspect: { card: '3:2', header: '21:9' } }, frame: 'header' }, cropped('21 / 9', 686)],
+    ['original shows the whole photo', { image: { ...photo, aspect: '3:4' }, frame: 'original' }, uncropped],
+    ['an unknown frame name shows the whole photo', { image: { ...photo, aspect: { card: '3:2' } }, frame: 'hero' }, uncropped],
+    ['several frames and none named show the whole photo', { image: { ...photo, aspect: { card: '3:2', header: '21:9' } } }, uncropped],
+  ])('%s', async (_name, value, expected) => {
+    expect(await render(value)).toBe(expected)
+  })
+
+  test('a frame without a focus point crops around the middle', async () => {
+    expect(await render({ image: { ...image, width: 1000, height: 1000, aspect: '2:1' } })).toContain('style="aspect-ratio:2 / 1;object-fit:cover;object-position:50% 50%;"')
+  })
+})

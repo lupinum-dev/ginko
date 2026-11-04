@@ -749,7 +749,12 @@
       "replace": "Remplacer l’image",
       "replaceSubmit": "Remplacer",
       "caption": "Légende",
-      "actions": "Image"
+      "actions": "Image",
+      "format": "Format",
+      "formatOriginal": "Original",
+      "fit": "Recadrage",
+      "fitCover": "Remplir",
+      "fitContain": "Ajuster"
     },
     "text": {
       "tooLong": "Le texte est trop long ({max} caractères au maximum).",
@@ -892,7 +897,26 @@
       "altFromLibrary": "Laissez vide pour utiliser la description des fichiers.",
       "noneToTranslate": "Pas encore de photo, donc rien à traduire.",
       "chooseInMain": "Pour changer l’image elle-même, passez en {name}.",
-      "drop": "Ou déposez une photo ici."
+      "drop": "Ou déposez une photo ici.",
+      "frames": {
+        "title": "Comment le site affiche la photo",
+        "hint": "Cliquez ou touchez l’élément le plus important de la photo : chaque cadrage garde ce point visible, partout où la photo apparaît.",
+        "hintStaff": "Les propriétaires et les admins décident quelle partie de la photo chaque cadrage garde.",
+        "point": "Point focal à {x} % de la gauche et {y} % du haut. Déplacez-le avec les flèches.",
+        "failed": "Le point focal n’a pas été enregistré. Veuillez réessayer.",
+        "square": "Carré",
+        "portrait": "Portrait",
+        "landscape": "Paysage",
+        "wide": "Panoramique",
+        "turnedLying": "La photo est en paysage : une grande partie est coupée sur les côtés.",
+        "turnedUpright": "La photo est en portrait : une grande partie est coupée en haut et en bas.",
+        "small": "Seulement {width} × {height} pixels dans le cadrage : elle peut paraître floue.",
+        "open": "Cadrage",
+        "dialog": "Cadrage",
+        "done": "Terminé",
+        "turnedShort": "Fortement recadrée",
+        "smallShort": "Peut paraître floue"
+      }
     },
     "money": {
       "negative": "Un prix ne peut pas être négatif.",
@@ -1196,7 +1220,6 @@
       "notUsed": "Non utilisé.",
       "altDefault": "Utilisée partout où cette photo n’a pas de description propre."
     },
-    "focusHint": "Cliquez sur la photo pour définir le point focal.",
     "replace": "Remplacer le fichier…",
     "replaceNote": "Chaque page qui l’utilise affiche le nouveau fichier. L’ancien fichier est conservé 30 jours.",
     "download": "Télécharger",

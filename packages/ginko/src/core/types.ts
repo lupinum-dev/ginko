@@ -85,7 +85,17 @@ export interface ListField<F extends Fields = Fields> extends FieldBase {
 }
 /** Points to entries of a collection brick `to`; stores the entry ID (a list of IDs with `multiple`). `max` only with `multiple`. */
 export interface RefField extends FieldBase { type: 'ref'; to: string; multiple?: boolean; max?: number }
-export interface ImageField extends FieldBase { type: 'image' }
+/** A frame's shape as `width:height`, such as `3:2`, `1:1` or `1.91:1`. */
+export type AspectRatio = `${number}:${number}`
+export interface ImageField extends FieldBase {
+  type: 'image'
+  /**
+   * The frame the site shows the photo in: one ratio (`'3:4'`), or named frames when the site shows it in several
+   * places (`{ card: '3:2', header: '21:9' }`). The Studio previews the photo in each frame with its focus point,
+   * and `<GinkoImage>` crops to it (`frame="card"`). Display only: no stored value changes with it.
+   */
+  aspect?: AspectRatio | Readonly<Record<string, AspectRatio>>
+}
 export interface FileField extends FieldBase { type: 'file'; accept: readonly 'pdf'[]; maxBytes: number }
 export interface SlugField extends FieldBase { type: 'slug'; from: string }
 

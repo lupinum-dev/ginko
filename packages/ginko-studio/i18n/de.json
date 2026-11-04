@@ -749,7 +749,12 @@
       "replace": "Bild ersetzen",
       "replaceSubmit": "Ersetzen",
       "caption": "Bildunterschrift",
-      "actions": "Bild"
+      "actions": "Bild",
+      "format": "Format",
+      "formatOriginal": "Original",
+      "fit": "Zuschnitt",
+      "fitCover": "Füllend",
+      "fitContain": "Eingepasst"
     },
     "text": {
       "tooLong": "Der Text ist zu lang (höchstens {max} Zeichen).",
@@ -892,7 +897,26 @@
       "altFromLibrary": "Leer lassen, dann gilt die Beschreibung aus den Dateien.",
       "noneToTranslate": "Noch kein Foto, also nichts zu übersetzen.",
       "chooseInMain": "Das Bild selbst änderst du auf {name}.",
-      "drop": "Oder ziehe ein Foto hierher."
+      "drop": "Oder ziehe ein Foto hierher.",
+      "frames": {
+        "title": "So zeigt die Website das Foto",
+        "hint": "Klicke oder tippe auf das Wichtigste im Foto: Jeder Ausschnitt behält diesen Punkt im Bild, überall, wo das Foto vorkommt.",
+        "hintStaff": "Welcher Teil des Fotos in jedem Ausschnitt bleibt, legen Inhaber und Admins fest.",
+        "point": "Fokuspunkt bei {x} % von links und {y} % von oben. Mit den Pfeiltasten verschieben.",
+        "failed": "Der Fokuspunkt wurde nicht gespeichert. Bitte versuche es noch einmal.",
+        "square": "Quadrat",
+        "portrait": "Hochformat",
+        "landscape": "Querformat",
+        "wide": "Panorama",
+        "turnedLying": "Das Foto liegt quer: Links und rechts fällt viel weg.",
+        "turnedUpright": "Das Foto ist hochkant: Oben und unten fällt viel weg.",
+        "small": "Nur {width} × {height} Pixel im Bild: kann unscharf wirken.",
+        "open": "Ausschnitt",
+        "dialog": "Ausschnitt",
+        "done": "Fertig",
+        "turnedShort": "Wird stark beschnitten",
+        "smallShort": "Kann unscharf wirken"
+      }
     },
     "money": {
       "negative": "Ein Preis kann nicht negativ sein.",
@@ -1196,7 +1220,6 @@
       "notUsed": "Wird nirgends verwendet.",
       "altDefault": "Gilt überall, wo das Foto keine eigene Beschreibung hat."
     },
-    "focusHint": "Klicke auf das Foto, um den Fokuspunkt zu setzen.",
     "replace": "Datei ersetzen …",
     "replaceNote": "Jede Seite, die sie verwendet, zeigt die neue Datei. Die alte Datei bleibt 30 Tage erhalten.",
     "download": "Herunterladen",

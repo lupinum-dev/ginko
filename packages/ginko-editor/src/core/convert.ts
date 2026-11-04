@@ -233,7 +233,8 @@ export function fromEditorDoc(doc: GinkoDocNode): Json[] {
     switch (n.type) {
       case 'text': return n.text ?? ''
       case 'hardBreak': return ['br', propsAttr(n)]
-      case 'image': return ['img', join(propsAttr(n), { src: a.src, alt: a.alt, title: a.title })]
+      // Address, description and title first, as the parser writes them; then the rest (a frame: `{aspect="4:3"}`).
+      case 'image': return ['img', { ...join(undefined, { src: a.src, alt: a.alt, title: a.title }), ...propsAttr(n) }]
       case 'taskCheckbox': return ['input', { ...propsAttr(n), ...(a.checked ? { ':checked': 'true' } : {}) }]
       case 'mathInline': return ['math', { ...propsAttr(n), ...('content' in propsAttr(n) ? { content: a.text } : {}) }, a.text ?? '']
       case 'inlineComponent': return [a.tag, propsAttr(n), ...inlines(n.content)]

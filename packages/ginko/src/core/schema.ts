@@ -11,6 +11,7 @@ import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
 import { isPrefillToken, PREFILL_TOKENS, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema, type Task } from './types.ts'
 import { coreMessage } from './messages.ts'
+import { aspectProblems } from './frames.ts'
 import { checkValue } from './validate.ts'
 
 // Keys that would resolve to Object.prototype members in plain-object lookups, plus `prototype`.
@@ -26,7 +27,7 @@ export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'sl
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
 export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
-export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after'])
+export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
 
@@ -732,6 +733,7 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
     if (keys !== 'field,is' && keys !== 'field,not') problems.push(`${path}.showWhen: needs \`field\` and one of \`is\` or \`not\`.`)
     else if (typeof when.field !== 'string' || !Object.hasOwn(siblings, when.field) || when.field === path.split('.').pop()) problems.push(`${path}.showWhen: “${String(when.field)}” is not another field next to this one.`)
   }
+  if (field.type !== 'image' && (field as { aspect?: unknown }).aspect !== undefined) problems.push(`${path}.aspect: only image fields have a frame.`)
   if (field.type === 'choices' && field.askAgainWhen !== undefined) {
     const target = field.askAgainWhen
     const sibling = typeof target === 'string' && Object.hasOwn(siblings, target) ? siblings[target] : undefined
@@ -801,6 +803,7 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       if (field.max !== undefined && !(Number.isInteger(field.max) && field.max > 0)) problems.push(`${path}: max must be greater than 0.`)
       break
     }
+    case 'image': if (field.aspect !== undefined) problems.push(...aspectProblems(path, field.aspect, RESERVED_KEYS)); break
     case 'file': if (!(field.maxBytes > 0 && field.maxBytes <= limitOf('file'))) problems.push(`${path}: maxBytes at most ${formatMb(limitOf('file'))} MB.`); break
     case 'time':
       if (field.after !== undefined && (!topLevel || siblings[field.after]?.type !== 'time' || field.after === path.split('.').pop())) {

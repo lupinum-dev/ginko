@@ -1,6 +1,7 @@
 // Plain content that can become one of the site's blocks: a bare address pasted on an empty line becomes a link card (a
 // block component with an `href` and nothing else required), a picture becomes a figure (to give it a caption).
 import type { ComponentRegistry } from '@lupinum/ginko/internal'
+import { imageFrameOf, TEXT_IMAGE_FRAMES } from './image-frame.ts'
 import type { Editor } from '@tiptap/core'
 import { propFields, editorMeta, type ComponentProps } from './component-props.ts'
 
@@ -60,6 +61,14 @@ export function makeFigure(editor: Editor, pos: number, tag: string, registry: C
   const props: ComponentProps = { src: String(image.attrs.src ?? '') }
   const altField = registry[tag]?.props.alt
   if (altField?.type === 'text' && alt.trim()) props.alt = alt.trim()
+  // The picture's frame, when the block offers that shape and fit (the figure of @lupinum/ginko-components does).
+  const frame = imageFrameOf(image)
+  const shape = TEXT_IMAGE_FRAMES.find((f) => f.aspect === frame.aspect)?.figure
+  const offers = (key: string, value: string) => { const field = registry[tag]?.props[key]; return field?.type === 'choice' && field.options.some((o) => o.value === value) }
+  if (shape && offers('aspect', shape)) {
+    props.aspect = shape
+    if (offers('fit', frame.fit)) props.fit = frame.fit
+  }
   const figure = type.create({ tag, props })
   // The picture and the spaces around it go: the block splits the line there.
   const $pos = state.doc.resolve(pos)

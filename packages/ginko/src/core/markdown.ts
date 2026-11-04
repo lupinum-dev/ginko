@@ -18,6 +18,7 @@ import { checkComponentTree, componentSlotNodes, isBlockedTag, isOpenRegistry, t
 import { isSafeHref } from './href.ts'
 import { withoutCode } from './file-refs.ts'
 import type { Json } from './types.ts'
+import { aspectRatio, FRAME_FILLS } from './frames.ts'
 
 /**
  * In page state the tree is replaced by `ref`, the site path that serves it (withMarkdownRefs), so a page's
@@ -66,6 +67,8 @@ type ValueCheck = (value: unknown) => boolean
 const anyValue: ValueCheck = () => true
 const oneOf = (values: readonly string[]): ValueCheck => (value) => typeof value === 'string' && values.includes(value)
 const matching = (pattern: RegExp): ValueCheck => (value) => typeof value === 'string' && pattern.test(value)
+/** A focus point as an `object-position`, such as `50% 20%`. */
+const FOCAL = matching(/^\d{1,3}(\.\d+)?% \d{1,3}(\.\d+)?%$/)
 
 /** Heading ids: ours (headingAnchors) or `{#id}`. Not `__…`, the prefix of Nuxt's own ids (`__nuxt`, `__NUXT_DATA__`). */
 const heading = { id: (value: unknown) => typeof value === 'string' && !value.startsWith('__') }
@@ -93,7 +96,8 @@ const shikiStyle: ValueCheck = (value) => typeof value === 'string' && value.spl
  */
 const TAG_ATTRIBUTES: Readonly<Record<string, Readonly<Record<string, ValueCheck>>>> = {
   a: { href: anyValue, target: oneOf(['_blank']), rel, id: footnoteId, class: classes('footnote-backref') },
-  img: { src: anyValue, alt: anyValue, width: anyValue, height: anyValue, srcset: anyValue, sizes: anyValue },
+  // `aspect` and `fit` crop the picture to a frame (`{aspect="4:3" fit="contain"}`); `focal` is its file's focus point (resolveFileRefs).
+  img: { src: anyValue, alt: anyValue, width: anyValue, height: anyValue, srcset: anyValue, sizes: anyValue, aspect: (value) => aspectRatio(value) !== undefined, fit: oneOf(FRAME_FILLS), focal: FOCAL },
   input: { type: oneOf(['checkbox']), checked: anyValue, disabled: anyValue, class: classes('task-list-item-checkbox') },
   ul: { class: classes('contains-task-list') },
   ol: { start: anyValue, class: classes('contains-task-list', 'footnotes-list') },
@@ -132,7 +136,7 @@ export const URL_PROPS: ReadonlySet<string> = new Set(['href', 'src', 'srcset', 
  */
 const IMAGE_EXTRAS: Record<string, ValueCheck> = {
   srcset: (value) => safeAddress('srcset', value),
-  focal: matching(/^\d{1,3}(\.\d+)?% \d{1,3}(\.\d+)?%$/),
+  focal: FOCAL,
 }
 
 function safeAddress(key: string, value: unknown): boolean {

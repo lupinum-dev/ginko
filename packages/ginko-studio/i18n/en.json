@@ -749,7 +749,12 @@
       "replace": "Replace image",
       "replaceSubmit": "Replace",
       "caption": "Caption",
-      "actions": "Image"
+      "actions": "Image",
+      "format": "Format",
+      "formatOriginal": "Original",
+      "fit": "Crop",
+      "fitCover": "Fill",
+      "fitContain": "Fit"
     },
     "text": {
       "tooLong": "The text is too long (at most {max} characters).",
@@ -892,7 +897,26 @@
       "altFromLibrary": "Leave empty to use the description from Files.",
       "noneToTranslate": "No photo yet, so nothing to translate.",
       "chooseInMain": "You change the picture itself in {name}.",
-      "drop": "Or drop a photo here."
+      "drop": "Or drop a photo here.",
+      "frames": {
+        "title": "How the website shows the photo",
+        "hint": "Click or tap the most important spot in the photo: every frame keeps this point in view, wherever the photo appears.",
+        "hintStaff": "Owners and admins decide which part of the photo every frame keeps.",
+        "point": "Focus point at {x} % from the left and {y} % from the top. Move it with the arrow keys.",
+        "failed": "The focus point was not saved. Please try again.",
+        "square": "Square",
+        "portrait": "Portrait",
+        "landscape": "Landscape",
+        "wide": "Panorama",
+        "turnedLying": "The photo is landscape: much is cut off at the sides.",
+        "turnedUpright": "The photo is portrait: much is cut off at the top and bottom.",
+        "small": "Only {width} × {height} pixels in the frame: it may look blurred.",
+        "open": "Framing",
+        "dialog": "Framing",
+        "done": "Done",
+        "turnedShort": "Heavily cropped",
+        "smallShort": "May look blurred"
+      }
     },
     "money": {
       "negative": "A price cannot be negative.",
@@ -1196,7 +1220,6 @@
       "notUsed": "Not used anywhere.",
       "altDefault": "Used wherever this photo has no description of its own."
     },
-    "focusHint": "Click the photo to set the focus point.",
     "replace": "Replace file…",
     "replaceNote": "Every page that uses it shows the new file. The old file is kept for 30 days.",
     "download": "Download",

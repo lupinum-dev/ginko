@@ -1,7 +1,7 @@
 // Bundle-side types inferred from a site config, for useGinko() (SPEC 2.2 "Bundle" column).
 import type { MarkdownValue } from './markdown.ts'
 import type {
-  BooleanField, ChoiceField, ChoicesField, CollectionBrick, Currency, DateField, DateRangeField, Field, Fields,
+  AspectRatio, BooleanField, ChoiceField, ChoicesField, CollectionBrick, Currency, DateField, DateRangeField, Field, Fields,
   FileField, ImageField, ListField, LongTextField, MarkdownField, MoneyField, NumberField, RefField, SingleBrick, SlugField,
   TextField, TimeField,
 } from './types.ts'
@@ -24,6 +24,8 @@ export interface ImageValue {
   focus?: { x: number; y: number }
   /** Smaller WebP copies of the image, ascending width; each narrower than `width`. Absent when the file has none. */
   variants?: { width: number; url: string }[]
+  /** The field's frame or frames (`f.image(…, { aspect })`), for `<GinkoImage>`; absent when the field has none. */
+  aspect?: AspectRatio | Readonly<Record<string, AspectRatio>>
 }
 export interface FileValue { url: string; name: string; size: number }
 

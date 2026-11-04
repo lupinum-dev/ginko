@@ -749,7 +749,12 @@
       "replace": "Reemplazar imagen",
       "replaceSubmit": "Reemplazar",
       "caption": "Pie de foto",
-      "actions": "Imagen"
+      "actions": "Imagen",
+      "format": "Formato",
+      "formatOriginal": "Original",
+      "fit": "Recorte",
+      "fitCover": "Rellenar",
+      "fitContain": "Ajustar"
     },
     "text": {
       "tooLong": "El texto es demasiado largo (máximo {max} caracteres).",
@@ -892,7 +897,26 @@
       "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos.",
       "noneToTranslate": "Aún no hay foto, así que no hay nada que traducir.",
       "chooseInMain": "La imagen en sí se cambia en la versión en {name}.",
-      "drop": "O arrastra una foto aquí."
+      "drop": "O arrastra una foto aquí.",
+      "frames": {
+        "title": "Así muestra la web la foto",
+        "hint": "Haz clic o toca lo más importante de la foto: cada encuadre mantiene ese punto a la vista, en todos los lugares donde aparece la foto.",
+        "hintStaff": "Los propietarios y los administradores deciden qué parte de la foto mantiene cada encuadre.",
+        "point": "Punto focal al {x} % desde la izquierda y al {y} % desde arriba. Muévelo con las flechas.",
+        "failed": "No se guardó el punto focal. Inténtalo de nuevo.",
+        "square": "Cuadrado",
+        "portrait": "Vertical",
+        "landscape": "Horizontal",
+        "wide": "Panorámico",
+        "turnedLying": "La foto es horizontal: se recorta mucho por los lados.",
+        "turnedUpright": "La foto es vertical: se recorta mucho por arriba y por abajo.",
+        "small": "Solo {width} × {height} píxeles en el encuadre: puede verse borrosa.",
+        "open": "Encuadre",
+        "dialog": "Encuadre",
+        "done": "Listo",
+        "turnedShort": "Muy recortada",
+        "smallShort": "Puede verse borrosa"
+      }
     },
     "money": {
       "negative": "Un precio no puede ser negativo.",
@@ -1196,7 +1220,6 @@
       "notUsed": "No se usa en ningún sitio.",
       "altDefault": "Se usa donde esta foto no tiene descripción propia."
     },
-    "focusHint": "Haz clic en la foto para fijar el punto de enfoque.",
     "replace": "Reemplazar archivo…",
     "replaceNote": "Todas las páginas que lo usan muestran el archivo nuevo. El archivo anterior se conserva 30 días.",
     "download": "Descargar",

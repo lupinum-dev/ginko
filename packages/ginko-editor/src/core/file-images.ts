@@ -1,9 +1,10 @@
 // Pictures of the Files library in a Markdown text: the image node keeps its source as stored (`$file.k57…`), so the
 // text stays byte for byte; only what the editor draws is the file's URL. The host knows the files (`FileImages`).
-import { fileRefOf } from '@lupinum/ginko/internal'
+import { fileRefOf, focusPosition, frameStyle } from '@lupinum/ginko/internal'
 import type { NodeViewRenderer } from '@tiptap/core'
 import { effectScope, shallowRef, watchEffect } from 'vue'
 import type { FileImages } from '../assets.ts'
+import { imageFrameOf } from './image-frame.ts'
 
 /**
  * What a picture with `src` shows: any other address as it is; for `$file.<id>` the file's URL, undefined while it
@@ -15,7 +16,7 @@ export function shownSrc(images: FileImages | undefined, src: string): string | 
   return file === null ? null : file?.url
 }
 
-/** The node view of `image`: the picture with its shown address, or a small note when its library file is gone. */
+/** The node view of `image`: the picture with its shown address and frame, or a small note when its library file is gone. */
 export function fileImageView(images: FileImages): NodeViewRenderer {
   return ({ node }) => {
     const dom = document.createElement('span')
@@ -37,6 +38,11 @@ export function fileImageView(images: FileImages): NodeViewRenderer {
       if (shown === undefined) { dom.replaceChildren(); return }
       img.setAttribute('src', shown)
       img.setAttribute('alt', alt ?? '')
+      // Framed as the site frames it, around the focus point of its library file.
+      const frame = imageFrameOf(current.value)
+      const focus = images.file(src ?? '')?.focus
+      img.removeAttribute('style')
+      if (frame.aspect) Object.assign(img.style, frameStyle(frame.aspect, frame.fit, focus ? focusPosition(focus) : undefined))
       if (title) img.setAttribute('title', title)
       else img.removeAttribute('title')
       dom.replaceChildren(img)

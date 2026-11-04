@@ -12,16 +12,20 @@ export const LIST_ALT_HINT: InjectionKey<string> = Symbol('list-alt-hint')
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, inject, ref, shallowRef, watch } from 'vue'
-import { ImageOff, ImagePlus, Library, RefreshCw, Trash2 } from '@lucide/vue'
+import { Focus, ImageOff, ImagePlus, Library, RefreshCw, Trash2, TriangleAlert } from '@lucide/vue'
 import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
-import { acceptOf } from '@lupinum/ginko/internal'
+import { acceptOf, focusPosition, imageFrames } from '@lupinum/ginko/internal'
 import { useGinkoAssets, useUpload } from '@lupinum/ginko-editor'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
 import { Label } from '@studio/components/ui/label'
 import { refuseImage } from '../editor/useImageUploads'
 import type { Chosen } from '../files/LibraryPickerBody.vue'
+import { frameWarning } from '../../utils/frames'
+import ImageFrames from './ImageFrames.vue'
+
+const FrameDialog = defineAsyncComponent(() => import('./FrameDialog.vue'))
 
 const props = defineProps<{
   id: string; field: Field; modelValue: Json | undefined; invalid: boolean; describedBy?: string; locale: string
@@ -72,6 +76,22 @@ const preview = assets.details(computed(() => (fileId.value ? [fileId.value] : [
 const libraryAlt = computed(() => (fileId.value ? preview.value?.[fileId.value]?.alt?.[props.locale]?.trim() : undefined) || '')
 const ready = computed(() => (fileId.value ? preview.value?.[fileId.value] : undefined))
 const processing = computed(() => state.value?.status === 'processing')
+/** The frames the site crops this photo to; the field then shows the whole photo with its focus point and each frame. */
+const frames = computed(() => (props.field.type === 'image' ? imageFrames(props.field.aspect) : []))
+/** The photo in the card or tile: cropped around its focus point; a gallery tile in the shape of the list's frame. */
+const previewStyle = computed(() => (ready.value?.focus ? { objectPosition: focusPosition(ready.value.focus) } : undefined))
+const tileStyle = computed(() => (props.tile && frames.value[0] ? { aspectRatio: frames.value[0].aspect.replace(':', ' / ') } : undefined))
+/**
+ * A gallery tile in a frame: what the frame does badly to this photo (in short on the tile, in full in the dialog), and
+ * the "Ausschnitt" dialog for owner and admin, who set the point the frame keeps.
+ */
+const tileWarning = computed(() => {
+  const frame = props.tile ? frames.value[0] : undefined
+  const warning = frame && ready.value ? frameWarning(ready.value.width, ready.value.height, frame) : null
+  return warning && { short: t(warning.key === 'small' ? 'fields.image.frames.smallShort' : 'fields.image.frames.turnedShort'), full: t(`fields.image.frames.${warning.key}`, warning) }
+})
+const canFrame = computed(() => !!(props.tile && frames.value.length && ready.value && assets.focus?.allowed.value))
+const framesOpen = ref(false)
 /** The general hint is printed once by a list of photos; the note about the Files description stays with its photo. */
 const ownHint = computed(() => !!libraryAlt.value || (!listHint && !props.tile))
 const altDescribedBy = computed(() => [ownHint.value ? altHintId.value : listHint, props.describedBy].filter(Boolean).join(' '))
@@ -130,7 +150,7 @@ function setAlt(text: string) {
 }
 
 /** A gallery's touch menu (GinkoFieldList) offers a tile's own actions, which sit on the photo only for a mouse. */
-defineExpose({ pick, openLibrary: () => { libraryOpen.value = true } })
+defineExpose({ pick, openLibrary: () => { libraryOpen.value = true }, canFrame, openFrames: () => { framesOpen.value = true } })
 </script>
 
 <template>
@@ -141,8 +161,11 @@ defineExpose({ pick, openLibrary: () => { libraryOpen.value = true } })
 
     <!-- The photo: a card at most 28rem wide (a tile fills its cell), cut to fill; the actions of a tile sit on it. -->
     <!-- While the file loads, its place is kept (no jump when it arrives); a file that is gone says so. -->
-    <figure v-if="fileId && !sending" class="group/photo relative m-0 overflow-hidden rounded-lg border bg-muted" :class="[tile ? 'aspect-[4/3]' : 'aspect-video w-full max-w-md', (ready === undefined || (ready === null && processing)) && 'animate-pulse']">
-      <img v-if="ready" class="block size-full object-cover" :src="ready.url" :alt="altText.trim() || libraryAlt">
+    <!-- With frames (not in a gallery tile): the whole photo to set the focus point on, and the frames under it. -->
+    <!-- Its Entfernen sits with the other actions below: on the photo it would catch a click meant for the point. -->
+    <ImageFrames v-if="fileId && !sending && !tile && frames.length && ready" :key="fileId" :id="id" class="w-full max-w-md" :file-id="fileId" :file="ready" :frames="frames" />
+    <figure v-else-if="fileId && !sending" class="group/photo relative m-0 overflow-hidden rounded-lg border bg-muted" :class="[tile ? (tileStyle ? '' : 'aspect-[4/3]') : 'aspect-video w-full max-w-md', (ready === undefined || (ready === null && processing)) && 'animate-pulse']" :style="tileStyle">
+      <img v-if="ready" class="block size-full object-cover" :src="ready.url" :alt="altText.trim() || libraryAlt" :style="previewStyle">
       <p v-else-if="ready === null && !processing && state?.status !== 'failed'" class="flex size-full items-center justify-center gap-2 p-3 text-[13px] text-muted-foreground"><ImageOff class="size-4 shrink-0" aria-hidden="true" />{{ t('editor.image.missing') }}</p>
       <Button
         v-if="!tile && !altOnly" type="button" variant="secondary" size="icon-sm" class="absolute top-1.5 right-1.5 bg-background/90 shadow-sm backdrop-blur-sm hover:text-destructive"
@@ -154,8 +177,13 @@ defineExpose({ pick, openLibrary: () => { libraryOpen.value = true } })
       >
         <Button type="button" variant="secondary" size="icon-sm" :disabled="sending" :aria-label="t('fields.image.other')" :title="t('fields.image.other')" @click="pick"><RefreshCw aria-hidden="true" /></Button>
         <Button type="button" variant="secondary" size="icon-sm" :disabled="sending" :aria-label="t('files.picker.choose')" :title="t('files.picker.choose')" @click="libraryOpen = true"><Library aria-hidden="true" /></Button>
+        <Button v-if="canFrame" type="button" variant="secondary" size="icon-sm" :aria-label="t('fields.image.frames.open')" :title="t('fields.image.frames.open')" @click="framesOpen = true"><Focus aria-hidden="true" /></Button>
       </div>
     </figure>
+    <p v-if="tileWarning" class="m-0 flex gap-1 text-xs leading-snug text-amber-700 dark:text-amber-400" :title="tileWarning.full">
+      <TriangleAlert class="mt-px size-3.5 shrink-0" aria-hidden="true" /><span>{{ tileWarning.short }}<span class="sr-only">: {{ tileWarning.full }}</span></span>
+    </p>
+    <FrameDialog v-if="framesOpen && fileId && ready" v-model:open="framesOpen" :id="`${id}-frames`" :file-id="fileId" :file="ready" :frames="frames" />
 
     <p v-if="altOnly && fileId" class="text-sm text-muted-foreground">{{ t('fields.image.chooseInMain', { name: altOnly }) }}</p>
     <p v-else-if="altOnly" class="text-sm text-muted-foreground">{{ t('fields.image.noneToTranslate') }}</p>
@@ -176,9 +204,10 @@ defineExpose({ pick, openLibrary: () => { libraryOpen.value = true } })
       <!-- Nobody drags a file onto a phone: the hint is for screens with a mouse. -->
       <p v-if="!tile" class="text-[13px] text-muted-foreground pointer-coarse:hidden [@media(hover:none)]:hidden">{{ t('fields.image.drop') }}</p>
     </div>
-    <div v-else-if="!tile" class="flex flex-wrap gap-1.5">
+    <div v-else-if="!tile" class="flex flex-wrap gap-1.5" :class="frames.length > 0 && ready && 'w-full max-w-md'">
       <Button type="button" variant="outline" size="sm" :disabled="sending" @click="pick">{{ t('fields.image.other') }}</Button>
       <Button type="button" variant="ghost" size="sm" class="px-2" :disabled="sending" @click="libraryOpen = true">{{ t('files.picker.choose') }}</Button>
+      <Button v-if="frames.length && ready" type="button" variant="ghost" size="sm" class="ml-auto px-2 text-muted-foreground hover:text-destructive" :disabled="sending" @click="remove"><Trash2 aria-hidden="true" />{{ t('fields.remove') }}</Button>
     </div>
     <!-- A failed server check offers retry too: with no file of this visit, retry opens the picker. -->
     <Button v-if="!altOnly && (error || failedMessage)" type="button" variant="outline" size="sm" class="justify-self-start" :disabled="sending" @click="retry">{{ t('basics.retry') }}</Button>

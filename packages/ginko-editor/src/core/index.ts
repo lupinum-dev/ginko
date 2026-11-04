@@ -14,3 +14,4 @@ export { findMatches, getSearch, searchInfo, searchKey, type SearchMatch, type S
 export { moveBlock } from './move.ts'
 export { tableAt, canRunTable, runTable, setColumnAlign, type ColumnAlign, type TableAt, type TableCommand } from './table.ts'
 export { shownSrc } from './file-images.ts'
+export { imageFrameOf, setImageFrame, TEXT_IMAGE_FRAMES, type TextImageFrame } from './image-frame.ts'

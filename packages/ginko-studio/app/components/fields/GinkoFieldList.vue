@@ -207,7 +207,7 @@ function holdSelection(event: MouseEvent) {
   keepSelection.value = false
 }
 
-// A gallery's tiles, for the touch menu: it offers the tile's own "other photo" and "from the library".
+// A gallery's tiles, for the touch menu: it offers the tile's own "other photo", "from the library" and "Ausschnitt".
 const tiles = new Map<string, InstanceType<typeof GinkoFieldImage>>()
 const tileRef = (id: string) => (el: unknown) => {
   if (el) tiles.set(id, el as InstanceType<typeof GinkoFieldImage>)
@@ -259,6 +259,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
               <template v-if="typeof photoOf(row)?.file === 'string'">
                 <DropdownMenuItem class="min-h-11" @select="tiles.get(row._id)?.pick()">{{ t('fields.image.other') }}</DropdownMenuItem>
                 <DropdownMenuItem class="min-h-11" @select="tiles.get(row._id)?.openLibrary()">{{ t('files.picker.choose') }}</DropdownMenuItem>
+                <DropdownMenuItem v-if="tiles.get(row._id)?.canFrame" class="min-h-11" @select="tiles.get(row._id)?.openFrames()">{{ t('fields.image.frames.open') }}</DropdownMenuItem>
                 <DropdownMenuSeparator />
               </template>
               <DropdownMenuItem class="min-h-11" :disabled="index === 0" @select="move(index, -1)">{{ t('fields.list.earlier') }}</DropdownMenuItem>
