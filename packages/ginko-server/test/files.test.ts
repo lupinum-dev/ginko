@@ -205,7 +205,13 @@ describe('views', () => {
     expect(await missing()).toEqual([file])
     expect((await s.as.owner.query(api.files.counts, { site })).missingAlt).toBe(1)
 
+    // Sites cache the text trees per revision: a new description of a used photo is new content, the same one is not.
+    const rev = async () => (await s.t.run((ctx) => ctx.db.query('sites').first()))!.contentRev
+    const revBefore = await rev()
     await s.as.owner.mutation(api.files.setAlt, { site, file, locale: 'en', text: '  Library photo  ' })
+    await s.as.owner.mutation(api.files.setAlt, { site, file, locale: 'en', text: 'Library photo' })
+    await s.as.owner.mutation(api.files.setAlt, { site, file: await readyImage(s, 'frei.jpg', [0xff, 0xd8, 0xff, 0xe0, 9, 9, 9]), locale: 'en', text: 'Unused' })
+    expect(await rev()).toBe(revBefore + 1)
     expect(await missing()).toEqual([])
     expect((await s.as.owner.query(api.files.counts, { site })).missingAlt).toBe(0)
     expect(await fileRefsOf(s, file)).toMatchObject([{ missingAlt: false }, { missingAlt: false }])

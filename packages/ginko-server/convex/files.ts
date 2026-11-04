@@ -444,7 +444,8 @@ export const setFocus = mutation({
 /**
  * Writes the description (alt text) of a photo in one language of the site: the default for every use
  * of the photo that has no text of its own. Empty text removes that language. The "missing alt text"
- * marks of all entries that show the photo are recomputed in the same transaction.
+ * marks of all entries that show the photo are recomputed in the same transaction. Text trees, cached per revision,
+ * carry the description of a picture without its own: a changed text of a used file raises contentRev like a save.
  */
 export const setAlt = mutation({
   args: { site: v.string(), file: v.string(), locale: v.string(), text: v.string() },
@@ -458,12 +459,15 @@ export const setAlt = mutation({
     if (text.length > ALT_MAX) fail('INVALID', 'errors.altTooLong')
     if (ALT_INVISIBLE.test(text)) fail('INVALID', 'errors.altControlChars')
     const alt = { ...(row.alt ?? {}) }
+    const changed = (alt[args.locale] ?? '') !== text
     if (text) alt[args.locale] = text
     else delete alt[args.locale]
     await ctx.db.patch(row._id, { alt: Object.keys(alt).length ? alt : undefined })
 
+    const refs = await entryRefsOf(ctx, row._id)
+    if (changed && refs.length) await ctx.db.patch(actor.site._id, { contentRev: actor.site.contentRev + 1 })
     // Only the entry's own references carry uses; 'change' ones are history and 'pending' ones hold no uses.
-    for (const ref of await entryRefsOf(ctx, row._id)) {
+    for (const ref of refs) {
       if (ref.holder !== 'entry') continue
       const id = ctx.db.normalizeId('entries', ref.holderId)
       const entry = id ? await ctx.db.get(id) : null
