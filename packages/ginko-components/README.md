@@ -151,11 +151,11 @@ the code of a component, copy it into your app with the [shadcn-vue](https://www
 Ginko docs site serves the registry:
 
 ```sh
-npx shadcn-vue@latest add https://ginko-docs.vercel.app/r/callout.json
+npx shadcn-vue@latest add https://ginko.lupinum.com/r/callout.json
 ```
 
 Item names are the kebab-case file names (`callout`, `code-block`, `timeline-item`);
-[`/r/registry.json`](https://ginko-docs.vercel.app/r/registry.json) lists them all. The CLI writes the component and
+[`/r/registry.json`](https://ginko.lupinum.com/r/registry.json) lists them all. The CLI writes the component and
 its helper files to `components/ginko/` (under your `components` alias) and installs the npm packages it needs. Items
 it depends on (the shared stylesheet `ginko-components`, the helpers `ginko-utils`, other components) come along.
 Import the stylesheet once in your main CSS: `@import "./components/ginko/ginko-components.css";`. It reads your

@@ -36,7 +36,7 @@ content/docs/1.getting-started.de.md   its translation
 The Ginko Nuxt module finds this package by itself. It serves the Markdown of a page with the page,
 adds `<GinkoMarkdown>` and a search index. A file error fails the build and names the file.
 
-Full guide: [Content from files](https://ginko-docs.vercel.app/en/docs/content-from-files).
+Full guide: [Content from files](https://ginko.lupinum.com/en/docs/content-from-files).
 
 ## Stability
 

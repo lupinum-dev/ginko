@@ -8,7 +8,7 @@ const locales = ['de', 'en'] as const
 export default defineSite({
   site: 'ginko-docs',
   name: 'Ginko',
-  url: 'https://ginko-docs.vercel.app',
+  url: 'https://ginko.lupinum.com',
   timeZone: 'Europe/Vienna',
   locales,
   currency: 'EUR',

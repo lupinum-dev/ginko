@@ -12,7 +12,7 @@ npm install
 npm run dev
 ```
 
-Documentation: [ginko-docs.vercel.app](https://ginko-docs.vercel.app). Requirements: Node 22.18+, 24 or
+Documentation: [ginko.lupinum.com](https://ginko.lupinum.com). Requirements: Node 22.18+, 24 or
 26, and Nuxt 4.6+ or Nuxt 5.
 
 ## Packages

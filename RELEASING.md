@@ -59,7 +59,8 @@ exist (`@lupinum/ginko-content`, `@lupinum/ginko-docs`) with provenance and crea
 history is in the private `lupinum-dev/ginko-archive`; internal working files (plan, reviews, spikes) are
 in the private `lupinum-dev/ginko-internal`. Keep them out of this repository.
 
-Docs deploy: the shadcn registry items point at `<url>/r`, with `url` from `sites/docs/ginko.config.ts`; keep that
+Docs deploy: the Vercel project `lupinum-ginko-docs` (root `sites/docs`) builds every push to `main` and serves
+`https://ginko.lupinum.com`. The shadcn registry items point at `<url>/r`, with `url` from `sites/docs/ginko.config.ts`; keep that
 `url` the public docs address (`GINKO_REGISTRY_URL` overrides it).
 
 ## CI
