@@ -1,5 +1,14 @@
 # @lupinum/ginko-components
 
+## 0.16.2
+
+### Patch Changes
+
+- [#108](https://github.com/lupinum-dev/ginko/pull/108) [`715100e`](https://github.com/lupinum-dev/ginko/commit/715100e769879fdf98e65cd84f157ca03cc27dcf) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the docs and shadcn registry links in the package READMEs: they pointed at `ginko-docs.vercel.app`, a site Ginko does not own; they now point at `https://ginko.lupinum.com`.
+- Updated dependencies []:
+  - @lupinum/ginko@0.16.2
+  - @lupinum/ginko-i18n@0.16.2
+
 ## 0.16.1
 
 ### Patch Changes
