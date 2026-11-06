@@ -82,7 +82,7 @@ test('with nuxt-og-image installed, a docs page gets a generated share card', as
   await page.goto(`${origin}/docs/einstieg`)
   const image = await page.locator('meta[property="og:image"]').getAttribute('content')
   // Absolute on the site's own address (crawlers need that), so only its path is asked for here.
-  expect(image).toMatch(/^https:\/\/ginko-docs\.vercel\.app\/_og\/[sd]\//)
+  expect(image).toMatch(/^https:\/\/ginko\.lupinum\.com\/_og\/[sd]\//)
   const response = await request.get(new URL(new URL(image!).pathname, origin).href)
   expect(response.status()).toBe(200)
   expect(response.headers()['content-type']).toContain('image/png')

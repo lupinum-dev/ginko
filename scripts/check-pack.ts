@@ -286,7 +286,7 @@ const results = await pool(4, [
   () => checkSite(docsSeo, [
     ['/docs/einstieg', seoHead('de')], ['/en/docs/getting-started', seoHead('en')], ['/', seoHead('de')],
     // Ginko's entries with hreflang, on the site's address (not the request host).
-    ['/sitemap.xml', /<loc>https:\/\/ginko-docs\.vercel\.app\/en\/docs\/getting-started<\/loc>[\s\S]*hreflang="de"/],
+    ['/sitemap.xml', /<loc>https:\/\/ginko\.lupinum\.com\/en\/docs\/getting-started<\/loc>[\s\S]*hreflang="de"/],
     // localhost is a preview host: never indexable, also for @nuxtjs/robots.
     ['/robots.txt', /Disallow: \/\s*$/m],
   ], { ginkoCheck: false }),
