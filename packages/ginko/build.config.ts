@@ -59,6 +59,14 @@ export default defineBuildConfig({
   ],
   declaration: true,
   clean: true,
+  rollup: {
+    output: {
+      // A site's bundler splits by module, and a dist chunk is one module to it. Inside a shared chunk the message
+      // catalogs (~20 KB gzip) went wherever the markdown helpers of every page went, so each visitor downloaded them,
+      // though only the preview page translates. In a chunk of their own they follow the code that calls them.
+      manualChunks: (id) => (/\/src\/core\/messages(\.compiled)?\.ts$|\/i18n\/[\w-]+\.json$/.test(id) ? 'messages' : undefined),
+    },
+  },
   externals: [
     ...Object.keys(pkg.dependencies),
     ...Object.keys(pkg.dependencies).map((name) => new RegExp(`^${name}/`)),

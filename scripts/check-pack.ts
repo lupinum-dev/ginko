@@ -57,6 +57,21 @@ for (const name of released) {
   }
 }
 
+// The core's message catalogs (every language, about 20 kB gzip) are a dist chunk of their own (build.config.ts). A site's
+// bundler splits by module, and a dist chunk is one module to it: in a chunk shared with helpers that page code
+// imports, the catalogs reached every visitor (vulkanrot on 0.16.0), though only the preview page translates.
+// No site in this gate reached them that way, so the dist is checked itself: that chunk exports only messages.ts.
+const ginkoDist = join(work, 'ginko-dist')
+mkdirSync(ginkoDist)
+run(`tar -xzf ${tarball['@lupinum/ginko']!.slice('file:'.length)} -C ${ginkoDist} package/dist`, tgz)
+const messageExports = new Set([...readFileSync(join(root, 'packages/ginko/src/core/messages.ts'), 'utf8').matchAll(/^export (?:const|function) (\w+)/gm)].map((m) => m[1]))
+for (const file of readdirSync(join(ginkoDist, 'package/dist'), { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.mjs'))) {
+  const source = readFileSync(join(ginkoDist, 'package/dist', file), 'utf8')
+  if (!source.includes('defineCatalog(')) continue
+  const others = [...source.matchAll(/^export \{([^}]*)\}/gm)].flatMap((m) => m[1]!.split(',').map((spec) => spec.trim().split(/\s+as\s+/)[0]!)).filter((name) => !messageExports.has(name))
+  if (others.length) failures.push(`@lupinum/ginko: dist/${file} holds the message catalogs together with other code (${others.slice(0, 5).join(', ')}…), so sites download them on every page`)
+}
+
 /** Points the Ginko dependencies (also nested ones, via overrides) at the tarballs. */
 function useTarballs(siteDir: string, extra: Record<string, string> = {}) {
   const path = join(siteDir, 'package.json')
