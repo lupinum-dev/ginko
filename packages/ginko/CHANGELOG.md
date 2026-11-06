@@ -1,5 +1,13 @@
 # @lupinum/ginko
 
+## 0.16.1
+
+### Patch Changes
+
+- [#106](https://github.com/lupinum-dev/ginko/pull/106) [`f725055`](https://github.com/lupinum-dev/ginko/commit/f7250554f1c5d1830ab760dbeb29a1e43cb4e211) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix sites downloading Ginko's message catalogs on every page: the texts of the Studio and the preview in six languages (about 20 KB gzip) were part of a site's main script whenever its pages used Ginko's composables, though only the preview page shows them. They now load with the preview page only.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.16.1
+
 ## 0.16.0
 
 ### Minor Changes
