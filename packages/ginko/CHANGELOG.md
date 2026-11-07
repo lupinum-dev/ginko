@@ -1,5 +1,13 @@
 # @lupinum/ginko
 
+## 0.16.3
+
+### Patch Changes
+
+- [#112](https://github.com/lupinum-dev/ginko/pull/112) [`e4c1939`](https://github.com/lupinum-dev/ginko/commit/e4c193936874683ab2010174e43028d9d3d65175) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the Studio freezing when you open a site you cannot use from another page: for a site being deleted, a site you no longer have access to, or after the session ended, the address changed but the old page stayed until a reload. Leaving such a site with ⌘K or Back no longer keeps its notice on the next page either.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.16.3
+
 ## 0.16.2
 
 ### Patch Changes
