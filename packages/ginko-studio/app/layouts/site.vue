@@ -1,6 +1,5 @@
 <!-- Pages of one site: its name, "View site", the views (UI.md 2, 10.2). -->
 <script setup lang="ts">
-import { getCurrentInstance } from 'vue'
 import { api } from '#convex/api'
 import { DEFAULT_WEEK, type ComponentRegistry, type Schema } from '@lupinum/ginko/internal'
 import { provideGinkoAssets } from '@lupinum/ginko-editor'
@@ -51,8 +50,12 @@ const { status, user } = useConvexAuth()
 // Opening a site from a page with another layout builds this layout inside Nuxt's layout Suspense, off screen, while the
 // page in it may still be loading. Replacing that loading page with a refusal leaves the Suspense waiting forever: the
 // old layout stays on screen with the new address, until a reload. So the page stays until this layout is on screen
-// (mounted), then the refusal replaces it as below. Not during hydration: the server rendered the refusal already.
-const switching = ref(!!getCurrentInstance()?.suspense?.pendingBranch && !useNuxtApp().isHydrating)
+// (mounted), then the refusal replaces it as below. Not on the server or during hydration: the refusal is rendered there.
+const switching = ref(import.meta.client && !useNuxtApp().isHydrating)
+// The same holds for a move away from a refusal (⌘K to another site, Back): the router is on the new address, but this
+// layout's route follows only once the new page has loaded, and that page needs its place here to load.
+const router = useRouter()
+const navigating = computed(() => router.currentRoute.value.fullPath !== route.fullPath)
 const signedOut = computed(() => status.value === 'anonymous' || isSignInRequired(error.value))
 const noAccess = computed(() => !signedOut.value && isNoAccess(error.value))
 // A member removed while typing learns that her unsaved input is not online and comes back in this browser if she is
@@ -122,8 +125,8 @@ const bottomBar = useBottomBar()
 const showTabs = computed(() => bottomBar.value === 0)
 // Signed out, no access or not loaded: no site to navigate, so no rail, bars or site name (the message offers the way out).
 const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.value || !!deletion.value)
-/** What replaces the page; none while the layout switch is still under way (see `switching`). */
-const refusal = computed(() => switching.value ? undefined : signedOut.value ? 'signedOut' : deletion.value ? 'deletion' : noAccess.value ? 'noAccess' : notLoaded.value ? 'notLoaded' : undefined)
+/** What replaces the page; none while the layout switch or a navigation is still under way (see `switching`). */
+const refusal = computed(() => switching.value || navigating.value ? undefined : signedOut.value ? 'signedOut' : deletion.value ? 'deletion' : noAccess.value ? 'noAccess' : notLoaded.value ? 'notLoaded' : undefined)
 // The wide top bar shows with the site; pages teleport their actions into it while it does.
 providePanelBar(() => !blocked.value)
 /** The frame of the signed-out, no-access and not-loaded messages: the page frame's width and padding (StudioPage). */

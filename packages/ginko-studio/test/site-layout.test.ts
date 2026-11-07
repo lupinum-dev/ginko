@@ -19,6 +19,9 @@ Object.entries({ computed, inject, nextTick, onBeforeUnmount, onMounted, provide
 // The error page reads `path`; the layout reads the rest.
 const route = { params: { site: 'restaurant' }, fullPath: '/s/restaurant/all/dishes/e1', path: '/s/restaurant/all/dishes/e1' }
 vi.stubGlobal('useRoute', () => route)
+// The router's address runs ahead of the layout's route while a navigation is under way.
+const current = vue.shallowRef(route)
+vi.stubGlobal('useRouter', () => ({ currentRoute: current }))
 vi.stubGlobal('useHead', () => {})
 vi.stubGlobal('useConvexGinkoAssets', () => ({}))
 vi.stubGlobal('useUpdateSite', () => ({ running: ref(false), run: () => {} }))
@@ -35,6 +38,7 @@ enableAutoUnmount(afterEach)
 beforeEach(() => {
   meta.data.value = undefined
   meta.error.value = undefined
+  current.value = route
   reloadNuxtApp.mockClear()
   localStorage.clear()
   user.value = { id: 'u1' }
@@ -113,6 +117,18 @@ test.each([
     ...(note ? ['Was du hier noch nicht gespeichert hattest, ist nicht auf der Website. Wirst du wieder eingeladen, bekommst du es in diesem Browser zurück.'] : []),
     'Brauchst du hier Zugang, frag die Person, die dich eingeladen hat.Meine Seiten',
   ].join(''))
+})
+
+// Wrong behaviour caught: moving on from a refused site (⌘K to another site, Back) changed the address but kept the
+// refusal until a reload: the page that finishes the move had no place to load.
+test('moving on from a refused site gives the next page its place', async () => {
+  meta.error.value = noAccess()
+  const wrapper = mountLayout()
+  expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+  current.value = { params: { site: 'garden' }, fullPath: '/s/garden', path: '/s/garden' }
+  await nextTick()
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  expect(wrapper.find('.open-form').exists()).toBe(true)
 })
 
 // Wrong behaviour caught: a page that opened without access while the person was still loading never showed the
