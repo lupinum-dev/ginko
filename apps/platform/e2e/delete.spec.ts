@@ -55,6 +55,14 @@ test('an owner starts the deletion of the site, everyone is shut out, and cancel
     await expect(page.getByText(/wird am .* gelöscht\./)).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('link', { name: 'Heute' })).toHaveCount(0)
 
+    // Wrong behaviour caught: opening the site from "Meine Seiten" without a reload froze on "Meine Seiten" (the address
+    // changed, the page never did), because the refused site removed a page that was still loading.
+    await page.goto('/?all', { waitUntil: 'networkidle' })
+    await page.getByRole('link', { name: 'Gasthaus zur Linde' }).first().click()
+    await expect(page.getByText(/wird am .* gelöscht\./)).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: 'Meine Seiten' })).toHaveCount(0)
+    await page.goto('/s/restaurant/team', { waitUntil: 'networkidle' })
+
     const cookPage = await cook.newPage()
     await cookPage.goto('/s/restaurant', { waitUntil: 'networkidle' })
     await expect(cookPage.getByText('Kein Zugriff auf diese Seite.')).toBeVisible()

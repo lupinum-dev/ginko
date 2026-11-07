@@ -20,8 +20,8 @@ const { t, format } = useI18n()
 const s = await useSiteData()
 useHead(() => ({ title: t('review.title', { site: s.site.value?.name ?? t('site.fallback.site') }) }))
 const { show } = useToast()
-// Staff decide nothing: back to the quick edit.
-if (!s.isManager.value) await navigateTo(`/s/${s.slug.value}`)
+// Staff decide nothing: back to the quick edit. Without a role (no access, signed out) the layout shows why instead.
+if (s.role.value && !s.isManager.value) await navigateTo(`/s/${s.slug.value}`)
 
 const PAGE = 50
 const list = useConvexPaginatedQuery(api.proposals.list, () => (s.isManager.value ? { site: s.slug.value, status: 'open' as const, order: 'oldest' as const } : 'skip'), { initialNumItems: PAGE })
