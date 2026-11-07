@@ -1,5 +1,13 @@
 # @lupinum/ginko-components
 
+## 0.16.3
+
+### Patch Changes
+
+- Updated dependencies [[`e4c1939`](https://github.com/lupinum-dev/ginko/commit/e4c193936874683ab2010174e43028d9d3d65175)]:
+  - @lupinum/ginko@0.16.3
+  - @lupinum/ginko-i18n@0.16.3
+
 ## 0.16.2
 
 ### Patch Changes
