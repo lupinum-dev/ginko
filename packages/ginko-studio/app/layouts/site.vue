@@ -1,5 +1,6 @@
 <!-- Pages of one site: its name, "View site", the views (UI.md 2, 10.2). -->
 <script setup lang="ts">
+import { getCurrentInstance } from 'vue'
 import { api } from '#convex/api'
 import { DEFAULT_WEEK, type ComponentRegistry, type Schema } from '@lupinum/ginko/internal'
 import { provideGinkoAssets } from '@lupinum/ginko-editor'
@@ -47,6 +48,11 @@ provide('ginko:week', computed(() => data.value?.site.schema.week ?? DEFAULT_WEE
 // keeps the last answer and the open form: better-convex keeps the last data on an error, the server checks every
 // write, and the next write anywhere on the site runs this query again, which clears the error.
 const { status, user } = useConvexAuth()
+// Opening a site from a page with another layout builds this layout inside Nuxt's layout Suspense, off screen, while the
+// page in it may still be loading. Replacing that loading page with a refusal leaves the Suspense waiting forever: the
+// old layout stays on screen with the new address, until a reload. So the page stays until this layout is on screen
+// (mounted), then the refusal replaces it as below. Not during hydration: the server rendered the refusal already.
+const switching = ref(!!getCurrentInstance()?.suspense?.pendingBranch && !useNuxtApp().isHydrating)
 const signedOut = computed(() => status.value === 'anonymous' || isSignInRequired(error.value))
 const noAccess = computed(() => !signedOut.value && isNoAccess(error.value))
 // A member removed while typing learns that her unsaved input is not online and comes back in this browser if she is
@@ -58,8 +64,8 @@ const checkUnsaved = () => {
   const id = user.value?.id
   unsavedHere.value = noAccess.value && !!id && localDraftKeys(id, slug.value).length > 0
 }
-watch([noAccess, () => user.value?.id], () => nextTick(checkUnsaved))
-onMounted(checkUnsaved)
+watch([noAccess, () => user.value?.id, switching], () => nextTick(checkUnsaved))
+onMounted(() => { switching.value = false; checkUnsaved() })
 /** A failure with no last answer: nothing is open yet, so a reload loses nothing. */
 const notLoaded = computed(() => !!error.value && !data.value && !signedOut.value && !noAccess.value)
 // `force`: a second try within Nuxt's 10 s guard must reload too.
@@ -116,6 +122,8 @@ const bottomBar = useBottomBar()
 const showTabs = computed(() => bottomBar.value === 0)
 // Signed out, no access or not loaded: no site to navigate, so no rail, bars or site name (the message offers the way out).
 const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.value || !!deletion.value)
+/** What replaces the page; none while the layout switch is still under way (see `switching`). */
+const refusal = computed(() => switching.value ? undefined : signedOut.value ? 'signedOut' : deletion.value ? 'deletion' : noAccess.value ? 'noAccess' : notLoaded.value ? 'notLoaded' : undefined)
 // The wide top bar shows with the site; pages teleport their actions into it while it does.
 providePanelBar(() => !blocked.value)
 /** The frame of the signed-out, no-access and not-loaded messages: the page frame's width and padding (StudioPage). */
@@ -175,19 +183,19 @@ const BLOCKED = 'grid w-full max-w-[1200px] justify-items-start gap-3 px-4 pt-4 
            button ("weitere anzeigen") stays tappable. The entry editor brings its own sticky bar instead of the tab bar.
            Wide screens have no tab bar: each page ends with its own bottom padding. -->
       <main id="studio-main" tabindex="-1" :class="['outline-none min-[900px]:flex min-[900px]:flex-1 min-[900px]:flex-col min-[900px]:pb-0', showTabs ? 'pb-30' : 'pb-6']">
-      <div v-if="signedOut" :class="BLOCKED" role="alert">
+      <div v-if="refusal === 'signedOut'" :class="BLOCKED" role="alert">
         <p class="text-xl font-bold">{{ t('errors.signedOut') }}</p>
         <!-- A full page load: the server checks the session, where the client may still think it is signed in. -->
         <Button as-child><NuxtLink :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`" external>{{ t('nav.signIn') }}</NuxtLink></Button>
       </div>
-      <SiteDeleting v-else-if="deletion" :slug="slug" :name="deletion.name" :at="deletion.at" />
-      <div v-else-if="noAccess" :class="BLOCKED" role="alert">
+      <SiteDeleting v-else-if="refusal === 'deletion' && deletion" :slug="slug" :name="deletion.name" :at="deletion.at" />
+      <div v-else-if="refusal === 'noAccess'" :class="BLOCKED" role="alert">
         <p class="text-xl font-bold">{{ opErrorOf(error).message }}</p>
         <p v-if="unsavedHere">{{ t('nav.noAccessUnsaved') }}</p>
         <p>{{ t('nav.noAccessHelp') }}</p>
         <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>
       </div>
-      <div v-else-if="notLoaded" :class="BLOCKED" role="alert">
+      <div v-else-if="refusal === 'notLoaded'" :class="BLOCKED" role="alert">
         <p class="text-xl font-bold">{{ t('basics.notLoaded') }}</p>
         <div class="flex flex-wrap gap-2">
           <Button type="button" @click="reload">{{ t('basics.retry') }}</Button>
