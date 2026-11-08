@@ -1,5 +1,16 @@
 # @lupinum/ginko-docs
 
+## 0.16.4
+
+### Patch Changes
+
+- [#114](https://github.com/lupinum-dev/ginko/pull/114) [`423e001`](https://github.com/lupinum-dev/ginko/commit/423e001a84473f31dc70478370adcc230b835581) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the blog feeds of the docs layer (`/blog/rss.xml` and `/<locale>/blog/rss.xml`) answering 404 in a production build of a site that has its own `app/pages` folder.
+- Updated dependencies [[`423e001`](https://github.com/lupinum-dev/ginko/commit/423e001a84473f31dc70478370adcc230b835581)]:
+  - @lupinum/ginko-i18n@0.16.4
+  - @lupinum/ginko-components@0.16.4
+  - @lupinum/ginko@0.16.4
+  - @lupinum/ginko-content@0.16.4
+
 ## 0.16.3
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/ginko-components",
-  "version": "0.16.3",
+  "version": "0.16.4",
   "type": "module",
   "sideEffects": [
     "**/*.css"

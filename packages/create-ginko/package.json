@@ -1,6 +1,6 @@
 {
   "name": "create-ginko",
-  "version": "0.16.3",
+  "version": "0.16.4",
   "type": "module",
   "description": "Start a Ginko site: npm create ginko my-site",
   "bin": {

@@ -1,5 +1,11 @@
 # @lupinum/ginko-i18n
 
+## 0.16.4
+
+### Patch Changes
+
+- [#114](https://github.com/lupinum-dev/ginko/pull/114) [`423e001`](https://github.com/lupinum-dev/ginko/commit/423e001a84473f31dc70478370adcc230b835581) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the source of a site redirect answering 200 with an empty page under another language's prefix (`/de/docs/old-path`) instead of 404.
+
 ## 0.16.3
 
 No changes in this release.
