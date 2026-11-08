@@ -28,18 +28,34 @@ const docsPages: NuxtModule<DocsModuleOptions> = defineNuxtModule<DocsModuleOpti
     // docsCollection's "Parent page" field points at its own brick, so both must know the key.
     const parent = docs?.fields?.parent?.to
     if (parent && parent !== brick) logger.warn(`The docs brick \`${brick}\` has a "Parent page" field that points at \`${parent}\`. Fix: \`docsCollection({ brick: '${brick}', ... })\`.`)
+    // The blog feeds are registered here, in setup: Nitro copies the server handlers when it starts, and a handler added
+    // later is missing from the build. Nuxt resolves the pages before that only for a site without an `app/pages` folder.
+    const feeds = addresses.blog
+      ? [
+          { route: `${addresses.blog}/rss.xml`, handler: resolve('../server/feeds/blog.get') },
+          { route: `/:locale${addresses.blog}/rss.xml`, handler: resolve('../server/feeds/blog-locale.get') },
+        ]
+      : []
+    for (const feed of feeds) addServerHandler({ ...feed, method: 'get' })
+    // A blog page of the site's own wins, and then its feed too (or none): the layer's handlers leave Nitro's list
+    // before it bundles, which is always after the pages are resolved.
+    let siteHasBlog = false
+    nuxt.hook('nitro:build:before', (nitro) => {
+      if (!siteHasBlog) return
+      const ours = new Set(feeds.map((feed) => feed.handler))
+      nitro.options.handlers = nitro.options.handlers.filter((h) => !ours.has(h.handler))
+    })
     let announced = false
     // `pages:resolved`, not `pages:extend`: it runs after every `pages:extend` hook (the templates' page-paths module has
     // given each page its address by then), so "the site has a page there" is decided on the final list. Dev runs it on
-    // every page change; the pages are added each time, the feed handlers and warnings once.
+    // every page change; the pages are added each time, the feed decision and warnings once.
     nuxt.hook('pages:resolved', (pages) => {
       const r = layerRoutes(site, pages, brick)
       for (const page of r.pages) pages.push({ ...page, file: resolve(`../app/docs-pages/${page.file}`) })
       if (announced) return
       announced = true
+      siteHasBlog = !!addresses.blog && !r.blog
       if (r.blog) {
-        addServerHandler({ route: `${r.blog}/rss.xml`, method: 'get', handler: resolve('../server/feeds/blog.get') })
-        addServerHandler({ route: `/:locale${r.blog}/rss.xml`, method: 'get', handler: resolve('../server/feeds/blog-locale.get') })
         // The list pages work without an entry in `pages`, but the sitemap and the static build only know pages listed there.
         if (!site?.pages?.blog) logger.warn(`The layer adds the blog at ${r.blog} but the site has no \`blog: blogPages({ locales })\` in \`pages\`: the blog list is missing from the sitemap and the static build.`)
       }

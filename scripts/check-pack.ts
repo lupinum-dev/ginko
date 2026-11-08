@@ -248,6 +248,10 @@ writeFileSync(join(docs, 'app/utils/ginko-types.ts'), `export function probe() {
   return n
 }
 `)
+// A page of the site's own, as a site that embeds the docs has: with an app/pages folder Nuxt resolves the pages only
+// after Nitro has started, and the layer's feed handlers (checked below) were missing from the build.
+mkdirSync(join(docs, 'app/pages'), { recursive: true })
+writeFileSync(join(docs, 'app/pages/impressum.vue'), '<template><main><h1>Impressum</h1></main></template>\n')
 useTarballs(docs)
 // 3. The same docs site with the Nuxt SEO modules (internals/decisions.md D4): they own sitemap and robots.txt, Ginko
 // hands them its URLs, address, name and languages. @nuxtjs/seo brings its own nuxt-og-image.
@@ -280,8 +284,8 @@ const results = await pool(4, [
   ...Object.entries(created).map(([name, checks]) => () => checkSite(join(work, name), checks)),
   () => checkSite(docs, [
     ['/docs/einstieg', /class="docs-sidebar/], ['/en/docs/getting-started', /lang="en"/], ['/__ginko/search/de.json', /"url":"\/docs\//],
-    // The layer's two feed handlers: the main language and a prefixed one.
-    ['/blog/rss.xml', /<rss[\s\S]*<item>/], ['/en/blog/rss.xml', /<rss[\s\S]*<item>/],
+    // The layer's two feed handlers: the main language and a prefixed one, next to a page of the site's own.
+    ['/impressum', /<h1>Impressum<\/h1>/], ['/blog/rss.xml', /<rss[\s\S]*<item>/], ['/en/blog/rss.xml', /<rss[\s\S]*<item>/],
   ], { ginkoCheck: false }),
   () => checkSite(docsSeo, [
     ['/docs/einstieg', seoHead('de')], ['/en/docs/getting-started', seoHead('en')], ['/', seoHead('de')],

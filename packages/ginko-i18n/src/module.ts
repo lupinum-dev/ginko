@@ -1,14 +1,15 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, watch } from 'node:fs'
 import { join } from 'node:path'
 import { addComponent, addImports, addPlugin, addServerHandler, addServerImports, addNitroPlugin, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, hasNuxtModule, updateTemplates } from '@nuxt/kit'
-import type { NuxtPage } from '@nuxt/schema'
 import { cachedNegotiatedPaths } from './cache-rules.ts'
+import { localizePages } from './pages.ts'
 import { MANIFEST_VERSION, type Manifest, type ManifestSource } from './manifest.ts'
 import { compileTree, mergeTrees, sourceProblem, type RawTree } from './core/compiler.ts'
-import { inUserZone, isExcluded, localizePath, resolveConfig, type LocaleConfig, type LocaleInput, type Strategy } from './core/locales.ts'
+import { inUserZone, localizePath, resolveConfig, type LocaleInput, type Strategy } from './core/locales.ts'
 import type { Params } from './core/messages.ts'
 
 export type { Alternate, AlternatesResolver, I18n, ServerI18n, TypedTranslator } from './runtime/types'
+export type { PageI18n } from './pages.ts'
 
 export interface ModuleOptions {
   locales: (string | LocaleInput)[]
@@ -27,13 +28,6 @@ export interface ModuleOptions {
   userLocale?: string[]
   /** IANA time zone of the site, e.g. `Europe/Vienna`, for timestamps. Calendar dates stay UTC. Default `UTC`. */
   timeZone?: string
-}
-
-export interface PageI18n {
-  /** Path per locale code. Locales not listed keep the file path. */
-  paths?: Record<string, string>
-  /** Limit the page to these locale codes. */
-  locales?: string[]
 }
 
 /** A library's messages: `dir` holds `<code>.json` files, read under the key `namespace` (required). */
@@ -60,34 +54,6 @@ function readDir(dir: string): Record<string, RawTree> {
     catch (error) {
       // eslint-disable-next-line preserve-caught-error -- the message carries the file name and the parser text; the cause adds nothing
       throw new Error(`[ginko-i18n] ${join(dir, file)} is not valid JSON: ${(error as Error).message}`)
-    }
-  }
-  return out
-}
-
-function localizePages(pages: NuxtPage[], config: LocaleConfig): NuxtPage[] {
-  const codes = config.locales.map(l => l.code)
-  const suffix = (page: NuxtPage, code: string): NuxtPage => ({
-    ...page,
-    name: page.name ? `${page.name}__${code}` : undefined,
-    children: page.children?.map(child => suffix(child, code)),
-  })
-  const out: NuxtPage[] = []
-  for (const page of pages) {
-    const options = page.meta?.i18n as PageI18n | false | undefined
-    if (options === false || isExcluded(page.path, config) || inUserZone(page.path, config)) {
-      out.push(page)
-      continue
-    }
-    for (const code of options?.locales ?? codes) {
-      if (!codes.includes(code))
-        throw new Error(`[ginko-i18n] ${page.file} lists locale "${code}" in definePageMeta, but it is not in i18n.locales.`)
-      const path = options?.paths?.[code] ?? page.path
-      out.push({
-        ...suffix(page, code),
-        path: localizePath(path, code, config),
-        meta: { ...page.meta, i18nBase: page.name, i18nLocale: code },
-      })
     }
   }
   return out
