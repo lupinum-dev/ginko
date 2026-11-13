@@ -97,6 +97,13 @@ async function storedTrees(ctx: QueryCtx, row: Doc<'entries'>): Promise<Markdown
   return (await readTrees(ctx, row._id)) ?? (row.trees === undefined ? undefined : (JSON.parse(row.trees) as MarkdownTrees))
 }
 
+/** The newest `updatedAt` of the served entries (ISO), or the site's creation time when it has none. */
+function latestChange(entries: Record<string, StoredEntry[]>, fallback: number): string {
+  let latest = new Date(fallback).toISOString()
+  for (const list of Object.values(entries)) for (const { updatedAt } of list) if (updatedAt && updatedAt > latest) latest = updatedAt
+  return latest
+}
+
 /** The bundle of a site that is known to exist; the agent door's link check builds one per language with it. */
 export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string, overrides?: ReadonlyMap<string, Record<string, Json>>, added: readonly NewItem[] = [], stableFiles = false): Promise<Bundle> {
   const schema = site.schema as Schema
@@ -157,7 +164,9 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     files: (id) => files.get(id),
     schemaRev: site.schemaRev,
     contentRev: site.contentRev,
-    generatedAt: new Date().toISOString(),
+    // The newest content change, not the clock: the same content must give the same bundle, byte for byte, or every
+    // ISR revalidation of a site page stores a "changed" page and is billed as a write (ISR efficiency plan).
+    generatedAt: latestChange(entries, site._creationTime),
     today: todayIn(schema.timeZone),
   })
   // Addresses an entry had before entries.changeSlug: the site forwards them to its page there (301).
