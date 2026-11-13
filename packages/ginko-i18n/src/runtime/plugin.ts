@@ -3,7 +3,7 @@ import { addRouteMiddleware, defineNuxtPlugin, isPrerendered, loadPayload, navig
 import { config } from '#ginko-i18n/config.mjs'
 import { loaders } from '#ginko-i18n/loaders.mjs'
 import type { RouteLocationNormalizedGeneric } from 'vue-router'
-import { alternatesOf, cleanPath, inUserZone, localeFromPath, ogLocale, type MessageTree } from '@lupinum/ginko-i18n/core'
+import { alternatesOf, cleanPath, inUserZone, localeFromPath, ogLocale, serverBrowserLanguage, type MessageTree } from '@lupinum/ginko-i18n/core'
 import { alternatesKey, createLocalePath, currentLocale, useI18n, writeLocaleCookie } from './composables'
 import type { AlternatesResolver, I18nState, RuntimeConfig } from './types'
 
@@ -33,10 +33,13 @@ export default defineNuxtPlugin({
     })
     // The browser's first language, for the region of dates in user-locale zones. One source like the
     // locale: the request header on the server, the payload on the client (`navigator` only without server rendering).
+    // Outside user-locale zones the server leaves it empty (serverBrowserLanguage), so a cached page is the same for every
+    // visitor; the browser then fills it, which changes nothing those pages render.
     const browserLanguage = useState<string | undefined>('ginko-i18n:browser-language', () => {
       if (import.meta.client) return navigator.language
-      return useRequestHeader('accept-language')?.split(',')[0]?.split(';')[0]?.trim() || undefined
+      return serverBrowserLanguage(useRequestEvent()?.path.split('?')[0] ?? '/', useRequestHeader('accept-language'), c)
     })
+    if (import.meta.client && browserLanguage.value === undefined && !inUserZone(window.location.pathname, c)) browserLanguage.value = navigator.language
     let inlined = false
     const resolvers: AlternatesResolver[] = []
 

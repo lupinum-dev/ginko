@@ -214,6 +214,18 @@ describe('GET /bundle/<site>', () => {
     expect(bundle.bricks.menu!.items!.find((item) => item.id === entry)!.updatedAt).toBe('2026-10-08T11:00:00.000Z')
   })
 
+  // Wrong behaviour caught: a bundle stamped with the clock makes every ISR revalidation of a site page a billed write.
+  it('the same content gives the same bundle later; a save moves generatedAt to the save', async () => {
+    const s = await setup()
+    const get = async () => (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).text()
+    const first = await get()
+    tick(60 * 60 * 1000)
+    expect(await get()).toBe(first)
+    const saved = tick()
+    await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1500 } } })
+    expect((JSON.parse(await get()) as Bundle).generatedAt).toBe(new Date(saved).toISOString())
+  })
+
   it('an unknown locale delivers the main language and names the requested one', async () => {
     const { t } = await setup()
     const bundle = (await (await t.fetch('/bundle/restaurant?format=3&locale=xx')).json()) as Bundle
