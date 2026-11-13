@@ -1,5 +1,11 @@
 # @lupinum/ginko-i18n
 
+## 0.16.5
+
+### Patch Changes
+
+- [#116](https://github.com/lupinum-dev/ginko/pull/116) [`9f3b9d7`](https://github.com/lupinum-dev/ginko/commit/9f3b9d73943446611c32a89086d26e93f6e77913) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix cached pages changing with every visitor: outside user-locale zones the server no longer puts the visitor's browser language into the page state, so an ISR page renders the same for everyone and an unchanged revalidation is not stored as a new page.
+
 ## 0.16.4
 
 ### Patch Changes
