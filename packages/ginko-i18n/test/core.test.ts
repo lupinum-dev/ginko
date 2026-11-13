@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees, sourceProblem } from '../src/core/compiler'
 import { defineCatalog } from '../src/core/catalog'
 import { createFormatters } from '../src/core/format'
-import { alternatesOf, cleanPath, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, regionalLanguage, resolveConfig, stripLocale } from '../src/core/locales'
+import { alternatesOf, cleanPath, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, regionalLanguage, resolveConfig, serverBrowserLanguage, stripLocale } from '../src/core/locales'
 import { createTranslator, formatParts } from '../src/core/messages'
 
 const pexd = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de' })
@@ -69,6 +69,14 @@ describe('paths', () => {
     const config = resolveConfig({ locales: ['de-AT', 'en-GB'], userLocale: ['/**'], exclude: ['/studio'] })
     expect([inUserZone('/', config), inUserZone('/x/y', config), inUserZone('/studio', config), inUserZone('/api/x', config)]).toEqual([true, true, false, false])
     expect(localeFromPath('/en/about', config)).toBeUndefined()
+  })
+  // Wrong behaviour caught: the visitor's Accept-Language went into the state of URL-localized pages, so their cached
+  // copy changed with every visitor (a billed ISR write each time) and served one visitor's language to all.
+  it('the server keeps the browser language only in a user-locale zone', () => {
+    const config = resolveConfig({ locales: ['de-AT', 'en-GB'], userLocale: ['/app/**'] })
+    expect(serverBrowserLanguage('/app/settings', 'en-GB,en;q=0.9', config)).toBe('en-GB')
+    expect(serverBrowserLanguage('/about', 'en-GB,en;q=0.9', config)).toBeUndefined()
+    expect(serverBrowserLanguage('/app', undefined, config)).toBeUndefined()
   })
   // `/admin/*` (the routeRules style) used to match nothing, without an error.
   it.each([['exclude', '/admin/*'], ['exclude', 'studio'], ['userLocale', 'app/**'], ['userLocale', '/a/**/b'], ['userLocale', '/app*']])('rejects the %s pattern %s', (option, pattern) => {

@@ -163,6 +163,16 @@ export function inUserZone(path: string, config: LocaleConfig): boolean {
   return !isExcluded(path, config) && matchesPattern(path, config.userLocale)
 }
 
+/**
+ * The browser language the server puts into the page state for `path`: the first Accept-Language tag in a user-locale
+ * zone, where dates follow it (`regionalLanguage`), otherwise none. A URL-localized page never reads it, and as part of
+ * a cached (ISR) page it would hand one visitor's language to everyone and change the page with every visitor.
+ */
+export function serverBrowserLanguage(path: string, acceptLanguage: string | null | undefined, config: LocaleConfig): string | undefined {
+  if (!inUserZone(path, config)) return undefined
+  return acceptLanguage?.split(',')[0]?.split(';')[0]?.trim() || undefined
+}
+
 function firstSegment(path: string): string {
   return path.split('/')[1] ?? ''
 }
