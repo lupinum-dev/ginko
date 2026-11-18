@@ -47,3 +47,7 @@ auditConfig:
     - GHSA-vfj7-8cjw-p6xm
     # No published fix; node-forge is used only for listhen dev-server self-signed certificates. Recheck 2026-11-01.
     - GHSA-86w9-cpqp-85rv
+    # No published fix (picomatch <= 4.0.7, the newest release). No Ginko package calls a glob matcher; picomatch comes
+    # in through Nuxt, Vite and Nitro tooling, which match patterns from config and file watching, not input from a
+    # site's visitors. Recheck 2026-12-15.
+    - GHSA-fc5q-39xc-vjpf
