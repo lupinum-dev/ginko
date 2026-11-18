@@ -4,7 +4,9 @@
 # Here, on each push to main, every template site gets its schema (`ginko release` with GINKO_CONTENT=platform, the
 # path a client site takes too); a release that needs backend code the Vercel build has not deployed yet fails, and a
 # run by hand repeats it. Every Monday night, and when started by hand, the template sites get their content back from
-# git with this week's dates (`pnpm templates demo-reset --all`).
+# git with this week's dates (`pnpm templates demo-reset`). The Monday run resets every site and releases none. By hand,
+# the input `site` picks one template (release and reset of that site only) or `all` (release and reset of every site).
+# A reset also ends the access the demos gave: members and invites without a `.test` address go (D65).
 # Environment `demo`: secret DEMO_CONVEX_DEPLOY_KEY (the demo deployment only, for the reset), one push key per
 # template site, DEMO_GINKO_KEY_<TEMPLATE>, named one by one in the release step, and variable DEMO_PLATFORM (the
 # platform's address: the demo Convex deployment's .convex.site URL). One whole secret per key: GitHub masks a secret
@@ -17,6 +19,13 @@ on:
   schedule:
     - cron: '0 2 * * 1'
   workflow_dispatch:
+    inputs:
+      site:
+        description: Template site to release and reset
+        type: choice
+        default: all
+        # Keep in step with the release matrix below.
+        options: [all, starter, blog, portfolio, company, saas, docs, restaurant, local-business, nonprofit, events]
 
 permissions:
   contents: read
@@ -34,8 +43,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The site slug is the template's name (`site` in its ginko.config.ts).
-        template: [starter, blog, portfolio, company, saas, docs, restaurant, local-business, nonprofit, events]
+        # The site slug is the template's name (`site` in its ginko.config.ts). A run by hand for one site releases only
+        # that one, so another template's failing release cannot block its reset. `inputs.site` is empty on push.
+        template: ${{ fromJSON(inputs.site && inputs.site != 'all' && format('["{0}"]', inputs.site) || '["starter","blog","portfolio","company","saas","docs","restaurant","local-business","nonprofit","events"]') }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -74,6 +84,8 @@ jobs:
           package-manager-cache: false
       - run: corepack enable pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm templates demo-reset --all
+      # The schedule has no inputs, so SITE is `all` there.
+      - run: if [ "$SITE" = all ]; then pnpm templates demo-reset --all; else pnpm templates demo-reset "$SITE"; fi
         env:
+          SITE: ${{ inputs.site || 'all' }}
           CONVEX_DEPLOY_KEY: ${{ secrets.DEMO_CONVEX_DEPLOY_KEY }}

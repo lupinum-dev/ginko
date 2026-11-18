@@ -32,6 +32,7 @@ import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { lockfiles, manifestOf, notCopied, sampleDates } from '../packages/create-ginko/template-files.mjs'
 import { loadConfig } from '../packages/ginko/src/cli/config.ts'
+import { connectProd } from '../packages/ginko/src/cli/local.ts'
 import { heavyLock, waitForCalm, type Session } from './lib/runs.ts'
 import { platformGate, templateExport, type Step } from './templates/platform.ts'
 
@@ -642,8 +643,9 @@ function dev(name: string) {
 
 /**
  * `demo-reset`: each template's content (templateExport) replaces its site's content on the demo platform through
- * `ops:import --reset`. The site must exist and have its schema released. The guard is the platform's: the clear runs
- * only where GINKO_DEMO=1 (packages/ginko-server/convex/seed.ts), so the client platform's key changes nothing.
+ * `ops:import --reset`, then `demo:dropGuests` ends the access of everyone the demos let in (members and invites without
+ * a `.test` address). The site must exist and have its schema released. The guard is the platform's: both run only
+ * where GINKO_DEMO=1 (packages/ginko-server/convex/seed.ts, demo.ts), so the client platform's key changes nothing.
  */
 async function demoReset(names: string[]) {
   if (!process.env.CONVEX_DEPLOY_KEY?.startsWith('prod:')) {
@@ -658,7 +660,9 @@ async function demoReset(names: string[]) {
       const exportDir = await templateExport(repoRoot, name, work, run)
       const { site } = await loadConfig(join(repoRoot, 'templates', name, 'ginko.config.ts'))
       await run('node', ['--experimental-strip-types', join(repoRoot, 'packages/ginko/src/cli/monorepo.ts'), 'ops:import', exportDir, '--site', site, '--prod', '--reset'], repoRoot)
-      console.log(`OK demo-reset ${name}`)
+      // Counts only: this log is public (demo.yml runs in a public repository), and any part of an address can name a prospect.
+      const dropped = await connectProd(repoRoot, 'demo-reset')('demo:dropGuests', { site }) as { members: number; invites: number }
+      console.log(`OK demo-reset ${name} (removed ${dropped.members} member(s), ${dropped.invites} invite(s))`)
     } catch (error) {
       failed.push(name)
       console.log(`FAIL demo-reset ${name}\n${error instanceof Error ? error.message : String(error)}`)
