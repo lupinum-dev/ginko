@@ -6,7 +6,7 @@
 # run by hand repeats it. Every Monday night, and when started by hand, the template sites get their content back from
 # git with this week's dates (`pnpm templates demo-reset`). The Monday run resets every site and releases none. By hand,
 # the input `site` picks one template (release and reset of that site only) or `all` (release and reset of every site).
-# A reset replaces content only: members and invitations stay.
+# A reset also ends the access the demos gave: members and invites without a `.test` address go (D65).
 # Environment `demo`: secret DEMO_CONVEX_DEPLOY_KEY (the demo deployment only, for the reset), one push key per
 # template site, DEMO_GINKO_KEY_<TEMPLATE>, named one by one in the release step, and variable DEMO_PLATFORM (the
 # platform's address: the demo Convex deployment's .convex.site URL). One whole secret per key: GitHub masks a secret
