@@ -1,14 +1,20 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
+
 /** People as a grid: photo (4:5) or initials, name (a link to the person's page when people have pages), role, short
  *  bio and contact. Never a stock face for a named person: without a photo the initials stand in, on phones small and
- *  beside the name, so the bios stay close. `eager`: the list opens the page, so the first photo loads at once (it is the largest thing on a phone's first screen). */
+ *  beside the name, so the bios stay close. `eager`: the list opens the page, so the first photo loads at once (it is the largest thing on a phone's first screen).
+ *  A template may bring `app/components/people/Cards.vue` (the same props): every list of people then shows it instead.
+ *  It must keep one `li` per person with the name as an `h2` (the shared e2e checks that). */
+const Own = Object.values(import.meta.glob<Component>('~/components/people/Cards.vue', { eager: true, import: 'default' }))[0]
 defineProps<{ items: GinkoItem<'people'>[], eager?: boolean }>()
 const { t } = useI18n('people')
 const locale = useGinkoLocale()
 </script>
 
 <template>
-  <ul class="grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+  <component :is="Own" v-if="Own" v-bind="$props" />
+  <ul v-else class="grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
     <li v-for="(person, i) in items" :id="person.id.split('/').pop()" :key="person.id" class="flex flex-col gap-4 break-inside-avoid">
       <GinkoImage
         v-if="person.data.photo"

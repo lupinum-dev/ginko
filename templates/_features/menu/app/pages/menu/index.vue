@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
 import { Printer } from '@lucide/vue'
 
 // The menu by category (content/menu/), today's prices, vegetarian and vegan dishes, the allergen codes and their
 // key. A dish taken off the menu is left out; a dish sold out today stays and says so. A row of links under the
-// header jumps to each category, so a long menu on a phone needs no scrolling to find the desserts.
+// header jumps to each category, so a long menu on a phone needs no scrolling to find the desserts. A template may bring
+// app/components/menu/Top.vue (no props): it shows between the header and the print link (for example a photo).
+const MenuTop = Object.values(import.meta.glob<Component>('~/components/menu/Top.vue', { eager: true, import: 'default' }))[0]
 const { groups, allergens } = useMenu()
 const { t, localePath } = useI18n('menu')
 usePageSeo(() => ({ title: t('title'), description: t('lead') }))
@@ -12,6 +15,7 @@ usePageSeo(() => ({ title: t('title'), description: t('lead') }))
 <template>
   <div>
     <BlockPageHeader :title="t('title')" :lead="t('lead')" />
+    <component :is="MenuTop" v-if="MenuTop" />
     <div class="mx-auto flex max-w-page flex-col gap-2 px-gutter">
       <NuxtLink :to="localePath('/menu/print')" data-menu-print class="inline-flex min-h-11 items-center gap-2 self-start text-small font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
         <Printer class="size-4" aria-hidden="true" />

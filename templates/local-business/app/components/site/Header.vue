@@ -1,5 +1,7 @@
 <!-- Synced from templates/_features/site/app/components/site/Header.vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
+import type { Component } from 'vue'
+
 // Name or logo, the navigation (at most 6 links), the language switch and the theme toggle. Below `md` the links and
 // the language switch move into a sheet, so the sheet opens for a site with languages but no links too. From `md` the
 // header has the language codes. A longer navigation stays in the sheet for longer, so labels never squeeze the
@@ -9,6 +11,10 @@
 // at the size of the links; the German events header with 78 did not fit, the English one with 61 does). More than
 // 6 links, or 150 characters, never fit inline, not even at `xl` (the 1280 px header holds about 150 characters at
 // that size; kept from the 7 px estimate, not measured in a build), so the sheet stays the only menu.
+// A template may bring `app/components/site/HeaderActions.vue` (for example a reserve button): it shows between the
+// navigation and the language switch at every width, and the template decides what it shows on phones. Stable names
+// for a template's main.css: `data-header` (the header), `data-header-bar` (its row), `data-site-name` (the name).
+const actions = Object.values(import.meta.glob<Component>('~/components/site/HeaderActions.vue', { eager: true, import: 'default' }))[0]
 const config = useSiteAppConfig()
 const { name } = useGinkoSite()
 const links = useSiteLinks(() => config.nav, 6)
@@ -24,8 +30,8 @@ const navHidden = { md: 'max-md:hidden', lg: 'max-lg:hidden', xl: 'max-xl:hidden
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 border-b bg-background print:static">
-    <div class="mx-auto flex h-16 max-w-page items-center gap-4 px-gutter md:h-18">
+  <header data-header class="sticky top-0 z-40 border-b bg-background print:static">
+    <div data-header-bar class="mx-auto flex h-16 max-w-page items-center gap-4 px-gutter md:h-18">
       <NuxtLink :to="path('home')" class="-m-1 me-auto inline-flex min-h-11 shrink-0 items-center rounded-md p-1 whitespace-nowrap">
         <SiteLogo />
         <span class="sr-only">, {{ t('home') }}</span>
@@ -42,6 +48,7 @@ const navHidden = { md: 'max-md:hidden', lg: 'max-lg:hidden', xl: 'max-xl:hidden
           </li>
         </ul>
       </nav>
+      <component :is="actions" v-if="actions" class="print:hidden" />
       <div class="flex items-center gap-1">
         <SiteLanguageSwitch class="max-md:hidden print:hidden" />
         <SiteThemeToggle />

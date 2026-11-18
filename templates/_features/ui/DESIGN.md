@@ -1,8 +1,8 @@
 # Design system
 
 The rules behind this site's look. Read them before you change colours, type or components, so the site stays
-consistent and accessible (WCAG 2.2 AA, light and dark). The same system runs every Ginko template; only the accent
-and the fonts differ.
+consistent and accessible (WCAG 2.2 AA, light and dark). The same system runs every Ginko template; the accent
+and the fonts differ, and a template may set its own neutrals and radii (see "A template's own look").
 
 ## Principles
 
@@ -185,6 +185,39 @@ In templates that have these features (`templates/_features/` in the Ginko repos
   right under the image (`![Alt text](./photo.jpg)`, then `*The caption*` on the next line); long lines in code
   blocks wrap.
 - **Photos on phones** (`gallery`): one column at full width, each photo 3:2; justified rows from `sm`.
+
+## A template's own look
+
+A template may set its own neutral colours (`--background`, `--foreground`, `--muted`, `--muted-foreground`,
+`--accent`, `--border`, `--input`, light and `.dark`), radii and fonts in its `app/assets/css/main.css`, and its own
+type sizes in an `@theme` block there, as long as every pair keeps the contrast rule of "Colours" (text 4.5:1, large
+text and control borders 3:1). `tokens.css` and the shared components stay as they are. A template restyles a shared
+page through tokens and these stable names only, never through Tailwind class names or a copy of the page:
+
+| Name | Where |
+|---|---|
+| `data-header`, `data-header-bar`, `data-site-name` | the header, its row, the site name as text |
+| `data-notice`, `data-notice-item` | the notice bar and each notice |
+| `data-footer`, `data-footer-name` | the footer and the name in it |
+| `data-dish-name`, `data-sold-out`, `data-dish-price`, `data-allergens` | a dish on the menu, "sold out", its price, its allergen codes |
+| `data-lunch-dish` | the dish of a lunch day |
+| `data-hours-now`, `data-menu-print` | the open-now line, the menu's print link |
+
+Where a page must look different, not only take other colours, it shows a template's own component when the file
+exists (a template without it renders unchanged):
+
+| File in the template | Shown | Props |
+|---|---|---|
+| `site/HeaderActions.vue` | in the header between the navigation and the language switch, at every width | none |
+| `menu/Top.vue`, `menu/LunchTop.vue` | between the header and the menu, the lunch week | none |
+| `event/List.vue` | instead of the cards of the events list | `items` (upcoming events) |
+| `event/Header.vue` | instead of an event's back link, title, facts and photo; booking or reserve follows | `event` (the entry) |
+| `pages/Header.vue` | instead of a free page's header and photo; its action button follows | `id` |
+| `blog/List.vue`, `people/Cards.vue`, `downloads/Rows.vue` | instead of every list of posts, people, documents | as `BlogPostList`, `PeopleList`, `DownloadsList` |
+| `pages/Top.vue`, `people/TeamContact.vue`, `services/Actions.vue`, `projects/List.vue`, `projects/Body.vue`, `site/PageCta.vue`, `site/FooterStatus.vue` | see the features README | |
+
+`people/Cards.vue` keeps one `li` per person with the name as an `h2`. A list hook cannot use the shared list it
+replaces (it would show itself). Record a template's look in its README, not in a copy of this file.
 
 ## Do and don't
 

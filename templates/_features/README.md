@@ -53,7 +53,10 @@ export default defineSite({
 
 Hooks: a feature's page or component shows a template's own file in one place when it exists (found with `import.meta.glob`, so a
 template without it builds unchanged): `site/FooterStatus.vue` (below), `pages/Top.vue`, `people/TeamContact.vue`,
-`services/Actions.vue`.
+`services/Actions.vue`, and for a template's own look `site/HeaderActions.vue`, `menu/Top.vue`, `menu/LunchTop.vue`,
+`event/List.vue`, `event/Header.vue`, `pages/Header.vue`, `blog/List.vue`, `people/Cards.vue`, `downloads/Rows.vue`, plus
+stable `data-*` names on header, notice, footer, dish and lunch day. The list with props: `ui/DESIGN.md`, "A template's
+own look" (D66).
 A template may bring its closing band for the feature pages that convince a visitor: `app/components/site/PageCta.vue`
 (one `BlockCta`, the template's main action). The changelog page, the blog post page and the FAQ page show it at their
 end when the file exists (the saas template: the free trial, the same band as its home page). Never on legal, contact

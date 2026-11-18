@@ -1,4 +1,5 @@
 [
+  "app/components/event/Actions.vue",
   "app/components/event/Upcoming.vue",
   "app/composables/useEvents.ts",
   "app/pages/events/[slug].vue",

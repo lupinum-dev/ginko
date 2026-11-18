@@ -1,8 +1,12 @@
 <script setup lang="ts">
 // The lunch menu of the week (content/lunch.md): shown for this work week only (at the weekend the coming one), so an
 // old week never stays online. When lunch is served (the day's first opening span); today is marked; a closed day says
-// so instead of a dish. A placeholder day (a fresh site) adds nothing to the allergen key.
+// so instead of a dish. A placeholder day (a fresh site) adds nothing to the allergen key. A template may bring
+// app/components/menu/LunchTop.vue (no props): it shows between the header and the week (for example a photo).
+import type { Component } from 'vue'
 import { isLunchPlaceholder } from '@lupinum/ginko-preset-gastro'
+
+const LunchTop = Object.values(import.meta.glob<Component>('~/components/menu/LunchTop.vue', { eager: true, import: 'default' }))[0]
 const { lunch, week, days, served } = useLunch()
 const { t, format } = useI18n('menu')
 const langOf = useGinkoLang()
@@ -14,6 +18,7 @@ usePageSeo(() => ({ title: t('lunch.title'), description: week.value ? `${t('lun
 <template>
   <div>
     <BlockPageHeader :title="t('lunch.title')" :lead="week ? range : t('lunch.pending')" />
+    <component :is="LunchTop" v-if="LunchTop" />
     <div v-if="week" class="mx-auto flex max-w-page flex-col gap-10 px-gutter">
       <div class="flex max-w-4xl flex-col gap-4">
         <p v-if="served" class="tabular-nums">{{ t('lunch.served', { from: served.from, to: served.to }) }}</p>

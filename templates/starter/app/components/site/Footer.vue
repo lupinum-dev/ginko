@@ -7,7 +7,8 @@ import { safeHref } from '@lupinum/ginko'
 // the language switch, and the legal texts from content/legal/. On paper only the name, address, email and phone stay,
 // so a printed page says whose it is and how to reach them. One muted background, no border: the bottom bar's
 // line divides inside it. A feature may bring `app/components/site/FooterStatus.vue` (the hours feature: open now);
-// the contact column then shows it first, on every page, without a copy of this footer per template.
+// the contact column then shows it first, on every page, without a copy of this footer per template. Stable names for
+// a template's main.css: `data-footer` (the footer), `data-footer-name` (the name).
 const status = Object.values(import.meta.glob<Component>('./FooterStatus.vue', { eager: true, import: 'default' }))[0]
 const config = useSiteAppConfig()
 const { name } = useGinkoSite()
@@ -22,10 +23,10 @@ const year = useGinkoToday().value.slice(0, 4)
 </script>
 
 <template>
-  <footer class="mt-section bg-muted print:mt-10 print:border-t print:bg-transparent">
+  <footer data-footer class="mt-section bg-muted print:mt-10 print:border-t print:bg-transparent">
     <div class="mx-auto grid max-w-page gap-8 px-gutter py-14 md:grid-cols-3 md:gap-10 print:gap-2 print:py-4">
       <div class="flex flex-col gap-3">
-        <p class="font-display text-body font-semibold"><bdi>{{ name }}</bdi></p>
+        <p data-footer-name class="font-display text-body font-semibold"><bdi>{{ name }}</bdi></p>
         <p v-if="tagline" class="max-w-xs text-small text-muted-foreground print:hidden">{{ tagline }}</p>
         <ul v-if="config.socials.length" class="flex flex-wrap gap-x-5 gap-y-1 text-small print:hidden" :aria-label="t('footer.links')">
           <li v-for="social in config.socials" :key="social.url">
