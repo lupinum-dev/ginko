@@ -9,6 +9,7 @@ import components from 'comark/plugins/components'
 import emoji from 'comark/plugins/emoji'
 import footnotes from 'comark/plugins/footnotes'
 import frontmatter from 'comark/plugins/frontmatter'
+import linkify from 'comark/plugins/linkify'
 import math from 'comark/plugins/math'
 import mermaid from 'comark/plugins/mermaid'
 import taskList from 'comark/plugins/task-list'
@@ -245,6 +246,8 @@ export async function parseMarkdown(text: string, options: ParseOptions = {}): P
   let hidden = false
   const plugins = [
     ...(options.frontmatter ? [frontmatter(), defineComarkPlugin(() => ({ name: 'ginko-body', pre(state) { body = state.markdown.replace(/^\r?\n/, '') } }))()] : []),
+    // comark 0.8 linked bare URLs and domains on its own; since 0.9 that is a plugin. These options keep the old links.
+    linkify({ fuzzyLink: true, urlAuth: true }),
     alert(), taskList(), components(), attributes(), referenceDefinitions(() => { hidden = true }),
     // Every profile parses these; profileCheck refuses the tags a profile does not allow, so `$a$` in a
     // `basic` field is reported, not silently kept. Footnotes must run before the check (`[^1]` is a `span` until then).
