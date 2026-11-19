@@ -21,11 +21,11 @@ on:
   workflow_dispatch:
     inputs:
       site:
-        description: Template site to release and reset
+        description: Site to reset (a template is released first; Lupinum's own sites release in their own repositories)
         type: choice
         default: all
-        # Keep in step with the release matrix below.
-        options: [all, starter, blog, portfolio, company, saas, docs, restaurant, local-business, nonprofit, events]
+        # Keep in step with the release matrix and the reset-sites matrix below.
+        options: [all, starter, blog, portfolio, company, saas, docs, restaurant, local-business, nonprofit, events, kathode, linde, ufergruen]
 
 permissions:
   contents: read
@@ -36,7 +36,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.event_name != 'schedule'
+    if: github.event_name != 'schedule' && !contains(fromJSON('["kathode","linde","ufergruen"]'), inputs.site)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: demo
@@ -69,7 +69,7 @@ jobs:
   # After the release when started by hand; on the Monday schedule the release is skipped and this runs alone.
   reset:
     needs: release
-    if: ${{ !failure() && !cancelled() && github.event_name != 'push' }}
+    if: ${{ !failure() && !cancelled() && github.event_name != 'push' && !contains(fromJSON('["kathode","linde","ufergruen"]'), inputs.site) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: demo
@@ -88,4 +88,60 @@ jobs:
       - run: if [ "$SITE" = all ]; then pnpm templates demo-reset --all; else pnpm templates demo-reset "$SITE"; fi
         env:
           SITE: ${{ inputs.site || 'all' }}
+          CONVEX_DEPLOY_KEY: ${{ secrets.DEMO_CONVEX_DEPLOY_KEY }}
+
+  # Lupinum's own demo sites live in private repositories (lupinum-dev/<slug>-demo), not in templates/: after the
+  # template reset (or alone, when started by hand for one of them), each site's checkout replaces its content
+  # (`demo-reset --from`, same steps as a template). Read access: one read-only deploy key per site repository, stored
+  # here as DEMO_SITE_KEY_<SITE>. A site whose key is not set is skipped and the job stays green.
+  reset-sites:
+    needs: reset
+    if: ${{ !cancelled() && github.event_name != 'push' && (inputs.site == '' || inputs.site == 'all' || contains(fromJSON('["kathode","linde","ufergruen"]'), inputs.site)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: demo
+    strategy:
+      fail-fast: false
+      matrix:
+        site: ${{ fromJSON(contains(fromJSON('["kathode","linde","ufergruen"]'), inputs.site) && format('["{0}"]', inputs.site) || '["kathode","linde","ufergruen"]') }}
+    steps:
+      - id: key
+        # Static names only: a dynamic `secrets[…]` hands every repository and organisation secret to the runner.
+        run: |
+          if [ -n "$SITE_KEY" ]; then echo "set=true" >> "$GITHUB_OUTPUT"
+          else echo "SKIP demo-reset $SITE: secret DEMO_SITE_KEY_$SITE_UPPER is not set, so the site keeps its content."; fi
+        env:
+          SITE: ${{ matrix.site }}
+          SITE_KEY: ${{ matrix.site == 'kathode' && secrets.DEMO_SITE_KEY_KATHODE || matrix.site == 'linde' && secrets.DEMO_SITE_KEY_LINDE || matrix.site == 'ufergruen' && secrets.DEMO_SITE_KEY_UFERGRUEN }}
+          SITE_UPPER: ${{ matrix.site == 'kathode' && 'KATHODE' || matrix.site == 'linde' && 'LINDE' || 'UFERGRUEN' }}
+      - if: steps.key.outputs.set == 'true'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          path: ginko
+          persist-credentials: false
+      - if: steps.key.outputs.set == 'true'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: lupinum-dev/${{ matrix.site }}-demo
+          ref: main
+          path: site
+          ssh-key: ${{ matrix.site == 'kathode' && secrets.DEMO_SITE_KEY_KATHODE || matrix.site == 'linde' && secrets.DEMO_SITE_KEY_LINDE || matrix.site == 'ufergruen' && secrets.DEMO_SITE_KEY_UFERGRUEN }}
+          persist-credentials: false
+      - if: steps.key.outputs.set == 'true'
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+      - if: steps.key.outputs.set == 'true'
+        run: corepack enable pnpm && pnpm install --frozen-lockfile
+        working-directory: ginko
+      # The site checkout has no packageManager field: the pnpm version of its lockfile.
+      - if: steps.key.outputs.set == 'true'
+        run: npx --yes pnpm@11.28.5 install --frozen-lockfile
+        working-directory: site
+      - if: steps.key.outputs.set == 'true'
+        run: pnpm templates demo-reset --from ../site
+        working-directory: ginko
+        env:
           CONVEX_DEPLOY_KEY: ${{ secrets.DEMO_CONVEX_DEPLOY_KEY }}

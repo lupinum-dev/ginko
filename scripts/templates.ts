@@ -19,6 +19,9 @@
 //   demo-reset <name>|--all  replaces the content of the template's site on the DEMO platform with the template's own,
 //                            dates moved to this week (CONVEX_DEPLOY_KEY of the demo deployment; the weekly demo-reset
 //                            workflow). Any platform without GINKO_DEMO=1 refuses it and keeps its content.
+//   demo-reset --from <dir>  the same for a site checkout outside templates/ (Lupinum's own demo sites); the slug is
+//                            `site` in <dir>/ginko.config.ts, the dates move only when its package.json has a sampleAnchor
+//   demo-reset … --dry-run   exports only and prints the counts: no key needed, the platform is not touched
 //
 // GINKO_KEEP_WORK=1 keeps the work folder of `test` for a look; it is deleted otherwise.
 import { execFile as execFileCallback, spawn, spawnSync } from 'node:child_process'
@@ -26,7 +29,7 @@ import { randomBytes } from 'node:crypto'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
-import { basename, dirname, extname, join, relative } from 'node:path'
+import { basename, dirname, extname, join, relative, resolve } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
@@ -34,7 +37,7 @@ import { lockfiles, manifestOf, notCopied, sampleDates } from '../packages/creat
 import { loadConfig } from '../packages/ginko/src/cli/config.ts'
 import { connectProd } from '../packages/ginko/src/cli/local.ts'
 import { heavyLock, waitForCalm, type Session } from './lib/runs.ts'
-import { platformGate, templateExport, type Step } from './templates/platform.ts'
+import { platformGate, siteExport, type Step } from './templates/platform.ts'
 
 const execFile = promisify(execFileCallback)
 export const repoRoot = join(import.meta.dirname, '..')
@@ -656,26 +659,27 @@ function dev(name: string) {
 }
 
 /**
- * `demo-reset`: each template's content (templateExport) replaces its site's content on the demo platform through
- * `ops:import --reset`, then `demo:dropGuests` ends the access of everyone the demos let in (members and invites without
- * a `.test` address). The site must exist and have its schema released. The guard is the platform's: both run only
- * where GINKO_DEMO=1 (packages/ginko-server/convex/seed.ts, demo.ts), so the client platform's key changes nothing.
+ * `demo-reset`: each site's content (siteExport: a template's folder, or a site checkout with `--from`) replaces its
+ * site's content on the demo platform through `ops:import --reset`, then `demo:dropGuests` ends the access of everyone
+ * the demos let in (members and invites without a `.test` address). The site must exist and have its schema released.
+ * The guard is the platform's: both run only where GINKO_DEMO=1 (packages/ginko-server/convex/seed.ts, demo.ts), so the
+ * client platform's key changes nothing. `dryRun` stops after the export and prints its counts.
  */
-async function demoReset(names: string[]) {
-  if (!process.env.CONVEX_DEPLOY_KEY?.startsWith('prod:')) {
-    console.error('demo-reset needs CONVEX_DEPLOY_KEY (prod:…) of the demo deployment.')
-    process.exit(2)
-  }
-  const run: Session['run'] = async (command, args, cwd, env = process.env) => (await execFile(command, args, { cwd, env, maxBuffer: 64 * 1024 * 1024 })).stdout
+export async function demoReset(dirs: string[], { dryRun = false, run = defaultRun, root = repoRoot }: { dryRun?: boolean; run?: Session['run']; root?: string } = {}): Promise<string[]> {
   const failed: string[] = []
-  for (const name of names) {
+  for (const dir of dirs) {
+    // The folder's name until the export knows the site's slug (a CI checkout is just `site`).
+    let name = basename(dir)
     const work = mkdtempSync(join(tmpdir(), `ginko-demo-reset-${name}-`))
     try {
-      const exportDir = await templateExport(repoRoot, name, work, run)
-      const { site } = await loadConfig(join(repoRoot, 'templates', name, 'ginko.config.ts'))
-      await run('node', ['--experimental-strip-types', join(repoRoot, 'packages/ginko/src/cli/monorepo.ts'), 'ops:import', exportDir, '--site', site, '--prod', '--reset'], repoRoot)
+      const out = await siteExport(root, dir, work, run)
+      name = out.site
+      const dates = out.shiftDays === null ? 'no sampleAnchor, dates as written' : `dates moved ${out.shiftDays} days`
+      console.log(`${dryRun ? 'DRY' : 'EXPORT'} demo-reset ${name}: ${out.entries} entries, ${out.files} files, ${dates}`)
+      if (dryRun) continue
+      await run('node', ['--experimental-strip-types', join(root, 'packages/ginko/src/cli/monorepo.ts'), 'ops:import', out.dir, '--site', out.site, '--prod', '--reset'], root)
       // Counts only: this log is public (demo.yml runs in a public repository), and any part of an address can name a prospect.
-      const dropped = await connectProd(repoRoot, 'demo-reset')('demo:dropGuests', { site }) as { members: number; invites: number }
+      const dropped = await connectProd(root, 'demo-reset')('demo:dropGuests', { site: out.site }) as { members: number; invites: number }
       console.log(`OK demo-reset ${name} (removed ${dropped.members} member(s), ${dropped.invites} invite(s))`)
     } catch (error) {
       failed.push(name)
@@ -684,13 +688,15 @@ async function demoReset(names: string[]) {
       rmSync(work, { recursive: true, force: true })
     }
   }
-  console.log(`\ntemplates demo-reset: ${names.length - failed.length} reset${failed.length ? `, failed: ${failed.join(', ')}` : ''}`)
-  process.exit(failed.length ? 1 : 0)
+  console.log(`\ntemplates demo-reset: ${dirs.length - failed.length} ${dryRun ? 'exported' : 'reset'}${failed.length ? `, failed: ${failed.join(', ')}` : ''}`)
+  return failed
 }
+
+const defaultRun: Session['run'] = async (command, args, cwd, env = process.env) => (await execFile(command, args, { cwd, env, maxBuffer: 64 * 1024 * 1024 })).stdout
 
 async function main(argv: string[]) {
   const [command, ...rest] = argv
-  const usage = 'Usage: pnpm templates sync [--check] | test <name> [--only <gate>] [--mode single|multi] | test <name> --platform | dev <name> | demo-reset <name>|--all'
+  const usage = 'Usage: pnpm templates sync [--check] | test <name> [--only <gate>] [--mode single|multi] | test <name> --platform | dev <name> | demo-reset <name>|--all|--from <dir> [--dry-run]'
   const option = (flag: string) => {
     const i = rest.indexOf(flag)
     return i === -1 ? undefined : rest[i + 1]
@@ -747,7 +753,21 @@ async function main(argv: string[]) {
     process.exit(failed.length ? 1 : 0)
   }
   if (command === 'dev') return dev(needName())
-  if (command === 'demo-reset') return demoReset(rest.includes('--all') ? T1 : [needName()])
+  if (command === 'demo-reset') {
+    const from = option('--from')
+    if (rest.includes('--from') && (!from || from.startsWith('-') || !existsSync(join(from, 'ginko.config.ts')))) {
+      console.error(`--from takes a site checkout with a ginko.config.ts${from && !from.startsWith('-') ? ` (none in ${from})` : ''}\n${usage}`)
+      process.exit(2)
+    }
+    const dirs = from ? [resolve(from)] : (rest.includes('--all') ? T1 : [needName()]).map((name) => join(repoRoot, 'templates', name))
+    const dryRun = rest.includes('--dry-run')
+    if (!dryRun && !process.env.CONVEX_DEPLOY_KEY?.startsWith('prod:')) {
+      console.error('demo-reset needs CONVEX_DEPLOY_KEY (prod:…) of the demo deployment.')
+      process.exit(2)
+    }
+    const failed = await demoReset(dirs, { dryRun })
+    process.exit(failed.length ? 1 : 0)
+  }
   console.error(usage)
   process.exit(2)
 }

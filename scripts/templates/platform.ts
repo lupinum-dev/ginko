@@ -42,15 +42,15 @@ export function studioSpecDirs(root: string, name: string, features: string[]): 
  * "Convert them" (the sample partner logos of nonprofit, events and company are SVG). In the work copy only, each SVG of
  * `public/` (any letter case) that the content names becomes a PNG at twice its size, and the content's references
  * follow, as an owner would do before moving in. An SVG no content names (a logo or favicon of the layout) stays.
- * sharp comes from the template's own dependencies.
+ * sharp comes from the site's own dependencies.
  */
-async function rasterizeSvgImages(site: string, templateDir: string) {
+async function rasterizeSvgImages(site: string, siteDir: string) {
   const files = (dir: string): string[] => existsSync(dir) ? readdirSync(dir, { recursive: true, encoding: 'utf8' }).map((file) => join(dir, file)) : []
   const content = files(join(site, 'content')).filter((file) => /\.(md|ya?ml|json|csv)$/i.test(file)).map((file) => ({ file, text: readFileSync(file, 'utf8') }))
   const pathOf = (svg: string) => `/${relative(join(site, 'public'), svg)}`
   const svgs = files(join(site, 'public')).filter((file) => /\.svg$/i.test(file) && content.some(({ text }) => text.includes(pathOf(file))))
   if (!svgs.length) return
-  const sharp = createRequire(join(templateDir, 'package.json'))('sharp') as (input: string, options: { density: number }) => { png(): { toFile(path: string): Promise<unknown> } }
+  const sharp = createRequire(join(siteDir, 'package.json'))('sharp') as (input: string, options: { density: number }) => { png(): { toFile(path: string): Promise<unknown> } }
   for (const svg of svgs) {
     await sharp(svg, { density: 144 }).png().toFile(svg.replace(/\.svg$/i, '.png'))
     rmSync(svg)
@@ -62,27 +62,32 @@ async function rasterizeSvgImages(site: string, templateDir: string) {
   }
 }
 
+/** What `siteExport` wrote: the export folder, its counts, and the days the sample dates moved (null: no sampleAnchor). */
+export interface SiteExport { dir: string; site: string; entries: number; files: number; shiftDays: number | null }
+
 /**
- * A template's content as an export folder in `work`, the way an owner moves in: content/ and public/ copied, the sample
+ * A site's content as an export folder in `work`, the way an owner moves in: content/ and public/ copied, the sample
  * dates moved to this week by the rule create-ginko uses (T10), named SVGs as PNG, then `local:files-export`. The copy's
- * config re-exports the template's. Gate 7 imports the folder into the local platform, `templates demo-reset` into the
- * demo platform. Returns the folder.
+ * config re-exports the site's. `siteDir` is a template (`templates/<name>`) or a site checkout outside this repository
+ * (`demo-reset --from`); the checkout itself never changes. A site without `ginko.sampleAnchor` in package.json keeps its
+ * dates (templates always have one: `sync --check`). Gate 7 imports the folder into the local platform,
+ * `templates demo-reset` into the demo platform.
  */
-export async function templateExport(root: string, name: string, work: string, run: Session['run']): Promise<string> {
-  const templateDir = join(root, 'templates', name)
-  const pkg = JSON.parse(readFileSync(join(templateDir, 'package.json'), 'utf8')) as { ginko?: { sampleAnchor?: string } }
-  const config = await loadConfig(join(templateDir, 'ginko.config.ts'))
+export async function siteExport(root: string, siteDir: string, work: string, run: Session['run'], today = new Date().toISOString().slice(0, 10)): Promise<SiteExport> {
+  const pkg = JSON.parse(readFileSync(join(siteDir, 'package.json'), 'utf8')) as { ginko?: { sampleAnchor?: string } }
+  const config = await loadConfig(join(siteDir, 'ginko.config.ts'))
   const content = join(work, 'site')
   const exportDir = join(work, 'export')
   mkdirSync(content)
-  writeFileSync(join(content, 'ginko.config.ts'), `export { default } from ${JSON.stringify(pathToFileURL(join(templateDir, 'ginko.config.ts')).href)}\n`)
-  for (const folder of ['content', 'public']) if (existsSync(join(templateDir, folder))) cpSync(join(templateDir, folder), join(content, folder), { recursive: true })
-  await rasterizeSvgImages(content, templateDir)
+  writeFileSync(join(content, 'ginko.config.ts'), `export { default } from ${JSON.stringify(pathToFileURL(join(siteDir, 'ginko.config.ts')).href)}\n`)
+  for (const folder of ['content', 'public']) if (existsSync(join(siteDir, folder))) cpSync(join(siteDir, folder), join(content, folder), { recursive: true })
+  await rasterizeSvgImages(content, siteDir)
   const anchor = pkg.ginko?.sampleAnchor
-  if (!anchor) throw new Error('package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }')
-  shiftDates(content, manifestOf(config).shift, weeksShift(anchor, new Date().toISOString().slice(0, 10)))
+  const shiftDays = anchor ? weeksShift(anchor, today) : null
+  if (shiftDays !== null) shiftDates(content, manifestOf(config).shift, shiftDays)
   await run('node', ['--experimental-strip-types', join(root, 'packages/ginko/src/cli/monorepo.ts'), 'files-export', '--config', join(content, 'ginko.config.ts'), exportDir], root)
-  return exportDir
+  const written = JSON.parse(readFileSync(join(exportDir, 'export.json'), 'utf8')) as { entries: unknown[]; files: unknown[] }
+  return { dir: exportDir, site: config.site, entries: written.entries.length, files: written.files.length, shiftDays }
 }
 
 export async function platformGate(name: string, root: string): Promise<Step[]> {
@@ -148,9 +153,9 @@ export async function platformGate(name: string, root: string): Promise<Step[]> 
       await run('npx', ['convex', 'run', 'release:devPush', JSON.stringify({ site, schema })], backendDir, targetEnv(confirmLocal(backendDir)))
     })) return steps
 
-    // 4. Content: the template's files as an owner moves them in (templateExport), imported by the monorepo tools.
+    // 4. Content: the template's files as an owner moves them in (siteExport), imported by the monorepo tools.
     if (!await must('files content moves in (local:files-export, local:import)', async () => {
-      const exportDir = await templateExport(root, name, work, run)
+      const exportDir = (await siteExport(root, templateDir, work, run)).dir
       await run('node', ['--experimental-strip-types', join(root, 'packages/ginko/src/cli/monorepo.ts'), 'import', exportDir], root)
     })) return steps
 
