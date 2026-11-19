@@ -3,11 +3,10 @@
 // Server-safe: no Nuxt app imports, no global fetch helper. Failures are plain errors with `statusCode: 503`;
 // the app plugin and the sitemap route turn them into Nuxt errors with their own `createError`.
 import schema from '#ginko/schema'
-import { BUNDLE_FORMAT, bundleFits, isBundle, knownBricks, SITE_BUDGET, withFileBricks, type Bundle, type Locale } from '../../internal.ts'
+import { bundleFits, isBundle, knownBricks, SITE_BUDGET, withFileBricks, type Bundle, type Locale } from '../../internal.ts'
+import { bundleRequest } from './platform-request.ts'
 import type { GinkoPublicConfig } from './shared.ts'
 
-/** A platform that does not answer in time is a failure, not a page that never loads. */
-export const TIMEOUT_MS = 10_000
 /**
  * Larger than any bundle the platform's budget allows (SPEC 3): a site's text plus its Markdown trees, which count apart
  * from it, and half again for the bundle's own JSON and file URLs. Anything bigger is not a bundle of this site.
@@ -50,9 +49,6 @@ export function unreachableMessage(config: GinkoPublicConfig, url: string): stri
 /** Logged once per server process: a deployment without the platform address answers every platform page with 503. */
 let missingPlatformLogged = false
 
-/** Header with which the site's server proves to the platform that it is the site (not counted by the visitor rate limit). */
-export const SITE_TOKEN_HEADER = 'x-ginko-site-token'
-
 /**
  * Any platform failure (network, 5xx, 409 STALE, 429, wrong format) is a 503, never a 404:
  * on Vercel a 503 keeps the last good page in the ISR cache, a 404 would replace it (ISR spike).
@@ -64,17 +60,11 @@ export async function fetchBundle(config: GinkoPublicConfig, locale: Locale, min
     missingPlatformLogged = true
     throw new PlatformError('Content temporarily unavailable')
   }
-  // `files=stable`: file URLs on the site's own address (`/__ginko/file/…`, server/file.ts), not the storage host.
-  const query = new URLSearchParams({ format: String(BUNDLE_FORMAT), locale, files: 'stable' })
-  if (minRev && /^\d+\.\d+$/.test(minRev)) query.set('minRev', minRev)
-  const url = `${config.platform.replace(/\/$/, '')}/bundle/${encodeURIComponent(config.site)}?${query}`
+  const { url, init } = bundleRequest(config.platform, config.site, locale, minRev, siteToken)
   let body: unknown
   let status: number | undefined
   try {
-    // `siteToken` is the private `NUXT_GINKO_REVALIDATE_TOKEN`: only server code passes it, a browser never has it.
-    const headers: Record<string, string> = { accept: 'application/json' }
-    if (siteToken) headers[SITE_TOKEN_HEADER] = siteToken
-    const response = await fetch(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) })
+    const response = await fetch(url, init)
     if (!response.ok) {
       status = response.status
       throw new Error(`HTTP ${status}`)

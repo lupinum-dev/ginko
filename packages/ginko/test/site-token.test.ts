@@ -3,7 +3,8 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { fetchBundle, PlatformError, SITE_TOKEN_HEADER } from '../src/nuxt/runtime/fetch.ts'
+import { fetchBundle, PlatformError } from '../src/nuxt/runtime/fetch.ts'
+import { SITE_TOKEN_HEADER } from '../src/nuxt/runtime/platform-request.ts'
 import type { GinkoPublicConfig } from '../src/nuxt/runtime/shared.ts'
 
 const bundle = readFileSync(fileURLToPath(new URL('../../../contracts/restaurant/bundle.format3.de.json', import.meta.url)), 'utf8')
