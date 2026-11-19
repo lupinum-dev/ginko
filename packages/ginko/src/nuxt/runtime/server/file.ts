@@ -4,17 +4,15 @@
 // `/file/<site>/…` checks that the storage id belongs to a ready upload of this site and redirects to the storage; this
 // route follows that redirect and streams the bytes back.
 import { createError, defineEventHandler, getRouterParam, useRuntimeConfig } from 'nuxt/server'
-import { TIMEOUT_MS, SITE_TOKEN_HEADER } from '../fetch.ts'
+import { FILE_ID, TIMEOUT_MS, SITE_TOKEN_HEADER } from '../platform-request.ts'
 import type { GinkoPublicConfig } from '../shared.ts'
-
-/** The shape of a Convex id, checked before anything is fetched, so no other address can be made up. */
-const ID = /^[a-z0-9]{20,40}$/
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig().public.ginko as GinkoPublicConfig
   const upload = getRouterParam(event, 'upload') ?? ''
   const storage = getRouterParam(event, 'storage') ?? ''
-  if (!config.platform || !ID.test(upload) || !ID.test(storage)) throw createError({ statusCode: 404, statusMessage: 'File not found' })
+  // The id shapes are checked before anything is fetched, so no other address can be made up.
+  if (!config.platform || !FILE_ID.test(upload) || !FILE_ID.test(storage)) throw createError({ statusCode: 404, statusMessage: 'File not found' })
   const headers: Record<string, string> = {}
   const siteToken = useRuntimeConfig().ginkoRevalidateToken as string | undefined
   if (siteToken) headers[SITE_TOKEN_HEADER] = siteToken

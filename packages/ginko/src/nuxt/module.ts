@@ -9,6 +9,7 @@ import { checkI18nOptions } from './i18n.ts'
 import { listsNuxtSeo, nuxtSeoDependencies, runsNuxtSeo } from './nuxt-seo.ts'
 import { unservedPaths } from './pages.ts'
 import { platformBuildCheck } from './platform-check.ts'
+import { platformFileRoutes } from './platform-files.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
 import { restartOnConfigChange } from './watch.ts'
@@ -216,6 +217,23 @@ export default defineNuxtModule<SiteInput>({
       // Page state holds platform texts as `{ ref }` (runtime/plugin.ts); this route serves them on client navigation.
       // Files of the platform live under the site's own address, so pages never hold storage hosts.
       addServerHandler({ route: '/__ginko/file/:upload/:storage', handler: resolve(`./runtime/server/file.${runtimeExt}`) })
+      // The images the published content names become files of the build (platform-files.ts). Nitro calls these hooks
+      // only when it prerenders, so dev and `nuxi prepare` fetch nothing. An image the build cannot get is left to the
+      // function; every other prerender error still fails the build.
+      nuxt.hook('nitro:init', (nitro) => {
+        nitro.hooks.hook('prerender:routes', async (routes) => {
+          const platform = process.env.NUXT_PUBLIC_GINKO_PLATFORM || site.platform
+          const files = await platformFileRoutes({ platform, site: schema.site, locales: schema.locales, siteToken: process.env.NUXT_GINKO_REVALIDATE_TOKEN })
+          if (files.warning) console.warn(files.warning)
+          for (const route of files.routes) routes.add(route)
+        })
+        nitro.hooks.hook('prerender:generate', (route) => {
+          if (!route.error || !route.route.startsWith('/__ginko/file/')) return
+          console.warn(`[ginko] ${route.route} is not part of the build (${route.error.statusCode ?? route.error.message}); the function serves it.`)
+          route.error = undefined
+          route.skip = true
+        })
+      })
       addServerHandler({ route: '/__ginko/platform/:locale/:rev/md/**', handler: resolve(`./runtime/server/platform-md.${runtimeExt}`) })
     }
     for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'useGinkoPath', 'useGinkoLang', 'useGinkoSite', 'useGinkoFact']) addImports({ name, from: composables })

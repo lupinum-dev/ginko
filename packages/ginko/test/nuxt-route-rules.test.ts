@@ -47,10 +47,11 @@ test('with platform bricks the search index expires like a page; the file bundle
   expect(rules['/__ginko/files/**']?.isr).toEqual({ expiration: false, allowQuery: [] })
 })
 
-// Wrong behaviour caught: images under /__ginko/file/ inherit the preview's no-store and noindex, so they are neither cached nor found in image search.
-test('platform files are cached for good and indexable; a site without platform bricks has no file rule', () => {
+// Wrong behaviour caught: images under /__ginko/file/ inherit the preview's no-store and noindex, so they are neither
+// cached nor found in image search; or each region's first visitor after a deploy waits for the function.
+test('platform files are cached for good in every region and indexable; a site without platform bricks has no file rule', () => {
   const rules = ginkoRouteRules({}, { platform: true })
   expect(rules['/__ginko/file/**']?.headers).toEqual({ 'cache-control': 'public, max-age=31536000, s-maxage=31536000, immutable', 'x-robots-tag': 'all' })
-  expect(rules['/__ginko/file/**']?.isr).toBe(false)
+  expect(rules['/__ginko/file/**']?.isr).toEqual({ expiration: false, allowQuery: [] })
   expect(ginkoRouteRules({})['/__ginko/file/**']).toBeUndefined()
 })
