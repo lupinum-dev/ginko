@@ -28,7 +28,7 @@ add **Preview** variables in Vercel that point at a separate staging Convex proj
 in the better-convex docs), or turn off preview builds for this Vercel project. Never point a preview at the
 production deployment or reuse production secrets.
 
-**Operator commands** use `pnpm exec better-convex convex env|run …`. The wrapper reads the target deployment only
+**Operator commands** use `pnpm exec better-convex-nuxt convex env|run …`. The wrapper reads the target deployment only
 from `.env.local` in the current folder; it ignores `CONVEX_*` variables in the shell and refuses `--prod`. For
 production, keep a separate checkout of this repository with the dependencies installed, and put only a key for
 admin tasks into its `packages/ginko-server/.env.local` (never commit it, check it before every command):
@@ -47,9 +47,9 @@ First launch, in this order:
 
    ```bash
    export BCN_AUTH_PROXY_IP_SECRET="$(openssl rand -base64 32)"
-   pnpm exec better-convex convex env set SITE_URL https://platform.example
-   printf '1:%s' "$(openssl rand -base64 32)" | pnpm exec better-convex convex env set BETTER_AUTH_SECRETS
-   printf '%s' "$BCN_AUTH_PROXY_IP_SECRET" | pnpm exec better-convex convex env set BCN_AUTH_PROXY_IP_SECRET
+   pnpm exec better-convex-nuxt convex env set SITE_URL https://platform.example
+   printf '1:%s' "$(openssl rand -base64 32)" | pnpm exec better-convex-nuxt convex env set BETTER_AUTH_SECRETS
+   printf '%s' "$BCN_AUTH_PROXY_IP_SECRET" | pnpm exec better-convex-nuxt convex env set BCN_AUTH_PROXY_IP_SECRET
    ```
 
    Do not print or commit the proxy secret.
@@ -60,16 +60,16 @@ First launch, in this order:
    `BCN_AUTH_PROXY_IP_SECRET` must be the same in Convex and Vercel, or sign-in fails with 403.
 3. Deploy the production branch on Vercel. The build log shows the Convex deploy first, then the Nuxt build.
 4. Create the auth signing key once, before the first sign-in:
-   `pnpm exec better-convex convex run auth:ensureSigningKey '{}'`. Check that
+   `pnpm exec better-convex-nuxt convex run auth:ensureSigningKey '{}'`. Check that
    `https://platform.example/api/auth/jwks` lists the returned `kid`.
 5. For each new site:
-   - `pnpm exec better-convex convex run sites:bootstrap '{"slug":"linde","name":"Gasthaus zur Linde","url":"https://linde.example"}'`
-   - `pnpm exec better-convex convex run release:bootstrapKey '{"site":"linde","label":"CI","scopes":["release","check","pull","export"]}'`
+   - `pnpm exec better-convex-nuxt convex run sites:bootstrap '{"slug":"linde","name":"Gasthaus zur Linde","url":"https://linde.example"}'`
+   - `pnpm exec better-convex-nuxt convex run release:bootstrapKey '{"site":"linde","label":"CI","scopes":["release","check","pull","export"]}'`
      prints the push key once. It goes into the site's CI as `GINKO_KEY`. To revoke a leaked key, find its id
      with `release:pushKeys '{"site":"linde"}'` (it also shows `lastUsedAt`, stamped at most once an hour) and run
      `release:revokePushKeyAsOperator '{"key":"<id>"}'`. Owners and admins see the live keys on the Studio's Team
      page and can revoke them there.
-   - `pnpm exec better-convex convex run sites:setRefreshToken '{"slug":"linde","token":"<NUXT_GINKO_REVALIDATE_TOKEN of the site>"}'`
+   - `pnpm exec better-convex-nuxt convex run sites:setRefreshToken '{"slug":"linde","token":"<NUXT_GINKO_REVALIDATE_TOKEN of the site>"}'`
      (at least 32 characters). "Update website now" sends it to the site. A bundle request that carries it
      in `x-ginko-site-token` is not counted in the public rate limit.
 6. Sign in once with an address from `GINKO_ADMIN_EMAILS`: that makes the first admin, who invites owners.
@@ -102,9 +102,9 @@ for a whole site. Run these in `packages/ginko-server` like the other operator c
 form works on a local backend):
 
 ```bash
-pnpm exec better-convex convex run ops:status '{}'                       # counts, stuck and failed rows (add "site":"<slug>")
-pnpm exec better-convex convex run uploads:retry '{"site":"<slug>"}'     # dry run: lists what would be queued
-pnpm exec better-convex convex run uploads:retry '{"site":"<slug>","dryRun":false}'
+pnpm exec better-convex-nuxt convex run ops:status '{}'                       # counts, stuck and failed rows (add "site":"<slug>")
+pnpm exec better-convex-nuxt convex run uploads:retry '{"site":"<slug>"}'     # dry run: lists what would be queued
+pnpm exec better-convex-nuxt convex run uploads:retry '{"site":"<slug>","dryRun":false}'
 ```
 
 `uploads:retry` takes failed and stuck uploads, or `"ids":[...]` for single rows. It sets them back to `processing`
@@ -118,7 +118,7 @@ is listed in `missing`. The daily sweep removes failed uploads that no content u
 
 New image uploads get WebP copies at 480, 960 and 1600 px wide (only those narrower than the image). Images
 uploaded before that have none; make them once per deployment with
-`pnpm exec better-convex convex run images:backfillVariants '{}'` (for production, in the production checkout). It
+`pnpm exec better-convex-nuxt convex run images:backfillVariants '{}'` (for production, in the production checkout). It
 works through 20 files at a time and schedules itself until all are done; running it again is safe.
 
 ## Markdown trees
@@ -126,9 +126,9 @@ works through 20 files at a time and schedules itself until all are done; runnin
 Every live entry stores the parsed trees of its Markdown texts in the `entryTrees` table, so the public bundle parses
 nothing. An entry keeps the trees of the parser it was saved with. After an update that changes the parser's output
 (comark, its plugins or Ginko's Markdown rules), write them again once per deployment with
-`pnpm exec better-convex convex run entries:migrateStorage '{}'` (for production, in the production checkout). It
+`pnpm exec better-convex-nuxt convex run entries:migrateStorage '{}'` (for production, in the production checkout). It
 works through 10 entries at a time and schedules itself until all are done, then recounts every site's byte
-counters; running it again is safe. `pnpm exec better-convex convex run entries:storageStatus '{}'` checks the
+counters; running it again is safe. `pnpm exec better-convex-nuxt convex run entries:storageStatus '{}'` checks the
 result, one site per call (pass the returned `cursor`).
 
 ## Environment variables
@@ -149,7 +149,7 @@ Set them in the Convex deployment (not in `.env.local`).
 
 ## Local backend
 
-`pnpm --filter @ginko/platform convex` starts `better-convex convex dev --anonymous` in this folder: a local backend (no
+`pnpm --filter @ginko/platform convex` starts `better-convex-nuxt convex dev --anonymous` in this folder: a local backend (no
 account, no cloud). It writes the deployment and its URLs to `packages/ginko-server/.env.local` (git-ignored); the
 scripts in `scripts/` and `apps/platform` (`pnpm dev`, the e2e tests) read that one file. State lives in
 `packages/ginko-server/.convex`.

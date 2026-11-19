@@ -27,7 +27,7 @@
     "./convex/*": "./convex/*"
   },
   "scripts": {
-    "convex": "better-convex convex dev --anonymous"
+    "convex": "better-convex-nuxt convex dev --anonymous"
   },
   "dependencies": {
     "@better-auth/core": "catalog:",
