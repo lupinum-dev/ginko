@@ -1,16 +1,20 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
 import { Download } from '@lucide/vue'
 
 /** Files to download as rows: title (a direct link to the file), summary, and date, file type and size. The language
  *  of a document shows when it is not the language of the page ("English" on the German page); a document without
- *  one is in the site's main language. */
+ *  one is in the site's main language. A template may bring `app/components/downloads/Rows.vue` (prop `items`): every
+ *  list of documents then shows it instead. */
+const Own = Object.values(import.meta.glob<Component>('~/components/downloads/Rows.vue', { eager: true, import: 'default' }))[0]
 defineProps<{ items: GinkoItem<'downloads'>[] }>()
 const { t, format } = useI18n('downloads')
 const { type, size, languageName, hreflang, mediaType } = useDownloadText()
 </script>
 
 <template>
-  <ul class="flex flex-col border-b">
+  <component :is="Own" v-if="Own" v-bind="$props" />
+  <ul v-else class="flex flex-col border-b">
     <li v-for="item in items" :key="item.id" class="group relative flex items-start gap-4 border-t py-6">
       <div class="flex min-w-0 flex-1 flex-col gap-1.5">
         <h2 class="text-h3">

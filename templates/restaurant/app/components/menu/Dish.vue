@@ -3,7 +3,8 @@
 import { formatMoney } from '@lupinum/ginko'
 
 /** One dish: name and today's price on one line, the description, then vegetarian or vegan and the allergen letters.
- *  A dish sold out today says so in words; a price change within two weeks is announced under the price. */
+ *  A dish sold out today says so in words; a price change within two weeks is announced under the price. Stable names
+ *  for a template's main.css: `data-dish-name`, `data-sold-out`, `data-dish-price`. */
 defineProps<{ dish: ReturnType<typeof useMenu>['dishes']['value'][number] }>()
 const { t, format, language } = useI18n('menu')
 const langOf = useGinkoLang()
@@ -12,11 +13,11 @@ const langOf = useGinkoLang()
 <template>
   <div class="flex flex-col gap-1.5 py-4 break-inside-avoid">
     <div class="flex items-baseline justify-between gap-6">
-      <h3 class="text-body font-semibold" :class="dish.soldOut && 'text-muted-foreground'">
+      <h3 data-dish-name class="text-body font-semibold" :class="dish.soldOut && 'text-muted-foreground'">
         <span :lang="langOf(dish.item, 'name')">{{ dish.item.data.name }}</span>
-        <template v-if="dish.soldOut">{{ ' ' }}<span class="ms-1 text-small font-medium whitespace-nowrap text-foreground">{{ t('soldOut') }}</span></template>
+        <template v-if="dish.soldOut">{{ ' ' }}<span data-sold-out class="ms-1 text-small font-medium whitespace-nowrap text-foreground">{{ t('soldOut') }}</span></template>
       </h3>
-      <p class="shrink-0 text-body tabular-nums" :class="dish.soldOut && 'text-muted-foreground'">{{ formatMoney(dish.price, language) }}</p>
+      <p data-dish-price class="shrink-0 text-body tabular-nums" :class="dish.soldOut && 'text-muted-foreground'">{{ formatMoney(dish.price, language) }}</p>
     </div>
     <p v-if="dish.next" class="text-small text-muted-foreground tabular-nums">
       {{ t('priceFrom', { date: format.date(dish.next.from, { day: 'numeric', month: 'long' }), price: formatMoney(dish.next.price, language) }) }}

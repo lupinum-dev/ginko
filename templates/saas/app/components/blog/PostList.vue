@@ -1,16 +1,20 @@
 <!-- Synced from templates/_features/blog/app/components/blog/PostList.vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
+import type { Component } from 'vue'
 import type { BlogPost } from '~/composables/useBlog'
 
 /** Posts as rows divided by lines: date and authors, title (the link), summary, and the cover (3:2) at the end of the
  *  row from `sm` up, above the text on phones. A post without a cover is a row without an image, not a gap. `images` false
- *  leaves the covers out (a teaser on a home page). `eager`: the list opens the page, so the first photo loads at once (it is the largest thing on a phone's first screen). */
+ *  leaves the covers out (a teaser on a home page). `eager`: the list opens the page, so the first photo loads at once (it is the largest thing on a phone's first screen).
+ *  A template may bring `app/components/blog/List.vue` (the same props): every list of posts then shows it instead. */
+const Own = Object.values(import.meta.glob<Component>('~/components/blog/List.vue', { eager: true, import: 'default' }))[0]
 withDefaults(defineProps<{ items: BlogPost[], headingLevel?: 'h2' | 'h3', images?: boolean, eager?: boolean }>(), { headingLevel: 'h2', images: true })
 const { format, t } = useI18n('blog')
 </script>
 
 <template>
-  <ul class="flex flex-col border-b">
+  <component :is="Own" v-if="Own" v-bind="$props" />
+  <ul v-else class="flex flex-col border-b">
     <li v-for="(post, i) in items" :key="post.id" class="group relative flex flex-col gap-5 border-t py-8 sm:flex-row-reverse sm:items-start sm:gap-8">
       <GinkoImage
         v-if="images && post.image"

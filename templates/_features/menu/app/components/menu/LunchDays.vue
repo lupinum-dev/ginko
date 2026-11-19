@@ -5,7 +5,8 @@ import { isLunchPlaceholder } from '@lupinum/ginko-preset-gastro'
 /** The lunch days of the week shown: weekday and date, the dish, its price and allergen letters. Days before today
  *  are left out on screen (a guest cannot order them) and stay on paper. Today is marked in words; a day the place
  *  is closed says "Closed" instead of a dish. A day still holding the placeholder dish of a fresh site has no
- *  allergen line: there is no dish to name allergens for. */
+ *  allergen line: there is no dish to name allergens for. `data-lunch-dish` (the dish) is a stable name for a
+ *  template's main.css. */
 const { lunch, days } = useLunch()
 const { t, format, language } = useI18n('menu')
 const langOf = useGinkoLang()
@@ -31,7 +32,7 @@ const first = computed(() => Math.max(0, days.value.findIndex((day) => day.today
       </template>
       <template v-else>
         <div class="flex flex-col gap-1.5">
-          <p class="font-medium" :lang="langOf(lunch, `days.${day._id}.dish`)">{{ day.dish }}</p>
+          <p data-lunch-dish class="font-medium" :lang="langOf(lunch, `days.${day._id}.dish`)">{{ day.dish }}</p>
           <MenuAllergens v-if="!isLunchPlaceholder(day.dish)" :codes="day.allergens.map(String)" />
         </div>
         <p v-if="day.price" class="tabular-nums sm:text-end">{{ formatMoney(day.price, language) }}</p>
