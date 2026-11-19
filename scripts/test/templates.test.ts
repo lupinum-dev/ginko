@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
-import { type Result, sync, syncCheck, test as testTemplate, withUnrun } from '../templates.ts'
+import { demoReset, type Result, sync, syncCheck, test as testTemplate, withUnrun } from '../templates.ts'
 import { studioJob } from '../templates/e2e/studio.ts'
 import { studioSpecDirs } from '../templates/platform.ts'
 
@@ -229,5 +229,39 @@ describe('test --platform', () => {
     expect(studioJob(all, 'notice', ['brick', 'textField'])).toEqual({ brick: 'notice', textField: '^Text' })
     expect(() => studioJob(all, 'page', ['brick', 'title', 'path', 'bodyField'])).toThrow('"page": { "path", "bodyField" }')
     expect(() => studioJob(all, 'menu', ['brick'])).toThrow('"menu": { "brick" }')
+  })
+})
+
+describe('demo-reset --from', () => {
+  // Wrong behaviour caught: a site checkout outside templates/ cannot be reset (the path was tied to templates/<name>),
+  // its sample dates stay old although it has a sampleAnchor, the dates are moved in the checkout itself instead of the
+  // work copy, or --dry-run still imports.
+  it('exports a site checkout with its dates moved in a copy, and a dry run stops before the import', async () => {
+    const site = join(work, 'own-site')
+    const event = join(site, 'content/events/1.fair.md')
+    const original = '---\nwhen:\n  from: 2027-03-01\n  to: 2027-03-02\n---\n'
+    mkdirSync(dirname(event), { recursive: true })
+    writeFileSync(event, original)
+    writeFileSync(join(site, 'ginko.config.ts'), "export default { site: 'own', locales: ['en'], bricks: { events: { kind: 'collection', visible: { mode: 'until', field: 'when' }, fields: { when: { type: 'daterange' } } } } }\n")
+    // Two weeks before today: the dates move by 14 days.
+    const anchor = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10)
+    writeFileSync(join(site, 'package.json'), JSON.stringify({ name: 'own-site', ginko: { sampleAnchor: anchor } }))
+    const calls: string[][] = []
+    let exported = ''
+    const run = async (_command: string, args: string[]) => {
+      calls.push(args)
+      if (args.includes('files-export')) {
+        const config = args[args.indexOf('--config') + 1]!
+        exported = readFileSync(join(dirname(config), 'content/events/1.fair.md'), 'utf8')
+        const dir = args.at(-1)!
+        mkdirSync(dir, { recursive: true })
+        writeFileSync(join(dir, 'export.json'), JSON.stringify({ entries: [{}], files: [] }))
+      }
+      return ''
+    }
+    expect(await demoReset([site], { dryRun: true, run, root: work })).toEqual([])
+    expect(exported).toContain('from: 2027-03-15')
+    expect(readFileSync(event, 'utf8')).toBe(original)
+    expect(calls.some((args) => args.includes('ops:import'))).toBe(false)
   })
 })
