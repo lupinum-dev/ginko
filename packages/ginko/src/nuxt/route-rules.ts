@@ -39,7 +39,9 @@ export function ginkoRouteRules(site: RouteRules, { noindex = [], platform = fal
     rules[path] = { ...rules[path], isr, headers: { ...rules[path]?.headers, 'cache-control': 'public, max-age=0, must-revalidate', 'x-robots-tag': 'noindex' } }
   }
   // The platform's files (images) are public content, not preview: indexable, and cached for good because a storage id never changes its bytes.
-  // `all` replaces the noindex of /__ginko/** above (headers merge by key).
-  if (platform) rules['/__ginko/file/**'] = { ...rules['/__ginko/file/**'], isr: false, headers: { ...rules['/__ginko/file/**']?.headers, 'cache-control': 'public, max-age=31536000, s-maxage=31536000, immutable', 'x-robots-tag': 'all' } }
+  // `all` replaces the noindex of /__ginko/** above (headers merge by key). The build writes the files the content
+  // names (platform-files.ts); a file added later runs the function once per deployment, then Vercel's ISR cache
+  // serves it to every region (a CDN cache alone is per region and empty after each deploy).
+  if (platform) rules['/__ginko/file/**'] = { ...rules['/__ginko/file/**'], isr: { expiration: false, allowQuery: [] }, headers: { ...rules['/__ginko/file/**']?.headers, 'cache-control': 'public, max-age=31536000, s-maxage=31536000, immutable', 'x-robots-tag': 'all' } }
   return rules
 }
