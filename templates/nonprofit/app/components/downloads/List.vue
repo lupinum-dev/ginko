@@ -7,7 +7,7 @@ import { Download } from '@lucide/vue'
  *  of a document shows when it is not the language of the page ("English" on the German page); a document without
  *  one is in the site's main language. A template may bring `app/components/downloads/Rows.vue` (prop `items`): every
  *  list of documents then shows it instead. */
-const Own = Object.values(import.meta.glob<Component>('~/components/downloads/Rows.vue', { eager: true, import: 'default' }))[0]
+const Own = Object.values(import.meta.glob<Component>('./Rows.vue', { eager: true, import: 'default' }))[0]
 defineProps<{ items: GinkoItem<'downloads'>[] }>()
 const { t, format } = useI18n('downloads')
 const { type, size, languageName, hreflang, mediaType } = useDownloadText()

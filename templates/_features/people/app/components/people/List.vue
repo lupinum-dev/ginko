@@ -6,7 +6,7 @@ import type { Component } from 'vue'
  *  beside the name, so the bios stay close. `eager`: the list opens the page, so the first photo loads at once (it is the largest thing on a phone's first screen).
  *  A template may bring `app/components/people/Cards.vue` (the same props): every list of people then shows it instead.
  *  It must keep one `li` per person with the name as an `h2` (the shared e2e checks that). */
-const Own = Object.values(import.meta.glob<Component>('~/components/people/Cards.vue', { eager: true, import: 'default' }))[0]
+const Own = Object.values(import.meta.glob<Component>('./Cards.vue', { eager: true, import: 'default' }))[0]
 defineProps<{ items: GinkoItem<'people'>[], eager?: boolean }>()
 const { t } = useI18n('people')
 const locale = useGinkoLocale()

@@ -297,6 +297,19 @@ export function copiedContactProblems(dir: string): string[] {
   return found
 }
 
+/**
+ * Files of a template's `app` folder that give `import.meta.glob` a pattern with an alias (`~/…`, `@/…`). The pattern
+ * must be relative: rolldown before 1.3 resolves an aliased pattern on a blocked worker thread, and a build with several
+ * such lookups never ends on a machine with two cores (the production builds of restaurant and nonprofit, 2026-11-19).
+ */
+export function aliasedGlobProblems(dir: string): string[] {
+  const base = join(dir, 'app')
+  if (!existsSync(base)) return []
+  return readdirSync(base, { recursive: true }).map(String)
+    .filter((file) => /\.(vue|ts)$/.test(file) && statSync(join(base, file)).isFile() && /import\.meta\.glob(?:<[^(]*>)?\(\s*\[?\s*['"`][~@]/.test(readFileSync(join(base, file), 'utf8')))
+    .map((file) => `app/${file}: import.meta.glob has a pattern with an alias; write it relative to the file (./ or ../), an aliased pattern can hang the build on a machine with few cores`)
+}
+
 /** True when the eslint config imports `tailwindClassesConfig` and uses it outside the import and outside comments. */
 function loadsTailwindLint(file: string): boolean {
   if (!existsSync(file)) return false
@@ -329,6 +342,7 @@ export async function syncCheck(root = repoRoot, { next = nextVersion(root), tod
     if (!anchor || !/^\d{4}-\d{2}-\d{2}$/.test(anchor)) problems.push(`${name}: package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }`)
     for (const problem of bidiProblems(dir)) problems.push(`${name}: ${problem}`)
     for (const problem of copiedContactProblems(dir)) problems.push(`${name}: ${problem}`)
+    for (const problem of aliasedGlobProblems(dir)) problems.push(`${name}: ${problem}`)
     // The unknown-class lint (ui feature, eslint.tailwind.mjs) only works when the template's own eslint config loads it.
     // Gate 2 then lints a probe file, which proves the rule runs; this check names the cause without a build.
     if (pkg.ginko?.features?.includes('ui') && !loadsTailwindLint(join(dir, 'eslint.config.mjs'))) {

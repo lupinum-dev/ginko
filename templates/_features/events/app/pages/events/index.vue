@@ -5,7 +5,7 @@ import type { Component } from 'vue'
 // leaves this list, the sitemap and search engines after its last day. The cards' titles are h3: a hidden h2 keeps the
 // heading order (h1, h2, h3) for screen readers. A template may bring app/components/event/List.vue (prop `items`: the
 // upcoming event entries, the next first); the page then shows it instead of the cards (for example rows).
-const List = Object.values(import.meta.glob<Component>('~/components/event/List.vue', { eager: true, import: 'default' }))[0]
+const List = Object.values(import.meta.glob<Component>('../../components/event/List.vue', { eager: true, import: 'default' }))[0]
 const events = useGinko('events')
 const cards = useUpcomingEvents()
 const { t } = useI18n('events')

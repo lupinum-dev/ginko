@@ -7,9 +7,9 @@ import { safeHref } from '@lupinum/ginko'
 // title instead of the photo and the text (for example the facts and every photo of a project); the composable
 // `app/composables/useProjectJsonLd.ts` (`useProjectJsonLd()` returns a function of the project) adds the project's
 // own JSON-LD, such as a CreativeWork, to the page's one `usePageSeo` call.
-const Body = Object.values(import.meta.glob<Component>('~/components/projects/Body.vue', { eager: true, import: 'default' }))[0]
+const Body = Object.values(import.meta.glob<Component>('../../components/projects/Body.vue', { eager: true, import: 'default' }))[0]
 type ProjectJsonLd = () => (project: GinkoItem<'projects'>) => Record<string, unknown>
-const projectJsonLd = Object.values(import.meta.glob<ProjectJsonLd>('~/composables/useProjectJsonLd.ts', { eager: true, import: 'useProjectJsonLd' }))[0]?.()
+const projectJsonLd = Object.values(import.meta.glob<ProjectJsonLd>('../../composables/useProjectJsonLd.ts', { eager: true, import: 'useProjectJsonLd' }))[0]?.()
 const route = useRoute()
 const project = useGinkoEntry('projects', () => route.params.slug)
 const { t, format } = useI18n('projects')

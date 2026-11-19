@@ -14,10 +14,10 @@ import { ArrowLeft } from '@lucide/vue'
 // A template may bring app/components/event/Header.vue (prop `event`: the event entry): it replaces the back link,
 // title, facts and photo (for example a photo opening); `EventActions` (booking, "fully booked", phone and email) then
 // follows it.
-const EventHeader = Object.values(import.meta.glob<Component>('~/components/event/Header.vue', { eager: true, import: 'default' }))[0]
-const EventProgramme = Object.values(import.meta.glob<Component>('~/components/event/Programme.vue', { eager: true, import: 'default' }))[0]
+const EventHeader = Object.values(import.meta.glob<Component>('../../components/event/Header.vue', { eager: true, import: 'default' }))[0]
+const EventProgramme = Object.values(import.meta.glob<Component>('../../components/event/Programme.vue', { eager: true, import: 'default' }))[0]
 type SessionsLd = (event: () => string) => ComputedRef<SessionJsonLdInput[]>
-const useSessionsLd = Object.values(import.meta.glob<SessionsLd>('~/composables/useSessions.ts', { eager: true, import: 'useSessionsLd' }))[0]
+const useSessionsLd = Object.values(import.meta.glob<SessionsLd>('../../composables/useSessions.ts', { eager: true, import: 'useSessionsLd' }))[0]
 const route = useRoute()
 const event = useGinkoEntry('events', () => route.params.slug)
 const { t } = useI18n('events')
