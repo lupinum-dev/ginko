@@ -1,5 +1,15 @@
 # create-ginko
 
+## 0.17.0
+
+### Minor Changes
+
+- [#122](https://github.com/lupinum-dev/ginko/pull/122) [`a34d1a4`](https://github.com/lupinum-dev/ginko/commit/a34d1a42f9401cc1242c0196378fe0fe9758862b) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add hooks to the template features, so a template can bring its own header actions, menu and lunch top, event list and header, page header and lists of posts, people and documents, and restyle header, notice, footer and dishes through stable `data-*` names.
+
+### Patch Changes
+
+- [#124](https://github.com/lupinum-dev/ginko/pull/124) [`5da463d`](https://github.com/lupinum-dev/ginko/commit/5da463db3255a29d49b5c3fc9d83b63d25ec2afe) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix a production build that never ends: the templates look up their optional files with a relative `import.meta.glob` pattern. With an aliased pattern (`~/…`), rolldown before 1.3 could block all its worker threads on a build machine with two cores, so the client build stopped at "transforming..." until the host's time limit.
+
 ## 0.16.5
 
 No changes in this release.
