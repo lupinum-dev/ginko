@@ -78,6 +78,12 @@ describe('parseMarkdown profiles', () => {
     expect(plainText(value)).toBe('Super 🎉')
   })
 
+  test('a bare URL and a bare domain become links', async () => {
+    const { value } = await parseMarkdown('See https://example.com and www.example.org', { profile: 'inline' })
+    expect(JSON.stringify(value.nodes)).toContain('["a",{"href":"https://example.com"},"https://example.com"]')
+    expect(JSON.stringify(value.nodes)).toContain('"href":"http://www.example.org"')
+  })
+
   test('the text before <!-- more --> is the summary, and the marker is gone', async () => {
     const withMarker = await parseMarkdown('Anriss **fett**\n\n<!-- more -->\n\nRest', { profile: 'basic' })
     expect(withMarker.value.summary).toEqual([['p', {}, 'Anriss ', ['strong', {}, 'fett']]])

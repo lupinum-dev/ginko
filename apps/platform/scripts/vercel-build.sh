@@ -3,7 +3,7 @@
 # Studio, so the UI never ships ahead of its backend; a failed deploy fails the build and the previous release stays.
 # Preview builds deploy no backend and only build the Studio. Locally (no VERCEL_ENV) nothing is deployed.
 #
-# The plain Convex CLI on purpose: `better-convex convex deploy` reads its deployment only from .env.local, which does
+# The plain Convex CLI on purpose: `better-convex-nuxt convex deploy` reads its deployment only from .env.local, which does
 # not exist on Vercel. The Convex CLI reads CONVEX_DEPLOY_KEY, which is set in Vercel's Production environment only.
 # It runs in packages/ginko-server: only next to the package.json that lists `sharp` does Convex keep it external.
 set -eu

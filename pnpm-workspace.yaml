@@ -35,11 +35,11 @@ minimumReleaseAgeExclude:
 # One version for the platform packages (apps/platform, ginko-server, ginko-studio). The Better Auth
 # packages must match the exact peer version that @lupinum/better-convex-nuxt names.
 catalog:
-  '@better-auth/core': 1.7.12
-  '@better-auth/oauth-provider': 1.7.12
-  '@lupinum/better-convex-nuxt': 1.0.0-rc.8
-  better-auth: 1.7.12
-  convex: 1.49.0
+  '@better-auth/core': 1.7.16
+  '@better-auth/oauth-provider': 1.7.16
+  '@lupinum/better-convex-nuxt': 1.1.0
+  better-auth: 1.7.16
+  convex: 1.51.0
 
 auditConfig:
   ignoreGhsas:

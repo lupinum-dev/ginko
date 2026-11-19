@@ -27,7 +27,7 @@
     "./convex/*": "./convex/*"
   },
   "scripts": {
-    "convex": "better-convex convex dev --anonymous"
+    "convex": "better-convex-nuxt convex dev --anonymous"
   },
   "dependencies": {
     "@better-auth/core": "catalog:",
@@ -41,8 +41,8 @@
   },
   "devDependencies": {
     "@edge-runtime/vm": "5.0.0",
-    "@types/node": "^24.19.1",
-    "convex-test": "0.0.66",
+    "@types/node": "^24.19.2",
+    "convex-test": "0.0.72",
     "typescript": "6.0.3"
   }
 }

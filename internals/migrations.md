@@ -3,7 +3,7 @@
 Temporary compatibility code that is still active. Each entry says why it exists, since when, what depends on it,
 the exact condition for removing it and the tracking issue when there is one. Remove the code and its entry together.
 
-Run each step on a local backend in `packages/ginko-server` with `pnpm exec better-convex convex run <function> '{}'`.
+Run each step on a local backend in `packages/ginko-server` with `pnpm exec better-convex-nuxt convex run <function> '{}'`.
 Hosted production needs Matthias's OK at each step, in this order:
 
 1. Back up production before the release that brings the code reaches the production branch: in the Convex
@@ -13,7 +13,7 @@ Hosted production needs Matthias's OK at each step, in this order:
    so a backup after the merge is too late.
 2. Merge to the production branch. The Vercel production build deploys Convex, then builds the Studio.
 3. In the production checkout (see the [`ginko-server` README](../packages/ginko-server/README.md)), run the step
-   with `pnpm exec better-convex convex run <function> '{}'`.
+   with `pnpm exec better-convex-nuxt convex run <function> '{}'`.
 
 ## Entry storage: trees in `entryTrees`, text-only budget, separate trash (`entries:migrateStorage`)
 
@@ -34,10 +34,10 @@ Hosted production needs Matthias's OK at each step, in this order:
   so the budget checks are stricter, never looser; the trees guard sees only trees written since.
 - **Steps:**
   1. Deploy this code (expand step). Writers already put trees into `entryTrees` and clear `entries.trees`.
-  2. `pnpm exec better-convex convex run entries:migrateStorage '{}'` (10 entries per run, schedules itself, then
+  2. `pnpm exec better-convex-nuxt convex run entries:migrateStorage '{}'` (10 entries per run, schedules itself, then
      `recountStorage` sets each site's `bytes`, `trashBytes` and `treeBytes` to the sums over its entries). Running it
      again is safe.
-  3. Check with `pnpm exec better-convex convex run entries:storageStatus '{}'` (one site per call; pass the returned
+  3. Check with `pnpm exec better-convex-nuxt convex run entries:storageStatus '{}'` (one site per call; pass the returned
      `cursor` until `isDone`): every site `legacyRows: 0`, `countersMatch: true`, `overLimit: []`.
   4. Hosted production: steps 2 and 3 as described at the top (backup, merge, then run in the production checkout).
   5. Contract step: remove `entries.trees` from the schema, make `entries.treeBytes`, `entries.contentAt`,
@@ -58,7 +58,7 @@ Hosted production needs Matthias's OK at each step, in this order:
 - **Dependents:** every deployment with sites created before the introduction date (local backends, hosted production).
 - **Steps:**
   1. Deploy this code. Nothing writes `orderRevs` from now on.
-  2. `pnpm exec better-convex convex run sites:dropOrderRevs '{}'` (one call; it reports how many sites it cleared;
+  2. `pnpm exec better-convex-nuxt convex run sites:dropOrderRevs '{}'` (one call; it reports how many sites it cleared;
      running it again is safe). Hosted production as described at the top (backup, merge, then run in the production
      checkout).
   3. Contract step: remove `orderRevs` from `convex/schema.ts` and delete `dropOrderRevs`. Convex refuses this deploy
@@ -83,8 +83,8 @@ Hosted production needs Matthias's OK at each step, in this order:
 - **Dependents:** every deployment whose texts hold storage addresses: local backends with pictures pasted into texts,
   and possibly hosted production. Run it before the next daily sweep where a pasted picture is younger than 7 days.
 - **Steps:**
-  1. Local: `pnpm exec better-convex convex run migrations:markdownStorageUrls '{}'` (10 entries per run, schedules
-     itself; running it again is safe). Then `pnpm exec better-convex convex run entries:storageStatus '{}'` until
+  1. Local: `pnpm exec better-convex-nuxt convex run migrations:markdownStorageUrls '{}'` (10 entries per run, schedules
+     itself; running it again is safe). Then `pnpm exec better-convex-nuxt convex run entries:storageStatus '{}'` until
      `isDone` (pass the returned `cursor`): `countersMatch: true` for every site.
   2. Hosted production: step 1 as described at the top (backup, merge, then run in the production checkout).
 - **Removal condition:** the migration ran on every local backend that keeps its data and on hosted production. Then
