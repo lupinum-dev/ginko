@@ -1,5 +1,13 @@
 # @lupinum/ginko-content
 
+## 0.17.0
+
+### Patch Changes
+
+- [#125](https://github.com/lupinum-dev/ginko/pull/125) [`96bf45b`](https://github.com/lupinum-dev/ginko/commit/96bf45b0f9de6647449b6624bbd684ddd7f1ef09) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change the Markdown parser to comark 0.9 and math to KaTeX 0.19 (a site that installs `katex` itself needs `^0.19.1`); bare URLs and domains in text still become links.
+- Updated dependencies [[`96bf45b`](https://github.com/lupinum-dev/ginko/commit/96bf45b0f9de6647449b6624bbd684ddd7f1ef09), [`c309803`](https://github.com/lupinum-dev/ginko/commit/c3098032b6ee20d9fd9132f7a97e95d0194ece0d)]:
+  - @lupinum/ginko@0.17.0
+
 ## 0.16.5
 
 ### Patch Changes
