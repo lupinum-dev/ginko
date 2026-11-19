@@ -326,19 +326,16 @@ function moreMarker(set: (nodes: Node[]) => void) {
 
 /**
  * A link reference definition (`[g]: https://…`) gives the address of `[Text][g]` and `![Logo][g]`; comark resolves those
- * into the link or image itself, so the address passes the same checks as an inline one. The definition has no node of
- * its own (comark would make it a nameless `component`), so its token is dropped; `onDrop` notes that the tree does not
- * show the whole text.
+ * into the link or image itself, so the address passes the same checks as an inline one. The definition has no token
+ * (markdown-exit keeps it only in `env.references`), so the tree has no node for it; `onDrop` notes that the tree does
+ * not show the whole text.
  */
 function referenceDefinitions(onDrop: () => void) {
   return defineComarkPlugin(() => ({
     name: 'ginko-references',
     markdownItPlugins: [((md) => {
       md.core.ruler.push('ginko-references', (state) => {
-        const kept = state.tokens.filter((token) => token.type !== 'reference')
-        if (kept.length === state.tokens.length) return
-        state.tokens = kept
-        onDrop()
+        if (Object.keys(state.env?.references ?? {}).length) onDrop()
       })
     }) satisfies MarkdownExitPlugin],
   }))()
