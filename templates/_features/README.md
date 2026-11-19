@@ -52,7 +52,8 @@ export default defineSite({
 ```
 
 Hooks: a feature's page or component shows a template's own file in one place when it exists (found with `import.meta.glob`, so a
-template without it builds unchanged): `site/FooterStatus.vue` (below), `pages/Top.vue`, `people/TeamContact.vue`,
+template without it builds unchanged; the pattern is relative to the file, never `~/…`, because an aliased pattern can hang the
+build on a machine with few cores, and `pnpm templates sync --check` fails on one): `site/FooterStatus.vue` (below), `pages/Top.vue`, `people/TeamContact.vue`,
 `services/Actions.vue`, and for a template's own look `site/HeaderActions.vue`, `menu/Top.vue`, `menu/LunchTop.vue`,
 `event/List.vue`, `event/Header.vue`, `pages/Header.vue`, `blog/List.vue`, `people/Cards.vue`, `downloads/Rows.vue`, plus
 stable `data-*` names on header, notice, footer, dish and lunch day. The list with props: `ui/DESIGN.md`, "A template's

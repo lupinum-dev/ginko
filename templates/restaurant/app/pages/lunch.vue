@@ -7,7 +7,7 @@
 import type { Component } from 'vue'
 import { isLunchPlaceholder } from '@lupinum/ginko-preset-gastro'
 
-const LunchTop = Object.values(import.meta.glob<Component>('~/components/menu/LunchTop.vue', { eager: true, import: 'default' }))[0]
+const LunchTop = Object.values(import.meta.glob<Component>('../components/menu/LunchTop.vue', { eager: true, import: 'default' }))[0]
 const { lunch, week, days, served } = useLunch()
 const { t, format } = useI18n('menu')
 const langOf = useGinkoLang()

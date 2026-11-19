@@ -163,6 +163,16 @@ describe('templates sync --check', () => {
     for (const entry of ignore) expect(entry).toMatch(/^\^[a-z-]+\$$/)
   })
 
+  // Wrong behaviour caught: an aliased pattern builds on a developer's machine and hangs the production build (two cores) for 45 minutes.
+  it('fails on an import.meta.glob pattern with an alias, and accepts a relative one', async () => {
+    const lookup = (pattern: string) => `<script setup lang="ts">\nconst Top = Object.values(import.meta.glob<Component>('${pattern}', { eager: true, import: 'default' }))[0]\n</script>\n`
+    const root = repo((files) => { files['templates/demo/app/pages/index.vue'] = lookup('~/components/Top.vue') })
+    await sync(root, null)
+    expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([expect.stringContaining('demo: app/pages/index.vue: import.meta.glob has a pattern with an alias')])
+    writeFileSync(join(root, 'templates/demo/app/pages/index.vue'), lookup('../components/Top.vue'))
+    expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([])
+  })
+
   it('accepts the next minor range while the release is pending', async () => {
     const root = repo()
     await sync(root, '0.5.0')

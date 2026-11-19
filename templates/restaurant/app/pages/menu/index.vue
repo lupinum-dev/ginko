@@ -7,7 +7,7 @@ import { Printer } from '@lucide/vue'
 // key. A dish taken off the menu is left out; a dish sold out today stays and says so. A row of links under the
 // header jumps to each category, so a long menu on a phone needs no scrolling to find the desserts. A template may bring
 // app/components/menu/Top.vue (no props): it shows between the header and the print link (for example a photo).
-const MenuTop = Object.values(import.meta.glob<Component>('~/components/menu/Top.vue', { eager: true, import: 'default' }))[0]
+const MenuTop = Object.values(import.meta.glob<Component>('../../components/menu/Top.vue', { eager: true, import: 'default' }))[0]
 const { groups, allergens } = useMenu()
 const { t, localePath } = useI18n('menu')
 usePageSeo(() => ({ title: t('title'), description: t('lead') }))

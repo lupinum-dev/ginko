@@ -9,8 +9,8 @@ import { safeHref } from '@lupinum/ginko'
 // (prop `id`): it replaces the page header and the photo; the page's action button then follows it.
 const route = useRoute()
 const page = useGinkoEntry('pages', () => route.params.slug)
-const PagesHeader = Object.values(import.meta.glob<Component>('~/components/pages/Header.vue', { eager: true, import: 'default' }))[0]
-const PagesTop = Object.values(import.meta.glob<Component>('~/components/pages/Top.vue', { eager: true, import: 'default' }))[0]
+const PagesHeader = Object.values(import.meta.glob<Component>('../components/pages/Header.vue', { eager: true, import: 'default' }))[0]
+const PagesTop = Object.values(import.meta.glob<Component>('../components/pages/Top.vue', { eager: true, import: 'default' }))[0]
 const action = computed(() => {
   const href = safeHref(page.value.data.actionUrl)
   return href && page.value.data.actionLabel ? { label: page.value.data.actionLabel, href } : undefined

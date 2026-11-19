@@ -13,7 +13,7 @@ import type { Component } from 'vue'
 // A template may bring `app/components/site/HeaderActions.vue` (for example a reserve button): it shows between the
 // navigation and the language switch at every width, and the template decides what it shows on phones. Stable names
 // for a template's main.css: `data-header` (the header), `data-header-bar` (its row), `data-site-name` (the name).
-const actions = Object.values(import.meta.glob<Component>('~/components/site/HeaderActions.vue', { eager: true, import: 'default' }))[0]
+const actions = Object.values(import.meta.glob<Component>('./HeaderActions.vue', { eager: true, import: 'default' }))[0]
 const config = useSiteAppConfig()
 const { name } = useGinkoSite()
 const links = useSiteLinks(() => config.nav, 6)
