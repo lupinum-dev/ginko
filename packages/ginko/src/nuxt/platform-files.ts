@@ -1,5 +1,5 @@
 // The platform's images as files of the build: every file address the published content names is prerendered, so
-// after a deploy no image needs the function (docs: 11.veroeffentlichen "Vercel"). Images added later go through the
+// after a deploy no image needs the function (docs: 11.deploy "Vercel"). Images added later go through the
 // function once and are then cached by the `/__ginko/file/**` route rule (route-rules.ts).
 import type { Locale } from '../core/index.ts'
 import { bundleRequest, FILE_ID } from './runtime/platform-request.ts'

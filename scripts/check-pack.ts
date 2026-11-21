@@ -283,14 +283,14 @@ async function pool<T>(size: number, tasks: (() => Promise<T>)[]): Promise<T[]> 
 const results = await pool(4, [
   ...Object.entries(created).map(([name, checks]) => () => checkSite(join(work, name), checks)),
   () => checkSite(docs, [
-    ['/docs/einstieg', /class="docs-sidebar/], ['/en/docs/getting-started', /lang="en"/], ['/__ginko/search/de.json', /"url":"\/docs\//],
+    ['/docs/getting-started', /class="docs-sidebar/], ['/de/docs/einstieg', /lang="de"/], ['/__ginko/search/en.json', /"url":"\/docs\//],
     // The layer's two feed handlers: the main language and a prefixed one, next to a page of the site's own.
-    ['/impressum', /<h1>Impressum<\/h1>/], ['/blog/rss.xml', /<rss[\s\S]*<item>/], ['/en/blog/rss.xml', /<rss[\s\S]*<item>/],
+    ['/impressum', /<h1>Impressum<\/h1>/], ['/blog/rss.xml', /<rss[\s\S]*<item>/], ['/de/blog/rss.xml', /<rss[\s\S]*<item>/],
   ], { ginkoCheck: false }),
   () => checkSite(docsSeo, [
-    ['/docs/einstieg', seoHead('de')], ['/en/docs/getting-started', seoHead('en')], ['/', seoHead('de')],
+    ['/docs/getting-started', seoHead('en')], ['/de/docs/einstieg', seoHead('de')], ['/', seoHead('en')],
     // Ginko's entries with hreflang, on the site's address (not the request host).
-    ['/sitemap.xml', /<loc>https:\/\/ginko\.lupinum\.com\/en\/docs\/getting-started<\/loc>[\s\S]*hreflang="de"/],
+    ['/sitemap.xml', /<loc>https:\/\/ginko\.lupinum\.com\/docs\/getting-started<\/loc>[\s\S]*hreflang="de"/],
     // localhost is a preview host: never indexable, also for @nuxtjs/robots.
     ['/robots.txt', /Disallow: \/\s*$/m],
   ], { ginkoCheck: false }),
