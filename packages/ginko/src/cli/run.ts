@@ -1,4 +1,4 @@
-// How every run of a Ginko CLI ends (docs: 12.plattform-und-cli "Output and exit codes"). stdout gets exactly
+// How every run of a Ginko CLI ends (docs: 12.platform-and-cli "Output and exit codes"). stdout gets exactly
 // one JSON line, `{"ok":true,…}` or `{"ok":false,"error":{"code","message"}}`; human text goes to stderr.
 // The exit code tells a CI what to do next, so it is part of the contract.
 import { execFile } from 'node:child_process'

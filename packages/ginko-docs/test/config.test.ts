@@ -2,6 +2,8 @@
 // change in basics (a label, a field, an option, the key order) must not reach it unnoticed: the three bricks of the
 // docs site serialize to the bytes they had before basics existed (0.4.0). The changelog carried `drafts: true` from
 // 0.8 to 0.12; a stored schema with it still releases (D60).
+// The hash changed once, in November 2026: English became the docs site's main language, so the posts route is
+// `{ en: '/blog/[slug]', de: '/de/blog/[slug]' }`. Nothing else differs from the 0.4.0 bytes.
 import { createHash } from 'node:crypto'
 import { expect, it } from 'vitest'
 import { serializeSchema } from '@lupinum/ginko/internal'
@@ -11,7 +13,7 @@ import { blogCollections, changelogCollection, changelogPages, docsCollection, d
 it('keeps the stored schema of the blog and changelog bricks byte for byte', () => {
   const { bricks } = serializeSchema(docsSite)
   const json = JSON.stringify([bricks.posts, bricks.authors, bricks.changelog])
-  expect(createHash('sha256').update(json).digest('hex')).toBe('39c88347dc13394a0320caf8394bd54a9b3b66e717155e3e5503ce6109443e7a')
+  expect(createHash('sha256').update(json).digest('hex')).toBe('27539a8f4ccdfd2ce564cca5251f3ee890235e364a382ae1d148a6619509d596')
 })
 
 // Wrong behaviour caught: the start page of another locale at `/de/`, an address ginko-i18n redirects, so `$page.home`,

@@ -123,3 +123,15 @@ Hosted production needs Matthias's OK at each step, in this order:
   that has `focus=`, and the next major version of the published packages (removing a prop is breaking for files
   sites). Then delete the prop, the attribute, the four rules and this entry.
 - **Tracking issue:** none yet.
+
+## Docs site: redirects from the German-first addresses (`sites/docs/ginko.config.ts` `redirects`)
+
+- **Why:** until November 2026 German was the main language of ginko.lupinum.com: English pages lived under `/en`,
+  German pages had no prefix. English is the main language now (`/docs/getting-started`, German under `/de`). Links
+  and search results still point at the old addresses.
+- **Introduced:** 21 November 2026.
+- **Compatibility code:** the `redirects` list and `germanDocs` in `sites/docs/ginko.config.ts`: `/en`, `/en/docs/*`,
+  `/en/blog/*` and `/en/changelog` lose the prefix; the 13 old German docs addresses and the 2 German posts go to
+  `/de/…`. German `/docs/presets` has no rule: English has the same slug, so the address shows the English page.
+- **Dependents:** external links, search engines and the READMEs of the packages published before the switch.
+- **Remove when:** Search Console shows no clicks on the old addresses for 3 months, at the earliest in June 2027.
