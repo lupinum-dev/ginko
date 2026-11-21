@@ -1,6 +1,6 @@
 import { addComponent, addComponentsDir, addImports, addNitroPlugin, addPlugin, addServerHandler, addServerImports, addServerTemplate, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, extendPages, installModule, tryResolveModule } from '@nuxt/kit'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
-import { basename, join, relative, resolve as resolvePath } from 'node:path'
+import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Nuxt } from 'nuxt/schema'
 import { appSchema, componentsForMarkdown } from './app-schema.ts'
@@ -12,7 +12,7 @@ import { platformBuildCheck } from './platform-check.ts'
 import { platformFileRoutes } from './platform-files.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
-import { restartOnConfigChange } from './watch.ts'
+import { rebuildOnContentChange, restartOnConfigChange } from './watch.ts'
 import { checkSite, siteForContent, coreMessage, entryRedirects, fileMarkdownRef, redirectProblems, serializeSchema, withMarkdownRefs, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
@@ -335,8 +335,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
   if (!nuxt.options.dev) return
   let reload: (() => Promise<void>) | undefined
   nuxt.hook('nitro:init', (nitro) => { reload = () => nitro.hooks.callHook('rollup:reload') })
-  nuxt.hook('builder:watch', async (_event, path) => {
-    if (relative(contentDir, resolvePath(rootDir, path)).startsWith('..')) return
+  rebuildOnContentChange(nuxt, contentDir, async () => {
     await build()
     await reload?.()
   })

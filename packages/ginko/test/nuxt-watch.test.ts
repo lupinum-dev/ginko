@@ -1,9 +1,9 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, expect, test, vi } from 'vitest'
-import { restartOnConfigChange } from '../src/nuxt/watch.ts'
+import { rebuildOnContentChange, restartOnConfigChange } from '../src/nuxt/watch.ts'
 
 const CORE = pathToFileURL(join(import.meta.dirname, '../src/core/index.ts')).href
 const config = (timeZone: string) => `import { collection, defineSite, f } from '${CORE}'
@@ -60,4 +60,22 @@ test('a broken save of ginko.config.ts is reported without a restart, the next g
   writeFileSync(file, config('Europe/Berlin'))
   await waitFor(() => restarts.length > 0, 'the restart')
   expect(restarts).toEqual([{ hard: true }])
+})
+
+// Wrong behaviour caught: Nuxt's `builder:watch` never reports `content/` (it watches only app/ and server/), so a saved
+// or new content file showed nothing in dev until a restart, although the docs say dev reads changed files again.
+test('a saved or new file anywhere in content/ rebuilds the files bundles', { timeout: 60_000 }, async () => {
+  const content = join(mkdtempSync(join(tmpdir(), 'ginko-content-')), 'content')
+  mkdirSync(join(content, 'pages'), { recursive: true })
+  writeFileSync(join(content, 'home.md'), '---\ntitle: Home\n---\n')
+  const hooks: Record<string, () => void> = {}
+  let rebuilds = 0
+  rebuildOnContentChange({ hook: (name, fn) => { hooks[name] = fn } }, content, async () => { rebuilds++ })
+  closers.push(() => hooks.close?.())
+  await watcherLive()
+
+  writeFileSync(join(content, 'home.md'), '---\ntitle: Start\n---\n')
+  await waitFor(() => rebuilds === 1, 'the rebuild after a save')
+  writeFileSync(join(content, 'pages', '1.about.fr.md'), '---\ntitle: À propos\n---\n')
+  await waitFor(() => rebuilds === 2, 'the rebuild after a new file in a subfolder')
 })
