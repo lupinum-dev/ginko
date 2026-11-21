@@ -21,7 +21,7 @@ export interface GinkoPublicConfig {
 }
 
 /**
- * The page a request may ask Markdown for (docs: 10.seo-und-agenten "Addresses and headers"): `<page>.md` always
+ * The page a request may ask Markdown for (docs: 10.seo-and-agents "Addresses and headers"): `<page>.md` always
  * does; any other path is a page if an entry has that URL, also with a dot in its last segment (`/blog/v1.2`).
  * Ginko's and Nuxt's own paths are no pages.
  * Files from public/ never get here: the host serves them first.

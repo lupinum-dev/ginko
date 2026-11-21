@@ -88,7 +88,7 @@ describe('registry and components', () => {
   })
 
   // The prop lists on the docs pages and in the README are written by hand: a new prop must not stay undocumented.
-  const docs = ['7.komponenten.md', '7.komponenten.en.md'].map((file) => readFileSync(new URL(`../../../sites/docs/content/docs/${file}`, import.meta.url), 'utf8'))
+  const docs = ['7.components.md', '7.components.de.md'].map((file) => readFileSync(new URL(`../../../sites/docs/content/docs/${file}`, import.meta.url), 'utf8'))
   const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
   test.each(Object.entries(components))('%s: every prop is documented', (tag, def) => {
     const props = Object.keys(def.props ?? {})
