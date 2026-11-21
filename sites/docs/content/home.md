@@ -77,4 +77,4 @@ Tuesday to Saturday 11 am–10 pm, Sunday 11 am–3 pm.
 ```
 ::
 
-Continue with [Getting started]($docs.getting-started). To compare Ginko with Nuxt Content, a hosted CMS or a Git-based editor, read [Compare and switch]($docs.switching).
+Continue with [Quick start]($docs.getting-started). To compare Ginko with Nuxt Content, a hosted CMS or a Git-based editor, read [Compare and switch]($docs.switching).

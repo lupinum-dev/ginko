@@ -14,7 +14,7 @@ export function ginkoVercelConfig<V extends { config?: { bypassToken?: string } 
 const ISR_SECONDS = 60
 
 /**
- * Ginko's cache rules on top of the site's own (docs: 11.deploy "Vercel"). Ginko only fills what the site
+ * Ginko's cache rules on top of the site's own (docs: deploy "Vercel"). Ginko only fills what the site
  * left unset, except under /__ginko/: there Ginko's `isr`, `cache-control` and `x-robots-tag` replace the site's, so
  * the preview is never cached or indexed. A more specific rule of the site wins anyway (Nitro merges by specificity).
  * `noindex` are the paths of the pages in `seo.noindex`: they answer with `X-Robots-Tag: noindex`. With `platform`

@@ -5,12 +5,12 @@ const origin = 'http://localhost:3204'
 
 test('a page carries only its own text, and client navigation loads the next one', async ({ page }) => {
   const response = await page.goto(`${origin}/docs/getting-started`)
-  // The text of the next page ("Compare and switch") must not ride along in this page's payload (headings may: toc).
-  expect(await response!.text()).not.toContain('Both read Markdown from')
+  // The text of the next page ("Templates") must not ride along in this page's payload (headings may: toc).
+  expect(await response!.text()).not.toContain('Each demo is the template with its sample content')
   await expect(page.locator('pre.shiki').first()).toBeVisible()
-  await page.locator('.docs-pager').getByRole('link', { name: /Compare and switch/ }).click()
-  await expect(page).toHaveURL(`${origin}/docs/switching`)
-  await expect(page.getByRole('heading', { name: 'Ginko or Nuxt Content' })).toBeVisible()
+  await page.locator('.docs-pager').getByRole('link', { name: /Templates/ }).click()
+  await expect(page).toHaveURL(`${origin}/docs/templates`)
+  await expect(page.getByRole('heading', { name: 'What the command does' })).toBeVisible()
 })
 
 // The docs layer keeps `source` in its bundle through the 'ginko:files' hook; without it the link falls back to the Studio.
