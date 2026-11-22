@@ -23,7 +23,7 @@ test('search finds a page by a word in its headings and opens it', async ({ page
   await page.goto(`${origin}/docs/getting-started`)
   await page.getByRole('button', { name: /Search/ }).click()
   await page.getByRole('combobox').fill('visibility')
-  await page.getByRole('option').filter({ hasText: 'Bricks' }).first().click()
+  await page.getByRole('option').filter({ hasText: 'single and collection' }).first().click()
   await expect(page).toHaveURL(`${origin}/docs/bricks`)
 })
 
