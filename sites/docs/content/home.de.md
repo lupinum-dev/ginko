@@ -12,19 +12,19 @@ features:
     href: /de/docs/bausteine
   - title: Dateien oder Plattform
     description: Derselbe Baustein liest heute Markdown aus dem Repo und morgen die Plattform. Der Code der Seite bleibt gleich.
-    href: /de/docs/inhalte-aus-dateien
+    href: /de/docs/dateien-oder-plattform
   - title: Sprachen eingebaut
     description: Adressen pro Sprache, hreflang, Sprachwechsel und Übersetzungstexte mit ICU, ohne zweites Modul.
-    href: /de/docs/sprachen
+    href: /de/docs/sprache-hinzufuegen
   - title: Freigabe vor dem Livegang
     description: Änderungen können eine Freigabe brauchen, gehen zu einem Zeitpunkt live und lassen sich zurücknehmen. Lupinum betreibt das Studio, der Zugang ist auf Einladung.
-    href: /de/docs/plattform-und-cli
+    href: /de/docs/plattform-fuer-inhaber
   - title: Komponenten für Markdown
     description: Hinweise, Tabs, Schritte, Karten, Code-Gruppen und mehr, mit Feldern im Studio und als shadcn-vue-Registry.
     href: /de/docs/komponenten
   - title: Lesbar für Agenten
     description: Jede Seite gibt es als Markdown, dazu llms.txt und einen MCP-Zugang zur Doku.
-    href: /de/docs/seo-und-agenten
+    href: /de/docs/seiten-fuer-agenten
 ---
 
 ## Ein Baustein, eine Seite, ein Inhalt

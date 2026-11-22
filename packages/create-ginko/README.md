@@ -12,7 +12,7 @@ npm run dev
 The new site reads its content from Markdown in `content/` and needs no platform. To let an owner
 edit a brick on the Ginko platform instead, remove `source: 'files'` from it in `ginko.config.ts`,
 and give the single's required fields a `default` or make them optional (`f.markdown`, `f.image` and `f.file` cannot have a default, so set `optional: true` on them). See
-[Platform and CLI](https://ginko.lupinum.com/docs/platform-and-cli).
+[Move a brick to the platform](https://ginko.lupinum.com/docs/move-a-brick-to-the-platform).
 
 Without options it creates the plain starter in English; `--locales de` creates it in German.
 

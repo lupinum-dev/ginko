@@ -15,15 +15,15 @@ features:
   - icon: lucide:file-text
     title: Files or platform
     description: The same brick reads Markdown from the repository today and the platform tomorrow. The site code stays the same.
-    href: /docs/content-from-files
+    href: /docs/files-or-platform
   - icon: lucide:languages
     title: Languages built in
     description: Addresses per language, hreflang, a language switcher and ICU messages, without a second module.
-    href: /docs/languages
+    href: /docs/add-a-language
   - icon: lucide:shield-check
     title: Approval before it goes live
     description: Changes can need a yes, go live at a set time, and can be taken back. The Studio is hosted by Lupinum, by invitation.
-    href: /docs/platform-and-cli
+    href: /docs/platform-for-owners
   - icon: lucide:component
     title: Components for Markdown
     description: Callouts, tabs, steps, cards, code groups and more, with fields in the Studio and as a shadcn-vue registry.
@@ -31,7 +31,7 @@ features:
   - icon: lucide:bot
     title: Readable by agents
     description: Every page also exists as Markdown, plus llms.txt and an MCP endpoint for the docs.
-    href: /docs/seo-and-agents
+    href: /docs/pages-for-agents
 ---
 
 ## One brick, one page, one piece of content
