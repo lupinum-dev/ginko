@@ -20,6 +20,7 @@
     "@takumi-rs/core": "^2.20.0",
     "nuxt": "^4.6.4",
     "nuxt-og-image": "^7.0.7",
+    "sharp": "^0.35.5",
     "vue": "^3.5.45"
   },
   "devDependencies": {
