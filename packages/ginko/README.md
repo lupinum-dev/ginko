@@ -88,12 +88,14 @@ any release, so do not import them in a site.
 
 ## Docs
 
-[Getting started](https://ginko.lupinum.com/docs/getting-started) ·
-[Bricks](https://ginko.lupinum.com/docs/bricks) ·
-[Reading content](https://ginko.lupinum.com/docs/reading-content) ·
-[Languages](https://ginko.lupinum.com/docs/languages) ·
-[Content from files](https://ginko.lupinum.com/docs/content-from-files) ·
-[Platform and CLI](https://ginko.lupinum.com/docs/platform-and-cli)
+[Quick start](https://ginko.lupinum.com/docs/getting-started) ·
+[defineSite](https://ginko.lupinum.com/docs/define-site) ·
+[single and collection](https://ginko.lupinum.com/docs/bricks) ·
+[Composables and components](https://ginko.lupinum.com/docs/reading-content) ·
+[Content files](https://ginko.lupinum.com/docs/content-from-files) ·
+[Add a language](https://ginko.lupinum.com/docs/add-a-language) ·
+[ginko CLI](https://ginko.lupinum.com/docs/cli) ·
+[Upgrade Ginko](https://ginko.lupinum.com/docs/upgrade)
 
 ## License
 

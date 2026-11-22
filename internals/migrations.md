@@ -135,3 +135,17 @@ Hosted production needs Matthias's OK at each step, in this order:
   `/de/…`. German `/docs/presets` has no rule: English has the same slug, so the address shows the English page.
 - **Dependents:** external links, search engines and the READMEs of the packages published before the switch.
 - **Remove when:** Search Console shows no clicks on the old addresses for 3 months, at the earliest in June 2027.
+
+## Docs site: redirects from the pages that the rewrite split (`sites/docs/ginko.config.ts` `movedDocs`)
+
+- **Why:** the rewrite of the docs in November 2026 split seven long pages into guides and reference pages:
+  Languages, Presets, SEO and agents, Deploy, Platform and CLI, Docs sites and Docs layer exports. Their addresses
+  no longer have a page.
+- **Introduced:** 22 November 2026.
+- **Compatibility code:** `movedDocs` in `sites/docs/ginko.config.ts` and the rules made from it: `/docs/<old>`,
+  `/en/docs/<old>` and `/de/docs/<old German slug>` go to the page that now holds most of the content. `germanDocs`
+  in the same file sends the German-first addresses of these pages straight to the new German page.
+- **Dependents:** external links, search engines, and the READMEs of the packages on npm up to 0.17.0, which link to
+  `/docs/languages` and `/docs/platform-and-cli`.
+- **Remove when:** together with the German-first redirects above, and a release after 0.17.0 has the new README
+  links on npm.

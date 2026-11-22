@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -88,13 +88,16 @@ describe('registry and components', () => {
   })
 
   // The prop lists on the docs pages and in the README are written by hand: a new prop must not stay undocumented.
-  const docs = ['200.components.md', '200.components.de.md'].map((file) => readFileSync(new URL(`../../../sites/docs/content/docs/${file}`, import.meta.url), 'utf8'))
+  // The component reference is one page per group (`421.components-notices.md` …), in English and in German (`.de.md`).
+  const docsDir = new URL('../../../sites/docs/content/docs/', import.meta.url)
+  const groupPages = readdirSync(docsDir).filter((file) => /^\d+\.components-.+\.md$/.test(file))
+  const docs = [false, true].map((german) => groupPages.filter((file) => file.endsWith('.de.md') === german).map((file) => readFileSync(new URL(file, docsDir), 'utf8')).join('\n'))
   const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
   test.each(Object.entries(components))('%s: every prop is documented', (tag, def) => {
     const props = Object.keys(def.props ?? {})
     for (const page of docs) {
       // Examples hold headings of their own: leave the fenced blocks out.
-      const section = page.replace(/^(`{3,})[^\n]*\n[^]*?^\1[ \t]*$/gm, '').split(/\n(?=##+ )/).find((part) => new RegExp(`^###+ .*\`${tag}\``).test(part))
+      const section = page.replace(/^(`{3,})[^\n]*\n[^]*?^\1[ \t]*$/gm, '').split(/\n(?=##+ )/).find((part) => new RegExp(`^##+ .*\`${tag}\``).test(part))
       expect(section, `docs section of ${tag}`).toBeDefined()
       expect(props.filter((prop) => !section!.includes(`\`${prop}\``))).toEqual([])
     }
