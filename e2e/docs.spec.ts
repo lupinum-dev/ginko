@@ -33,7 +33,8 @@ test('a missing page is a 404 inside the site frame, with the header and a way b
   await expect(page.locator('.docs-header').getByRole('link', { name: 'Ginko' })).toBeVisible()
   // The link to the docs needs the site's content: the error page loaded it.
   await page.locator('.docs-error').getByRole('link', { name: 'Docs' }).click()
-  await expect(page).toHaveURL(`${origin}/docs/getting-started`)
+  // The first page of the docs.
+  await expect(page).toHaveURL(`${origin}/docs/what-ginko-is`)
 })
 
 test('a post marked draft: true is not in the production build', async ({ page }) => {
