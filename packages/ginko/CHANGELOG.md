@@ -1,5 +1,13 @@
 # @lupinum/ginko
 
+## 0.17.1
+
+### Patch Changes
+
+- [#129](https://github.com/lupinum-dev/ginko/pull/129) [`fabcaa6`](https://github.com/lupinum-dev/ginko/commit/fabcaa6095a9364995aab0e8f9d42f82c9e6cdaf) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the dev server not reading saved, new or removed files in `content/` again until a restart.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.17.1
+
 ## 0.17.0
 
 ### Patch Changes

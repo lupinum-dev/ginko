@@ -1,5 +1,15 @@
 # @lupinum/ginko-docs
 
+## 0.17.1
+
+### Patch Changes
+
+- Updated dependencies [[`fabcaa6`](https://github.com/lupinum-dev/ginko/commit/fabcaa6095a9364995aab0e8f9d42f82c9e6cdaf)]:
+  - @lupinum/ginko@0.17.1
+  - @lupinum/ginko-components@0.17.1
+  - @lupinum/ginko-content@0.17.1
+  - @lupinum/ginko-i18n@0.17.1
+
 ## 0.17.0
 
 ### Patch Changes

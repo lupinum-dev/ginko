@@ -1,5 +1,11 @@
 # create-ginko
 
+## 0.17.1
+
+### Patch Changes
+
+- [#134](https://github.com/lupinum-dev/ginko/pull/134) [`9a7d2d7`](https://github.com/lupinum-dev/ginko/commit/9a7d2d7a99095e7f5d1260ac4e756b05857e9232) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the `starter` and `docs` templates stopping at the first image you add: they now come with `sharp`, like the other templates.
+
 ## 0.17.0
 
 ### Minor Changes
