@@ -70,4 +70,4 @@ Dienstag bis Samstag 11–22 Uhr, Sonntag 11–15 Uhr.
 ```
 ::
 
-Weiter geht es mit dem [Einstieg]($docs.getting-started). Wie sich Ginko von Nuxt Content, einem gehosteten CMS oder einem Git-Editor unterscheidet, steht unter [Vergleich und Umstieg]($docs.switching).
+Weiter geht es mit dem [Schnellstart]($docs.getting-started). Wie sich Ginko von Nuxt Content, einem gehosteten CMS oder einem Git-Editor unterscheidet, steht unter [Vergleich und Umstieg]($docs.switching).
