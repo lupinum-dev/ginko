@@ -12,7 +12,7 @@ npm run dev
 The new site reads its content from Markdown in `content/` and needs no platform. To let an owner
 edit a brick on the Ginko platform instead, remove `source: 'files'` from it in `ginko.config.ts`,
 and give the single's required fields a `default` or make them optional (`f.markdown`, `f.image` and `f.file` cannot have a default, so set `optional: true` on them). See
-[Platform and CLI](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/12.platform-and-cli.md).
+[Platform and CLI](https://ginko.lupinum.com/docs/platform-and-cli).
 
 Without options it creates the plain starter in English; `--locales de` creates it in German.
 
@@ -32,7 +32,7 @@ npm create ginko@latest my-site -- --locales de
 
 | Option | Values | Default |
 |---|---|---|
-| `--template <name>` (or `--template=<name>`) | a bundled template: `starter` | the plain starter |
+| `--template <name>` (or `--template=<name>`) | a bundled template: `starter`, `restaurant`, `local-business`, `company`, `saas`, `nonprofit`, `events`, `portfolio`, `blog` or `docs` (see [Templates](https://ginko.lupinum.com/docs/templates)) | the plain starter |
 | `--locales <codes>` (or `--locales=<codes>`) | the languages to keep, comma-separated; the first is the main language. A template offers its own languages (`--help` and the end of each run list them); the plain starter has `en` or `de`, one at a time. | all of the template's languages; `en` for the plain starter |
 | `--preset <name>` | deprecated, use `--template`: `gastro`, `docs` | |
 | `--locale <code>` | deprecated, use `--locales`: `en`, `de` | |
