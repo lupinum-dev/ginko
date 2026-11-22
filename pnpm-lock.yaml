@@ -863,6 +863,9 @@ importers:
       nuxt-og-image:
         specifier: ^7.0.7
         version: 7.0.7(f5db4a449a40278b22799835253d96e7)
+      sharp:
+        specifier: ^0.35.5
+        version: 0.35.5(@types/node@24.19.2)
       vue:
         specifier: ^3.5.45
         version: 3.5.45(typescript@6.0.3)
@@ -1425,6 +1428,9 @@ importers:
       shadcn-nuxt:
         specifier: ^2.9.0
         version: 2.9.0(@emnapi/core@2.0.0-beta.2)(@emnapi/runtime@2.0.0-beta.2)(magicast@0.5.5)
+      sharp:
+        specifier: ^0.35.5
+        version: 0.35.5(@types/node@24.19.2)
       tailwind-merge:
         specifier: ^3.7.0
         version: 3.7.0
