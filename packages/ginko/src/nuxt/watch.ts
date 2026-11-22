@@ -71,6 +71,27 @@ export function restartOnConfigChange(nuxt: DevNuxt, rootDir: string): void {
 }
 
 /**
+ * Dev only. Nuxt's own watcher (`builder:watch`) sees only the app's folders (`app/`, `server/`), not `content/` at the
+ * project root, so a saved, added or removed content file changed nothing until a restart. This watches the folder
+ * directly (like ginko-i18n does for `i18n/`) and runs `rebuild` once per burst of saves, one rebuild at a time.
+ * A `content/` folder created after the start is picked up by the next restart.
+ */
+export function rebuildOnContentChange(nuxt: Pick<DevNuxt, 'hook'>, contentDir: string, rebuild: () => Promise<void>): void {
+  if (!existsSync(contentDir)) return
+  let queue = Promise.resolve()
+  let debounce: NodeJS.Timeout | undefined
+  const watcher = watch(contentDir, { recursive: true }, () => {
+    clearTimeout(debounce)
+    debounce = setTimeout(() => { queue = queue.then(rebuild).catch((error: unknown) => console.error('[ginko] Content could not be read again:', error)) }, 100)
+  })
+  watcher.unref()
+  nuxt.hook('close', () => {
+    clearTimeout(debounce)
+    watcher.close()
+  })
+}
+
+/**
  * Why the config file cannot serve the site, in one line, or undefined when it can: it must load and pass the checks
  * that make the module's setup fail. Loaded with a new query string, so Node reads the file again instead of returning
  * the cached module (cli/config.ts does the same for `local:dev`).
