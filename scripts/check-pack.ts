@@ -252,6 +252,16 @@ writeFileSync(join(docs, 'app/utils/ginko-types.ts'), `export function probe() {
 // after Nitro has started, and the layer's feed handlers (checked below) were missing from the build.
 mkdirSync(join(docs, 'app/pages'), { recursive: true })
 writeFileSync(join(docs, 'app/pages/impressum.vue'), '<template><main><h1>Impressum</h1></main></template>\n')
+// sites/docs is in English only. The copy gets a second language (French: one docs page and one post), so the layer
+// is still checked with one: a prefixed page, the prefixed feed, `<html lang>` and hreflang. The translated post has
+// as many tags as the English one: a list translates row by row.
+const docsConfig = join(docs, 'ginko.config.ts')
+const oneLanguage = `const locales = ['en'] as const`
+if (!readFileSync(docsConfig, 'utf8').includes(oneLanguage)) throw new Error(`check:pack: sites/docs/ginko.config.ts no longer has \`${oneLanguage}\`; adapt the second language of the copy.`)
+writeFileSync(docsConfig, readFileSync(docsConfig, 'utf8').replace(oneLanguage, `const locales = ['en', 'fr'] as const`))
+const translationOf = (folder: string, name: string) => join(docs, 'content', folder, readdirSync(join(docs, 'content', folder)).find((file) => file.endsWith(`.${name}.md`))!.replace(/\.md$/, '.fr.md'))
+writeFileSync(translationOf('docs', 'getting-started'), '---\ntitle: Démarrage\ndescription: Créer un site Ginko.\nslug: demarrage\n---\n\nUn site en cinq minutes.\n')
+writeFileSync(translationOf('posts', 'blog-from-files'), '---\ntitle: Un blog depuis des fichiers\ndescription: Un article par fichier.\ntags: [Fichiers, Blog]\nslug: blog-depuis-des-fichiers\n---\n\nChaque article est un fichier.\n')
 useTarballs(docs)
 // 3. The same docs site with the Nuxt SEO modules (internals/decisions.md D4): they own sitemap and robots.txt, Ginko
 // hands them its URLs, address, name and languages. @nuxtjs/seo brings its own nuxt-og-image.
@@ -283,14 +293,16 @@ async function pool<T>(size: number, tasks: (() => Promise<T>)[]): Promise<T[]> 
 const results = await pool(4, [
   ...Object.entries(created).map(([name, checks]) => () => checkSite(join(work, name), checks)),
   () => checkSite(docs, [
-    ['/docs/getting-started', /class="docs-sidebar/], ['/de/docs/einstieg', /lang="de"/], ['/__ginko/search/en.json', /"url":"\/docs\//],
+    ['/docs/getting-started', /class="docs-sidebar/], ['/fr/docs/demarrage', /lang="fr"/], ['/__ginko/search/en.json', /"url":"\/docs\//],
+    // An address of the German pages the docs had until November 2026 leads to the English page (the site's `redirects`).
+    ['/de/docs/einstieg', /<html[^>]*lang="en"[\s\S]*<h1[^>]*>\s*Quick start/],
     // The layer's two feed handlers: the main language and a prefixed one, next to a page of the site's own.
-    ['/impressum', /<h1>Impressum<\/h1>/], ['/blog/rss.xml', /<rss[\s\S]*<item>/], ['/de/blog/rss.xml', /<rss[\s\S]*<item>/],
+    ['/impressum', /<h1>Impressum<\/h1>/], ['/blog/rss.xml', /<rss[\s\S]*<item>/], ['/fr/blog/rss.xml', /<rss[\s\S]*<item>/],
   ], { ginkoCheck: false }),
   () => checkSite(docsSeo, [
-    ['/docs/getting-started', seoHead('en')], ['/de/docs/einstieg', seoHead('de')], ['/', seoHead('en')],
+    ['/docs/getting-started', seoHead('en')], ['/fr/docs/demarrage', seoHead('fr')], ['/', seoHead('en')],
     // Ginko's entries with hreflang, on the site's address (not the request host).
-    ['/sitemap.xml', /<loc>https:\/\/ginko\.lupinum\.com\/docs\/getting-started<\/loc>[\s\S]*hreflang="de"/],
+    ['/sitemap.xml', /<loc>https:\/\/ginko\.lupinum\.com\/docs\/getting-started<\/loc>[\s\S]*hreflang="fr"/],
     // localhost is a preview host: never indexable, also for @nuxtjs/robots.
     ['/robots.txt', /Disallow: \/\s*$/m],
   ], { ginkoCheck: false }),

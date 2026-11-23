@@ -88,19 +88,17 @@ describe('registry and components', () => {
   })
 
   // The prop lists on the docs pages and in the README are written by hand: a new prop must not stay undocumented.
-  // The component reference is one page per group (`421.components-notices.md` …), in English and in German (`.de.md`).
+  // The component reference is one page per group (`3111.components-notices.md` …).
   const docsDir = new URL('../../../sites/docs/content/docs/', import.meta.url)
   const groupPages = readdirSync(docsDir).filter((file) => /^\d+\.components-.+\.md$/.test(file))
-  const docs = [false, true].map((german) => groupPages.filter((file) => file.endsWith('.de.md') === german).map((file) => readFileSync(new URL(file, docsDir), 'utf8')).join('\n'))
+  const docs = groupPages.map((file) => readFileSync(new URL(file, docsDir), 'utf8')).join('\n')
   const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
   test.each(Object.entries(components))('%s: every prop is documented', (tag, def) => {
     const props = Object.keys(def.props ?? {})
-    for (const page of docs) {
-      // Examples hold headings of their own: leave the fenced blocks out.
-      const section = page.replace(/^(`{3,})[^\n]*\n[^]*?^\1[ \t]*$/gm, '').split(/\n(?=##+ )/).find((part) => new RegExp(`^##+ .*\`${tag}\``).test(part))
-      expect(section, `docs section of ${tag}`).toBeDefined()
-      expect(props.filter((prop) => !section!.includes(`\`${prop}\``))).toEqual([])
-    }
+    // Examples hold headings of their own: leave the fenced blocks out.
+    const section = docs.replace(/^(`{3,})[^\n]*\n[^]*?^\1[ \t]*$/gm, '').split(/\n(?=##+ )/).find((part) => new RegExp(`^##+ .*\`${tag}\``).test(part))
+    expect(section, `docs section of ${tag}`).toBeDefined()
+    expect(props.filter((prop) => !section!.includes(`\`${prop}\``))).toEqual([])
     const row = readme.split('\n').find((line) => line.startsWith('| ') && line.split('|')[1]!.includes(`\`${tag}\``))
     expect(row, `README row of ${tag}`).toBeDefined()
     expect(props.filter((prop) => prop !== 'appearance' && !row!.includes(`\`${prop}\``))).toEqual([])

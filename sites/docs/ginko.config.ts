@@ -1,44 +1,121 @@
-// The Ginko docs. Every page comes from Markdown in content/docs (CONTENT.md); the layout,
+// The Ginko docs. Every page comes from Markdown in content/docs; the layout,
 // search and components come from @lupinum/ginko-docs. This site never asks the platform.
 import { defineSite } from '@lupinum/ginko'
-import { blogCollections, blogPages, changelogCollection, changelogPages, components, docsCollection, docsHome } from '@lupinum/ginko-docs/config'
+import { blogCollections, blogPages, changelogCollection, changelogPages, components, docsCollection, docsHome, homePages } from '@lupinum/ginko-docs/config'
 
-// English is the main language: its pages have no prefix, German lives under /de.
-const locales = ['en', 'de'] as const
+// The docs are in English only.
+const locales = ['en'] as const
 
 /**
- * The German slugs of the docs pages as they were at the switch, each with the slug of the German page that has its
- * content now. Until November 2026 these addresses had no prefix (`/docs/einstieg`).
+ * Until 23 November 2026 the docs had German pages under /de: the slug of each German page, with the slug of the
+ * English page that has its content (internals/migrations.md).
  */
 const germanDocs: Record<string, string> = {
-  'einstieg': 'einstieg',
-  'umstieg': 'umstieg',
-  'bausteine': 'bausteine',
-  'inhalte-aus-dateien': 'inhalte-aus-dateien',
-  'seiten-lesen': 'seiten-lesen',
-  'komponenten': 'komponenten',
-  'doku-anpassen': 'doku-anpassen',
-  'sprachen': 'sprache-hinzufuegen',
-  'doku-seiten': 'doku-seite-starten',
-  'doku-exporte': 'doku-referenz',
-  'seo-und-agenten': 'was-eine-seite-ausliefert',
-  'veroeffentlichen': 'auf-vercel-veroeffentlichen',
-  'plattform-und-cli': 'cli',
+  'adressen-uebersetzen': 'translate-addresses',
+  'aktualisieren': 'upgrade',
+  'auf-vercel-veroeffentlichen': 'deploy-to-vercel',
+  'aufgaben-fuer-inhaber': 'tasks-for-owners',
+  'baustein-auf-die-plattform': 'move-a-brick-to-the-platform',
+  'bausteine': 'bricks',
+  'bilder': 'images',
+  'bundles': 'bundles',
+  'buttons-und-beschriftungen-uebersetzen': 'translate-buttons-and-labels',
+  'cli': 'cli',
+  'create-ginko': 'create-ginko',
+  'dateien-oder-plattform': 'files-or-platform',
+  'define-site': 'define-site',
+  'doku-anpassen': 'docs-theming',
+  'doku-blog-und-changelog': 'docs-blog-and-changelog',
+  'doku-in-bestehender-seite': 'docs-in-an-existing-site',
+  'doku-referenz': 'docs-site-reference',
+  'doku-seite-starten': 'start-a-docs-site',
+  'eigene-komponente': 'add-your-own-component',
+  'einstieg': 'getting-started',
+  'eintraege-auf-zeit': 'timed-entries',
+  'eintragsseiten': 'entry-pages',
+  'entwuerfe': 'drafts',
+  'export-und-backup': 'export-and-backup',
+  'fehlende-inhalte': 'missing-content',
+  'fehlende-uebersetzungen': 'missing-translations',
+  'fehler': 'errors',
+  'feldtypen': 'field-types',
+  'fertige-bausteine': 'ready-made-bricks',
+  'filtern-und-sortieren': 'filter-and-sort',
+  'gegen-die-plattform-entwickeln': 'develop-against-the-platform',
+  'geld-datum-heute': 'money-dates-today',
+  'grenzen': 'limits',
+  'i18n-apps-hinter-login': 'i18n-apps-behind-a-login',
+  'i18n-bibliotheken': 'i18n-library-messages',
+  'i18n-referenz': 'i18n-reference',
+  'i18n-schnellstart': 'i18n-quick-start',
+  'i18n-server-routen': 'i18n-server-routes',
+  'i18n-von-nuxtjs-i18n': 'i18n-from-nuxtjs-i18n',
+  'inhalte-aus-dateien': 'content-from-files',
+  'inhalte-in-dateien-schreiben': 'write-content-in-files',
+  'inhalte-in-einer-seite-lesen': 'read-content-in-a-page',
+  'inhalte-modellieren': 'model-your-content',
+  'inhalte-vorausplanen': 'plan-content-ahead',
+  'komponente-kopieren': 'copy-a-component',
+  'komponenten': 'components',
+  'komponenten-api': 'components-api',
+  'komponenten-code': 'components-code',
+  'komponenten-einrichten': 'set-up-components',
+  'komponenten-formeln-und-diagramme': 'components-formulas-and-diagrams',
+  'komponenten-gestalten': 'theme-the-components',
+  'komponenten-hinweise': 'components-notices',
+  'komponenten-interaktiv': 'components-interactive',
+  'komponenten-layout': 'components-layout',
+  'komponenten-lernen': 'components-learning',
+  'komponenten-medien': 'components-media',
+  'komponenten-text': 'components-text',
+  'plattform-fuer-inhaber': 'platform-for-owners',
+  'restaurant-referenz': 'restaurant-reference',
+  'restaurant-seite': 'restaurant-site',
+  'schema-aenderung-freigeben': 'release-a-schema-change',
+  'schemas-wachsen-nur': 'schemas-only-grow',
+  'seite-umziehen': 'move-a-page',
+  'seite-von-hand-bauen': 'build-a-site-by-hand',
+  'seiten-fuer-agenten': 'pages-for-agents',
+  'seiten-lesen': 'reading-content',
+  'sprache-hinzufuegen': 'add-a-language',
+  'sprachwechsel': 'language-switch',
+  'statische-seite-bauen': 'static-site',
+  'strukturierte-daten': 'structured-data',
+  'suche': 'site-search',
+  'templates': 'templates',
+  'titel-und-teilen-karten': 'titles-and-share-cards',
+  'umgebungsvariablen': 'environment-variables',
+  'umstieg': 'switching',
+  'unuebersetzten-text-kennzeichnen': 'mark-untranslated-text',
+  'versionen-und-changelog': 'versions-and-changelog',
+  'was-eine-seite-ausliefert': 'site-output',
+  'was-ginko-ist': 'what-ginko-is',
+  'was-markdown-enthalten-darf': 'what-markdown-may-contain',
+  'zwischen-seiten-verlinken': 'link-between-pages',
 }
 
 /**
- * Pages that the rewrite of November 2026 split into guides and reference pages: the old address goes to the page
- * that now holds most of its content. English first, then the German slug of the same two pages.
+ * Pages that the rewrite of November 2026 split into guides and reference pages: the old slug, the slug of the page
+ * that now holds most of its content, and the German slug the old page had.
  */
-const movedDocs: [from: string, to: string, fromDe: string, toDe: string][] = [
-  ['languages', 'add-a-language', 'sprachen', 'sprache-hinzufuegen'],
-  ['presets', 'ready-made-bricks', 'presets', 'fertige-bausteine'],
-  ['seo-and-agents', 'site-output', 'seo-und-agenten', 'was-eine-seite-ausliefert'],
-  ['deploy', 'deploy-to-vercel', 'veroeffentlichen', 'auf-vercel-veroeffentlichen'],
-  ['platform-and-cli', 'cli', 'plattform-und-cli', 'cli'],
-  ['docs-sites', 'start-a-docs-site', 'doku-seiten', 'doku-seite-starten'],
-  ['docs-exports', 'docs-site-reference', 'doku-exporte', 'doku-referenz'],
+const movedDocs: [from: string, to: string, fromDe: string][] = [
+  ['languages', 'add-a-language', 'sprachen'],
+  ['presets', 'ready-made-bricks', 'presets'],
+  ['seo-and-agents', 'site-output', 'seo-und-agenten'],
+  ['deploy', 'deploy-to-vercel', 'veroeffentlichen'],
+  ['platform-and-cli', 'cli', 'plattform-und-cli'],
+  ['docs-sites', 'start-a-docs-site', 'doku-seiten'],
+  ['docs-exports', 'docs-site-reference', 'doku-exporte'],
 ]
+
+/** Every German slug the docs ever had, with the slug of its English page. */
+const german: Record<string, string> = { ...germanDocs, ...Object.fromEntries(movedDocs.map(([, to, fromDe]) => [fromDe, to])) }
+
+/** Until 21 November 2026 German was the main language: these German pages had no prefix (`/docs/einstieg`). */
+const germanFirst = ['einstieg', 'umstieg', 'bausteine', 'inhalte-aus-dateien', 'seiten-lesen', 'komponenten', 'doku-anpassen', 'sprachen', 'doku-seiten', 'doku-exporte', 'seo-und-agenten', 'veroeffentlichen', 'plattform-und-cli']
+
+/** The two German posts, with the slug of the English post. */
+const germanPosts: Record<string, string> = { 'blog-aus-dateien': 'blog-from-files', 'eine-datei-pro-sprache': 'one-file-per-language' }
 
 export default defineSite({
   site: 'ginko-docs',
@@ -47,26 +124,36 @@ export default defineSite({
   timeZone: 'Europe/Vienna',
   locales,
   currency: 'EUR',
-  pages: { home: { en: '/', de: '/de' }, blog: blogPages({ locales }), changelog: changelogPages({ locales }) },
+  pages: { home: homePages({ locales }), blog: blogPages({ locales }), changelog: changelogPages({ locales }) },
   // The share cards: the leaf logo on the docs' emerald.
   seo: { color: '#047857', organization: { logo: '/logo.svg' } },
   components,
-  // Until November 2026 German was the main language: English lived under /en, German had no prefix
-  // (internals/migrations.md). The first rule that matches wins, so the moved pages come before `/en/docs/*`.
+  // Old addresses (internals/migrations.md). The first rule that matches wins, so the moved pages come before
+  // `/en/docs/*`. Every rule leads straight to an English page.
   redirects: [
+    // Until 21 November 2026 English lived under /en.
     { from: '/en', to: '/' },
     { from: '/en/docs', to: '/docs' },
-    ...movedDocs.flatMap(([from, to, fromDe, toDe]) => [
+    ...movedDocs.flatMap(([from, to]) => [
       { from: `/docs/${from}`, to: `/docs/${to}` },
       { from: `/en/docs/${from}`, to: `/docs/${to}` },
-      { from: `/de/docs/${fromDe}`, to: `/de/docs/${toDe}` },
     ]),
     { from: '/en/docs/*', to: '/docs/:splat' },
     { from: '/en/blog', to: '/blog' },
     { from: '/en/blog/*', to: '/blog/:splat' },
     { from: '/en/changelog', to: '/changelog' },
-    ...Object.entries(germanDocs).map(([slug, now]) => ({ from: `/docs/${slug}`, to: `/de/docs/${now}` })),
-    ...['blog-aus-dateien', 'eine-datei-pro-sprache'].map((slug) => ({ from: `/blog/${slug}`, to: `/de/blog/${slug}` })),
+    // The German pages: under /de until 23 November 2026, some without a prefix before 21 November.
+    { from: '/de', to: '/' },
+    { from: '/de/docs', to: '/docs' },
+    ...Object.entries(german).map(([slug, english]) => ({ from: `/de/docs/${slug}`, to: `/docs/${english}` })),
+    ...germanFirst.map((slug) => ({ from: `/docs/${slug}`, to: `/docs/${german[slug]}` })),
+    { from: '/de/blog', to: '/blog' },
+    { from: '/de/blog/rss.xml', to: '/blog/rss.xml' },
+    ...Object.entries(germanPosts).flatMap(([slug, english]) => [
+      { from: `/de/blog/${slug}`, to: `/blog/${english}` },
+      { from: `/blog/${slug}`, to: `/blog/${english}` },
+    ]),
+    { from: '/de/changelog', to: '/changelog' },
   ],
   bricks: { home: docsHome(), docs: docsCollection({ locales }), ...blogCollections({ locales }), changelog: changelogCollection() },
 })

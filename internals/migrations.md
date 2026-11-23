@@ -124,15 +124,18 @@ Hosted production needs Matthias's OK at each step, in this order:
   sites). Then delete the prop, the attribute, the four rules and this entry.
 - **Tracking issue:** none yet.
 
-## Docs site: redirects from the German-first addresses (`sites/docs/ginko.config.ts` `redirects`)
+## Docs site: redirects from the German and the `/en` addresses (`sites/docs/ginko.config.ts` `redirects`)
 
-- **Why:** until November 2026 German was the main language of ginko.lupinum.com: English pages lived under `/en`,
-  German pages had no prefix. English is the main language now (`/docs/getting-started`, German under `/de`). Links
-  and search results still point at the old addresses.
-- **Introduced:** 21 November 2026.
-- **Compatibility code:** the `redirects` list and `germanDocs` in `sites/docs/ginko.config.ts`: `/en`, `/en/docs/*`,
-  `/en/blog/*` and `/en/changelog` lose the prefix; the 13 old German docs addresses and the 2 German posts go to
-  `/de/…`. German `/docs/presets` has no rule: English has the same slug, so the address shows the English page.
+- **Why:** ginko.lupinum.com is in English only since 23 November 2026. Before that it had two layouts: until
+  21 November German was the main language (German pages without a prefix, English under `/en`); from 21 to
+  23 November English was the main language and German lived under `/de`. Links and search results still point at
+  those addresses.
+- **Introduced:** 21 November 2026 (`/en` and the German-first addresses), 23 November 2026 (`/de`).
+- **Compatibility code:** the `redirects` list in `sites/docs/ginko.config.ts` with `germanDocs` (the 81 German slugs
+  and their English pages), `germanFirst` (the 13 German slugs that had no prefix) and `germanPosts`: `/en`,
+  `/en/docs/*`, `/en/blog/*` and `/en/changelog` lose the prefix; `/de`, `/de/docs/<German slug>`, `/de/blog/…` and
+  `/de/changelog` go to the English page; the German-first `/docs/<German slug>` and the two German posts too. Every
+  rule leads straight to an English page. German `/docs/presets` is covered by `movedDocs` below.
 - **Dependents:** external links, search engines and the READMEs of the packages published before the switch.
 - **Remove when:** Search Console shows no clicks on the old addresses for 3 months, at the earliest in June 2027.
 
@@ -142,10 +145,10 @@ Hosted production needs Matthias's OK at each step, in this order:
   Languages, Presets, SEO and agents, Deploy, Platform and CLI, Docs sites and Docs layer exports. Their addresses
   no longer have a page.
 - **Introduced:** 22 November 2026.
-- **Compatibility code:** `movedDocs` in `sites/docs/ginko.config.ts` and the rules made from it: `/docs/<old>`,
-  `/en/docs/<old>` and `/de/docs/<old German slug>` go to the page that now holds most of the content. `germanDocs`
-  in the same file sends the German-first addresses of these pages straight to the new German page.
+- **Compatibility code:** `movedDocs` in `sites/docs/ginko.config.ts` and the rules made from it: `/docs/<old>` and
+  `/en/docs/<old>` go to the page that now holds most of the content, and so does `/de/docs/<old German slug>`
+  (through `german` in the same file).
 - **Dependents:** external links, search engines, and the READMEs of the packages on npm up to 0.17.0, which link to
   `/docs/languages` and `/docs/platform-and-cli`.
-- **Remove when:** together with the German-first redirects above, and a release after 0.17.0 has the new README
+- **Remove when:** together with the German redirects above, and a release after 0.17.0 has the new README
   links on npm.
