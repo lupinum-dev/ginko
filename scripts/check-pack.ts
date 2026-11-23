@@ -30,8 +30,8 @@ const nuxt5 = process.argv.includes('--nuxt5')
   : undefined
 const outputOf = (error: unknown) => (error instanceof Error && 'stdout' in error ? `${String(error.stdout)}${String((error as { stderr?: unknown }).stderr ?? '')}` : String(error))
 
-// The packages of the release: the fixed group in .changeset/config.json. The others (server, Studio,
-// editor) stay private and run only on the hosted platform.
+// The packages of the release: the fixed group in .changeset/config.json, the platform packages (server, Studio,
+// editor) included. Each is packed and checked here; CI's platform-install job installs and starts the platform from them.
 const released: string[] = JSON.parse(readFileSync(join(root, '.changeset/config.json'), 'utf8')).fixed[0]
 const dirOf = Object.fromEntries(readdirSync(join(root, 'packages')).map((dir) => [JSON.parse(readFileSync(join(root, 'packages', dir, 'package.json'), 'utf8')).name as string, dir]))
 const tarball: Record<string, string> = {}

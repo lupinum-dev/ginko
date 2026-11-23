@@ -1,7 +1,6 @@
 {
   "name": "@lupinum/ginko-studio",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.17.1",
   "type": "module",
   "description": "The Ginko platform UI as a Nuxt layer: sign-in, quick tasks, full editor, preview, history.",
   "license": "MIT",

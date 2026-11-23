@@ -9,8 +9,8 @@ up to 0.3.x on npm, so the packages start at 0.3.0 and the first minor changeset
 names each one with how to update; a patch never breaks anything. The quality bar is a 1.0 all the same:
 no public name we expect to change, docs that work as written.
 
-`@lupinum/ginko-server`, `@lupinum/ginko-studio` and `@lupinum/ginko-editor` stay `private`: they run only on the platform that Lupinum hosts.
-No published package may depend on them.
+`@lupinum/ginko-server`, `@lupinum/ginko-studio` and `@lupinum/ginko-editor` release in the same group: people who host the
+platform themselves install them (`create-ginko --platform`).
 
 ## Every change
 
@@ -36,8 +36,8 @@ Handbook: [lupinum-oss, Releasing](https://github.com/lupinum-dev/lupinum-oss). 
    tag `v<version>` and the GitHub release.
 
 The client platform lupinum-ginko-cms deploys release tags only (`.github/workflows/cms.yml`, D55). A fix that touches
-only private packages (`ginko-server`, `ginko-studio`, …) reaches it only with a release: give it a `@lupinum/ginko`
-patch changeset.
+only the platform packages (`ginko-server`, `ginko-studio`, …) reaches it only with a release: give it a patch changeset
+for the package it changes.
 
 There is no npm token. The pack job needs `pnpm build` to work and `scripts/release.mjs` to find no dependency
 cycle between the published packages (a peer dependency counts).

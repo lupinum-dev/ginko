@@ -1,15 +1,14 @@
 # Ginko
 
 Ginko is a content system for Nuxt websites (see [README.md](README.md)). This repository is a pnpm
-workspace. Seven packages in `packages/` are published to npm and always release with one version
+workspace. Ten packages in `packages/` are published to npm and always release with one version
 (a Changesets `fixed` group): `@lupinum/ginko` (main entry point), `-i18n`, `-content`, `-components`,
-`-docs`, `-preset-gastro` and `create-ginko`.
+`-docs`, `-preset-gastro`, `create-ginko`, and the platform packages `-server`, `-studio` and `-editor`.
 
 ## Layout
 
-- `packages/`: the published packages above, plus three `private` ones that run only on the platform
-  Lupinum hosts: `ginko-server`, `ginko-studio`, `ginko-editor`. No published
-  package may depend on a private one.
+- `packages/`: the published packages above. The platform packages (`ginko-server`, `ginko-studio`, `ginko-editor`)
+  run the Studio and its backend, on Lupinum's platform and for people who host it themselves.
 - `sites/` demo and docs sites, `apps/platform` the hosted platform, `contracts/` the schemas the demo sites publish, `e2e/` Playwright tests.
 - `templates/<name>` complete starter sites that keep real `@lupinum/*` ranges (root overrides link them to the local
   packages; run their scripts from the root: `pnpm --filter <name> run …`), `templates/_features` their shared
@@ -21,7 +20,7 @@ workspace. Seven packages in `packages/` are published to npm and always release
 pnpm install
 pnpm typecheck && pnpm test && pnpm check:contracts   # core checks; keep vitest at --maxWorkers=2 on a shared machine
 pnpm check:pack      # packs the released packages, installs a new site from the tarballs, builds and serves it
-pnpm build           # builds the seven published packages
+pnpm build           # builds the published packages
 pnpm lint            # changeset style
 pnpm verify          # what CI runs: lint, typecheck, test, contracts, pack, dependency audit
 pnpm changeset       # describe a user-facing change for the next release
