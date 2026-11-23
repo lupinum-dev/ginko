@@ -12,6 +12,8 @@ export interface Step {
   input?: string
   /** Stream the program's output to the terminal (deploys and builds take minutes); stdout is still returned. */
   show?: boolean
+  /** Return stderr after stdout: the Convex CLI writes its status lines (the teams of `login status`) to stderr. */
+  stderr?: boolean
 }
 
 /** Runs a step to its end and returns its stdout; a failing step throws a StepError. */
@@ -51,7 +53,7 @@ export const realRunner: CommandRunner = (step) => new Promise((done, fail) => {
   })
   child.on('error', (error: NodeJS.ErrnoException) => fail(new StepError(step, error.message, error.code === 'ENOENT')))
   child.on('close', (code) => {
-    if (code === 0) return done(out)
+    if (code === 0) return done(step.stderr ? out + err : out)
     fail(new StepError(step, `exit code ${code}${step.show ? '' : `: ${failureOf(err || out)}`}`))
   })
   child.stdin.end(step.input ?? '')

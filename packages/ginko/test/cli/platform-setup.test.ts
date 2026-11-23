@@ -11,9 +11,10 @@ const RESEND_KEY = 're_resend-secret-value'
 
 /**
  * Convex and Vercel as far as setup sees them: env values per side, the Vercel link in .vercel/, and every step that
- * ran with its stdin. `failing` makes the first step whose command line starts with it fail.
+ * ran with its stdin. `failing` makes the first step whose command line starts with it fail. `teams` are the slugs
+ * `npx convex login status` lists (on stderr; setup asks the runner for it).
  */
-function world(dir: string) {
+function world(dir: string, teams = ['my-team']) {
   const convex = new Map<string, string>()
   const vercel = new Map<string, string>()
   const steps: { line: string; input?: string }[] = []
@@ -25,6 +26,7 @@ function world(dir: string) {
     if (failing && line.startsWith(failing)) throw new StepError(step, 'exit code 1: the service said no')
     const [command, ...args] = [step.command, ...step.args]
     const force = args.includes('--force')
+    if (args[0] === 'convex' && args[1] === 'login') return `Status: Logged in\nTeams: ${teams.length} teams accessible\n${teams.map((slug) => `  - The ${slug} team (${slug})\n`).join('')}`
     if (command === 'vercel' && args[0] === 'link') {
       mkdirSync(join(dir, '.vercel'), { recursive: true })
       writeFileSync(join(dir, '.vercel', 'project.json'), '{"projectId":"prj_1","orgId":"team_1"}')
@@ -94,11 +96,11 @@ describe('ginko-platform setup', () => {
       'vercel project create my-cms',
       'vercel link --yes --project my-cms',
       'vercel project inspect my-cms --format json',
-      'npx convex project create my-cms',
-      'npx convex deployment create my-cms:production --type prod --default',
-      'npx convex function-spec --deployment my-cms:prod',
-      'npx convex deployment token create ginko-platform-vercel --deployment my-cms:prod',
-      `npx convex env set --from-file ${file.path} --deployment my-cms:prod`,
+      'npx convex project create my-cms --team my-team',
+      'npx convex deployment create my-team:my-cms:production --type prod --default',
+      'npx convex function-spec --deployment my-team:my-cms:prod',
+      'npx convex deployment token create ginko-platform-vercel --deployment my-team:my-cms:prod',
+      `npx convex env set --from-file ${file.path} --deployment my-team:my-cms:prod`,
       'vercel env add CONVEX_DEPLOY_KEY production --sensitive',
       'vercel env add BCN_AUTH_PROXY_IP_SECRET production --sensitive',
       'vercel env add NUXT_PUBLIC_CONVEX_URL production --no-sensitive',
@@ -107,7 +109,7 @@ describe('ginko-platform setup', () => {
       'vercel env add SITE_URL production --no-sensitive',
       'vercel env add BCN_AUTH_TRUSTED_CLIENT_IP_HEADER production --no-sensitive',
       'vercel deploy --prod --yes',
-      "npx convex run auth:ensureSigningKey '{}' --deployment my-cms:prod",
+      "npx convex run auth:ensureSigningKey '{}' --deployment my-team:my-cms:prod",
     ])
     expect(Object.fromEntries(fake.convex)).toMatchObject({
       SITE_URL: 'https://my-cms-team.vercel.app',
@@ -138,8 +140,8 @@ describe('ginko-platform setup', () => {
     // Wrong behaviour caught: the backend addresses are guessed and the person has nothing to compare with the dashboard.
     expect(result.log).toContain('The backend: https://happy-cat-123.eu-west-1.convex.cloud (HTTP actions: https://happy-cat-123.eu-west-1.convex.site).')
     expect(JSON.parse(readFileSync(join(dir, 'ginko-platform.json'), 'utf8'))).toEqual({
-      created: { vercelProject: 'my-cms', convexProject: 'my-cms', deployment: 'my-cms:prod' },
-      convex: { deployment: 'my-cms:prod', url: 'https://happy-cat-123.eu-west-1.convex.cloud', siteUrl: 'https://happy-cat-123.eu-west-1.convex.site' },
+      created: { vercelProject: 'my-cms', convexProject: 'my-cms', deployment: 'my-team:my-cms:prod' },
+      convex: { deployment: 'my-team:my-cms:prod', url: 'https://happy-cat-123.eu-west-1.convex.cloud', siteUrl: 'https://happy-cat-123.eu-west-1.convex.site' },
       siteUrl: 'https://my-cms-team.vercel.app',
       deployed: true,
     })
@@ -158,8 +160,8 @@ describe('ginko-platform setup', () => {
     expect(fake.steps.map((step) => step.line)).toEqual([
       'npx convex login status',
       'vercel whoami',
-      'npx convex env list --names-only --deployment my-cms:prod',
-      'npx convex env get SITE_URL --deployment my-cms:prod',
+      'npx convex env list --names-only --deployment my-team:my-cms:prod',
+      'npx convex env get SITE_URL --deployment my-team:my-cms:prod',
       'vercel env list production --format json',
     ])
     expect({ convex: Object.fromEntries(fake.convex), vercel: Object.fromEntries(fake.vercel) }).toEqual(before)
@@ -193,7 +195,7 @@ describe('ginko-platform setup', () => {
     expect(result.code).toBe(1)
     expect(result.error).toContain('Setup stopped at step 10: Set SITE_URL, BETTER_AUTH_SECRETS')
     expect(result.error).toContain('Done before it: Check the Convex login; Check the Vercel login; Create the Vercel project my-cms;')
-    expect(result.error).toMatch(/\n {2}npx convex env set --from-file \S+values\.env --deployment my-cms:prod\n/)
+    expect(result.error).toMatch(/\n {2}npx convex env set --from-file \S+values\.env --deployment my-team:my-cms:prod\n/)
     expect(fake.steps.at(-1)!.line).toMatch(/^npx convex env set/)
     const path = /--from-file (\S+)/.exec(fake.steps.at(-1)!.line)![1]!
     expect(existsSync(path)).toBe(false)
@@ -203,13 +205,13 @@ describe('ginko-platform setup', () => {
     fake.steps.length = 0
     const again = await setup(fake, [], FRESH)
     expect(again.code).toBe(0)
-    expect(fake.steps.map((step) => step.line).filter((line) => line.includes('create'))).toEqual(['npx convex deployment token create ginko-platform-vercel --deployment my-cms:prod'])
+    expect(fake.steps.map((step) => step.line).filter((line) => line.includes('create'))).toEqual(['npx convex deployment token create ginko-platform-vercel --deployment my-team:my-cms:prod'])
   })
 
   // Wrong behaviour caught: "run setup again to continue from here" creates the project a second time (Convex and
   // Vercel refuse a taken name, or a second project appears) after a creation step half-way through failed.
   it.each([
-    ['Create its production deployment', 'npx convex deployment create', ['npx convex project create my-cms']],
+    ['Create its production deployment', 'npx convex deployment create', ['npx convex project create my-cms --team my-team']],
     ['Link this folder to it', 'vercel link', ['vercel project create my-cms']],
   ])('a failure at "%s": the second run creates nothing twice and finishes', async (title, failing, once) => {
     const fake = world(dir)
@@ -222,7 +224,7 @@ describe('ginko-platform setup', () => {
     expect(second.code).toBe(0)
     const lines = fake.steps.map((step) => step.line)
     for (const line of once) expect(lines.filter((ran) => ran === line)).toHaveLength(1)
-    expect(lines.at(-1)).toBe("npx convex run auth:ensureSigningKey '{}' --deployment my-cms:prod")
+    expect(lines.at(-1)).toBe("npx convex run auth:ensureSigningKey '{}' --deployment my-team:my-cms:prod")
   })
 
   // Wrong behaviour caught: --dry-run creates a project, writes a file, or asks for the Resend key.
@@ -238,6 +240,24 @@ describe('ginko-platform setup', () => {
     expect(result.log).toContain('   RESEND_API_KEY=<hidden>')
     expect(result.log).toContain('npx convex function-spec --deployment lupinum:ginko-setup-test:prod')
     expect(result.log).toContain('The backend: https://<deployment>.convex.cloud (HTTP actions: https://<deployment>.convex.site).')
+  })
+
+  // Wrong behaviour caught: with several teams, setup picks one of them, or builds `project:prod`, which `deployment
+  // create` refuses and which other commands resolve in the team of the folder's selected project.
+  it('without --team, the only team of the account; with several, it stops and names them before anything is created', async () => {
+    const one = world(dir)
+    expect((await setup(one, [], FRESH)).code).toBe(0)
+    expect(one.steps.find((step) => step.line.startsWith('npx convex deployment create'))!.line).toBe('npx convex deployment create my-team:my-cms:production --type prod --default')
+    rmSync(join(dir, 'ginko-platform.json'))
+    rmSync(join(dir, '.vercel'), { recursive: true })
+    const several = world(dir, ['lupinum', 'romi'])
+    const result = await setup(several, [], FRESH)
+    expect(result.code).toBe(2)
+    expect(result.error).toBe('The Convex account has 2 teams (lupinum, romi); run setup again with --team and one of them.')
+    expect(several.steps.map((step) => step.line)).toEqual(['npx convex login status', 'vercel whoami'])
+    const chosen = world(dir, ['lupinum', 'romi'])
+    expect((await setup(chosen, ['--team', 'romi'], FRESH)).code).toBe(0)
+    expect(chosen.steps.map((step) => step.line)).toContain('npx convex project create my-cms --team romi')
   })
 
   // Wrong behaviour caught: run in CI without a terminal, setup waits forever for an answer, or takes the key from argv.

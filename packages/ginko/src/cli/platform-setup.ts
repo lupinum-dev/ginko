@@ -57,7 +57,7 @@ export interface SetupOptions {
   mailFrom?: string
   /** The Convex and Vercel project name; default: the folder name. */
   project?: string
-  /** The Convex team slug, when the account has more than one team. */
+  /** The Convex team slug; needed when the account has more than one team. */
   team?: string
   /** The Convex region of the production deployment. */
   region?: string
@@ -152,6 +152,19 @@ function backendUrls(output: string): { url: string; siteUrl: string } {
   return { url: url.origin, siteUrl: `https://${url.hostname.replace(/\.convex\.cloud$/, '.convex.site')}` }
 }
 
+/**
+ * The team slug when the Convex account has exactly one team. `npx convex login status` lists each team as
+ * `  - <name> (<slug>)` (convex/src/cli/login.ts).
+ */
+function onlyTeam(loginStatus: string, dry: boolean): string {
+  const teams = [...loginStatus.matchAll(/^\s+- .* \(([^()\s]+)\)\s*$/gm)].map((match) => match[1]!)
+  if (teams.length === 1) return teams[0]!
+  if (dry) return '<team>'
+  throw new CliError(teams.length > 1
+    ? `The Convex account has ${teams.length} teams (${teams.join(', ')}); run setup again with --team and one of them.`
+    : 'The Convex account lists no team (npx convex login status); run setup again with --team <slug>.', 'USAGE')
+}
+
 const secret = () => randomBytes(32).toString('base64')
 
 /** Shown in the plan and in a failure; stdin and temp files are named, never their secret content. */
@@ -171,11 +184,6 @@ export async function setup({ cwd, options, env, run, ask, log }: SetupInput): P
     save()
   }
   const project = options.project ?? state.created?.convexProject ?? state.created?.vercelProject ?? projectName(cwd)
-  const inProject = options.team ? `${options.team}:${project}` : project
-  // `prod` is the alias of the default production deployment: every command uses it, but `deployment create` refuses it
-  // as the new deployment's reference ("prod" is reserved), so the deployment is created as `production`.
-  const deployment = state.convex?.deployment ?? state.created?.deployment ?? `${inProject}:prod`
-  const onDeployment = ['--deployment', deployment]
   const linked = existsSync(join(cwd, '.vercel', 'project.json'))
 
   let number = 0
@@ -200,8 +208,9 @@ export async function setup({ cwd, options, env, run, ask, log }: SetupInput): P
   if (dry) log('Dry run: these are the steps of a setup in this folder. Nothing runs, nothing changes.\n')
 
   // Preconditions: both CLIs, logged in. The cheapest read-only command of each.
+  let loginStatus: string
   try {
-    await step({ title: 'Check the Convex login', command: 'npx', args: ['convex', 'login', 'status'] })
+    loginStatus = await step({ title: 'Check the Convex login', command: 'npx', args: ['convex', 'login', 'status'], stderr: true })
   } catch {
     throw new CliError('The Convex CLI is not logged in. Run `npx convex login`, then run setup again.')
   }
@@ -213,6 +222,17 @@ export async function setup({ cwd, options, env, run, ask, log }: SetupInput): P
       ? 'The Vercel CLI is not installed. Run `npm install --global vercel`, then `vercel login`, then run setup again.'
       : 'The Vercel CLI is not logged in. Run `vercel login`, then run setup again.')
   }
+
+  // The deployment reference always names the team: `deployment create` refuses `project:ref`, and other commands take
+  // the team of the project the folder selects, while a platform project selects only its local backend. A reference
+  // from an earlier run is kept; the team is only looked up for a new one.
+  const known = state.convex?.deployment ?? state.created?.deployment
+  const team = known ? '' : options.team ?? onlyTeam(loginStatus, dry)
+  const inProject = `${team}:${project}`
+  // `prod` is the alias of the default production deployment: every command uses it, but `deployment create` refuses it
+  // as the new deployment's reference ("prod" is reserved), so the deployment is created as `production`.
+  const deployment = known ?? `${inProject}:prod`
+  const onDeployment = ['--deployment', deployment]
 
   // What the deployment has already (a second run). Names only: values of secrets are never read for this.
   let convexHas = new Set<string>()
@@ -286,7 +306,7 @@ export async function setup({ cwd, options, env, run, ask, log }: SetupInput): P
   let deployKey: string | undefined
   if (!state.convex) {
     if (!state.created?.convexProject) {
-      await step({ title: `Create the Convex project ${project}`, command: 'npx', args: ['convex', 'project', 'create', project, ...(options.team ? ['--team', options.team] : [])] })
+      await step({ title: `Create the Convex project ${project}`, command: 'npx', args: ['convex', 'project', 'create', project, '--team', team] })
       record('convexProject', project)
     }
     if (!state.created?.deployment) {
