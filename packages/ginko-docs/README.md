@@ -129,7 +129,7 @@ Each docs page's frontmatter can set, besides `title` and `description`:
 | --- | --- |
 | `navTitle` | A short title for the side navigation, the breadcrumbs and the previous/next links, when the title is too long there. |
 | `section` | Starts a group in the side navigation with this heading; the pages after it belong to it until the next `section`. |
-| `tab` | Starts a tab above the side navigation (for example "Guide" and "Reference"); pages follow the tab before them. |
+| `tab` | Starts a tab above the side navigation (for example "Guide" and "Reference"); pages follow the tab before them. Four or more tabs show as a menu that names the active tab. |
 | `parent` | Nests the page under another one (`parent: docs/<name>`: the entry id with the docs brick's key, the file name without number, locale and extension). |
 | `icon` | An Iconify name, e.g. `lucide:rocket`, before the title in the navigation. Main locale only. |
 | `badge` | A short label after the title, e.g. "New". |

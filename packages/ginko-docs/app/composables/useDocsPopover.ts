@@ -14,7 +14,12 @@ export function useDocsPopover() {
     if (refocus) (trigger ?? root.value?.querySelector<HTMLElement>('[aria-expanded]'))?.focus()
   }
   const onClick = (e: MouseEvent) => { if (!root.value?.contains(e.target as Node)) close() }
-  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(true) }
+  // preventDefault: inside a dialog (the navigation sheet) Escape closes this popover only, not the dialog with it.
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape') return
+    e.preventDefault()
+    close(true)
+  }
   function listen(on: boolean) {
     if (on) {
       document.addEventListener('click', onClick, true)

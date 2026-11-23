@@ -208,10 +208,16 @@
 /* Sidebar content */
 .docs-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0.25rem; margin: 0 0 1.25rem 0.25rem; padding: 0.25rem; border-radius: calc(var(--docs-r-control) + 2px); background: var(--muted); }
 .docs-tabs a { overflow: hidden; padding: 0.375rem 0.5rem; border-radius: var(--docs-r-control); color: var(--muted-foreground); font-size: 0.8125rem; font-weight: 500; text-align: center; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; transition: color 0.15s, background-color 0.15s; }
-/* Four or more tabs do not fit one row with readable names: two columns, as many rows as needed. */
-.docs-tabs:has(a:nth-child(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .docs-tabs a:hover { color: var(--foreground); }
 .docs-tabs a[aria-current] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+/* Four or more tabs: one button with the active tab, the list opens below it over the page links. */
+.docs-tabs-menu { position: relative; margin: 0 0 1.25rem 0.25rem; }
+.docs-tabs-menu > button { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%; min-height: 2.25rem; padding: 0 0.625rem 0 0.75rem; border: 1px solid var(--border); border-radius: var(--docs-r-control); background: var(--background); color: var(--foreground); font: 600 0.875rem/1.25 var(--font-sans); text-align: left; cursor: pointer; transition: background-color 0.15s; }
+.docs-tabs-menu > button:hover, .docs-tabs-menu > button[aria-expanded='true'] { background: var(--muted); }
+.docs-tabs-menu > button .docs-icon { flex: none; color: var(--muted-foreground); }
+.docs-tabs-menu .docs-popover { left: 0; right: 0; top: calc(100% + 0.25rem); min-width: 0; }
+/* In the phone menu and the navigation sheet: the size of the page links there, for a finger. */
+:is(.docs-menu-scroll, .docs-nav-sheet-body) .docs-tabs-menu > button, :is(.docs-menu-scroll, .docs-nav-sheet-body) .docs-tabs-menu .docs-popover a { min-height: 2.75rem; font-size: 0.96875rem; }
 .docs-nav-section + .docs-nav-section { margin-top: 1.5rem; }
 .docs-nav-heading { margin: 0 0 0.25rem; padding: 0 0.625rem; color: var(--muted-foreground); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.07em; line-height: 1.5rem; text-transform: uppercase; }
 .docs-nav-list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
