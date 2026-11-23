@@ -13,6 +13,7 @@ import { randomBytes } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
+import { parseOutput } from './local.ts'
 import { CliError, isObject } from './model.ts'
 import { commandLine, StepError, type CommandRunner, type Step } from './platform-run.ts'
 
@@ -126,13 +127,24 @@ function vercelAddress(output: string, project: string): string {
 }
 
 /**
- * The deployment's addresses from its deploy key (`prod:<name>|<secret>`). Convex names a deployment's hosts after it;
- * in a region other than the default one the region is part of the host (not confirmed by a real run).
+ * The deployment's addresses from `convex function-spec --deployment <ref>`: its JSON on stdout has `url`, the
+ * deployment's own `.convex.cloud` address (convex/src/cli/lib/functionSpec.ts asks the deployment itself through
+ * `_system/cli/convexUrl:cloudUrl`), with the region in the host when there is one. The HTTP actions address is the
+ * same host under `.convex.site`. Nothing is built from a name or a region.
  */
-function convexUrls(key: string, region?: string): { url: string; siteUrl: string } {
-  const name = /^prod:([^|]+)\|/.exec(key)![1]!
-  const host = region && region !== 'aws-us-east-1' ? `${name}.${region}` : name
-  return { url: `https://${host}.convex.cloud`, siteUrl: `https://${host}.convex.site` }
+function backendUrls(output: string): { url: string; siteUrl: string } {
+  const spec = parseOutput(output)
+  const text = isObject(spec) && typeof spec.url === 'string' ? spec.url : ''
+  let url: URL | undefined
+  try {
+    url = new URL(text)
+  } catch {
+    url = undefined
+  }
+  if (!url || url.protocol !== 'https:' || !url.hostname.endsWith('.convex.cloud')) {
+    throw new CliError('Convex printed no deployment address ending in .convex.cloud (npx convex function-spec); nothing more was changed. Run setup again.')
+  }
+  return { url: url.origin, siteUrl: `https://${url.hostname.replace(/\.convex\.cloud$/, '.convex.site')}` }
 }
 
 const secret = () => randomBytes(32).toString('base64')
@@ -261,15 +273,14 @@ export async function setup({ cwd, options, env, run, ask, log }: SetupInput): P
     await step({ title: `Create the Convex project ${project}`, command: 'npx', args: ['convex', 'project', 'create', project, ...(options.team ? ['--team', options.team] : [])] })
     await step({ title: 'Create its production deployment', command: 'npx', args: ['convex', 'deployment', 'create', deployment, '--type', 'prod', '--default', ...(options.region ? ['--region', options.region] : [])] })
     changed = true
+    const spec = await step({ title: 'Read the backend address', command: 'npx', args: ['convex', 'function-spec', ...onDeployment] })
+    state.convex = { deployment, ...(dry ? { url: 'https://<deployment>.convex.cloud', siteUrl: 'https://<deployment>.convex.site' } : backendUrls(spec)) }
+    save()
   }
-  if (!state.convex || !vercelHas.has('CONVEX_DEPLOY_KEY')) {
+  if (!vercelHas.has('CONVEX_DEPLOY_KEY')) {
     const printed = await step({ title: 'Create a deploy key for Vercel', command: 'npx', args: ['convex', 'deployment', 'token', 'create', KEY_NAME, ...onDeployment] }, 'prod:<deployment>|<hidden>')
     deployKey = printed.split('\n').map((line) => line.trim()).find((line) => /^prod:[^|\s]+\|\S+$/.test(line))
     if (!deployKey) throw new CliError('Convex printed no production deploy key (prod:…); nothing more was changed. Run setup again.')
-    if (!state.convex) {
-      state.convex = { deployment, ...(dry ? { url: 'https://<deployment>.convex.cloud', siteUrl: 'https://<deployment>.convex.site' } : convexUrls(deployKey, options.region)) }
-      save()
-    }
   }
   const convex = state.convex!
 
@@ -356,6 +367,7 @@ export async function setup({ cwd, options, env, run, ask, log }: SetupInput): P
     '',
     dry ? 'After a real run:' : `The Studio runs on ${siteUrl}`,
     ...(dry ? [`The Studio runs on ${siteUrl}`] : []),
+    `The backend: ${convex.url} (HTTP actions: ${convex.siteUrl}). The Convex dashboard shows the same addresses.`,
     `Sign in with ${admin ?? 'an address from GINKO_ADMIN_EMAILS'}. The sign-in code comes by mail; the first sign-in makes that address the admin.`,
     'Resend sends only from a domain you verified in Resend; until then, sign-in mail is not delivered.',
     `Your own domain: add it to the Vercel project ${project}, then run \`npx ginko-platform setup --site-url https://<your domain>\`.`,

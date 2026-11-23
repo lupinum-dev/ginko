@@ -36,6 +36,8 @@ function world(dir: string) {
       vercel.set(args[2]!, step.input!)
     }
     if (args[0] === 'convex' && args[1] === 'deployment' && args[2] === 'token') return `${DEPLOY_KEY}\n`
+    // The deployment's own address, with its region in the host (the key's name alone would give the wrong host).
+    if (args[0] === 'convex' && args[1] === 'function-spec') return `${JSON.stringify({ url: 'https://happy-cat-123.eu-west-1.convex.cloud', functions: [] }, null, 2)}\n`
     if (args[0] === 'convex' && args[1] === 'env' && args[2] === 'list') return [...convex.keys()].join('\n')
     if (args[0] === 'convex' && args[1] === 'env' && args[2] === 'get') return `${convex.get(args[3]!)}\n`
     if (args[0] === 'convex' && args[1] === 'env' && args[2] === 'set') {
@@ -94,6 +96,7 @@ describe('ginko-platform setup', () => {
       'vercel project inspect my-cms --format json',
       'npx convex project create my-cms',
       'npx convex deployment create my-cms:prod --type prod --default',
+      'npx convex function-spec --deployment my-cms:prod',
       'npx convex deployment token create ginko-platform-vercel --deployment my-cms:prod',
       `npx convex env set --from-file ${file.path} --deployment my-cms:prod`,
       'vercel env add CONVEX_DEPLOY_KEY production --sensitive',
@@ -118,9 +121,9 @@ describe('ginko-platform setup', () => {
       CONVEX_DEPLOY_KEY: DEPLOY_KEY,
       // Wrong behaviour caught: different proxy secrets on the two sides, and every sign-in fails with 403.
       BCN_AUTH_PROXY_IP_SECRET: fake.convex.get('BCN_AUTH_PROXY_IP_SECRET'),
-      NUXT_PUBLIC_CONVEX_URL: 'https://happy-cat-123.convex.cloud',
-      NUXT_PUBLIC_CONVEX_SITE_URL: 'https://happy-cat-123.convex.site',
-      CONVEX_SITE_URL: 'https://happy-cat-123.convex.site',
+      NUXT_PUBLIC_CONVEX_URL: 'https://happy-cat-123.eu-west-1.convex.cloud',
+      NUXT_PUBLIC_CONVEX_SITE_URL: 'https://happy-cat-123.eu-west-1.convex.site',
+      CONVEX_SITE_URL: 'https://happy-cat-123.eu-west-1.convex.site',
       SITE_URL: 'https://my-cms-team.vercel.app',
       BCN_AUTH_TRUSTED_CLIENT_IP_HEADER: 'x-real-ip',
     })
@@ -132,8 +135,10 @@ describe('ginko-platform setup', () => {
     const seen = [...fake.steps.map((step) => step.line), result.log, result.error].join('\n')
     for (const value of secrets) expect(seen).not.toContain(value)
     expect(result.log).toContain('The Studio runs on https://my-cms-team.vercel.app')
+    // Wrong behaviour caught: the backend addresses are guessed and the person has nothing to compare with the dashboard.
+    expect(result.log).toContain('The backend: https://happy-cat-123.eu-west-1.convex.cloud (HTTP actions: https://happy-cat-123.eu-west-1.convex.site).')
     expect(JSON.parse(readFileSync(join(dir, 'ginko-platform.json'), 'utf8'))).toEqual({
-      convex: { deployment: 'my-cms:prod', url: 'https://happy-cat-123.convex.cloud', siteUrl: 'https://happy-cat-123.convex.site' },
+      convex: { deployment: 'my-cms:prod', url: 'https://happy-cat-123.eu-west-1.convex.cloud', siteUrl: 'https://happy-cat-123.eu-west-1.convex.site' },
       siteUrl: 'https://my-cms-team.vercel.app',
       deployed: true,
     })
@@ -185,7 +190,7 @@ describe('ginko-platform setup', () => {
     fake.fail('npx convex env set')
     const result = await setup(fake, [], FRESH)
     expect(result.code).toBe(1)
-    expect(result.error).toContain('Setup stopped at step 9: Set SITE_URL, BETTER_AUTH_SECRETS')
+    expect(result.error).toContain('Setup stopped at step 10: Set SITE_URL, BETTER_AUTH_SECRETS')
     expect(result.error).toContain('Done before it: Check the Convex login; Check the Vercel login; Create the Vercel project my-cms;')
     expect(result.error).toMatch(/\n {2}npx convex env set --from-file \S+values\.env --deployment my-cms:prod\n/)
     expect(fake.steps.at(-1)!.line).toMatch(/^npx convex env set/)
@@ -211,6 +216,8 @@ describe('ginko-platform setup', () => {
     expect(result.log).toContain('npx convex deployment create lupinum:ginko-setup-test:prod --type prod --default')
     expect(result.log).toContain('vercel env add CONVEX_DEPLOY_KEY production --sensitive < <hidden>')
     expect(result.log).toContain('   RESEND_API_KEY=<hidden>')
+    expect(result.log).toContain('npx convex function-spec --deployment lupinum:ginko-setup-test:prod')
+    expect(result.log).toContain('The backend: https://<deployment>.convex.cloud (HTTP actions: https://<deployment>.convex.site).')
   })
 
   // Wrong behaviour caught: run in CI without a terminal, setup waits forever for an answer, or takes the key from argv.
