@@ -178,7 +178,7 @@ describe('GET /bundle/<site>', () => {
       await ctx.db.patch(s.site, { bytes: 1, trashBytes: undefined, treeBytes: undefined })
     })
     vi.useFakeTimers()
-    await s.t.mutation(internal.entries.migrateStorage, {})
+    await s.t.mutation(internal.migrations.runPending, {})
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
     const row = (await s.t.run((ctx) => ctx.db.get(entry)))!
     expect(row.trees).toBeUndefined()

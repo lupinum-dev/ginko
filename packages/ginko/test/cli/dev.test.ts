@@ -85,13 +85,13 @@ describe('prepareLocalBackend', () => {
 
   // Wrong behaviour caught: every local:dev start waits for Convex CLI calls that only repeat what `env list` showed,
   // or replaces the secrets (signing everyone out) because Convex listed only the names (the fake does that without
-  // --include-values, as Convex 1.48+ does for AI agents).
-  it('a prepared backend costs one env list and the signing key check, and keeps the operator\'s admin', async () => {
+  // --include-values, as Convex 1.48+ does for AI agents); or a pulled data migration never runs on a local backend.
+  it('a prepared backend costs one env list, the signing key check and the migration start, and keeps the operator\'s admin', async () => {
     const envLocal = 'CONVEX_DEPLOYMENT=anonymous-agent\nBCN_AUTH_PROXY_IP_SECRET=proxy-secret\nSITE_URL=http://localhost:3100\n'
     const envList = 'GINKO_LOCAL=1\nGINKO_MAIL=outbox\nSITE_URL=http://localhost:3100\nGINKO_ADMIN_EMAILS=owner@example.test,second@example.test\nBETTER_AUTH_SECRETS=0:abc\nBCN_AUTH_PROXY_IP_SECRET=proxy-secret\n'
     const { dir, calls, run } = backend(envLocal, envList)
     const admin = await prepareLocalBackend(dir, 'local:dev', () => undefined, run)
-    expect(calls).toEqual([['env', 'list', '--include-values'], ['run', 'auth:ensureSigningKey']])
+    expect(calls).toEqual([['env', 'list', '--include-values'], ['run', 'auth:ensureSigningKey'], ['run', 'migrations:runPending']])
     expect(readFileSync(join(dir, '.env.local'), 'utf8')).toBe(envLocal)
     expect(admin).toBe('owner@example.test')
   })

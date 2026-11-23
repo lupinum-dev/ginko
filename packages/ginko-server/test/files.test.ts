@@ -488,6 +488,9 @@ describe('uploads.sweep with the library', () => {
 })
 
 describe('migrations.markdownStorageUrls', () => {
+  const urlsDone = async (s: Setup) => (await s.t.run((ctx) => ctx.db.query('serverMigrations').collect()))
+    .some((run) => run.name === '2026-10-15-markdown-storage-urls' && run.state === 'done')
+
   // Wrong behaviour caught: the one-time rewrite misses an address written on another host (local vs. production),
   // replaces an address it cannot match with a broken reference, leaves the file without its reference, or marks the
   // English text as outdated although only the picture's address changed.
@@ -498,7 +501,7 @@ describe('migrations.markdownStorageUrls', () => {
     const token = await s.t.run(async (ctx) => (await ctx.storage.getUrl((await ctx.db.get(id))!.processedId!))!.split('/api/storage/')[1])
     const text = `![Hund](http://127.0.0.1:3210/api/storage/${token})\n\n![Weg](https://alt.example/api/storage/unbekannt)`
     await s.t.run((ctx) => ctx.db.patch(s.entries.legal!, { data: { imprint: { de: text, en: 'Imprint' } }, prints: { imprint: { en: printOf(text) } } }))
-    await s.t.mutation(internal.migrations.markdownStorageUrls, {})
+    await s.t.mutation(internal.migrations.runPending, {})
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
     const row = await s.t.run((ctx) => ctx.db.get(s.entries.legal!))
     const migrated = `![Hund]($file.${id})\n\n![Weg](https://alt.example/api/storage/unbekannt)`
@@ -520,9 +523,9 @@ describe('migrations.markdownStorageUrls', () => {
     const id = await readyImage(s)
     const token = await s.t.run(async (ctx) => (await ctx.storage.getUrl((await ctx.db.get(id))!.processedId!))!.split('/api/storage/')[1])
     await s.t.run(async (ctx) => ctx.db.patch(s.entries.legal!, { data: { ...(await ctx.db.get(s.entries.legal!))!.data, imprint: { de: `![Hund](/api/storage/${token})` } } }))
-    await s.t.mutation(internal.migrations.markdownStorageUrls, {})
-    // Only the migration's own pages, which follow at once; the timers stay before anything later (sign-in expiry).
-    for (let i = 0; i < 10; i++) { vi.advanceTimersByTime(1); await s.t.finishInProgressScheduledFunctions() }
+    await s.t.mutation(internal.migrations.runPending, {})
+    // Only the migrations' own pages, which follow at once; the timers stay before anything later (sign-in expiry).
+    for (let i = 0; i < 50 && !(await urlsDone(s)); i++) { vi.advanceTimersByTime(1); await s.t.finishInProgressScheduledFunctions() }
     expect(await s.t.run(async (ctx) => (await ctx.db.get(s.entries.legal!))!.data.imprint)).toEqual({ de: `![Hund]($file.${id})` })
     const stale = s.as.owner.mutation(api.entries.save, { publish: true, site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `![Hund](/api/storage/${token}) Neu` } }, sentence: 'x' })
     expect((await errorOf(stale)).code).toBe('CHANGED_SINCE')

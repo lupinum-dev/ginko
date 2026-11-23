@@ -168,6 +168,9 @@ export async function prepareLocalBackend(backendDir: string, command: string, l
   }
   if (file !== before) writeFileSync(envFile, file)
   await convex('run', 'auth:ensureSigningKey')
+  // The data migrations a pulled backend change brings, as a production deploy starts them (internals/migrations.md).
+  const migrations = parseOutput(await convex('run', 'migrations:runPending'))
+  if (typeof migrations === 'string') log(migrations)
   return values.GINKO_ADMIN_EMAILS!.split(',')[0]!.trim()
 }
 
