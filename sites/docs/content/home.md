@@ -1,7 +1,7 @@
 ---
 title: Content for Nuxt sites that owners keep current themselves.
 description: Ginko keeps a site apart from its content. Developers build with plain Nuxt. Owners change opening hours, menus and texts in the Studio, with approval and scheduling. Lupinum hosts the Studio and opens it by invitation; without it, the same bricks read Markdown from the repository.
-install: npm create ginko@latest my-site
+install: npm create ginko@latest my-site -- --template starter
 links:
   - label: Get started
     href: /docs/getting-started
