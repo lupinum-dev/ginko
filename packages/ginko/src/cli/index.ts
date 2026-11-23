@@ -37,6 +37,7 @@ Options:
   -h, --help         Show this help
   --version          Show the version
 
+GINKO_PLATFORM is the Studio's address; the backend's own address (https://<deployment>.convex.site) works too.
 Every run prints one JSON line on stdout. Exit codes: 0 ok, 1 invalid or rejected, 2 usage,
 3 platform unavailable (run again), 4 key not allowed.
 `

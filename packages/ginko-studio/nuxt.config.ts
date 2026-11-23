@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -23,6 +24,8 @@ const missing = [
 const siteUrl = env.site || 'http://localhost:3100'
 const convexUrl = env.convex || 'http://127.0.0.1:3210'
 const convexSiteUrl = env.convexSite || 'http://127.0.0.1:3211'
+/** The platform's Ginko version (the packages release together); 0.0.0 inside the monorepo means unknown. */
+const { version } = JSON.parse(readFileSync(here('./package.json'), 'utf8')) as { version: string }
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-01',
@@ -59,6 +62,10 @@ export default defineNuxtConfig({
     // Stable file addresses of a site (/__ginko/file/…) end here; the platform answers with a redirect to the storage.
     '/file/**': { proxy: `${convexSiteUrl}/file/**` },
   },
+  // The discovery document (server/ginko-platform.ts): the backend address and the version, for the `ginko` CLI.
+  // Server-only config; `routes: 'protected'` below guards pages, not server handlers, so the document stays public.
+  runtimeConfig: { ginkoPlatform: { backend: convexSiteUrl, version } },
+  serverHandlers: [{ route: '/.well-known/ginko-platform', method: 'get', handler: here('./server/ginko-platform.ts') }],
   // Sign-in for people in the platform (SPEC 10). Origin and trusted IP header come from the env (see docs: Better Auth setup).
   convex: {
     url: convexUrl,

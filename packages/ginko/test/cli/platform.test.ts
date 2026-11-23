@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CliError } from '../../src/cli/model.ts'
-import { createPlatform, type ReleaseBody } from '../../src/cli/platform.ts'
+import { createPlatform, DISCOVERY_PATH, type ReleaseBody } from '../../src/cli/platform.ts'
+import { connectPlatform, type CliDeps } from '../../src/cli/run.ts'
 
 const KEY = 'ginko_linde_k3y0secretpushkey0123456789abxyz'
 const URL = 'https://platform.example'
@@ -162,5 +163,57 @@ describe('a connection cut while the body is read', () => {
     const text = await message(createPlatform({ url: URL, key: KEY, fetch: bodyCut }).state('linde'))
     expect(text).toContain('connection')
     expect(text).not.toContain('unknown')
+  })
+})
+
+describe('GINKO_PLATFORM as the Studio address (discovery document)', () => {
+  const STATE = { schemaRev: 1, contentRev: 1, entries: [] }
+  /** The requests a run makes: address and whether the push key went along. */
+  function connect(answers: Record<string, () => Response | Promise<Response>>) {
+    const requests: { url: string; key: boolean }[] = []
+    const fetch: Fetch = async (url, init) => {
+      requests.push({ url, key: JSON.stringify(init?.headers ?? {}).includes(KEY) })
+      const answer = answers[url]
+      return answer ? answer() : Response.json({ code: 'SITE_NOT_FOUND', message: 'x' }, { status: 404 })
+    }
+    const deps = { env: { GINKO_PLATFORM: URL, GINKO_KEY: KEY }, fetch } as unknown as CliDeps
+    return { platform: connectPlatform(deps), requests }
+  }
+
+  // Wrong behaviour caught: the CLI sends the release to the Studio, which answers with its login page (Gap 11), or
+  // sends the push key to a public document.
+  it('the document names the backend: the calls go there, once resolved, and the key never goes to the document', async () => {
+    const { platform, requests } = connect({
+      [`${URL}${DISCOVERY_PATH}`]: () => Response.json({ backend: 'https://happy-cat-123.convex.site/', version: '0.18.0' }),
+      'https://happy-cat-123.convex.site/release/state?site=linde': () => Response.json(STATE),
+    })
+    await platform.state('linde').catch(() => undefined)
+    await platform.state('linde').catch(() => undefined)
+    expect(requests).toEqual([
+      { url: `${URL}${DISCOVERY_PATH}`, key: false },
+      { url: 'https://happy-cat-123.convex.site/release/state?site=linde', key: true },
+      { url: 'https://happy-cat-123.convex.site/release/state?site=linde', key: true },
+    ])
+    expect(await platform.discovery()).toEqual({ backend: 'https://happy-cat-123.convex.site', version: '0.18.0' })
+  })
+
+  // Wrong behaviour caught: sites that give the `.convex.site` address (all sites before this change) stop working.
+  it.each([
+    ['a 404', () => new Response('Not found', { status: 404 })],
+    ['a redirect to the login page', () => new Response(null, { status: 302, headers: { location: '/login' } })],
+    ['an HTML page', () => new Response('<html></html>', { status: 200 })],
+    ['a network failure', () => { throw new TypeError('fetch failed') }],
+  ])('without a document (%s) the address is the backend', async (_name, answer) => {
+    const { platform, requests } = connect({ [`${URL}${DISCOVERY_PATH}`]: answer })
+    await platform.state('linde').catch(() => undefined)
+    expect(requests.map((request) => request.url)).toEqual([`${URL}${DISCOVERY_PATH}`, `${URL}/release/state?site=linde`])
+    expect(await platform.discovery()).toEqual({ backend: URL })
+  })
+
+  // Wrong behaviour caught: a document that points the push key at a plain-http address.
+  it('a document with a backend that is not https stops before the key is sent', async () => {
+    const { platform, requests } = connect({ [`${URL}${DISCOVERY_PATH}`]: () => Response.json({ backend: 'http://evil.example' }) })
+    expect(await message(platform.state('linde'))).toContain('not https://')
+    expect(requests.filter((request) => request.key)).toEqual([])
   })
 })

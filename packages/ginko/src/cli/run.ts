@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { CliError } from './model.ts'
-import { createPlatform, PlatformError, type Platform } from './platform.ts'
+import { createPlatform, discoverPlatform, PlatformError, type Discovery, type Platform } from './platform.ts'
 
 /** The outside world of the CLI. main() takes it as a parameter so that tests can replace it. */
 export interface CliDeps {
@@ -183,9 +183,28 @@ export function env(deps: CliDeps, ...names: [string, ...string[]]): string {
 // One CI secret serves the site and the CLI: the site reads NUXT_PUBLIC_GINKO_PLATFORM, so the CLI accepts it too.
 const PLATFORM_ENV = ['GINKO_PLATFORM', 'NUXT_PUBLIC_GINKO_PLATFORM'] as const
 
-/** The hosted platform from GINKO_PLATFORM (or NUXT_PUBLIC_GINKO_PLATFORM) and GINKO_KEY. */
-export function connectPlatform(deps: CliDeps): Platform {
-  return createPlatform({ url: env(deps, ...PLATFORM_ENV), key: env(deps, 'GINKO_KEY'), fetch: deps.fetch })
+export interface ConnectedPlatform extends Platform {
+  /** What the discovery document said (fetched once, on the first call). */
+  discovery: () => Promise<Discovery>
+}
+
+/**
+ * The hosted platform from GINKO_PLATFORM (or NUXT_PUBLIC_GINKO_PLATFORM) and GINKO_KEY. GINKO_PLATFORM may be the
+ * Studio's address: the first call reads its discovery document once and talks to the backend it names.
+ */
+export function connectPlatform(deps: CliDeps): ConnectedPlatform {
+  const url = env(deps, ...PLATFORM_ENV)
+  const key = env(deps, 'GINKO_KEY')
+  // Checks the address and the key before any request.
+  createPlatform({ url, key, fetch: deps.fetch })
+  let resolved: Promise<{ discovery: Discovery; platform: Platform }> | undefined
+  const target = () => (resolved ??= discoverPlatform(url, deps.fetch).then((discovery) => ({ discovery, platform: createPlatform({ url: discovery.backend, key, fetch: deps.fetch }) })))
+  return {
+    state: async (site) => (await target()).platform.state(site),
+    release: async (body) => (await target()).platform.release(body),
+    exportSite: async (site) => (await target()).platform.exportSite(site),
+    discovery: async () => (await target()).discovery,
+  }
 }
 
 /** True when the module at `url` is the started program (argv[1] is the bin link or the file), not an import of a test. */
