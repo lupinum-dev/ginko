@@ -71,7 +71,7 @@ const atomicSave = (source: string) => {
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'ginko-dev-'))
   mkdirSync(join(dir, 'packages/ginko-server'), { recursive: true })
-  writeFileSync(join(dir, 'packages/ginko-server/package.json'), '{"name":"@lupinum/ginko-server"}\n')
+  writeFileSync(join(dir, 'packages/ginko-server/convex.json'), '{"functions":"convex/"}\n')
   mkdirSync(join(dir, 'sites/demo'), { recursive: true })
   configPath = join(dir, 'sites/demo/ginko.config.ts')
   writeFileSync(configPath, config())
@@ -83,7 +83,7 @@ beforeEach(() => {
   fakeConvex()
 })
 
-const start = () => { finished = runDev({ configPath, log: (line) => lines.push(line) }) }
+const start = () => { finished = runDev({ configPath, backendDir: join(dir, 'packages/ginko-server'), log: (line) => lines.push(line) }) }
 
 afterEach(async () => {
   process.emit('SIGINT')
@@ -151,7 +151,7 @@ describe('local:dev watches the config', { timeout: 60_000 }, () => {
 describe('local:dev with another target than the local one', () => {
   it('stops before it starts any process', async () => {
     vi.stubEnv('CONVEX_DEPLOYMENT', 'dev:something-cloud')
-    await expect(runDev({ configPath, log: () => undefined })).rejects.toThrow(/stopped.*dev:something-cloud/)
+    await expect(runDev({ configPath, backendDir: join(dir, 'packages/ginko-server'), log: () => undefined })).rejects.toThrow(/stopped.*dev:something-cloud/)
     expect(spawn).not.toHaveBeenCalled()
     expect(runOnce).not.toHaveBeenCalled()
   })

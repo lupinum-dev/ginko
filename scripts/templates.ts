@@ -35,7 +35,7 @@ import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { lockfiles, manifestOf, notCopied, sampleDates } from '../packages/create-ginko/template-files.mjs'
 import { loadConfig } from '../packages/ginko/src/cli/config.ts'
-import { connectProd } from '../packages/ginko/src/cli/local.ts'
+import { backendAt, connectProd } from '../packages/ginko/src/cli/local.ts'
 import { heavyLock, waitForCalm, type Session } from './lib/runs.ts'
 import { platformGate, siteExport, type Step } from './templates/platform.ts'
 
@@ -679,7 +679,7 @@ export async function demoReset(dirs: string[], { dryRun = false, run = defaultR
       if (dryRun) continue
       await run('node', ['--experimental-strip-types', join(root, 'packages/ginko/src/cli/monorepo.ts'), 'ops:import', out.dir, '--site', out.site, '--prod', '--reset'], root)
       // Counts only: this log is public (demo.yml runs in a public repository), and any part of an address can name a prospect.
-      const dropped = await connectProd(root, 'demo-reset')('demo:dropGuests', { site: out.site }) as { members: number; invites: number }
+      const dropped = await connectProd(backendAt(join(root, 'packages/ginko-server'), 'demo-reset'))('demo:dropGuests', { site: out.site }) as { members: number; invites: number }
       console.log(`OK demo-reset ${name} (removed ${dropped.members} member(s), ${dropped.invites} invite(s))`)
     } catch (error) {
       failed.push(name)

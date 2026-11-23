@@ -7,12 +7,14 @@ import { basename, dirname, join } from 'node:path'
 import { platformSchema, serializeSchema, type Schema, type SchemaChange } from '../core/index.ts'
 import { connectAgents } from './agent-config.ts'
 import { loadConfig } from './config.ts'
-import { confirmLocal, findBackend, knownTargetError, LOCAL_STUDIO, parseEnvFile, parseResult, prepareLocalBackend, readDeploymentTarget, runOnce, targetEnv, type DeploymentTarget } from './local.ts'
+import { confirmLocal, knownTargetError, LOCAL_STUDIO, parseEnvFile, parseResult, prepareLocalBackend, readDeploymentTarget, runOnce, targetEnv, type DeploymentTarget } from './local.ts'
 import { CliError } from './model.ts'
 import { explainRejected } from './report.ts'
 
 export interface DevInput {
   configPath: string
+  /** The Convex project, packages/ginko-server (backendAt). */
+  backendDir: string
   log: (line: string) => void
 }
 
@@ -24,7 +26,7 @@ const KILL_AFTER_MS = 5_000
 export async function runDev(input: DevInput): Promise<number> {
   const { log } = input
   const siteDir = dirname(input.configPath)
-  const backendDir = findBackend(siteDir)
+  const { backendDir } = input
   const repoDir = dirname(dirname(backendDir))
   // Before any process starts: `convex dev` would contact a cloud deployment first.
   const early = knownTargetError(readDeploymentTarget(backendDir))
