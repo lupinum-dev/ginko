@@ -42,6 +42,7 @@ Options:
   --dry-run             setup: print the steps and their commands, change nothing
   -h, --help            Show this help
 setup reads the Resend API key from RESEND_API_KEY or asks for it; it never takes it as an option.
+--team is the Convex team; on Vercel, setup uses the scope the Vercel CLI has selected (vercel switch).
 `
 
 /** The options of each command; anything else is refused with the usage. */

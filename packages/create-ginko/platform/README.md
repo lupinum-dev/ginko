@@ -59,6 +59,7 @@ backend for `npm run dev` stays as it is.
 
 `npx ginko-platform setup --dry-run` prints every step and its command first, and changes nothing. Setup is safe to
 run again: it reuses what exists, sets only what is missing and never replaces a secret.
+`--team <slug>` is the Convex team; on Vercel, setup uses the scope the Vercel CLI has selected (`vercel switch`).
 
 Two steps stay by hand:
 
