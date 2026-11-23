@@ -149,6 +149,38 @@ describe('local:dev watches the config', { timeout: 60_000 }, () => {
   })
 })
 
+// Wrong behaviour caught: under `npm run dev` a Ctrl-C arrives twice (npm forwards it). With the listeners gone after
+// the first, Node's default action ends the process before the SIGKILL fallback, and a child that ignores SIGTERM keeps
+// its ports. Signals are emitted here, so the default action itself cannot run: the test checks that the listeners stay
+// until the children ended and that the fallback kills the child.
+describe('stopping', () => {
+  it('keeps the signal listeners and sends SIGKILL to a child that ignores SIGTERM', { timeout: 20_000 }, async () => {
+    const kill = vi.spyOn(process, 'kill').mockImplementation(() => true)
+    let pid = 4000
+    spawn.mockImplementation(() => {
+      const child = Object.assign(new EventEmitter(), { stdout: new PassThrough(), stderr: new PassThrough(), exitCode: null, signalCode: null, pid: ++pid })
+      setImmediate(() => child.stdout.write('Convex functions ready!\n'))
+      return child
+    })
+    try {
+      start()
+      await waitFor(() => pushes.length === 1, 'first push')
+      pushes[0]!.finish()
+      await waitFor(() => lines.some((l) => l.includes('local:dev is running')), 'ready')
+      const listeners = process.listenerCount('SIGINT')
+      process.emit('SIGINT')
+      process.emit('SIGINT')
+      expect(await finished).toBe(0)
+      expect(process.listenerCount('SIGINT')).toBe(listeners)
+      expect(kill.mock.calls.filter(([, signal]) => signal === 'SIGTERM').map(([target]) => target)).toEqual([-4001, -4002, -4003])
+      await waitFor(() => kill.mock.calls.some(([, signal]) => signal === 'SIGKILL'), 'the SIGKILL fallback')
+      expect(kill.mock.calls.filter(([, signal]) => signal === 'SIGKILL').map(([target]) => target)).toEqual([-4001, -4002, -4003])
+    } finally {
+      kill.mockRestore()
+    }
+  })
+})
+
 // Wrong behaviour caught: a local command writes the sign-in secrets into a cloud deployment, or `convex dev` first
 // contacts it. Both layouts: the monorepo (packages/ginko-server) and a platform project (convex.json at its root).
 describe('another target than the local one', () => {

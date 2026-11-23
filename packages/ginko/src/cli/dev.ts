@@ -76,22 +76,29 @@ export async function startLocalPlatform(input: LocalPlatformInput): Promise<Loc
   let finish: (code: number) => void = () => undefined
   const exited = new Promise<number>((done) => { finish = done })
 
+  // A child has ended when it exited, died by a signal, or never started (no process id).
+  const ended = (child: ChildProcess) => child.exitCode !== null || child.signalCode !== null || child.pid === undefined
+  const onSignal = () => stop(0)
+  // The listeners stay while stopping: `npm run dev` forwards a Ctrl-C, so a second SIGINT follows the terminal's, and
+  // without a listener Node's default action would end this process before the SIGKILL fallback for a child that
+  // ignores SIGTERM. They go once every child has ended.
+  const release = () => {
+    if (!children.every(ended)) return
+    process.off('SIGINT', onSignal)
+    process.off('SIGTERM', onSignal)
+  }
   // Each child leads its own process group, so one signal stops its own children too.
   const stop = (code: number) => {
     if (stopping) return
     stopping = true
     for (const cleanup of cleanups) cleanup()
-    for (const child of children) if (child.exitCode === null && child.pid) process.kill(-child.pid, 'SIGTERM')
+    for (const child of children) if (!ended(child) && child.pid) process.kill(-child.pid, 'SIGTERM')
     setTimeout(() => {
-      for (const child of children) if (child.exitCode === null && child.pid) process.kill(-child.pid, 'SIGKILL')
+      for (const child of children) if (!ended(child) && child.pid) process.kill(-child.pid, 'SIGKILL')
     }, KILL_AFTER_MS).unref()
-    // Only now: `npm run dev` forwards a Ctrl-C, so a second SIGINT follows the terminal's. Without a listener it would
-    // end this process with Node's default action before the children got their signal.
-    process.off('SIGINT', onSignal)
-    process.off('SIGTERM', onSignal)
+    release()
     finish(code)
   }
-  const onSignal = () => stop(0)
   process.on('SIGINT', onSignal)
   process.on('SIGTERM', onSignal)
 
@@ -111,10 +118,9 @@ export async function startLocalPlatform(input: LocalPlatformInput): Promise<Loc
       })
     }
     child.once('exit', (code) => {
-      if (!stopping) {
-        log(`[${name}] stopped (code ${code}). All processes are being stopped.`)
-        stop(1)
-      }
+      if (stopping) return release()
+      log(`[${name}] stopped (code ${code}). All processes are being stopped.`)
+      stop(1)
     })
     return child
   }
