@@ -5,3 +5,4 @@ node_modules
 .convex
 .env
 .env.local
+.vercel

@@ -4,12 +4,15 @@
 // node_modules/@lupinum/ginko-server/convex/. Unlike `ginko` (one JSON line for CI), this command talks to a person.
 //   ginko-platform dev [--verbose]     a local backend without an account, prepared for sign-in, and the Studio on :3100
 //   ginko-platform build [--convex D]  the build: backend deploy and data migrations in production, then the Studio
+//   ginko-platform setup [options]     puts the project online on Convex cloud and Vercel, mail through Resend
 import { resolve } from 'node:path'
+import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
 import { startLocalPlatform, StoppedError } from './dev.ts'
 import { backendAt, LOCAL_STUDIO } from './local.ts'
 import { build } from './platform-build.ts'
 import { realRunner, type CommandRunner } from './platform-run.ts'
+import { setup, type Ask } from './platform-setup.ts'
 import { exitCodeOf, isEntryPoint } from './run.ts'
 
 const COMMAND = 'ginko-platform dev'
@@ -23,18 +26,37 @@ Commands:
   dev      Start a local backend (no Convex account needed) and the Studio on ${LOCAL_STUDIO}.
   build    Build the Studio. In production (on Vercel: VERCEL_ENV=production; elsewhere: a production
            CONVEX_DEPLOY_KEY) it first deploys the backend and starts its data migrations.
+  setup    Put the platform online: the backend on Convex, the Studio on Vercel, sign-in mail through Resend.
+           Log in first with \`npx convex login\` and \`vercel login\`. Safe to run again.
 Run them in the folder of the platform project, the one with convex.json.
 
 Options:
-  --verbose            dev: show all output of the backend and the Studio from the start
-  --convex <folder>    build: the folder with convex.json, if it is not the current folder
-  -h, --help           Show this help
+  --verbose             dev: show all output of the backend and the Studio from the start
+  --convex <folder>     build: the folder with convex.json, if it is not the current folder
+  --site-url <address>  setup: the Studio address (default: the address Vercel gives the project)
+  --admin <email>       setup: the address that may sign in first
+  --mail-from <sender>  setup: the sender of sign-in mail, for example "Studio <login@example.com>"
+  --project <name>      setup: the Convex and Vercel project name (default: the folder name)
+  --team <slug>         setup: the Convex team, when the account has more than one
+  --region <region>     setup: the Convex region of the production deployment
+  --dry-run             setup: print the steps and their commands, change nothing
+  -h, --help            Show this help
+setup reads the Resend API key from RESEND_API_KEY or asks for it; it never takes it as an option.
 `
 
 /** The options of each command; anything else is refused with the usage. */
 const COMMANDS = {
   dev: { verbose: { type: 'boolean' } },
   build: { convex: { type: 'string' } },
+  setup: {
+    'site-url': { type: 'string' },
+    admin: { type: 'string' },
+    'mail-from': { type: 'string' },
+    project: { type: 'string' },
+    team: { type: 'string' },
+    region: { type: 'string' },
+    'dry-run': { type: 'boolean' },
+  },
 } as const satisfies Record<string, Record<string, { type: 'boolean' | 'string' }>>
 type Command = keyof typeof COMMANDS
 
@@ -53,6 +75,8 @@ export interface PlatformDeps {
   /** Tests replace the programs that build and setup run. */
   run?: CommandRunner
   env?: NodeJS.ProcessEnv
+  /** Tests replace the questions of setup; undefined in tests means nobody can answer. */
+  ask?: Ask
 }
 
 /** The command and its options, or the sentence that says what is wrong with the call. */
@@ -90,6 +114,18 @@ export async function main(argv: string[], deps: PlatformDeps = { cwd: process.c
       case 'build': {
         const convexDir = backendAt(resolve(deps.cwd, typeof call.values.convex === 'string' ? call.values.convex : '.'), 'ginko-platform build')
         await build({ cwd: deps.cwd, convexDir, env, run, log: deps.log })
+        return 0
+      }
+      case 'setup': {
+        const text = (name: string) => (typeof call.values[name] === 'string' ? call.values[name] : undefined)
+        await setup({
+          cwd: backendAt(deps.cwd, 'ginko-platform setup'),
+          options: { siteUrl: text('site-url'), admin: text('admin'), mailFrom: text('mail-from'), project: text('project'), team: text('team'), region: text('region'), dryRun: call.values['dry-run'] === true },
+          env,
+          run,
+          ask: deps.ask ?? (deps.run === undefined && process.stdin.isTTY ? terminalAsk : undefined),
+          log: deps.log,
+        })
         return 0
       }
     }
@@ -149,6 +185,24 @@ async function dev({ cwd, log, startPlatform = startLocalPlatform }: PlatformDep
   })
   return platform.exited
 }
+
+/** One question in the terminal; hidden input echoes nothing. */
+const terminalAsk: Ask = (question, hidden) => new Promise((done) => {
+  const terminal = createInterface({ input: process.stdin, output: process.stdout, terminal: true })
+  if (hidden) {
+    // readline echoes through _writeToOutput; after the question is written, it writes nothing more until Enter.
+    const internal = terminal as unknown as { _writeToOutput: (text: string) => void }
+    const write = internal._writeToOutput.bind(terminal)
+    let asked = false
+    internal._writeToOutput = (text) => {
+      if (!asked || text === '\r\n' || text === '\n') write(text)
+    }
+    terminal.question(`${question} `, (answer) => { terminal.close(); done(answer) })
+    asked = true
+    return
+  }
+  terminal.question(`${question} `, (answer) => { terminal.close(); done(answer) })
+})
 
 if (isEntryPoint(import.meta.url)) {
   void main(process.argv.slice(2)).then((code) => { process.exitCode = code })

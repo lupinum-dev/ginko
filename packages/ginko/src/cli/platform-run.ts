@@ -20,10 +20,15 @@ export type CommandRunner = (step: Step) => Promise<string>
 /** A step that failed. The command line holds no secret, so it is safe to print for the person to run again. */
 export class StepError extends CliError {
   readonly step: Step
+  readonly reason: string
+  /** The program is not installed (ENOENT). */
+  readonly missing: boolean
 
-  constructor(step: Step, reason: string) {
+  constructor(step: Step, reason: string, missing = false) {
     super(`${commandLine(step)} failed: ${reason}`)
     this.step = step
+    this.reason = reason
+    this.missing = missing
   }
 }
 
@@ -44,7 +49,7 @@ export const realRunner: CommandRunner = (step) => new Promise((done, fail) => {
     err += chunk
     if (step.show) process.stderr.write(chunk)
   })
-  child.on('error', (error) => fail(new StepError(step, error.message)))
+  child.on('error', (error: NodeJS.ErrnoException) => fail(new StepError(step, error.message, error.code === 'ENOENT')))
   child.on('close', (code) => {
     if (code === 0) return done(out)
     fail(new StepError(step, `exit code ${code}${step.show ? '' : `: ${failureOf(err || out)}`}`))

@@ -225,7 +225,7 @@ describe('create-ginko --platform', () => {
     const result = run('my-cms', '--platform')
     expect(result.status).toBe(0)
     // Wrong behaviour caught: site files (ginko.config.ts, content/, a .env secret) in a project that only runs the Studio.
-    expect(readdirSync(join(work, 'my-cms')).sort()).toEqual(['.gitignore', 'README.md', 'convex.json', 'nuxt.config.ts', 'package.json', 'pnpm-workspace.yaml', 'vercel.json'])
+    expect(readdirSync(join(work, 'my-cms')).sort()).toEqual(['.gitignore', '.vercelignore', 'README.md', 'convex.json', 'nuxt.config.ts', 'package.json', 'pnpm-workspace.yaml', 'vercel.json'])
     const pkg = JSON.parse(read('my-cms', 'package.json'))
     expect(pkg.name).toBe('my-cms')
     expect(pkg.scripts).toEqual({ dev: 'ginko-platform dev', build: 'ginko-platform build' })

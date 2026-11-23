@@ -220,8 +220,9 @@ Without it, the share cards of a server-rendered site answer with an error; a st
 /** --platform: copies platform/ with this release's version of the three platform packages, prints the next steps and exits. */
 function createPlatform() {
   cpSync(new URL('./platform', import.meta.url), dir, { recursive: true })
-  // npm drops .gitignore from published packages, so the template carries it as `gitignore`.
+  // npm drops .gitignore from published packages, so the template carries it as `gitignore` (and `vercelignore` alike).
   renameSync(join(dir, 'gitignore'), join(dir, '.gitignore'))
+  renameSync(join(dir, 'vercelignore'), join(dir, '.vercelignore'))
   // An npm package name: lower case, no spaces.
   const name = basename(dir).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'ginko-platform'
   for (const file of ['package.json', 'README.md']) {
