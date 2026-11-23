@@ -174,6 +174,9 @@ describe('create-ginko --template', () => {
     expect(result.stdout).toContain('Created tpl-site from the starter template in English and German.')
     // Wrong behaviour caught: two sites created from one template share the template's site id.
     expect(read('tpl-site', 'ginko.config.ts')).toMatch(/\bsite: 'tpl-site'/)
+    // Wrong behaviour caught: a site in English and German whose labels still carry the template's French texts.
+    expect(read('tpl-site', 'ginko.config.ts')).toContain("label: { de: 'Startseite', en: 'Home page' }")
+    expect(read('tpl-site', 'README.md')).not.toContain('The languages of this copy')
     const pkg = JSON.parse(read('tpl-site', 'package.json'))
     expect(pkg.name).toBe('tpl-site')
     // Wrong behaviour caught: the committed range of the next release, which npm does not have yet.
