@@ -13,6 +13,7 @@ npm run dev
 
 `npm run dev` starts a local Convex backend (no Convex account needed) and the Studio on http://localhost:3100.
 The first start downloads the backend, which can take a minute. Press Ctrl-C to stop both.
+To see all output of the backend and the Studio from the start, run `npm run dev -- --verbose`.
 
 npm is tested. With pnpm, keep `pnpm-workspace.yaml`: Convex needs the real folders of `nodeLinker: hoisted`.
 yarn and bun are not tested.

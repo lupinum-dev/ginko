@@ -59,7 +59,8 @@ npm run dev
 ```
 
 `npm run dev` runs `ginko-platform dev`: a local Convex backend (no Convex account needed) and the Studio on
-http://localhost:3100. Sign in as `admin@example.test`; the sign-in code appears in the terminal. The folder holds
+http://localhost:3100. Sign in as `admin@example.test`; the sign-in code appears in the terminal.
+`npm run dev -- --verbose` shows all output of the backend and the Studio from the start. The folder holds
 `package.json` (`@lupinum/ginko`, `@lupinum/ginko-server` and `@lupinum/ginko-studio` at this release's version),
 `nuxt.config.ts`, `convex.json` (the functions come from `node_modules/@lupinum/ginko-server/convex/`),
 `pnpm-workspace.yaml` (pnpm must install with `nodeLinker: hoisted`), `.gitignore` and a `README.md`. npm is tested;

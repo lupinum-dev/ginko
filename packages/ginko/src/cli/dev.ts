@@ -24,6 +24,15 @@ export interface DevInput {
 const CONVEX_READY = /Convex functions ready|Watching for changes/
 const READY_TIMEOUT_MS = 180_000
 const KILL_AFTER_MS = 5_000
+/** With `quiet`, how many of the last lines of each child a failure shows. */
+const TAIL_LINES = 40
+
+/** Ctrl-C came before the local platform was ready: nothing failed, and nothing is left running. */
+export class StoppedError extends CliError {
+  constructor(command: string) {
+    super(`${command} stopped before the platform was ready.`, 'USAGE')
+  }
+}
 
 export interface LocalPlatformInput {
   /** The Convex project (backendAt): `convex dev` runs there and writes .env.local. */
@@ -35,6 +44,11 @@ export interface LocalPlatformInput {
   onBackendLine?: (line: string) => void
   /** Ports the later processes need; one in use stops this before any process starts. */
   freePorts?: number[]
+  /**
+   * Keep the output of the children and of the backend setup back until showOutput(); only the last 40 lines of each
+   * are kept. A failure before that shows them after its error sentence.
+   */
+  quiet?: boolean
 }
 
 /** The running local platform: a prepared backend, and a way to start more processes that stop together with it. */
@@ -48,6 +62,8 @@ export interface LocalPlatform {
    * and its end stops all the others.
    */
   start: (name: string, command: string, args: string[], cwd: string, options?: { env?: Record<string, string>; onLine?: (line: string) => void }) => ChildProcess
+  /** From now on, the children's output goes to the log (with `quiet`, it was kept back until now). */
+  showOutput: () => void
   /** Runs once when everything stops, before the children get their signal. */
   onStop: (cleanup: () => void) => void
   stopping: () => boolean
@@ -72,13 +88,36 @@ export async function startLocalPlatform(input: LocalPlatformInput): Promise<Loc
   const children: ChildProcess[] = []
   const cleanups: (() => void)[] = []
   let stopping = false
+  let showing = !input.quiet
+  // The last lines of each child and of the setup, for a failure while the output is kept back.
+  const recent = new Map<string, string[]>()
+  const keep = (name: string, line: string) => {
+    const lines = recent.get(name) ?? []
+    lines.push(line)
+    if (lines.length > TAIL_LINES) lines.shift()
+    recent.set(name, lines)
+  }
+  const told = new Set<string>()
+  const tailOf = (name: string) => {
+    const lines = recent.get(name)
+    if (showing || told.has(name) || !lines?.length) return ''
+    told.add(name)
+    return `\nLast lines of ${name}:\n${lines.join('\n')}`
+  }
+  /** The setup lines (env values set, files written, migrations): shown, or kept back with the rest. */
+  const setupLog = (line: string) => (showing ? log(line) : keep('setup', line))
 
   let finish: (code: number) => void = () => undefined
   const exited = new Promise<number>((done) => { finish = done })
 
   // A child has ended when it exited, died by a signal, or never started (no process id).
   const ended = (child: ChildProcess) => child.exitCode !== null || child.signalCode !== null || child.pid === undefined
-  const onSignal = () => stop(0)
+  // Ctrl-C, not a failure, started the stop.
+  let bySignal = false
+  const onSignal = () => {
+    if (!stopping) bySignal = true
+    stop(0)
+  }
   // The listeners stay while stopping: `npm run dev` forwards a Ctrl-C, so a second SIGINT follows the terminal's, and
   // without a listener Node's default action would end this process before the SIGKILL fallback for a child that
   // ignores SIGTERM. They go once every child has ended.
@@ -112,14 +151,15 @@ export async function startLocalPlatform(input: LocalPlatformInput): Promise<Loc
         const lines = (rest + chunk).split('\n')
         rest = lines.pop() ?? ''
         for (const line of lines) {
-          log(`[${name}] ${line}`)
+          if (showing) log(`[${name}] ${line}`)
+          else keep(name, line)
           onLine?.(line)
         }
       })
     }
     child.once('exit', (code) => {
       if (stopping) return release()
-      log(`[${name}] stopped (code ${code}). All processes are being stopped.`)
+      log(`[${name}] stopped (code ${code}). All processes are being stopped.${tailOf(name)}`)
       stop(1)
     })
     return child
@@ -128,12 +168,17 @@ export async function startLocalPlatform(input: LocalPlatformInput): Promise<Loc
   // The local backend. Its functions are up when `convex dev` says so.
   const backend = new Promise<void>((done, fail) => {
     const timer = setTimeout(() => fail(new CliError('The local Convex backend is not ready after 3 minutes.', 'UNAVAILABLE')), READY_TIMEOUT_MS)
-    startChild('convex', 'npx', ['convex', 'dev'], backendDir, { ...env, CONVEX_AGENT_MODE: 'anonymous' }, (line) => {
+    const child = startChild('convex', 'npx', ['convex', 'dev'], backendDir, { ...env, CONVEX_AGENT_MODE: 'anonymous' }, (line) => {
       input.onBackendLine?.(line)
       if (CONVEX_READY.test(line)) {
         clearTimeout(timer)
         done()
       }
+    })
+    // Not ready and gone (or stopped by Ctrl-C): no reason to wait for the 3 minutes.
+    child.once('exit', () => {
+      clearTimeout(timer)
+      fail(bySignal ? new StoppedError(command) : new CliError('The local Convex backend stopped before it was ready.', 'UNAVAILABLE'))
     })
   })
   let target: DeploymentTarget
@@ -143,15 +188,23 @@ export async function startLocalPlatform(input: LocalPlatformInput): Promise<Loc
     // Confirm the deployment that the Convex CLI selected before any write. Only then every command gets it explicitly.
     target = confirmLocal(backendDir, command)
     // Before the Studio starts: it reads the synced backendDir/.env.local once.
-    admin = await prepareLocalBackend(backendDir, command, log, runOnce)
+    admin = await prepareLocalBackend(backendDir, command, setupLog, runOnce)
+    // Ctrl-C, or the backend ended, during the setup: start nothing more.
+    if (bySignal) throw new StoppedError(command)
+    if (stopping) throw new CliError('The local Convex backend stopped during the setup.', 'UNAVAILABLE')
   } catch (error) {
+    if (error instanceof StoppedError) throw error
     stop(1)
-    throw error
+    const tail = `${tailOf('convex')}${tailOf('setup')}`
+    if (!tail) throw error
+    const message = `${error instanceof Error ? error.message : String(error)}\n${tail}`
+    throw error instanceof CliError ? new CliError(message, error.code) : new Error(message)
   }
   return {
     target,
     admin,
     start: (name, cmd, args, cwd, options = {}) => startChild(name, cmd, args, cwd, { ...env, ...options.env }, options.onLine),
+    showOutput: () => { showing = true },
     onStop: (cleanup) => { cleanups.push(cleanup) },
     stopping: () => stopping,
     exited,
@@ -162,7 +215,14 @@ export async function runDev(input: DevInput): Promise<number> {
   const { backendDir, log } = input
   const siteDir = dirname(input.configPath)
   const repoDir = dirname(dirname(backendDir))
-  const platform = await startLocalPlatform({ backendDir, command: 'local:dev', log })
+  let platform: LocalPlatform
+  try {
+    platform = await startLocalPlatform({ backendDir, command: 'local:dev', log })
+  } catch (error) {
+    // Ctrl-C before the backend was ready: everything is stopped, nothing failed.
+    if (error instanceof StoppedError) return 0
+    throw error
+  }
   const { target, admin } = platform
   let watcher: FSWatcher | undefined
   let debounce: NodeJS.Timeout | undefined
