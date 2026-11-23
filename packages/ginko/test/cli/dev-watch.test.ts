@@ -12,6 +12,7 @@ vi.mock('node:child_process', async (original) => ({ ...(await original<typeof i
 vi.mock('../../src/cli/local.ts', async (original) => ({ ...(await original<typeof import('../../src/cli/local.ts')>()), runOnce: vi.fn() }))
 
 const { runDev } = await import('../../src/cli/dev.ts')
+const { main: platformMain } = await import('../../src/cli/ginko-platform.ts')
 const { runOnce } = await import('../../src/cli/local.ts')
 
 const CORE = pathToFileURL(join(import.meta.dirname, '../../src/core/index.ts')).href
@@ -148,10 +149,25 @@ describe('local:dev watches the config', { timeout: 60_000 }, () => {
   })
 })
 
-describe('local:dev with another target than the local one', () => {
-  it('stops before it starts any process', async () => {
-    vi.stubEnv('CONVEX_DEPLOYMENT', 'dev:something-cloud')
+// Wrong behaviour caught: a local command writes the sign-in secrets into a cloud deployment, or `convex dev` first
+// contacts it. Both layouts: the monorepo (packages/ginko-server) and a platform project (convex.json at its root).
+describe('another target than the local one', () => {
+  beforeEach(() => { vi.stubEnv('CONVEX_DEPLOYMENT', 'dev:something-cloud') })
+
+  it('local:dev in the monorepo stops before it starts any process', async () => {
     await expect(runDev({ configPath, backendDir: join(dir, 'packages/ginko-server'), log: () => undefined })).rejects.toThrow(/stopped.*dev:something-cloud/)
+    expect(spawn).not.toHaveBeenCalled()
+    expect(runOnce).not.toHaveBeenCalled()
+  })
+
+  it('ginko-platform dev in a platform project stops before it starts any process', async () => {
+    const host = join(dir, 'my-cms')
+    mkdirSync(host)
+    writeFileSync(join(host, 'convex.json'), '{"functions":"node_modules/@lupinum/ginko-server/convex/"}\n')
+    const errors: string[] = []
+    const code = await platformMain(['dev'], { cwd: host, log: () => undefined, error: (line) => errors.push(line) })
+    expect(code).toBe(2)
+    expect(errors.join('\n')).toMatch(/ginko-platform dev stopped.*dev:something-cloud/)
     expect(spawn).not.toHaveBeenCalled()
     expect(runOnce).not.toHaveBeenCalled()
   })

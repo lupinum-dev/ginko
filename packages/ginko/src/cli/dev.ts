@@ -1,8 +1,10 @@
-// `pnpm local:dev` (SPEC 5.3, 9, monorepo only): the local Convex backend, the local platform (GINKO_LOCAL=1) and the
-// site, started as three child processes. The site's ginko.config.ts is watched; every change is
-// pushed to the local platform with the devPush mutation. Ctrl-C stops all of them.
+// The local platform, started as child processes: the local Convex backend (no account), then what the caller adds.
+// Two commands use it: `pnpm local:dev` in the monorepo (SPEC 5.3, 9: the platform and a site; the site's
+// ginko.config.ts is watched, and every change is pushed to the local platform with the devPush mutation) and
+// `ginko-platform dev` in a platform project (the Studio only, ginko-platform.ts). Ctrl-C stops all of them.
 import { spawn, type ChildProcess } from 'node:child_process'
 import { watch, type FSWatcher } from 'node:fs'
+import { connect } from 'node:net'
 import { basename, dirname, join } from 'node:path'
 import { platformSchema, serializeSchema, type Schema, type SchemaChange } from '../core/index.ts'
 import { connectAgents } from './agent-config.ts'
@@ -23,18 +25,52 @@ const CONVEX_READY = /Convex functions ready|Watching for changes/
 const READY_TIMEOUT_MS = 180_000
 const KILL_AFTER_MS = 5_000
 
-export async function runDev(input: DevInput): Promise<number> {
-  const { log } = input
-  const siteDir = dirname(input.configPath)
-  const { backendDir } = input
-  const repoDir = dirname(dirname(backendDir))
+export interface LocalPlatformInput {
+  /** The Convex project (backendAt): `convex dev` runs there and writes .env.local. */
+  backendDir: string
+  /** The command's name in messages, such as `local:dev`. */
+  command: string
+  log: (line: string) => void
+  /** Called with every output line of `convex dev`, for example to show sign-in codes. */
+  onBackendLine?: (line: string) => void
+  /** Ports the later processes need; one in use stops this before any process starts. */
+  freePorts?: number[]
+}
+
+/** The running local platform: a prepared backend, and a way to start more processes that stop together with it. */
+export interface LocalPlatform {
+  /** The deployment the Convex CLI selected, confirmed local. */
+  target: DeploymentTarget
+  /** The admin address to sign in with. */
+  admin: string
+  /**
+   * Starts a child with GINKO_LOCAL=1 and `env` added; its output goes to the log with its name in front (and to onLine),
+   * and its end stops all the others.
+   */
+  start: (name: string, command: string, args: string[], cwd: string, options?: { env?: Record<string, string>; onLine?: (line: string) => void }) => ChildProcess
+  /** Runs once when everything stops, before the children get their signal. */
+  onStop: (cleanup: () => void) => void
+  stopping: () => boolean
+  /** 0 after Ctrl-C, 1 when a child ended by itself. */
+  exited: Promise<number>
+}
+
+/**
+ * Starts the local Convex backend in backendDir without an account, waits until it serves functions, confirms that the
+ * Convex CLI selected the local deployment, and prepares it for sign-in (prepareLocalBackend). A known target that is not
+ * local, or a port of `freePorts` in use, stops this before any process starts. Children get GINKO_LOCAL=1.
+ */
+export async function startLocalPlatform(input: LocalPlatformInput): Promise<LocalPlatform> {
+  const { backendDir, command, log } = input
   // Before any process starts: `convex dev` would contact a cloud deployment first.
-  const early = knownTargetError(readDeploymentTarget(backendDir))
+  const early = knownTargetError(readDeploymentTarget(backendDir), command)
   if (early) throw new CliError(early, 'USAGE')
+  for (const port of input.freePorts ?? []) {
+    if (await listening(port)) throw new CliError(`${command} stopped: port ${port} is in use, and the Studio needs it. Stop what runs there and start again.`, 'USAGE')
+  }
   const env = { ...process.env, GINKO_LOCAL: '1' }
   const children: ChildProcess[] = []
-  let watcher: FSWatcher | undefined
-  let debounce: NodeJS.Timeout | undefined
+  const cleanups: (() => void)[] = []
   let stopping = false
 
   let finish: (code: number) => void = () => undefined
@@ -44,20 +80,24 @@ export async function runDev(input: DevInput): Promise<number> {
   const stop = (code: number) => {
     if (stopping) return
     stopping = true
-    watcher?.close()
-    clearTimeout(debounce)
+    for (const cleanup of cleanups) cleanup()
     for (const child of children) if (child.exitCode === null && child.pid) process.kill(-child.pid, 'SIGTERM')
     setTimeout(() => {
       for (const child of children) if (child.exitCode === null && child.pid) process.kill(-child.pid, 'SIGKILL')
     }, KILL_AFTER_MS).unref()
+    // Only now: `npm run dev` forwards a Ctrl-C, so a second SIGINT follows the terminal's. Without a listener it would
+    // end this process with Node's default action before the children got their signal.
+    process.off('SIGINT', onSignal)
+    process.off('SIGTERM', onSignal)
     finish(code)
   }
-  process.once('SIGINT', () => stop(0))
-  process.once('SIGTERM', () => stop(0))
+  const onSignal = () => stop(0)
+  process.on('SIGINT', onSignal)
+  process.on('SIGTERM', onSignal)
 
   // Output of a child goes to our log with its name in front; a child that ends stops the others.
-  const start = (name: string, command: string, args: string[], cwd: string, childEnv: NodeJS.ProcessEnv, onLine?: (line: string) => void) => {
-    const child = spawn(command, args, { cwd, env: childEnv, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
+  const startChild = (name: string, cmd: string, args: string[], cwd: string, childEnv: NodeJS.ProcessEnv, onLine?: (line: string) => void) => {
+    const child = spawn(cmd, args, { cwd, env: childEnv, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
     children.push(child)
     for (const stream of [child.stdout, child.stderr]) {
       let rest = ''
@@ -79,10 +119,11 @@ export async function runDev(input: DevInput): Promise<number> {
     return child
   }
 
-  // 1. Local backend. Its functions are up when `convex dev` says so.
+  // The local backend. Its functions are up when `convex dev` says so.
   const backend = new Promise<void>((done, fail) => {
     const timer = setTimeout(() => fail(new CliError('The local Convex backend is not ready after 3 minutes.', 'UNAVAILABLE')), READY_TIMEOUT_MS)
-    start('convex', 'npx', ['convex', 'dev'], backendDir, { ...env, CONVEX_AGENT_MODE: 'anonymous' }, (line) => {
+    startChild('convex', 'npx', ['convex', 'dev'], backendDir, { ...env, CONVEX_AGENT_MODE: 'anonymous' }, (line) => {
+      input.onBackendLine?.(line)
       if (CONVEX_READY.test(line)) {
         clearTimeout(timer)
         done()
@@ -94,20 +135,42 @@ export async function runDev(input: DevInput): Promise<number> {
   try {
     await backend
     // Confirm the deployment that the Convex CLI selected before any write. Only then every command gets it explicitly.
-    target = confirmLocal(backendDir)
-    // Before the platform starts: it reads the synced packages/ginko-server/.env.local once.
-    admin = await prepareLocalBackend(backendDir, 'local:dev', log, runOnce)
+    target = confirmLocal(backendDir, command)
+    // Before the Studio starts: it reads the synced backendDir/.env.local once.
+    admin = await prepareLocalBackend(backendDir, command, log, runOnce)
   } catch (error) {
     stop(1)
     throw error
   }
+  return {
+    target,
+    admin,
+    start: (name, cmd, args, cwd, options = {}) => startChild(name, cmd, args, cwd, { ...env, ...options.env }, options.onLine),
+    onStop: (cleanup) => { cleanups.push(cleanup) },
+    stopping: () => stopping,
+    exited,
+  }
+}
 
-  // 2. Local platform and the site.
-  start('platform', 'pnpm', ['--filter', '@ginko/platform', 'dev'], repoDir, env)
+export async function runDev(input: DevInput): Promise<number> {
+  const { backendDir, log } = input
+  const siteDir = dirname(input.configPath)
+  const repoDir = dirname(dirname(backendDir))
+  const platform = await startLocalPlatform({ backendDir, command: 'local:dev', log })
+  const { target, admin } = platform
+  let watcher: FSWatcher | undefined
+  let debounce: NodeJS.Timeout | undefined
+  platform.onStop(() => {
+    watcher?.close()
+    clearTimeout(debounce)
+  })
+
+  // Local platform and the site.
+  platform.start('platform', 'pnpm', ['--filter', '@ginko/platform', 'dev'], repoDir)
   // The site reads this local platform, also when its config names a hosted one (`platform`).
-  start('site', 'pnpm', ['exec', 'nuxt', 'dev'], siteDir, { ...env, NUXT_PUBLIC_GINKO_PLATFORM: 'http://localhost:3100' })
+  platform.start('site', 'pnpm', ['exec', 'nuxt', 'dev'], siteDir, { env: { NUXT_PUBLIC_GINKO_PLATFORM: 'http://localhost:3100' } })
 
-  // 3. Push the schema now and after every change of the config. A failed push is shown, the processes keep running.
+  // Push the schema now and after every change of the config. A failed push is shown, the processes keep running.
   // The watcher starts first, so a save during the first push is not lost.
   let revision = 0
   let site: string | undefined
@@ -121,24 +184,34 @@ export async function runDev(input: DevInput): Promise<number> {
       log(`Schema not pushed: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
-  const pushLatest = serialized(pushCurrent, () => stopping)
+  const pushLatest = serialized(pushCurrent, platform.stopping)
   watcher = watchFile(input.configPath, () => {
     clearTimeout(debounce)
-    debounce = setTimeout(() => { if (!stopping) void pushLatest() }, 200)
+    debounce = setTimeout(() => { if (!platform.stopping()) void pushLatest() }, 200)
   })
   await pushLatest()
   log(`local:dev is running. Config: ${input.configPath}. Press Ctrl-C to stop everything.`)
   log(`Studio: ${LOCAL_STUDIO} — sign in as ${admin}, codes: pnpm outbox ${admin}`)
   log('Changes to files that the config imports take effect only after restarting `pnpm local:dev`.')
-  // 4. Agents in the site folder: .mcp.json with a local key of the admin, once the admin has signed in.
+  // Agents in the site folder: .mcp.json with a local key of the admin, once the admin has signed in.
   const siteUrl = parseEnvFile(join(backendDir, '.env.local')).CONVEX_SITE_URL
   if (site && siteUrl) {
     void connectAgents({
-      siteDir, siteUrl, site, admin, log, stopped: () => stopping,
+      siteDir, siteUrl, site, admin, log, stopped: platform.stopping,
       devKey: async (args) => parseResult(await runOnce('npx', ['convex', 'run', 'agent:devKey', JSON.stringify(args)], backendDir, targetEnv(target))),
     }).catch((error: unknown) => log(`Agents: .mcp.json not written: ${error instanceof Error ? error.message : String(error)}`))
   }
-  return exited
+  return platform.exited
+}
+
+/** True when something answers on the port (IPv4 or IPv6 localhost), as scripts/lib/runs.ts checks it. */
+async function listening(port: number): Promise<boolean> {
+  const tryHost = (host: string) => new Promise<boolean>((done) => {
+    const socket = connect({ port, host })
+    socket.once('connect', () => { socket.destroy(); done(true) })
+    socket.once('error', () => done(false))
+  })
+  return (await tryHost('127.0.0.1')) || (await tryHost('::1'))
 }
 
 /**

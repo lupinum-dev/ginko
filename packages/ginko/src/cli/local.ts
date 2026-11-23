@@ -14,7 +14,7 @@ import { CliError, isObject } from './model.ts'
  * node_modules/@lupinum/ginko-server/convex/. Returns the folder, or throws when it has no convex.json.
  */
 export function backendAt(dir: string, command: string): string {
-  if (!existsSync(join(dir, 'convex.json'))) throw new CliError(`${command} stopped: ${dir} has no convex.json, so it is not a Convex project. Nothing was started.`, 'USAGE')
+  if (!existsSync(join(dir, 'convex.json'))) throw new CliError(`${command} stopped: ${dir} has no convex.json. Run it in the folder of the platform project, the one with convex.json. Nothing was started.`, 'USAGE')
   return dir
 }
 
