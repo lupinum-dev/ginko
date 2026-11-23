@@ -12,6 +12,7 @@
     "template-files.mjs",
     "template",
     "template-de",
+    "platform",
     "presets",
     "templates",
     "CHANGELOG.md"

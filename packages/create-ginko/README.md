@@ -47,6 +47,24 @@ The command always says which starter and languages it used. An unknown option, 
 with exit code 2 (a usage error, as in the `ginko` CLI) and creates nothing. A folder that exists and is not
 empty stops with exit code 1.
 
+## A platform project
+
+`--platform` creates a folder that runs the Ginko platform, the Studio and its backend, instead of a site:
+
+```bash
+npm create ginko@latest my-cms -- --platform
+cd my-cms
+npm install
+npm run dev
+```
+
+`npm run dev` runs `ginko-platform dev`: a local Convex backend (no Convex account needed) and the Studio on
+http://localhost:3100. Sign in as `admin@example.test`; the sign-in code appears in the terminal. The folder holds
+`package.json` (`@lupinum/ginko`, `@lupinum/ginko-server` and `@lupinum/ginko-studio` at this release's version),
+`nuxt.config.ts`, `convex.json` (the functions come from `node_modules/@lupinum/ginko-server/convex/`),
+`pnpm-workspace.yaml` (pnpm must install with `nodeLinker: hoisted`), `.gitignore` and a `README.md`. npm is tested;
+yarn and bun are not. `--platform` takes no other option. Putting the platform online comes with a later version.
+
 ## Presets (deprecated)
 
 `--preset` still works for now and prints a note; use `--template` instead.

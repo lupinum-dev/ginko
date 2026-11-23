@@ -218,6 +218,47 @@ describe('create-ginko --template', () => {
   })
 })
 
+describe('create-ginko --platform', () => {
+  const repo = (file: string) => readFileSync(fileURLToPath(new URL(`../../../${file}`, import.meta.url)), 'utf8')
+
+  it('writes a platform project: these files, this release of the platform packages, convex.json into ginko-server', () => {
+    const result = run('my-cms', '--platform')
+    expect(result.status).toBe(0)
+    // Wrong behaviour caught: site files (ginko.config.ts, content/, a .env secret) in a project that only runs the Studio.
+    expect(readdirSync(join(work, 'my-cms')).sort()).toEqual(['.gitignore', 'README.md', 'convex.json', 'nuxt.config.ts', 'package.json', 'pnpm-workspace.yaml'])
+    const pkg = JSON.parse(read('my-cms', 'package.json'))
+    expect(pkg.name).toBe('my-cms')
+    expect(pkg.scripts).toEqual({ dev: 'ginko-platform dev' })
+    // Wrong behaviour caught: the Studio of one release against the backend of another.
+    for (const name of ['@lupinum/ginko', '@lupinum/ginko-server', '@lupinum/ginko-studio']) expect(pkg.dependencies[name]).toBe(version)
+    // Wrong behaviour caught: a project that installs another Convex, Nuxt, Vue or sharp than the platform is built and tested with.
+    const catalog = (name: string) => new RegExp(`^  ${name}: (\\S+)$`, 'm').exec(repo('pnpm-workspace.yaml'))![1]
+    const platformApp = JSON.parse(repo('apps/platform/package.json')).dependencies
+    const server = JSON.parse(repo('packages/ginko-server/package.json')).dependencies
+    expect(pkg.dependencies).toMatchObject({ convex: catalog('convex'), nuxt: platformApp.nuxt, vue: platformApp.vue, sharp: server.sharp })
+    expect(JSON.parse(read('my-cms', 'convex.json'))).toEqual({ functions: 'node_modules/@lupinum/ginko-server/convex/', node: { externalPackages: ['sharp'] } })
+    // Wrong behaviour caught: pnpm's default symlinks, on which the Convex bundler fails ("found wrong number of app bundles").
+    expect(read('my-cms', 'pnpm-workspace.yaml')).toMatch(/^nodeLinker: hoisted$/m)
+    expect(read('my-cms', '.gitignore')).toMatch(/^\.env\.local$/m)
+    expect(read('my-cms', 'README.md')).toMatch(/^# my-cms\n/)
+    expect(read('my-cms', 'README.md')).not.toContain('{{')
+    expect(result.stdout).toContain('Created my-cms: a Ginko platform project')
+    expect(result.stdout).toContain('  cd my-cms\n  npm install\n  npm run dev\n')
+  })
+
+  // Wrong behaviour caught: `--platform --template starter` quietly makes one of the two, and the person expects the other.
+  it.each([
+    ['--template', ['bad-platform-template', '--platform', '--template', 'starter']],
+    ['--preset', ['bad-platform-preset', '--preset', 'gastro', '--platform']],
+    ['--locales', ['bad-platform-locales', '--platform', '--locales', 'de']],
+  ])('--platform with %s exits 2 and creates nothing', (_name, args) => {
+    const result = run(...args)
+    expect(result.status).toBe(2)
+    expect(result.stderr).toContain('--platform creates a platform project, not a site, so it takes no --template, --preset or --locales.')
+    expect(existsSync(join(work, args[0]!))).toBe(false)
+  })
+})
+
 describe('node version', () => {
   const range = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')).engines.node
   // Wrong behaviour caught: a stranger on Node 20 gets no hint until npm prints EBADENGINE.
