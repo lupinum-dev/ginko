@@ -27,6 +27,11 @@ export const QUESTIONS = {
 /** What setup knows about the project across runs. No secret goes here; the file may be committed. */
 export const STATE_FILE = 'ginko-platform.json'
 interface State {
+  /**
+   * What setup created, saved as soon as each creation succeeded: a run after a failure skips it. The values are the
+   * project names and the deployment reference.
+   */
+  created?: { vercelProject?: string; convexProject?: string; deployment?: string }
   convex?: {
     /** The `--deployment` reference of the production deployment (`team:project:prod`). */
     deployment: string
@@ -158,11 +163,15 @@ function shown(step: Planned): string {
 
 export async function setup({ cwd, options, env, run, ask, log }: SetupInput): Promise<void> {
   const dry = options.dryRun
-  const project = options.project ?? projectName(cwd)
   const statePath = join(cwd, STATE_FILE)
   const state: State = existsSync(statePath) ? JSON.parse(readFileSync(statePath, 'utf8')) as State : {}
   const save = () => { if (!dry) writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`) }
-  const deployment = state.convex?.deployment ?? (options.team ? `${options.team}:${project}:prod` : `${project}:prod`)
+  const record = (what: keyof NonNullable<State['created']>, value: string) => {
+    state.created = { ...state.created, [what]: value }
+    save()
+  }
+  const project = options.project ?? state.created?.convexProject ?? state.created?.vercelProject ?? projectName(cwd)
+  const deployment = state.convex?.deployment ?? state.created?.deployment ?? (options.team ? `${options.team}:${project}:prod` : `${project}:prod`)
   const onDeployment = ['--deployment', deployment]
   const linked = existsSync(join(cwd, '.vercel', 'project.json'))
 
@@ -258,7 +267,10 @@ export async function setup({ cwd, options, env, run, ask, log }: SetupInput): P
 
   // The Vercel project first: its address is the default Studio address.
   if (!linked) {
-    await step({ title: `Create the Vercel project ${project}`, command: 'vercel', args: ['project', 'create', project] })
+    if (!state.created?.vercelProject) {
+      await step({ title: `Create the Vercel project ${project}`, command: 'vercel', args: ['project', 'create', project] })
+      record('vercelProject', project)
+    }
     await step({ title: 'Link this folder to it', command: 'vercel', args: ['link', '--yes', '--project', project] })
     changed = true
   }
@@ -270,8 +282,14 @@ export async function setup({ cwd, options, env, run, ask, log }: SetupInput): P
   // The Convex project, its production deployment, and a deploy key for Vercel's production builds.
   let deployKey: string | undefined
   if (!state.convex) {
-    await step({ title: `Create the Convex project ${project}`, command: 'npx', args: ['convex', 'project', 'create', project, ...(options.team ? ['--team', options.team] : [])] })
-    await step({ title: 'Create its production deployment', command: 'npx', args: ['convex', 'deployment', 'create', deployment, '--type', 'prod', '--default', ...(options.region ? ['--region', options.region] : [])] })
+    if (!state.created?.convexProject) {
+      await step({ title: `Create the Convex project ${project}`, command: 'npx', args: ['convex', 'project', 'create', project, ...(options.team ? ['--team', options.team] : [])] })
+      record('convexProject', project)
+    }
+    if (!state.created?.deployment) {
+      await step({ title: 'Create its production deployment', command: 'npx', args: ['convex', 'deployment', 'create', deployment, '--type', 'prod', '--default', ...(options.region ? ['--region', options.region] : [])] })
+      record('deployment', deployment)
+    }
     changed = true
     const spec = await step({ title: 'Read the backend address', command: 'npx', args: ['convex', 'function-spec', ...onDeployment] })
     state.convex = { deployment, ...(dry ? { url: 'https://<deployment>.convex.cloud', siteUrl: 'https://<deployment>.convex.site' } : backendUrls(spec)) }

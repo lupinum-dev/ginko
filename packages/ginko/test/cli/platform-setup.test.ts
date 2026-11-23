@@ -138,6 +138,7 @@ describe('ginko-platform setup', () => {
     // Wrong behaviour caught: the backend addresses are guessed and the person has nothing to compare with the dashboard.
     expect(result.log).toContain('The backend: https://happy-cat-123.eu-west-1.convex.cloud (HTTP actions: https://happy-cat-123.eu-west-1.convex.site).')
     expect(JSON.parse(readFileSync(join(dir, 'ginko-platform.json'), 'utf8'))).toEqual({
+      created: { vercelProject: 'my-cms', convexProject: 'my-cms', deployment: 'my-cms:prod' },
       convex: { deployment: 'my-cms:prod', url: 'https://happy-cat-123.eu-west-1.convex.cloud', siteUrl: 'https://happy-cat-123.eu-west-1.convex.site' },
       siteUrl: 'https://my-cms-team.vercel.app',
       deployed: true,
@@ -203,6 +204,25 @@ describe('ginko-platform setup', () => {
     const again = await setup(fake, [], FRESH)
     expect(again.code).toBe(0)
     expect(fake.steps.map((step) => step.line).filter((line) => line.includes('create'))).toEqual(['npx convex deployment token create ginko-platform-vercel --deployment my-cms:prod'])
+  })
+
+  // Wrong behaviour caught: "run setup again to continue from here" creates the project a second time (Convex and
+  // Vercel refuse a taken name, or a second project appears) after a creation step half-way through failed.
+  it.each([
+    ['Create its production deployment', 'npx convex deployment create', ['npx convex project create my-cms']],
+    ['Link this folder to it', 'vercel link', ['vercel project create my-cms']],
+  ])('a failure at "%s": the second run creates nothing twice and finishes', async (title, failing, once) => {
+    const fake = world(dir)
+    fake.fail(failing)
+    const first = await setup(fake, [], FRESH)
+    expect(first.code).toBe(1)
+    expect(first.error).toContain(`: ${title}.`)
+    fake.fail(undefined)
+    const second = await setup(fake, [], FRESH)
+    expect(second.code).toBe(0)
+    const lines = fake.steps.map((step) => step.line)
+    for (const line of once) expect(lines.filter((ran) => ran === line)).toHaveLength(1)
+    expect(lines.at(-1)).toBe("npx convex run auth:ensureSigningKey '{}' --deployment my-cms:prod")
   })
 
   // Wrong behaviour caught: --dry-run creates a project, writes a file, or asks for the Resend key.
