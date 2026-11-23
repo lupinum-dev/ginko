@@ -60,6 +60,7 @@ import type * as reminders from "../reminders.js";
 import type * as retention from "../retention.js";
 import type * as routes_bundle from "../routes/bundle.js";
 import type * as routes_export from "../routes/export.js";
+import type * as routes_file from "../routes/file.js";
 import type * as routes_key from "../routes/key.js";
 import type * as routes_mcp from "../routes/mcp.js";
 import type * as routes_release from "../routes/release.js";
@@ -132,6 +133,7 @@ declare const fullApi: ApiFromModules<{
   retention: typeof retention;
   "routes/bundle": typeof routes_bundle;
   "routes/export": typeof routes_export;
+  "routes/file": typeof routes_file;
   "routes/key": typeof routes_key;
   "routes/mcp": typeof routes_mcp;
   "routes/release": typeof routes_release;

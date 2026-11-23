@@ -20,6 +20,7 @@
   },
   "files": [
     "convex",
+    "i18n",
     "README.md",
     "CHANGELOG.md"
   ],
@@ -35,13 +36,13 @@
     "@lupinum/better-convex-nuxt": "catalog:",
     "@lupinum/ginko": "workspace:^",
     "@lupinum/ginko-i18n": "workspace:^",
+    "@types/node": "^24.19.2",
     "better-auth": "catalog:",
     "convex": "catalog:",
     "sharp": "0.35.5"
   },
   "devDependencies": {
     "@edge-runtime/vm": "5.0.0",
-    "@types/node": "^24.19.2",
     "convex-test": "0.0.72",
     "typescript": "6.0.3"
   }
