@@ -57,7 +57,24 @@
       "button": "Supprimer mon compte"
     },
     "lede": "Choisissez un site pour modifier son contenu.",
-    "invites": "Invitations"
+    "invites": "Invitations",
+    "new": {
+      "title": "Nouveau site",
+      "lede": "Un site contient le contenu d’un site web. Ses domaines arrivent avec la première publication depuis le code du site web.",
+      "first": "Cette plateforme n’a pas encore de site. Créez le premier, puis connectez son site web.",
+      "adminsOnly": "Seuls les administrateurs de cette plateforme créent des sites.",
+      "name": "Nom",
+      "nameHint": "Le nom du site dans le Studio et dans les e-mails. La première publication reprend le nom du code du site web.",
+      "nameMissing": "Saisissez un nom.",
+      "url": "Adresse du site web",
+      "urlHint": "Où le site web est en ligne, ou le sera. La première publication reprend l’adresse du code du site web.",
+      "urlInvalid": "Saisissez l’adresse complète, par exemple https://www.example.com.",
+      "id": "Identifiant",
+      "idHint": "La même valeur que « site » dans le ginko.config.ts du site web. Il ne peut plus être modifié ensuite.",
+      "idInvalid": "Commencez par une lettre minuscule, puis 1 à 40 lettres minuscules, chiffres ou tirets.",
+      "idTaken": "L’identifiant « {id} » est déjà utilisé. Choisissez-en un autre.",
+      "submit": "Créer le site"
+    }
   },
   "login": {
     "title": "Se connecter",
@@ -358,6 +375,15 @@
         "name": "« {title} »",
         "newIn": "{area} : nouvelle entrée"
       }
+    },
+    "connect": {
+      "title": "Connecter le site web",
+      "lede": "Ce site n’a pas encore de domaines. Ils viennent du code du site web. Trois étapes les amènent ici.",
+      "key": "Créez une clé sous « Clés de publication ». Le Studio ne l’affiche qu’une fois.",
+      "keyLink": "Ouvrir Équipe",
+      "id": "Dans le ginko.config.ts du site web, indiquez cet identifiant :",
+      "release": "Lancez la première publication dans le projet du site web, sur un commit poussé sur main. Mettez votre clé à la place des points :",
+      "after": "Après la publication, cette page affiche les domaines."
     },
     "all": {
       "heading": "Contenu",

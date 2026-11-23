@@ -70,6 +70,8 @@ const grid = 'grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_mi
           <h1 class="text-[1.375rem] font-semibold tracking-tight">{{ s.isManager.value ? t('site.all.heading') : t('site.all.headingStaff') }}</h1>
           <p class="mt-1 max-w-[65ch] text-muted-foreground min-[900px]:text-sm">{{ s.isManager.value ? t('site.all.lede') : t('site.all.ledeStaff') }}</p>
         </header>
+        <!-- A site before its first release: no areas to list, so the page says how the website sends them. -->
+        <SiteConnect v-if="s.isManager.value && s.site.value?.release === null" :slug="s.slug.value" />
         <LocalDraftList v-if="s.schema.value" :slug="s.slug.value" :schema="s.schema.value" :main="s.main.value" :bricks="openable" :task-of="noTask" :recent="wide ? recent : undefined" />
         <AllNav class="list min-[900px]:hidden" :slug="s.slug.value" :bricks="editable" />
         <section v-if="wide && editable.length" aria-labelledby="all-areas">

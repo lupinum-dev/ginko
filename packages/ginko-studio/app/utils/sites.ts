@@ -1,4 +1,17 @@
 // The sites a person may open (sites.mine), as "Meine Seiten" and the command palette list them.
+import { slugify } from '@lupinum/ginko/internal'
+
+/**
+ * A site's identifier as the server accepts it (ginko-server `lib/input.ts` SLUG, which decides): a lowercase letter,
+ * then 1 to 40 lowercase letters, digits or hyphens. Checked here only so the form can name the rule next to the field.
+ */
+export const SITE_ID = /^[a-z][a-z0-9-]{1,40}$/
+
+/** An identifier made from a site's name ("Café Central" → "cafe-central"), '' while the name gives none. */
+export function siteIdOf(name: string): string {
+  if (!/[a-z0-9]/i.test(name)) return ''
+  return slugify(name).replace(/^[^a-z]+/, '').slice(0, 41).replace(/-+$/, '')
+}
 
 interface SiteLike { slug: string; name: string; url: string }
 

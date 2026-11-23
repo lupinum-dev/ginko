@@ -57,7 +57,24 @@
       "button": "Eliminar mi cuenta"
     },
     "lede": "Elige un sitio para editar su contenido.",
-    "invites": "Invitaciones"
+    "invites": "Invitaciones",
+    "new": {
+      "title": "Nuevo sitio",
+      "lede": "Un sitio contiene el contenido de una web. Sus áreas llegan con la primera publicación desde el código de la web.",
+      "first": "Esta plataforma aún no tiene ningún sitio. Crea el primero y conecta después su web.",
+      "adminsOnly": "Solo los administradores de esta plataforma crean sitios.",
+      "name": "Nombre",
+      "nameHint": "Así se llama el sitio en el Studio y en los correos. La primera publicación toma el nombre del código de la web.",
+      "nameMissing": "Escribe un nombre.",
+      "url": "Dirección de la web",
+      "urlHint": "Dónde está o estará en línea la web. La primera publicación toma la dirección del código de la web.",
+      "urlInvalid": "Escribe la dirección completa, por ejemplo https://www.example.com.",
+      "id": "Identificador",
+      "idHint": "El mismo valor que «site» en el ginko.config.ts de la web. No se puede cambiar después.",
+      "idInvalid": "Empieza con una letra minúscula, seguida de 1 a 40 letras minúsculas, cifras o guiones.",
+      "idTaken": "El identificador «{id}» ya está en uso. Elige otro.",
+      "submit": "Crear sitio"
+    }
   },
   "login": {
     "title": "Iniciar sesión",
@@ -358,6 +375,15 @@
         "name": "“{title}”",
         "newIn": "{area}: entrada nueva"
       }
+    },
+    "connect": {
+      "title": "Conectar la web",
+      "lede": "Este sitio aún no tiene áreas. Llegan desde el código de la web. Tres pasos las traen aquí.",
+      "key": "Crea una clave en «Claves de publicación». El Studio la muestra una sola vez.",
+      "keyLink": "Abrir Equipo",
+      "id": "En el ginko.config.ts de la web, pon este identificador:",
+      "release": "Lanza la primera publicación en el proyecto de la web, en un commit que esté subido a main. Pon tu clave en lugar de los puntos:",
+      "after": "Después de la publicación, esta página muestra las áreas."
     },
     "all": {
       "heading": "Contenido",

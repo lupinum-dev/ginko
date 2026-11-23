@@ -57,7 +57,24 @@
       "button": "Mein Konto löschen"
     },
     "lede": "Wähle eine Seite, um ihre Inhalte zu bearbeiten.",
-    "invites": "Einladungen"
+    "invites": "Einladungen",
+    "new": {
+      "title": "Neue Seite",
+      "lede": "Eine Seite enthält die Inhalte einer Website. Ihre Bereiche kommen mit der ersten Veröffentlichung aus dem Code der Website.",
+      "first": "Auf dieser Plattform gibt es noch keine Seite. Lege die erste an und verbinde dann ihre Website.",
+      "adminsOnly": "Nur Admins dieser Plattform legen Seiten an.",
+      "name": "Name",
+      "nameHint": "So heißt die Seite im Studio und in E-Mails. Die erste Veröffentlichung übernimmt den Namen aus dem Code der Website.",
+      "nameMissing": "Gib einen Namen ein.",
+      "url": "Adresse der Website",
+      "urlHint": "Wo die Website online ist oder sein wird. Die erste Veröffentlichung übernimmt die Adresse aus dem Code der Website.",
+      "urlInvalid": "Gib die ganze Adresse ein, zum Beispiel https://www.example.com.",
+      "id": "Kennung",
+      "idHint": "Derselbe Wert wie „site“ in der ginko.config.ts der Website. Sie lässt sich später nicht ändern.",
+      "idInvalid": "Beginne mit einem Kleinbuchstaben, dann 1 bis 40 Kleinbuchstaben, Ziffern oder Bindestriche.",
+      "idTaken": "Die Kennung „{id}“ ist schon vergeben. Wähle eine andere.",
+      "submit": "Seite anlegen"
+    }
   },
   "login": {
     "title": "Anmelden",
@@ -358,6 +375,15 @@
         "name": "„{title}“",
         "newIn": "{area}: Neuer Eintrag"
       }
+    },
+    "connect": {
+      "title": "Website verbinden",
+      "lede": "Diese Seite hat noch keine Bereiche. Sie kommen aus dem Code der Website. Drei Schritte bringen sie hierher.",
+      "key": "Lege unter „Schlüssel für Veröffentlichungen“ einen Schlüssel an. Das Studio zeigt ihn einmal.",
+      "keyLink": "Team öffnen",
+      "id": "Trage in der ginko.config.ts der Website diese Kennung ein:",
+      "release": "Starte im Projekt der Website die erste Veröffentlichung, auf einem Commit, der auf main gepusht ist. Setze deinen Schlüssel an die Stelle der Punkte:",
+      "after": "Nach der Veröffentlichung zeigt diese Seite die Bereiche."
     },
     "all": {
       "heading": "Inhalte",
