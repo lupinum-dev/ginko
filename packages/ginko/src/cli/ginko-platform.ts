@@ -43,6 +43,8 @@ Options:
   -h, --help            Show this help
 setup reads the Resend API key from RESEND_API_KEY or asks for it; it never takes it as an option.
 --team is the Convex team; on Vercel, setup uses the scope the Vercel CLI has selected (vercel switch).
+Convex puts the deployment in the team's default region (team settings in the Convex dashboard); --region chooses
+another, for example --region eu, and an unknown name makes Convex list the names the team can use.
 `
 
 /** The options of each command; anything else is refused with the usage. */
