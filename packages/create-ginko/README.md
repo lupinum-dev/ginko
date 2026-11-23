@@ -39,7 +39,8 @@ npm create ginko@latest my-site -- --locales de
 | `-h`, `--help` | | |
 
 With `--template`, the command copies the template, keeps only the languages of `--locales` (their content files,
-`i18n/<code>.json` and their entries in the route maps), moves the dates of upcoming sample entries (such as events and notices) by
+message files, addresses, the texts per language in `app/app.config.ts` and the labels of the bricks; the README gets
+a line that names the languages of the copy), moves the dates of upcoming sample entries (such as events and notices) by
 whole weeks to this week, sets the site id and writes a `.env` with `NUXT_APP_SECRET`.
 
 The command always says which starter and languages it used. An unknown option, template, preset or locale stops

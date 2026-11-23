@@ -185,6 +185,15 @@ describe('create-ginko --template', () => {
     expect(existsSync(join(work, 'tpl-site/gitignore'))).toBe(false)
   })
 
+  // Wrong behaviour caught: the README of a copy with other languages still describes the template's languages and
+  // file names (`about.de.md` for a site whose German files have no code) and says nothing about it.
+  it('says at the top of the README which languages the copy has', () => {
+    expect(runAt(`${starter.ginko.sampleAnchor}T10:00:00Z`, 'tpl-german', '--template', 'starter', '--locales', 'de,en').status).toBe(0)
+    expect(read('tpl-german', 'README.md').split('\n')[2]).toMatch(/^> \*\*The languages of this copy:\*\* German \(the main language\) and English\. .*`home\.en\.md`/)
+    expect(runAt(`${starter.ginko.sampleAnchor}T10:00:00Z`, 'tpl-english', '--template', 'starter', '--locales', 'en').status).toBe(0)
+    expect(read('tpl-english', 'README.md').split('\n')[2]).toMatch(/^> \*\*The languages of this copy:\*\* English only\. /)
+  })
+
   it('moves only the dates of entries that expire by whole weeks, and nothing else', () => {
     // 10 weeks and 3 days after the anchor: dates move 10 weeks, so each keeps its weekday.
     const anchor = Date.parse(`${starter.ginko.sampleAnchor}T00:00:00Z`)

@@ -29,43 +29,67 @@ const trilingual = {
   'content/events/1.fair.de.md': '---\ntitle: Messe\n---\n',
   'content/authors/ada.yml': 'name: Ada\n',
   'i18n/en.json': '{}', 'i18n/de.json': '{}', 'i18n/fr.json': '{}',
+  'i18n/site/en.json': '{}', 'i18n/site/de.json': '{}', 'i18n/site/fr.json': '{}',
+  'app/app.config.ts': "export default defineAppConfig({\n  site: {\n    tagline: {\n      en: 'River',\n      de: 'Fluss',\n      fr: 'Rivière',\n    },\n    nav: [{ page: 'news', label: { en: 'News', de: 'Neues', fr: 'Actualités' } }],\n  },\n})\n",
+  // Labels for editors: in three languages in the config, in two in a shared brick.
+  'app/bricks/pages.ts': "export const pages = () => collection({ label: { de: 'Seiten', en: 'Pages' }, fields: { title: f.text({ de: 'Titel', en: 'Title' }) } })\n",
   'app/routes.ts': "export const locales = ['en', 'de', 'fr'] as const\nexport const slugs = {\n  events: {\n    en: 'events',\n    de: 'veranstaltungen',\n    fr: 'evenements',\n  },\n  about: { en: 'about', de: 'ueber-uns', fr: 'a-propos' },\n}\n",
-  'ginko.config.ts': "export default defineSite({\n  site: 'x',\n  locales,\n  languages: { en: 'en-GB', de: 'de-AT', fr: 'fr-FR' },\n})\n",
+  'ginko.config.ts': "export default defineSite({\n  site: 'x',\n  locales,\n  languages: { en: 'en-GB', de: 'de-AT', fr: 'fr-FR' },\n  bricks: { home: single({ label: { de: 'Startseite', en: 'Home page', fr: 'Page d\\'accueil' }, tasks: [{ id: 'edit' }] }) },\n})\n",
 }
 
 describe('pruneLocales', () => {
   // Wrong behaviour caught: a dropped language's files stay (the build fails: "Language fr is not in the site's
   // locales"), the old main text stays the main file after a swap, or `languages` keeps a dropped locale (checkSite).
+  // And a new site in German and English that still shows French: in app/app.config.ts, in the message files of a
+  // folder (i18n/site/fr.json) and in the labels of its bricks. A label keeps English when the main language has no
+  // text (Ginko refuses a label without both), and an object that is no label stays (`{ id: 'edit' }`).
   it.each([
     {
       chosen: ['en'],
-      files: ['app/routes.ts', 'content/authors/ada.yml', 'content/events/1.fair.md', 'content/home.md', 'ginko.config.ts', 'i18n/en.json'],
+      files: ['app/app.config.ts', 'app/bricks/pages.ts', 'app/routes.ts', 'content/authors/ada.yml', 'content/events/1.fair.md', 'content/home.md', 'ginko.config.ts', 'i18n/en.json', 'i18n/site/en.json'],
       main: { 'content/home.md': 'Home', 'content/events/1.fair.md': 'Fair' },
+      texts: {
+        'app/app.config.ts': ["tagline: {\n      en: 'River',\n    }", "label: { en: 'News' } }"],
+        'ginko.config.ts': ["label: { en: 'Home page' }, tasks: [{ id: 'edit' }]"],
+        'app/bricks/pages.ts': ["label: { en: 'Pages' }", "f.text({ en: 'Title' })"],
+      },
       routes: "export const locales = ['en'] as const\nexport const slugs = {\n  events: {\n    en: 'events',\n  },\n  about: { en: 'about' },\n}\n",
       languages: "languages: { en: 'en-GB' }",
     },
     {
       chosen: ['de', 'en'],
-      files: ['app/routes.ts', 'content/authors/ada.yml', 'content/events/1.fair.en.md', 'content/events/1.fair.md', 'content/home.en.md', 'content/home.md', 'ginko.config.ts', 'i18n/de.json', 'i18n/en.json'],
+      files: ['app/app.config.ts', 'app/bricks/pages.ts', 'app/routes.ts', 'content/authors/ada.yml', 'content/events/1.fair.en.md', 'content/events/1.fair.md', 'content/home.en.md', 'content/home.md', 'ginko.config.ts', 'i18n/de.json', 'i18n/en.json', 'i18n/site/de.json', 'i18n/site/en.json'],
       main: { 'content/home.md': 'Start', 'content/home.en.md': 'Home', 'content/events/1.fair.md': 'Messe', 'content/events/1.fair.en.md': 'Fair' },
+      texts: {
+        'app/app.config.ts': ["tagline: {\n      en: 'River',\n      de: 'Fluss',\n    }", "label: { en: 'News', de: 'Neues' } }"],
+        'ginko.config.ts': ["label: { de: 'Startseite', en: 'Home page' }, tasks: [{ id: 'edit' }]"],
+        'app/bricks/pages.ts': ["label: { de: 'Seiten', en: 'Pages' }", "f.text({ de: 'Titel', en: 'Title' })"],
+      },
       routes: "export const locales = ['de', 'en'] as const\nexport const slugs = {\n  events: {\n    en: 'events',\n    de: 'veranstaltungen',\n  },\n  about: { en: 'about', de: 'ueber-uns' },\n}\n",
       languages: "languages: { en: 'en-GB', de: 'de-AT' }",
     },
     {
       // French main without English: a file with no French translation keeps its English text as the main file.
       chosen: ['fr'],
-      files: ['app/routes.ts', 'content/authors/ada.yml', 'content/events/1.fair.md', 'content/home.md', 'ginko.config.ts', 'i18n/fr.json'],
+      files: ['app/app.config.ts', 'app/bricks/pages.ts', 'app/routes.ts', 'content/authors/ada.yml', 'content/events/1.fair.md', 'content/home.md', 'ginko.config.ts', 'i18n/fr.json', 'i18n/site/fr.json'],
       main: { 'content/home.md': 'Accueil', 'content/events/1.fair.md': 'Fair' },
+      texts: {
+        'app/app.config.ts': ["tagline: {\n      fr: 'Rivière',\n    }", "label: { fr: 'Actualités' } }"],
+        'ginko.config.ts': ["label: { fr: 'Page d\\'accueil' }, tasks: [{ id: 'edit' }]"],
+        // The shared brick has no French label: English stays.
+        'app/bricks/pages.ts': ["label: { en: 'Pages' }", "f.text({ en: 'Title' })"],
+      },
       routes: "export const locales = ['fr'] as const\nexport const slugs = {\n  events: {\n    fr: 'evenements',\n  },\n  about: { fr: 'a-propos' },\n}\n",
       languages: "languages: { fr: 'fr-FR' }",
     },
-  ])('--locales $chosen', ({ chosen, files, main, routes, languages }) => {
+  ])('--locales $chosen', ({ chosen, files, main, routes, languages, texts }) => {
     const dir = folder(trilingual)
     pruneLocales(dir, ['en', 'de', 'fr'], chosen)
     expect(tree(dir)).toEqual(files)
     for (const [path, title] of Object.entries(main)) expect(read(dir, path), path).toContain(`title: ${title}`)
     expect(read(dir, 'app/routes.ts')).toBe(routes)
     expect(read(dir, 'ginko.config.ts')).toContain(languages)
+    for (const [path, parts] of Object.entries(texts)) for (const part of parts) expect(read(dir, path), path).toContain(part)
   })
 
   // Wrong behaviour caught: after a main-language swap the new main file lacks the language-independent fields
@@ -136,12 +160,12 @@ describe('pruneLocales', () => {
     expect(read(dir, 'ginko.config.ts')).toBe("export default defineSite({\n  locales: ['en'],\n  languages: { en: 'en-GB' },\n})\n")
   })
 
-  // Wrong behaviour caught: dropping the site language `de` also strips the German Studio label of a field, which is
-  // not a site locale map.
-  it('prunes only the locale maps of ginko.config.ts, not a field label keyed by language', () => {
+  // Wrong behaviour caught: `pages` or a brick's `route` in ginko.config.ts keeps the address of a dropped language
+  // (the site check fails), or a label keeps its text.
+  it('prunes the locale maps and the labels of ginko.config.ts', () => {
     const dir = folder({ 'ginko.config.ts': "export default defineSite({\n  locales: ['en', 'de'],\n  languages: { en: 'en-GB', de: 'de-AT' },\n  pages: { home: { en: '/', de: '/de' } },\n  bricks: { posts: collection({ label: { de: 'Beiträge', en: 'Posts' }, route: { en: '/posts/[slug]', de: '/de/beitraege/[slug]' } }) },\n})\n" })
     pruneLocales(dir, ['en', 'de'], ['en'])
-    expect(read(dir, 'ginko.config.ts')).toBe("export default defineSite({\n  locales: ['en'],\n  languages: { en: 'en-GB' },\n  pages: { home: { en: '/' } },\n  bricks: { posts: collection({ label: { de: 'Beiträge', en: 'Posts' }, route: { en: '/posts/[slug]' } }) },\n})\n")
+    expect(read(dir, 'ginko.config.ts')).toBe("export default defineSite({\n  locales: ['en'],\n  languages: { en: 'en-GB' },\n  pages: { home: { en: '/' } },\n  bricks: { posts: collection({ label: { en: 'Posts' }, route: { en: '/posts/[slug]' } }) },\n})\n")
   })
 
   it('refuses a locale the template does not have and changes nothing', () => {
