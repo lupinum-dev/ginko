@@ -95,7 +95,7 @@ describe('ginko-platform setup', () => {
       'vercel link --yes --project my-cms',
       'vercel project inspect my-cms --format json',
       'npx convex project create my-cms',
-      'npx convex deployment create my-cms:prod --type prod --default',
+      'npx convex deployment create my-cms:production --type prod --default',
       'npx convex function-spec --deployment my-cms:prod',
       'npx convex deployment token create ginko-platform-vercel --deployment my-cms:prod',
       `npx convex env set --from-file ${file.path} --deployment my-cms:prod`,
@@ -233,7 +233,7 @@ describe('ginko-platform setup', () => {
     expect(fake.steps).toEqual([])
     expect(result.asked).toEqual([])
     expect(readdirSync(dir)).toEqual(['convex.json'])
-    expect(result.log).toContain('npx convex deployment create lupinum:ginko-setup-test:prod --type prod --default')
+    expect(result.log).toContain('npx convex deployment create lupinum:ginko-setup-test:production --type prod --default')
     expect(result.log).toContain('vercel env add CONVEX_DEPLOY_KEY production --sensitive < <hidden>')
     expect(result.log).toContain('   RESEND_API_KEY=<hidden>')
     expect(result.log).toContain('npx convex function-spec --deployment lupinum:ginko-setup-test:prod')

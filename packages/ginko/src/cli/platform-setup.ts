@@ -171,7 +171,10 @@ export async function setup({ cwd, options, env, run, ask, log }: SetupInput): P
     save()
   }
   const project = options.project ?? state.created?.convexProject ?? state.created?.vercelProject ?? projectName(cwd)
-  const deployment = state.convex?.deployment ?? state.created?.deployment ?? (options.team ? `${options.team}:${project}:prod` : `${project}:prod`)
+  const inProject = options.team ? `${options.team}:${project}` : project
+  // `prod` is the alias of the default production deployment: every command uses it, but `deployment create` refuses it
+  // as the new deployment's reference ("prod" is reserved), so the deployment is created as `production`.
+  const deployment = state.convex?.deployment ?? state.created?.deployment ?? `${inProject}:prod`
   const onDeployment = ['--deployment', deployment]
   const linked = existsSync(join(cwd, '.vercel', 'project.json'))
 
@@ -287,7 +290,7 @@ export async function setup({ cwd, options, env, run, ask, log }: SetupInput): P
       record('convexProject', project)
     }
     if (!state.created?.deployment) {
-      await step({ title: 'Create its production deployment', command: 'npx', args: ['convex', 'deployment', 'create', deployment, '--type', 'prod', '--default', ...(options.region ? ['--region', options.region] : [])] })
+      await step({ title: 'Create its production deployment', command: 'npx', args: ['convex', 'deployment', 'create', `${inProject}:production`, '--type', 'prod', '--default', ...(options.region ? ['--region', options.region] : [])] })
       record('deployment', deployment)
     }
     changed = true
