@@ -44,14 +44,15 @@ cycle between the published packages (a peer dependency counts).
 
 ### First publication of the new packages
 
-npm attaches a trusted publisher only to a package that exists. These packages are not on npm yet:
-`@lupinum/ginko`, `@lupinum/ginko-i18n`, `@lupinum/ginko-components`, `@lupinum/ginko-preset-gastro`, `create-ginko`.
+npm attaches a trusted publisher only to a package that exists. These packages of the group are not on npm yet:
+`@lupinum/ginko-server`, `@lupinum/ginko-studio`, `@lupinum/ginko-editor`. Their first publication is by hand, by
+Matthias with his 2FA code; the other packages of the group publish by the workflow afterwards.
 Follow "First publication of a new package" in the handbook: reject the `npm` deployment of the first run, download its
 `release` artifact, publish only those tarballs by hand with
 `npm publish ./release/<file>.tgz --access public --ignore-scripts --tag latest` (`--tag next` for a prerelease) and your 2FA code,
 then set on every package the trusted publisher (workflow `release.yml`, environment `npm`) and "Require two-factor
 authentication and disallow tokens". Then run `release.yml` by hand on `main`: it publishes the packages that already
-exist (`@lupinum/ginko-content`, `@lupinum/ginko-docs`) with provenance and creates the tag and GitHub release.
+exist (the seven of the first release) with provenance and creates the tag and GitHub release.
 
 ## Repository
 
