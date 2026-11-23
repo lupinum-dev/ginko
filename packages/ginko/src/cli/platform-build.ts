@@ -8,9 +8,9 @@ import { CliError } from './model.ts'
 import type { CommandRunner } from './platform-run.ts'
 
 /**
- * `convex run` with only CONVEX_DEPLOY_KEY set: vercel-build.sh passes --prod, and the Convex help says a deploy key
- * "scopes all commands to the target deployment". Whether --prod is needed (or harmful) with a key alone is not
- * confirmed; a real production build log must confirm it (internals/migrations.md and the plan list it as open).
+ * `convex run` with only CONVEX_DEPLOY_KEY set, as vercel-build.sh passes it. `--prod` with a production deploy key
+ * alone works: confirmed by a real build on 2026-11-23 (a Vercel production build of a platform project, with the key
+ * from `convex deployment token create`, which also has the rights `convex deploy` needs).
  */
 export const RUN_ON_PRODUCTION = ['--prod']
 

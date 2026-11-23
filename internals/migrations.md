@@ -59,8 +59,8 @@ key, then `convex run --prod migrations:runPending` (warn on failure), then `nux
 the other until the script is gone. Depends on it: the hosted platform's Vercel project (`buildCommand` in
 `apps/platform/vercel.json`). Remove the script and this entry when `apps/platform` builds with
 `ginko-platform build --convex ../../packages/ginko-server` (piece K of the self-hosting plan, with Matthias's OK,
-since it changes the production build). Open until a real build log shows it: whether `convex run` needs `--prod`
-when only `CONVEX_DEPLOY_KEY` is set (`RUN_ON_PRODUCTION` in `platform-build.ts`).
+since it changes the production build). `convex run --prod` with only `CONVEX_DEPLOY_KEY` set works: confirmed by a
+real build on 2026-11-23 (`RUN_ON_PRODUCTION` in `platform-build.ts`).
 
 ## Entry storage: trees in `entryTrees`, text-only budget, separate trash (`2026-10-14-entry-storage`)
 
