@@ -26,7 +26,7 @@ const NOT_PROD_KEY = 'CONVEX_DEPLOY_KEY must be a production deploy key (it star
  * Outside Vercel, a production deploy key deploys; no key builds the Studio only. Another kind of key (a preview or
  * dev key) is refused: a deploy to an unexpected deployment is worse than a stopped build.
  */
-export function decideBuild(env: { VERCEL_ENV?: string; CONVEX_DEPLOY_KEY?: string }): BuildDecision {
+export function decideBuild(env: NodeJS.ProcessEnv): BuildDecision {
   const key = env.CONVEX_DEPLOY_KEY ?? ''
   if (env.VERCEL_ENV) {
     if (env.VERCEL_ENV !== 'production') return { deploy: false, note: `A ${env.VERCEL_ENV} build on Vercel: only the Studio is built, the backend is not deployed.` }
