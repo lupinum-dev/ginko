@@ -177,6 +177,9 @@ describe('create-ginko --template', () => {
     // Wrong behaviour caught: a site in English and German whose labels still carry the template's French texts.
     expect(read('tpl-site', 'ginko.config.ts')).toContain("label: { de: 'Startseite', en: 'Home page' }")
     expect(read('tpl-site', 'README.md')).not.toContain('The languages of this copy')
+    // Wrong behaviour caught: files of the new site that tell their owner to edit a source in the Ginko repository.
+    expect(read('tpl-site', 'app/bricks/pages.ts')).toMatch(/^import /)
+    expect(read('tpl-site', 'app/pages/[...slug].vue')).toMatch(/^<script setup/)
     const pkg = JSON.parse(read('tpl-site', 'package.json'))
     expect(pkg.name).toBe('tpl-site')
     // Wrong behaviour caught: the committed range of the next release, which npm does not have yet.
