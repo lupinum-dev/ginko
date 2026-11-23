@@ -2,7 +2,7 @@
 // published package carries them; create-ginko --template <name> copies them from there. Next to each copy goes
 // <name>.json (template-files.mjs manifestOf): the locales and the date fields, read from the template's config,
 // which only the monorepo can import. Runs before `pnpm pack` (prepack) and in the root `pnpm build`.
-import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { manifestOf, notCopied } from './template-files.mjs'
@@ -16,6 +16,14 @@ const names = readdirSync(source).filter((name) => !name.startsWith('_') && exis
 for (const name of names) {
   const target = join(out, name)
   cpSync(join(source, name), target, { recursive: true, filter: (path) => !notCopied.has(basename(path)) })
+  // A file that `pnpm templates sync` wrote starts with a line for this repository ("Synced from … Edit the source,
+  // not this copy"). In a new site the copy is the source: the line goes.
+  for (const file of readdirSync(target, { recursive: true }).map((path) => join(target, String(path)))) {
+    if (!statSync(file).isFile() || !/\.(?:ts|mjs|vue|css)$/.test(file)) continue
+    const text = readFileSync(file, 'utf8')
+    const own = text.replace(/^((?:#!.*\n)?)(?:<!--|\/\/|\/\*) Synced from templates\/_features\/[^\n]*\n/, '$1')
+    if (own !== text) writeFileSync(file, own)
+  }
   // npm drops .gitignore from published packages; create-ginko renames it back.
   if (existsSync(join(target, '.gitignore'))) renameSync(join(target, '.gitignore'), join(target, 'gitignore'))
   const site = (await import(pathToFileURL(join(source, name, 'ginko.config.ts')).href)).default

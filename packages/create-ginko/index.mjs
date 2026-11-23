@@ -117,9 +117,20 @@ if (template) {
   cpSync(new URL(template, templatesDir), dir, { recursive: true })
   if (existsSync(join(dir, 'gitignore'))) renameSync(join(dir, 'gitignore'), join(dir, '.gitignore'))
   chosen = locales ?? manifest.locales
-  if (chosen.join() !== manifest.locales.join()) {
+  {
     try {
+      // Also with all languages of the template: the labels of its bricks then lose the ones the site does not have.
       pruneLocales(dir, manifest.locales, chosen)
+      // The README describes the template with all its languages: say at its top which ones this copy has.
+      const readme = join(dir, 'README.md')
+      if (chosen.join() !== manifest.locales.join() && existsSync(readme)) {
+        const [main, ...others] = chosen
+        const has = others.length
+          ? `${languageName(main)} (the main language) and ${others.map(languageName).join(', ')}. A file of the main language has no language code (\`home.md\`), a translation has one (\`home.${others[0]}.md\`)`
+          : `${languageName(main)} only`
+        const note = `> **The languages of this copy:** ${has}. \`create-ginko\` removed the other languages of the template, so read the languages and file names below with that in mind.`
+        writeFileSync(readme, readFileSync(readme, 'utf8').replace(/^(# .*\n)/, `$1\n${note}\n`))
+      }
     } catch (error) {
       rmSync(dir, { recursive: true, force: true })
       console.error(`Could not set the languages: ${error.message}`)

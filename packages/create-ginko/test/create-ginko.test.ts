@@ -174,6 +174,12 @@ describe('create-ginko --template', () => {
     expect(result.stdout).toContain('Created tpl-site from the starter template in English and German.')
     // Wrong behaviour caught: two sites created from one template share the template's site id.
     expect(read('tpl-site', 'ginko.config.ts')).toMatch(/\bsite: 'tpl-site'/)
+    // Wrong behaviour caught: a site in English and German whose labels still carry the template's French texts.
+    expect(read('tpl-site', 'ginko.config.ts')).toContain("label: { de: 'Startseite', en: 'Home page' }")
+    expect(read('tpl-site', 'README.md')).not.toContain('The languages of this copy')
+    // Wrong behaviour caught: files of the new site that tell their owner to edit a source in the Ginko repository.
+    expect(read('tpl-site', 'app/bricks/pages.ts')).toMatch(/^import /)
+    expect(read('tpl-site', 'app/pages/[...slug].vue')).toMatch(/^<script setup/)
     const pkg = JSON.parse(read('tpl-site', 'package.json'))
     expect(pkg.name).toBe('tpl-site')
     // Wrong behaviour caught: the committed range of the next release, which npm does not have yet.
@@ -183,6 +189,15 @@ describe('create-ginko --template', () => {
     expect(read('tpl-site', '.env')).toMatch(/^NUXT_APP_SECRET=[\da-f]{64}$/m)
     expect(existsSync(join(work, 'tpl-site/.gitignore'))).toBe(true)
     expect(existsSync(join(work, 'tpl-site/gitignore'))).toBe(false)
+  })
+
+  // Wrong behaviour caught: the README of a copy with other languages still describes the template's languages and
+  // file names (`about.de.md` for a site whose German files have no code) and says nothing about it.
+  it('says at the top of the README which languages the copy has', () => {
+    expect(runAt(`${starter.ginko.sampleAnchor}T10:00:00Z`, 'tpl-german', '--template', 'starter', '--locales', 'de,en').status).toBe(0)
+    expect(read('tpl-german', 'README.md').split('\n')[2]).toMatch(/^> \*\*The languages of this copy:\*\* German \(the main language\) and English\. .*`home\.en\.md`/)
+    expect(runAt(`${starter.ginko.sampleAnchor}T10:00:00Z`, 'tpl-english', '--template', 'starter', '--locales', 'en').status).toBe(0)
+    expect(read('tpl-english', 'README.md').split('\n')[2]).toMatch(/^> \*\*The languages of this copy:\*\* English only\. /)
   })
 
   it('moves only the dates of entries that expire by whole weeks, and nothing else', () => {

@@ -115,9 +115,12 @@ export function sampleDates(dir, shift) {
   return dates.sort()
 }
 
+/** A string literal on one line, with escaped quotes inside: `'L\'eau'`. */
+const STRING = `(?:'(?:[^'\\\\\\n]|\\\\.)*'|"(?:[^"\\\\\\n]|\\\\.)*")`
+
 /** Removes `<locale>: '…'` entries (one-line string values) from the object literals of a source fragment. */
 function pruneMaps(source, locale) {
-  const key = `(?<q>['"]?)${locale}\\k<q>\\s*:\\s*(?:'[^'\\n]*'|"[^"\\n]*")`
+  const key = `(?<q>['"]?)${locale}\\k<q>\\s*:\\s*${STRING}`
   return source
     // a later entry, with the comma before it: `{ en: '/a', de: '/b' }`, or `'/a',\n  de: '/b',`
     .replace(new RegExp(`\\s*,\\s*${key}(?=\\s*[,}\\n])`, 'g'), '')
@@ -127,12 +130,30 @@ function pruneMaps(source, locale) {
     .replace(new RegExp(`\\{\\s*${key}\\s*\\}`, 'g'), '{}')
 }
 
+/** An object literal whose keys are all two-letter codes with string values: `{ de: 'Titel', en: 'Title' }`. */
+const LANGUAGE_MAP = new RegExp(`\\{\\s*(?:(?<q>['"]?)[a-z]{2}\\k<q>\\s*:\\s*${STRING}\\s*,?\\s*)+\\}`, 'g')
+
 /**
- * Applies pruneMaps only inside the locale maps of ginko.config.ts: the object after `languages:`, `route:` and
- * `pages:` (whose values are paths or path maps). Other objects there, such as a field label `{ de: '…', en: '…' }`
- * in the Studio's languages, stay whole.
+ * Cuts the labels of bricks, fields and tasks (`{ de: 'Titel', en: 'Title', fr: 'Titre' }`, the text an editor reads
+ * in the Studio) to the languages of the site. A label needs the main language or English (Ginko's rule), so English
+ * stays when the main language has no text. A map with none of the site's languages and no English stays whole: it
+ * is not a label (`{ id: 'edit' }`).
  */
-function pruneConfigMaps(source, locale) {
+function pruneLabels(source, chosen) {
+  return source.replace(LANGUAGE_MAP, (map) => {
+    const present = [...map.matchAll(new RegExp(`(?<q>['"]?)([a-z]{2})\\k<q>\\s*:\\s*${STRING}`, 'g'))].map((entry) => entry[2])
+    const kept = present.filter((code) => chosen.includes(code))
+    if (!kept.includes(chosen[0]) && present.includes('en') && !kept.includes('en')) kept.push('en')
+    if (!kept.length) return map
+    return present.filter((code) => !kept.includes(code)).reduce(pruneMaps, map)
+  })
+}
+
+/**
+ * Splits ginko.config.ts at its locale maps: the object after `languages:`, `route:` and `pages:` (whose values are
+ * paths or path maps) goes through `inMaps`, the source around them through `elsewhere`.
+ */
+function editConfig(source, inMaps, elsewhere) {
   let out = ''
   let from = 0
   for (const match of source.matchAll(/\b(?:languages|route|pages)\s*:\s*\{/g)) {
@@ -144,10 +165,10 @@ function pruneConfigMaps(source, locale) {
       if (source[close] === '{') depth++
       else if (source[close] === '}' && --depth === 0) break
     }
-    out += source.slice(from, open) + pruneMaps(source.slice(open, close + 1), locale)
+    out += elsewhere(source.slice(from, open)) + inMaps(source.slice(open, close + 1))
     from = close + 1
   }
-  return out + source.slice(from)
+  return out + elsewhere(source.slice(from))
 }
 
 /** The top-level keys of a Markdown frontmatter or YAML file, each with its lines (a key's own line and the indented
@@ -333,12 +354,15 @@ const withSuffix = (path, locale) => path.replace(/(\.[^./]+)$/, `.${locale}$1`)
 
 /**
  * Keeps the languages `chosen` (a subset of the template's `authored` locales; the first is the new main language) and
- * removes the others: their content files, `i18n/<locale>.json`, and their entries in the locale maps: every map
- * in `app/routes.ts`, and `languages`, `route` and `pages` in `ginko.config.ts`. The `locales` list there (in `app/routes.ts` if it exists, else in
- * `ginko.config.ts`) becomes `chosen`. When the main language changes, the main files (no suffix) and the new main
- * language's files (`.<locale>.md`) swap names; a file without a translation stays as it is.
+ * removes the others: their content files, their message files (`i18n/<locale>.json` and `i18n/<folder>/<locale>.json`),
+ * and their entries in the locale maps: every map in `app/routes.ts` and `app/app.config.ts`, and `languages`, `route`
+ * and `pages` in `ginko.config.ts`. The labels in `ginko.config.ts` and `app/bricks/` keep the site's languages
+ * (pruneLabels). The `locales` list (in `app/routes.ts` if it exists, else in `ginko.config.ts`) becomes `chosen`.
+ * When the main language changes, the main files (no suffix) and the new main language's files (`.<locale>.md`) swap
+ * names; a file without a translation stays as it is.
  * Contract for templates: URL prefixes derive from the locales list in code, so the swap needs no route edits, and
- * `app/routes.ts` holds only locale maps (route slugs), no other object keyed by a language code.
+ * `app/routes.ts` and `app/app.config.ts` hold only locale maps (route slugs, texts per language), no other object
+ * keyed by a language code.
  */
 export function pruneLocales(dir, authored, chosen) {
   const unknown = chosen.filter((locale) => !authored.includes(locale))
@@ -364,14 +388,26 @@ export function pruneLocales(dir, authored, chosen) {
       renameSync(translation, join(content, name))
     }
   }
-  for (const locale of dropped) rmSync(join(dir, 'i18n', `${locale}.json`), { force: true })
+  const messages = join(dir, 'i18n')
+  for (const name of existsSync(messages) ? readdirSync(messages, { recursive: true }).map(String) : []) {
+    if (dropped.some((locale) => name.split(/[\\/]/).at(-1) === `${locale}.json`)) rmSync(join(messages, name))
+  }
   const sources = ['app/routes.ts', 'ginko.config.ts'].map((file) => join(dir, file)).filter((path) => existsSync(path))
   const list = sources.find((path) => /\blocales\s*[:=]\s*\[/.test(readFileSync(path, 'utf8')))
   if (!list) throw new Error('The template names no locales list (`locales: [...]` or `const locales = [...]`) in app/routes.ts or ginko.config.ts.')
-  for (const path of sources) {
-    let source = readFileSync(path, 'utf8')
-    for (const locale of dropped) source = path.endsWith('routes.ts') ? pruneMaps(source, locale) : pruneConfigMaps(source, locale)
+  const withoutDropped = (source) => dropped.reduce(pruneMaps, source)
+  const edit = (file, change) => {
+    const path = join(dir, file)
+    if (!existsSync(path)) return
+    let source = change(readFileSync(path, 'utf8'))
     if (path === list) source = source.replace(/(\blocales\s*[:=]\s*\[)[^\]]*(\])/, (_, open, close) => `${open}${chosen.map((l) => `'${l}'`).join(', ')}${close}`)
     writeFileSync(path, source)
+  }
+  edit('app/routes.ts', withoutDropped)
+  edit('app/app.config.ts', withoutDropped)
+  edit('ginko.config.ts', (source) => editConfig(source, withoutDropped, (rest) => pruneLabels(rest, chosen)))
+  const bricks = join(dir, 'app/bricks')
+  for (const name of existsSync(bricks) ? readdirSync(bricks, { recursive: true }).map(String) : []) {
+    if (name.endsWith('.ts')) edit(join('app/bricks', name), (source) => pruneLabels(source, chosen))
   }
 }
