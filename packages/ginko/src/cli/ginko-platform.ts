@@ -2,9 +2,14 @@
 // The `ginko-platform` command: runs the Ginko platform (the Studio and its Convex backend) from a platform project, the
 // folder that `npm create ginko@latest my-cms -- --platform` writes. Its convex.json points `functions` into
 // node_modules/@lupinum/ginko-server/convex/. Unlike `ginko` (one JSON line for CI), this command talks to a person.
-//   ginko-platform dev [--verbose]   a local backend without an account, prepared for sign-in, and the Studio on :3100
+//   ginko-platform dev [--verbose]     a local backend without an account, prepared for sign-in, and the Studio on :3100
+//   ginko-platform build [--convex D]  the build: backend deploy and data migrations in production, then the Studio
+import { resolve } from 'node:path'
+import { parseArgs } from 'node:util'
 import { startLocalPlatform, StoppedError } from './dev.ts'
 import { backendAt, LOCAL_STUDIO } from './local.ts'
+import { build } from './platform-build.ts'
+import { realRunner, type CommandRunner } from './platform-run.ts'
 import { exitCodeOf, isEntryPoint } from './run.ts'
 
 const COMMAND = 'ginko-platform dev'
@@ -15,13 +20,23 @@ const STUDIO_WAIT_MS = 120_000
 const USAGE = `Usage: ginko-platform <command>
 
 Commands:
-  dev    Start a local backend (no Convex account needed) and the Studio on ${LOCAL_STUDIO}.
-         Run it in the folder of the platform project, the one with convex.json.
+  dev      Start a local backend (no Convex account needed) and the Studio on ${LOCAL_STUDIO}.
+  build    Build the Studio. In production (on Vercel: VERCEL_ENV=production; elsewhere: a production
+           CONVEX_DEPLOY_KEY) it first deploys the backend and starts its data migrations.
+Run them in the folder of the platform project, the one with convex.json.
 
 Options:
-  --verbose    dev: show all output of the backend and the Studio from the start
-  -h, --help   Show this help
+  --verbose            dev: show all output of the backend and the Studio from the start
+  --convex <folder>    build: the folder with convex.json, if it is not the current folder
+  -h, --help           Show this help
 `
+
+/** The options of each command; anything else is refused with the usage. */
+const COMMANDS = {
+  dev: { verbose: { type: 'boolean' } },
+  build: { convex: { type: 'string' } },
+} as const satisfies Record<string, Record<string, { type: 'boolean' | 'string' }>>
+type Command = keyof typeof COMMANDS
 
 /** The line that better-convex-nuxt's dev outbox writes into the `convex dev` log for each sign-in code. */
 const CODE_LINE = /\[better-convex-nuxt dev outbox\] email-otp to (\S+): code (\d+)/
@@ -35,21 +50,49 @@ export interface PlatformDeps {
   error: (line: string) => void
   /** Tests replace the start of the local platform. */
   startPlatform?: typeof startLocalPlatform
+  /** Tests replace the programs that build and setup run. */
+  run?: CommandRunner
+  env?: NodeJS.ProcessEnv
+}
+
+/** The command and its options, or the sentence that says what is wrong with the call. */
+function parseCall(argv: string[]): { command: Command; values: Record<string, string | boolean | undefined> } | { wrong: string } {
+  const [command, ...rest] = argv
+  if (command === undefined) return { wrong: 'Give a command.' }
+  if (!Object.hasOwn(COMMANDS, command)) return { wrong: `Unknown command "${command}".` }
+  const options = COMMANDS[command as Command]
+  const { values, tokens } = parseArgs({ args: rest, options, strict: false, allowPositionals: true, tokens: true })
+  for (const token of tokens) {
+    if (token.kind === 'positional') return { wrong: `Unknown argument "${token.value}".` }
+    if (token.kind !== 'option') continue
+    const option = (options as Record<string, { type: string }>)[token.name]
+    if (!option) return { wrong: `Unknown argument "${token.rawName}".` }
+    if (option.type === 'string' && typeof token.value !== 'string') return { wrong: `${token.rawName} needs a value.` }
+  }
+  return { command: command as Command, values: values as Record<string, string | boolean | undefined> }
 }
 
 export async function main(argv: string[], deps: PlatformDeps = { cwd: process.cwd(), log: console.log, error: console.error }): Promise<number> {
-  const [command, ...rest] = argv
-  if (command === '-h' || command === '--help') {
+  if (argv[0] === '-h' || argv[0] === '--help') {
     deps.log(USAGE)
     return 0
   }
-  const unknown = rest.find((arg) => arg !== '--verbose')
-  if (command !== 'dev' || unknown !== undefined) {
-    deps.error(`${command === undefined ? 'Give a command.' : command === 'dev' ? `Unknown argument "${unknown}".` : `Unknown command "${command}".`}\n\n${USAGE}`)
+  const call = parseCall(argv)
+  if ('wrong' in call) {
+    deps.error(`${call.wrong}\n\n${USAGE}`)
     return 2
   }
+  const { run = realRunner, env = process.env } = deps
   try {
-    return await dev(deps, rest.includes('--verbose'))
+    switch (call.command) {
+      case 'dev':
+        return await dev(deps, call.values.verbose === true)
+      case 'build': {
+        const convexDir = backendAt(resolve(deps.cwd, typeof call.values.convex === 'string' ? call.values.convex : '.'), 'ginko-platform build')
+        await build({ cwd: deps.cwd, convexDir, env, run, log: deps.log })
+        return 0
+      }
+    }
   } catch (error) {
     // Ctrl-C before the Studio was ready: everything is stopped, nothing failed.
     if (error instanceof StoppedError) return 0
