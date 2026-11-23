@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CliError } from '../../src/cli/model.ts'
-import { createPlatform, DISCOVERY_PATH, type ReleaseBody } from '../../src/cli/platform.ts'
+import { createPlatform, DISCOVERY_PATH, versionNote, type ReleaseBody } from '../../src/cli/platform.ts'
 import { connectPlatform, type CliDeps } from '../../src/cli/run.ts'
 
 const KEY = 'ginko_linde_k3y0secretpushkey0123456789abxyz'
@@ -215,5 +215,21 @@ describe('GINKO_PLATFORM as the Studio address (discovery document)', () => {
     const { platform, requests } = connect({ [`${URL}${DISCOVERY_PATH}`]: () => Response.json({ backend: 'http://evil.example' }) })
     expect(await message(platform.state('linde'))).toContain('not https://')
     expect(requests.filter((request) => request.key)).toEqual([])
+  })
+})
+
+describe('version note', () => {
+  // Wrong behaviour caught: a site on a newer Ginko than its platform gets a bare rejection without the reason, or a
+  // platform of unknown version (an older Studio, a monorepo build) produces a false warning.
+  it.each([
+    ['an older minor', '0.17.4', '0.18.0', 'This platform runs Ginko 0.17.4; the site uses 0.18.0. Update the platform first if the release is rejected.'],
+    ['an older major', '1.9.0', '2.0.0', 'This platform runs Ginko 1.9.0; the site uses 2.0.0. Update the platform first if the release is rejected.'],
+    ['the same minor with an older patch', '0.18.0', '0.18.3', undefined],
+    ['a newer platform', '0.19.0', '0.18.3', undefined],
+    ['an unknown platform version', undefined, '0.18.0', undefined],
+    ['a monorepo platform (0.0.0)', '0.0.0', '0.18.0', undefined],
+    ['a monorepo site (0.0.0)', '0.17.0', '0.0.0', undefined],
+  ])('%s', (_name, platform, site, note) => {
+    expect(versionNote(platform, site)).toBe(note)
   })
 })

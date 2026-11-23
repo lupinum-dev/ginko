@@ -83,6 +83,26 @@ export async function discoverPlatform(url: string, fetch: PlatformOptions['fetc
   return { backend: body.backend.replace(/\/+$/, ''), ...(typeof body.version === 'string' ? { version: body.version } : {}) }
 }
 
+/** major.minor of a version, or undefined when it is missing, not semver, or 0.0.0 (a monorepo build: unknown). */
+function minorOf(version: string | undefined): [number, number] | undefined {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version ?? '')
+  if (!match || (match[1] === '0' && match[2] === '0' && match[3] === '0')) return undefined
+  return [Number(match[1]), Number(match[2])]
+}
+
+/**
+ * One sentence when the platform runs an older minor than the site's Ginko: the platform must be the same or newer, and
+ * a release that uses something new is rejected by an older platform. A warning, never a refusal (a client site's
+ * deploy must not stop because its CMS is one release behind). Undefined when either version is unknown.
+ */
+export function versionNote(platformVersion: string | undefined, siteVersion: string): string | undefined {
+  const platform = minorOf(platformVersion)
+  const site = minorOf(siteVersion)
+  if (!platform || !site) return undefined
+  const older = platform[0] < site[0] || (platform[0] === site[0] && platform[1] < site[1])
+  return older ? `This platform runs Ginko ${platformVersion}; the site uses ${siteVersion}. Update the platform first if the release is rejected.` : undefined
+}
+
 /** Plain http only for the machine itself; the push key must not travel unencrypted. */
 function checkPlatformUrl(url: string): void {
   let parsed: URL

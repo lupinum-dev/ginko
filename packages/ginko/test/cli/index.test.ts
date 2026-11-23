@@ -7,7 +7,7 @@ import { main } from '../../src/cli/index.ts'
 import type { LocalPlatform } from '../../src/cli/dev.ts'
 import { main as platformMain } from '../../src/cli/ginko-platform.ts'
 import { main as monorepoMain } from '../../src/cli/monorepo.ts'
-import { PlatformError } from '../../src/cli/platform.ts'
+import { DISCOVERY_PATH, PlatformError } from '../../src/cli/platform.ts'
 import { exitCodeOf, type CliDeps } from '../../src/cli/run.ts'
 
 /** Runs the CLI (`ginko` unless another is given) and returns its exit code, the stdout text and the stderr lines. */
@@ -90,6 +90,21 @@ describe('ginko output and exit codes', () => {
     expect(JSON.parse(result.stdout)).toEqual({ ok: false, error: { code, message } })
     // The human text goes to stderr.
     expect(result.log.join('\n')).toContain(JSON.parse(result.stdout).error.message)
+  })
+
+  // Wrong behaviour caught: an older platform rejects the release and the log does not say why; or the note turns into
+  // a refusal and stops a client site's deploy.
+  it('a platform on an older minor: the release log says so before the platform answers, the outcome stays the platform\'s', async () => {
+    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }
+    const [major, minor] = pkg.version.split('.').map(Number) as [number, number]
+    const older = minor > 0 ? `${major}.${minor - 1}.9` : `${major - 1}.99.0`
+    const fetch = async (url: string) => (url.endsWith(DISCOVERY_PATH) ? Response.json({ backend: 'https://backend.example', version: older }) : otherSite())
+    const result = await run(['release', '--config', RESTAURANT], { env: RELEASE, git: head, fetch })
+    expect(result.log).toContain(`This platform runs Ginko ${older}; the site uses ${pkg.version}. Update the platform first if the release is rejected.`)
+    expect(result.code).toBe(4)
+    expect(JSON.parse(result.stdout).error.code).toBe('FORBIDDEN')
+    const same = await run(['release', '--config', RESTAURANT], { env: RELEASE, git: head, fetch: async (url: string) => (url.endsWith(DISCOVERY_PATH) ? Response.json({ backend: 'https://backend.example', version: pkg.version }) : otherSite()) })
+    expect(same.log.join('\n')).not.toContain('This platform runs Ginko')
   })
 
   it.each([

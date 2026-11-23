@@ -12,7 +12,8 @@ import { defaultDir } from './model.ts'
 import { CliError } from './model.ts'
 import { prepareImport } from './prepare-import.ts'
 import { release } from './release.ts'
-import { connectPlatform, env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ExitCode } from './run.ts'
+import { versionNote } from './platform.ts'
+import { connectPlatform, env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ConnectedPlatform, type ExitCode } from './run.ts'
 
 const USAGE = `Usage: ginko <command> [--config <file>]
 
@@ -67,6 +68,14 @@ async function branchHead(deps: CliDeps): Promise<string> {
 
 const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms))
 
+/** The version note (versionNote) on stderr, and for the JSON line's `warnings`. Uses the run's one discovery call. */
+async function versionWarnings(platform: ConnectedPlatform, deps: CliDeps): Promise<string[]> {
+  const note = versionNote((await platform.discovery()).version, version())
+  if (!note) return []
+  deps.log(note)
+  return [note]
+}
+
 export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCode> {
   const configPathOf = (args: Args) => resolve(args.config ?? 'ginko.config.ts')
 
@@ -84,16 +93,19 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const offline = args.flags.has('--offline')
           const platformBricks = Object.values(config.bricks).some((b) => b.source !== 'files')
           const compared = platformBricks && !offline
+          // Set only when check reached the comparison (it connects after the local checks passed).
+          const connected: ConnectedPlatform[] = []
           const ok = await check({
             config,
-            connect: compared ? () => connectPlatform(deps) : undefined,
+            connect: compared ? () => { connected.push(connectPlatform(deps)); return connected[0]! } : undefined,
             root: dirname(configPath),
             fetch: deps.fetch,
             log: deps.log,
           })
           if (platformBricks && offline) deps.log('Skipped the comparison with production (--offline).')
+          const warnings = connected[0] ? await versionWarnings(connected[0], deps) : []
           if (!ok) throw new CliError('ginko check found problems. Each one is listed on stderr.')
-          return { compared }
+          return { compared, ...(warnings.length ? { warnings } : {}) }
         },
       },
       release: {
@@ -102,7 +114,11 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const commit = env(deps, ...COMMIT_ENV)
           if ((await branchHead(deps)) !== commit) return { deploy: false, reason: 'superseded' }
           const config = await loadConfig(configPathOf(args))
-          return release({ config, commit, platform: connectPlatform(deps), branchHead: () => branchHead(deps), sleep, log: deps.log })
+          const platform = connectPlatform(deps)
+          // Before the release: when an older platform rejects it, the sentence is already on stderr.
+          const warnings = await versionWarnings(platform, deps)
+          const result = await release({ config, commit, platform, branchHead: () => branchHead(deps), sleep, log: deps.log })
+          return { ...result, ...(warnings.length ? { warnings } : {}) }
         },
       },
       // Works on the hosted content only, so it needs no config.
