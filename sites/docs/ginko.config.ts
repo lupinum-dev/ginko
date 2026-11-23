@@ -74,7 +74,7 @@ const germanDocs: Record<string, string> = {
   'schema-aenderung-freigeben': 'release-a-schema-change',
   'schemas-wachsen-nur': 'schemas-only-grow',
   'seite-umziehen': 'move-a-page',
-  'seite-von-hand-bauen': 'build-a-site-by-hand',
+  'seite-von-hand-bauen': 'tutorial',
   'seiten-fuer-agenten': 'pages-for-agents',
   'seiten-lesen': 'reading-content',
   'sprache-hinzufuegen': 'add-a-language',
@@ -95,8 +95,8 @@ const germanDocs: Record<string, string> = {
 }
 
 /**
- * Pages that the rewrite of November 2026 split into guides and reference pages: the old slug, the slug of the page
- * that now holds most of its content, and the German slug the old page had.
+ * Pages that the rewrite of November 2026 split into guides and reference pages, or that a later page absorbed: the old
+ * slug, the slug of the page that now holds most of its content, and the German slug the old page had.
  */
 const movedDocs: [from: string, to: string, fromDe: string][] = [
   ['languages', 'add-a-language', 'sprachen'],
@@ -106,6 +106,8 @@ const movedDocs: [from: string, to: string, fromDe: string][] = [
   ['platform-and-cli', 'cli', 'plattform-und-cli'],
   ['docs-sites', 'start-a-docs-site', 'doku-seiten'],
   ['docs-exports', 'docs-site-reference', 'doku-exporte'],
+  // "Build a site by hand" became chapter 1 of the tutorial (23 November 2026).
+  ['build-a-site-by-hand', 'tutorial', 'seite-von-hand-bauen'],
 ]
 
 /** Every German slug the docs ever had, with the slug of its English page. */
