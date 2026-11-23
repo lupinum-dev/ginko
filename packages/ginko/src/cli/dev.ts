@@ -62,8 +62,11 @@ export interface LocalPlatform {
    * and its end stops all the others.
    */
   start: (name: string, command: string, args: string[], cwd: string, options?: { env?: Record<string, string>; onLine?: (line: string) => void }) => ChildProcess
-  /** From now on, the children's output goes to the log (with `quiet`, it was kept back until now). */
-  showOutput: () => void
+  /**
+   * From now on, the children's output goes to the log (with `quiet`, it was kept back until now). `replay` first logs
+   * the lines kept back of that child.
+   */
+  showOutput: (replay?: string) => void
   /** Runs once when everything stops, before the children get their signal. */
   onStop: (cleanup: () => void) => void
   stopping: () => boolean
@@ -204,7 +207,11 @@ export async function startLocalPlatform(input: LocalPlatformInput): Promise<Loc
     target,
     admin,
     start: (name, cmd, args, cwd, options = {}) => startChild(name, cmd, args, cwd, { ...env, ...options.env }, options.onLine),
-    showOutput: () => { showing = true },
+    showOutput: (replay) => {
+      if (showing) return
+      if (replay) for (const line of recent.get(replay) ?? []) log(`[${replay}] ${line}`)
+      showing = true
+    },
     onStop: (cleanup) => { cleanups.push(cleanup) },
     stopping: () => stopping,
     exited,

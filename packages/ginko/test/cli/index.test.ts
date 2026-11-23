@@ -1,7 +1,10 @@
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { main } from '../../src/cli/index.ts'
+import type { LocalPlatform } from '../../src/cli/dev.ts'
 import { main as platformMain } from '../../src/cli/ginko-platform.ts'
 import { main as monorepoMain } from '../../src/cli/monorepo.ts'
 import { PlatformError } from '../../src/cli/platform.ts'
@@ -159,5 +162,37 @@ describe('ginko-platform', () => {
     const { code, error } = await platform(['dev'])
     expect(code).toBe(2)
     expect(error).toMatch(/ginko-platform dev stopped: .* has no convex\.json/)
+  })
+
+  // Wrong behaviour caught: Nuxt changes the wording of its ready line, and in quiet mode the person sees nothing forever.
+  it.each([
+    ['no ready line after 2 minutes: the Studio output is shown, nothing stops', [], true],
+    ['the ready line in time: no notice', ['[nitro] ✔ Nuxt Nitro server built in 797ms'], false],
+  ])('dev: %s', async (_name, studioLines, notice) => {
+    vi.useFakeTimers()
+    const dir = mkdtempSync(join(tmpdir(), 'ginko-platform-'))
+    writeFileSync(join(dir, 'convex.json'), '{}')
+    try {
+      const shown: (string | undefined)[] = []
+      let errors = 0
+      const log: string[] = []
+      const fake = {
+        target: { kind: 'local' }, admin: 'admin@example.test', exited: new Promise<number>(() => undefined),
+        start: (_name: string, _cmd: string, _args: string[], _cwd: string, options?: { onLine?: (line: string) => void }) => {
+          for (const line of studioLines) options?.onLine?.(line)
+          return {}
+        },
+        showOutput: (replay?: string) => { shown.push(replay) },
+        onStop: () => undefined, stopping: () => false,
+      } as unknown as LocalPlatform
+      void platformMain(['dev'], { cwd: dir, log: (line) => log.push(line), error: () => { errors++ }, startPlatform: async () => fake })
+      await vi.advanceTimersByTimeAsync(120_000)
+      expect(log.includes('The Studio is not ready after 2 minutes. Its output follows.')).toBe(notice)
+      expect(shown).toEqual(notice ? ['studio'] : [undefined])
+      expect(errors).toBe(0)
+    } finally {
+      vi.useRealTimers()
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

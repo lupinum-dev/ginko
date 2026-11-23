@@ -9,6 +9,8 @@ import { exitCodeOf, isEntryPoint } from './run.ts'
 
 const COMMAND = 'ginko-platform dev'
 const STUDIO_PORT = Number(new URL(LOCAL_STUDIO).port)
+/** Quiet mode shows the Studio's output when its ready line has not come by then (Nuxt may change its wording). */
+const STUDIO_WAIT_MS = 120_000
 
 const USAGE = `Usage: ginko-platform <command>
 
@@ -31,6 +33,8 @@ export interface PlatformDeps {
   cwd: string
   log: (line: string) => void
   error: (line: string) => void
+  /** Tests replace the start of the local platform. */
+  startPlatform?: typeof startLocalPlatform
 }
 
 export async function main(argv: string[], deps: PlatformDeps = { cwd: process.cwd(), log: console.log, error: console.error }): Promise<number> {
@@ -58,10 +62,10 @@ export async function main(argv: string[], deps: PlatformDeps = { cwd: process.c
  * `ginko-platform dev`: resolves with 0 after Ctrl-C, 1 when a process ended by itself. Until the Studio is ready, it
  * prints short progress lines and keeps the children's output back (a failure shows its last lines); `verbose` shows all.
  */
-async function dev({ cwd, log }: PlatformDeps, verbose: boolean): Promise<number> {
+async function dev({ cwd, log, startPlatform = startLocalPlatform }: PlatformDeps, verbose: boolean): Promise<number> {
   const backendDir = backendAt(cwd, COMMAND)
   log('Starting the local backend. The first start downloads it, which can take a minute.')
-  const platform = await startLocalPlatform({
+  const platform = await startPlatform({
     backendDir,
     command: COMMAND,
     log,
@@ -76,10 +80,19 @@ async function dev({ cwd, log }: PlatformDeps, verbose: boolean): Promise<number
   log('The backend is ready.')
   log('Starting the Studio.')
   let ready = false
+  // Quiet mode: without its ready line the person would see nothing forever. Show the Studio's output, stop nothing.
+  const waiting = setTimeout(() => {
+    if (ready || verbose || platform.stopping()) return
+    log('The Studio is not ready after 2 minutes. Its output follows.')
+    platform.showOutput('studio')
+  }, STUDIO_WAIT_MS)
+  waiting.unref()
+  platform.onStop(() => clearTimeout(waiting))
   platform.start('studio', 'npx', ['nuxt', 'dev', '--port', String(STUDIO_PORT), '--dotenv', '.env.local'], backendDir, {
     onLine: (line) => {
       if (ready || !STUDIO_READY.test(line)) return
       ready = true
+      clearTimeout(waiting)
       log([
         '',
         `The Studio runs on ${LOCAL_STUDIO}`,
