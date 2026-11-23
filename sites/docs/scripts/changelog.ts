@@ -60,13 +60,21 @@ for (const name of PACKAGES) {
   }
 }
 
-/** The day a version was tagged, else today: the build right after a release runs on its day. */
-function dateOf(version: string): string {
+/**
+ * The day of a release: the day its tag was made. A build host with a shallow clone has no tags, so the next source
+ * is the day npm got the version, and only then today. Without that, the entry of a release that nobody committed
+ * would take the day of every new build.
+ */
+async function dateOf(version: string): Promise<string> {
   try {
     return execFileSync('git', ['log', '-1', '--format=%cs', `v${version}`], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
-  } catch {
-    return new Date().toISOString().slice(0, 10)
-  }
+  } catch { /* no tag here */ }
+  try {
+    const response = await fetch('https://registry.npmjs.org/@lupinum%2fginko', { signal: AbortSignal.timeout(10_000) })
+    const published = ((await response.json()) as { time?: Record<string, string> }).time?.[version]
+    if (published) return published.slice(0, 10)
+  } catch { /* the registry does not answer */ }
+  return new Date().toISOString().slice(0, 10)
 }
 
 function bodyOf(notes: Note[]): string {
@@ -93,7 +101,7 @@ for (const [version, notes] of releases) {
     const generated = readFileSync(file, 'utf8').includes(MARK)
     if (!generated || !all) continue
   }
-  writeFileSync(file, `---\n${MARK}\nversion: ${version}\ndate: ${dateOf(version)}\n---\n\n${bodyOf(notes)}`)
+  writeFileSync(file, `---\n${MARK}\nversion: ${version}\ndate: ${await dateOf(version)}\n---\n\n${bodyOf(notes)}`)
   written++
 }
 console.log(`changelog: ${written} entr${written === 1 ? 'y' : 'ies'} written, ${releases.size} releases known.`)
