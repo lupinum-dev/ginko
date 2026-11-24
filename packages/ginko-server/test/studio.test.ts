@@ -564,6 +564,18 @@ describe('entries.whyNotPublic', () => {
     expect(historyText(result.reasons[0]!.msg, 'en', { locales: ['de'], timeZone: 'Europe/Vienna' })).toBe('The entry is a draft and goes online on Oct 9, 12:00 (time zone Europe/Vienna).')
   })
 
+  // Wrong behaviour caught (D113): a draft whose date has passed got two reasons, "draft" and "not visible", while the
+  // one status calls it a draft; an online entry whose date passed lost its "not visible".
+  it('a draft whose date passed is a draft; a live entry whose date passed is not visible', async () => {
+    const s = await studioSetup({ release: true })
+    const past = { when: { from: '2026-10-01', to: '2026-10-02' } }
+    const draft = await s.createEvent('Wildwoche', past)
+    expect(codes(await why(s, draft.entry))).toEqual(['draft'])
+    const ended = await s.createEvent('Kürbiswoche', {}, {})
+    await s.t.run(async (ctx) => { const row = (await ctx.db.get(ended.entry))!; await ctx.db.patch(ended.entry, { data: { ...row.data as object, ...past } }) })
+    expect(codes(await why(s, ended.entry))).toEqual(['not_visible'])
+  })
+
   it('a removed entry, with the date it is deleted for good', async () => {
     const s = await studioSetup({ release: true })
     await s.remove(s.entries.weinabend!)
@@ -619,6 +631,21 @@ describe('entries.whyNotPublic', () => {
     expect(await why(s, s.entries.martinigans!)).toMatchObject({ locale: 'de', public: true, reasons: [], path: '/veranstaltungen/martini-gansl', url: 'https://ginko-demo-restaurant.vercel.app/veranstaltungen/martini-gansl' })
     expect((await errorOf(why(s, s.entries.martinigans!, 'fr'))).code).toBe('INVALID')
     expect((await errorOf(s.as.stranger.query(api.entries.whyNotPublic, { site: 'andere', entry: s.entries.martinigans! }))).code).toBe('NOT_FOUND')
+  })
+})
+
+describe('sites.areas', () => {
+  // Wrong behaviour caught (D113): an entry whose date passed with saved changes counted as "changes" and as "ended" at
+  // once; the one status says it ended, and nothing waits on the website.
+  it('an entry that ended with unpublished changes counts as ended only', async () => {
+    const s = await studioSetup({ release: true })
+    const events = async () => (await s.as.owner.query(api.sites.areas, { site })).find((a) => a.brick === 'events')!
+    const before = await events()
+    const ended = await s.createEvent('Kürbiswoche', {}, {})
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: ended.entry, baseRev: 1, locale: 'de', fields: { description: { de: 'Neu' } } })
+    expect(await events()).toMatchObject({ changes: before.changes + 1, ended: before.ended })
+    await s.t.run(async (ctx) => { const row = (await ctx.db.get(ended.entry))!; await ctx.db.patch(ended.entry, { data: { ...row.data as object, when: { from: '2026-10-01', to: '2026-10-02' } } }) })
+    expect(await events()).toMatchObject({ changes: before.changes, ended: before.ended + 1 })
   })
 })
 

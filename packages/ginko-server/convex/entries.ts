@@ -1739,7 +1739,7 @@ export const list = query({
     }
     if (args.sort) rows = listSort(rows, brick, args.sort, schema.locales[0]!)
     const held = await pendingBySite(ctx, actor.site._id)
-    return { total: rows.length, rows: rows.slice(0, limit).map((row) => listRow(schema, args.brick, row, args.language, held.has(row._id))) }
+    return { total: rows.length, rows: rows.slice(0, limit).map((row) => listRow(schema, args.brick, row, args.language, held.get(row._id))) }
   },
 })
 

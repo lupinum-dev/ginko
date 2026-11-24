@@ -5,7 +5,7 @@
      away and the form and the preview share the panel. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, slugKeyOf, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, shownUntil, type Place, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, slugKeyOf, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, shownUntil, statusOf, type Place, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
@@ -302,7 +302,8 @@ function resetForm() {
 const timeZone = computed(() => props.schema.timeZone)
 const offlineable = computed(() => props.brick.kind === 'collection')
 const state = computed(() => props.entry?.state ?? 'live')
-const isDraft = computed(() => (props.entry ? state.value === 'draft' : offlineable.value))
+// A stored entry asks the one status (D113); a new entry of a collection starts as a draft.
+const isDraft = computed(() => (props.entry ? statusOf(props.brick, { data: props.entry.data, state: state.value }, todayIn(timeZone.value)).now === 'draft' : offlineable.value))
 /**
  * Save without publishing: on every live entry and single, Speichern keeps the changes unpublished; Veröffentlichen
  * puts them live (now or later), Verwerfen goes back to the version on the website.
@@ -656,8 +657,10 @@ const previewUrls = computed(() => {
  * a new entry's address cannot be made yet, or the entry has no page in this language until it is translated.
  */
 const previewNotice = computed(() => {
-  const last = shownUntil(props.brick, { ...props.entry?.data, ...typed.value })
-  if (last && last < todayIn(timeZone.value)) return t('entry.preview.ended', { date: formatDay(last, format) })
+  // The preview shows the entry as if it were online: it ended when `statusOf` of the typed values says so (D113).
+  const data = { ...props.entry?.data, ...typed.value }
+  const last = shownUntil(props.brick, data)
+  if (last && statusOf(props.brick, { data, state: 'live' }, todayIn(timeZone.value)).now === 'ended') return t('entry.preview.ended', { date: formatDay(last, format) })
   const urls = previewUrls.value
   if (!urls) return undefined
   if (previewWaitsFor.value) return t('entry.preview.needsTitle', { field: previewWaitsFor.value })
