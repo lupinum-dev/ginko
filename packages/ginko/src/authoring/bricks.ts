@@ -2,7 +2,7 @@
 // turns it into the stored form (core/types.ts), because the labels of the standard tasks need the site's languages
 // and the texts of its label files.
 import type { ValueInput } from '../core/fields.ts'
-import type { CollectionListing, Fields, Label } from '../core/types.ts'
+import type { CollectionListing, CollectionTree, Fields, Label } from '../core/types.ts'
 
 /** Marks a brick written with `single` or `collection` of this entry. A symbol key, so it is never stored. */
 export const DEF: unique symbol = Symbol.for('ginko.brick.def')
@@ -23,6 +23,16 @@ export type ListingInput<F> = CollectionListing<
   FieldsOfType<F, 'text' | 'longtext' | 'number' | 'money' | 'date' | 'daterange' | 'time' | 'choice' | 'choices' | 'boolean'>,
   FieldsOfType<F, 'choice'>,
   FieldsOfType<F, 'image'>
+>
+
+/**
+ * The entries are pages of a navigation tree: `parent` is a ref field to the collection itself, `section` and `tab`
+ * are text fields that start a heading or a tab at a top-level page.
+ */
+export type TreeInput<F> = CollectionTree<
+  Need<FieldsOfType<F, 'ref'>, 'This brick has no ref field'>,
+  FieldsOfType<F, 'text'>,
+  FieldsOfType<F, 'text'>
 >
 
 /** The tasks every brick can have by their short name. `'add'` and `'remove'` are for collections. */
@@ -98,6 +108,8 @@ export interface SingleInput<F extends Fields> extends Common<F> { status?: Sing
 export interface CollectionInput<F extends Fields> extends Common<F> {
   /** How an entry appears in lists: `{ title: 'name', detail: 'price', group: 'category' }`. Only `title` is required. */
   listing: ListingInput<F>
+  /** The entries are pages of a navigation tree: `{ parent: 'parent', section: 'section', tab: 'tab' }`. */
+  tree?: TreeInput<F>
   /** Most entries. Default 500. */
   max?: number
   /** Default `'manual'`: the owner's order. */
@@ -119,6 +131,7 @@ export interface SingleDef<F extends Fields = Fields> extends Def<F> { kind: 'si
 export interface CollectionDef<F extends Fields = Fields> extends Def<F> {
   kind: 'collection'
   listing: CollectionListing
+  tree?: CollectionTree
   max?: number
   order?: 'manual' | { field: string; dir?: 'asc' | 'desc' }
   showUntil?: ShowUntil

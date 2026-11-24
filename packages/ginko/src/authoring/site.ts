@@ -209,6 +209,7 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
     order: brick.order ?? 'manual',
     // Required by type; a config without it reaches `checkSite`, which says what to write.
     listing: brick.listing,
+    ...(brick.tree ? { tree: brick.tree } : {}),
     ...(until ? { visible: { mode: 'until' as const, field: until.field, ...(until.plusDays !== undefined ? { days: until.plusDays } : {}), ...(until.thenDelete ? { deleteExpired: true } : {}) } } : {}),
     ...(brick.untranslated ? { untranslated: brick.untranslated } : {}),
     ...(brick.plans ? { plans: brick.plans } : {}),

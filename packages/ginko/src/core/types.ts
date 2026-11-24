@@ -221,6 +221,8 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   order: 'manual' | { field: string; dir?: 'asc' | 'desc' }
   /** How an entry appears in lists (see `CollectionListing`). */
   listing: CollectionListing
+  /** The entries are pages of a navigation tree (see `CollectionTree`). */
+  tree?: CollectionTree
   route?: R
   visible?: Visibility
   /**
@@ -256,6 +258,17 @@ export type CollectionListing<T extends string = string, D extends string = stri
   detail?: D
   group?: G
   image?: I
+}
+
+/**
+ * A collection whose entries are pages of a navigation tree, such as documentation: `parent` is a ref field to the
+ * same collection that nests a page under another, `section` and `tab` are text fields that start a heading or a tab
+ * at a top-level page. The order is the owner's (`order: 'manual'`). Field names only; any name works.
+ */
+export type CollectionTree<P extends string = string, S extends string = string, T extends string = string> = {
+  parent: P
+  section?: S
+  tab?: T
 }
 
 /**

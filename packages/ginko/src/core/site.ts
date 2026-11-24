@@ -3,7 +3,7 @@ import type { HolidaysOption } from './holidays.ts'
 import type { LinkConfig } from './links.ts'
 import type { Redirect } from './redirects.ts'
 import type {
-  Brick, BrickSource, CollectionBrick, CollectionListing, CollectionStatus, Currency, Fields, Json, Label, Locale, RetiredRule, SingleBrick, SingleStatus, Task, Visibility,
+  Brick, BrickSource, CollectionBrick, CollectionListing, CollectionStatus, CollectionTree, Currency, Fields, Json, Label, Locale, RetiredRule, SingleBrick, SingleStatus, Task, Visibility,
 } from './types.ts'
 
 export interface MigrationContext {
@@ -185,6 +185,8 @@ export function collection<const F extends Fields, const R extends Record<Locale
    * only, as in `planned`: a factory with generic fields could not name them otherwise; `checkSchema` checks the types.
    */
   listing: CollectionListing<keyof F & string, keyof F & string, keyof F & string, keyof F & string>
+  /** The entries are pages of a navigation tree: `parent` (a ref to this collection), `section` and `tab` (text fields). */
+  tree?: CollectionTree<keyof F & string, keyof F & string, keyof F & string>
   route?: R
   visible?: Visibility<FieldsOfType<F, 'date' | 'daterange'>>
   /**

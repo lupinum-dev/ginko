@@ -145,6 +145,7 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
   if (stableJson(before.status ?? null) !== stableJson(after.status ?? null)) ok(`${key}.status`, 'text', msg('diff.textChanged'))
   // Presentation only: which field names an entry in a list changes no stored value.
   if (before.kind === 'collection' && after.kind === 'collection' && stableJson(before.listing ?? null) !== stableJson(after.listing ?? null)) ok(`${key}.listing`, 'text', msg('diff.textChanged'))
+  if (before.kind === 'collection' && after.kind === 'collection' && stableJson(before.tree ?? null) !== stableJson(after.tree ?? null)) ok(`${key}.tree`, 'text', msg('diff.textChanged'))
   if (before.kind === 'collection' && after.kind === 'collection') {
     if (after.max < before.max) no(`${key}.max`, 'maxLowered', msg('diff.maxLowered', { at: key }), fx('keepMax'))
     else if (after.max > before.max) ok(`${key}.max`, 'maxRaised', msg('diff.maxRaised'))

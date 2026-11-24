@@ -26,7 +26,7 @@ export const SCHEMA_KEYS = new Set(['format', 'site', 'name', 'url', 'timeZone',
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'listing', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
@@ -394,6 +394,7 @@ function schemaProblems(schema: Schema): string[] {
     if (brick.kind === 'collection') {
       if (!(brick.max >= 1 && brick.max <= 500)) problems.push(`${key}: max must be between 1 and 500.`)
       problems.push(...listingProblems(key, brick))
+      if (brick.tree !== undefined) problems.push(...treeProblems(key, brick))
       if (brick.plans !== undefined) problems.push(...plansProblems(key, brick.plans, brick.fields, schema))
       if (brick.order !== 'manual' && !brick.fields[brick.order.field]) problems.push(`${key}: the sort field is missing.`)
       if (brick.order !== 'manual' && brick.order.dir !== undefined && brick.order.dir !== 'asc' && brick.order.dir !== 'desc') problems.push(`${key}: order.dir must be “asc” or “desc”.`)
@@ -503,6 +504,29 @@ function listingProblems(key: string, brick: CollectionBrick): string[] {
     else if (field.retired) problems.push(`${key}.listing.${name}: “${String(value)}” is retired. Name another field first.`)
     else if (!types.includes(field.type)) problems.push(`${key}.listing.${name}: “${String(value)}” is a ${field.type} field. Name ${what}.`)
   }
+  return problems
+}
+
+/**
+ * `tree` of a collection: `parent` names a live ref field to the same collection (one entry, not several); `section`
+ * and `tab` name live text fields. The tree is the owner's order, so the collection is sorted by hand.
+ */
+function treeProblems(key: string, brick: CollectionBrick): string[] {
+  const tree: unknown = brick.tree
+  if (typeof tree !== 'object' || tree === null || Array.isArray(tree)) return [`${key}: tree must be an object such as { parent: 'parent' }.`]
+  const problems: string[] = []
+  for (const k of Object.keys(tree)) if (!['parent', 'section', 'tab'].includes(k)) problems.push(`${key}.tree: unknown property “${k}” (known: parent, section, tab).`)
+  const values = tree as Record<string, unknown>
+  for (const name of ['parent', 'section', 'tab'] as const) {
+    const value = values[name]
+    if (value === undefined && name !== 'parent') continue
+    const what = name === 'parent' ? `a ref field to ${key} itself (one entry)` : 'a text field'
+    const field = typeof value === 'string' && Object.hasOwn(brick.fields, value) ? brick.fields[value] : undefined
+    if (!field) problems.push(`${key}.tree.${name}: “${String(value)}” is not a field of this brick. Name ${what}.`)
+    else if (field.retired) problems.push(`${key}.tree.${name}: “${String(value)}” is retired. Name another field first.`)
+    else if (name === 'parent' ? field.type !== 'ref' || field.to !== key || field.multiple : field.type !== 'text') problems.push(`${key}.tree.${name}: “${String(value)}” is not ${what}.`)
+  }
+  if (brick.order !== 'manual') problems.push(`${key}.tree: a navigation tree is sorted by hand. Write \`order: 'manual'\`.`)
   return problems
 }
 

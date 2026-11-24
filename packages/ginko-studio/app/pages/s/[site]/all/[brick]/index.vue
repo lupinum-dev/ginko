@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ChevronDownIcon, ChevronUpIcon, PlusIcon } from '@lucide/vue'
 import { api } from '#convex/api'
-import { isNavTree, visibleUntil } from '@lupinum/ginko/internal'
+import { treeOf, visibleUntil } from '@lupinum/ginko/internal'
 import { formatDay, languageName, listingDetail } from '../../../../../utils/content'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
@@ -58,7 +58,7 @@ type Row = (typeof rows.value)[number]
 const single = useConvexQuery(api.entries.single, () => (brick.value?.kind === 'single' && allowed.value ? { site: s.slug.value, brick: key.value } : 'skip'))
 const manual = computed(() => brick.value?.kind === 'collection' && brick.value.order === 'manual')
 // A docs-like collection shows its navigation as the website does; a search or sort shows the plain list.
-const tree = computed(() => !!brick.value && isNavTree(key.value, brick.value) && !narrowed.value)
+const tree = computed(() => !!brick.value && !!treeOf(brick.value) && !narrowed.value)
 // The tree's titles and headings follow the Studio's language when the site has it (headings are renamed in it).
 const treeLanguage = computed(() => s.schema.value?.locales.find((l) => l === uiLocale.value) ?? s.main.value)
 const canCreate = computed(() => !!access.value && (access.value.all || !!access.value.create))

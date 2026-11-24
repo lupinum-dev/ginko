@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, SLUG_PATTERN, entryBytes, fitsBudget, isNavTree, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -193,7 +193,8 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   const publishNow = args.publish === true || actor.forceProposal === true
   const toPending = keepsPending(entry) && !publishNow
   // A navigation tree's place goes online at once and only through the tree (navigation.move): never into pending changes.
-  if (toPending && isNavTree(entry.brick, schema.bricks[entry.brick]!) && ['parent', 'section', 'tab'].some((k) => Object.hasOwn(args.fields, k))) fail('INVALID', 'errors.moveInNavigationTree')
+  const tree = treeOf(schema.bricks[entry.brick]!)
+  if (toPending && tree && treeFields(tree).some((k) => Object.hasOwn(args.fields, k))) fail('INVALID', 'errors.moveInNavigationTree')
   const shown = overlay(entry, held)
   // Published at once, the save writes over the website's version: the other fields stay as they are online.
   const base = toPending ? shown : { data: entry.data as Data, prints: entry.prints }
@@ -625,9 +626,10 @@ async function versionOf(ctx: QueryCtx, actor: Actor, entryId: string, changeId:
  * several pages at once, so only the tree moves a page (navigation.move); one page's old place would split a section
  * or nest a page inside its own subpages.
  */
-function revertFields(key: string, brick: Brick | undefined, touched: string[], data: Data, now: Data): Record<string, Json> {
+function revertFields(brick: Brick | undefined, touched: string[], data: Data, now: Data): Record<string, Json> {
   const fields: Record<string, Json> = {}
-  const place = brick && isNavTree(key, brick) ? new Set(['parent', 'section', 'tab']) : undefined
+  const tree = brick && treeOf(brick)
+  const place = tree ? new Set(treeFields(tree)) : undefined
   for (const root of touched) {
     const field = brick && Object.hasOwn(brick.fields, root) ? brick.fields[root] : undefined
     if (!field || field.retired || field.type === 'slug' || place?.has(root)) continue
@@ -643,7 +645,7 @@ function revertFields(key: string, brick: Brick | undefined, touched: string[], 
  */
 function revertWrites(schema: Schema, entry: Doc<'entries'>, touched: string[], data: Data, now: Data, task: string | undefined): Record<string, Json> {
   const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
-  const fields = revertFields(entry.brick, brick, touched, data, now)
+  const fields = revertFields(brick, touched, data, now)
   const taskBrick = taskBrickOf(schema, task, entry)
   const weekly = Object.hasOwn(schema.bricks, taskBrick) ? weeklyTask(schema.bricks[taskBrick]!) : undefined
   if (weekly && task === `${taskBrick}.${weekly.task.id}`) delete fields[weekly.field]
@@ -894,7 +896,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     for (const expired of removing) {
       await softRemove(ctx, c, expired, args.opId, SYSTEM, recorded(msg('history.expiredRemoved', { title: labelOf(schema, args.brick, expired.data) }), schema))
     }
-    const order = newOrder(args.brick, brick, rows.map((r) => r.order))
+    const order = newOrder(brick, rows.map((r) => r.order))
     const entry = await ctx.db.insert('entries', {
       site: actor.site._id, brick: args.brick, kind: 'item', order, data, rev: 1,
       fieldRevs: Object.fromEntries(Object.keys(brick.fields).map((name) => [name, 1])), lifeRev: 1, prints, bytes: size, treeBytes: trees.bytes,
@@ -1055,7 +1057,7 @@ export const restore = mutation({
       const trees = await treesOf(brick.fields, entry.data as Data)
       if (c.treeBytes + trees.bytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
 
-      const order = newOrder(entry.brick, brick, rows.map((r) => r.order))
+      const order = newOrder(brick, rows.map((r) => r.order))
       const now = Date.now()
       await ctx.db.patch(entry._id, {
         deletedAt: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, order, treeBytes: trees.bytes, ...(entry.state === 'draft' ? {} : { contentAt: now }),
@@ -1363,7 +1365,7 @@ export const move = mutation({
       const brick = structuralBrick(schema, entry.brick)
       if (brick.order !== 'manual') fail('INVALID', 'errors.collectionAutoSorted', undefined, { brick: entry.brick })
       // A navigation tree moves a page with its subpages and headings (navigation.move); one order step would not.
-      if (isNavTree(entry.brick, schema.bricks[entry.brick]!)) fail('INVALID', 'errors.moveInNavigationTree')
+      if (brick.tree) fail('INVALID', 'errors.moveInNavigationTree')
       // No task covers reordering (SPEC 2.7), so staff may not reorder.
       if (actor.role === 'staff') fail('FORBIDDEN', 'errors.notYourTask')
       if (entry.deletedAt) fail('CHANGED_SINCE', 'errors.thisEntryDeletedSince', undefined, current(entry))

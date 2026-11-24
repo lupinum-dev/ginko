@@ -5,7 +5,7 @@
      away and the form and the preview share the panel. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isNavTree, isShown, ordered, routeUrls, textIn, todayIn, untranslatedMode, urlsFor, visibleUntil, type Place, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, visibleUntil, type Place, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
@@ -87,12 +87,13 @@ const foreign = computed(() => locale.value !== main.value)
  * All live fields; a new entry has no slug yet; a foreign language shows only translatable ones, and the address the
  * page has there (display only: the form never sends a slug, the server makes it from the translated title).
  */
-const navTree = computed(() => isNavTree(props.brickKey, props.brick))
+const navTree = computed(() => treeOf(props.brick))
+const placeFields = computed(() => new Set(navTree.value ? treeFields(navTree.value) : []))
 const fields = computed<Fields>(() => Object.fromEntries(ordered(props.brick.fields).filter(([key, f]) => {
   if (f.retired) return false
   if (!props.entry && f.type === 'slug') return false
   // A navigation tree places its pages itself (NavTree; NavPlace shows where).
-  if (navTree.value && (key === 'parent' || key === 'section' || key === 'tab')) return false
+  if (placeFields.value.has(key)) return false
   if (props.entry && props.tasks?.fields && !props.tasks.fields.includes(key)) return false
   if (foreign.value) return hasTranslation(f) || (f.type === 'slug' && props.brick.kind === 'collection' && !!props.brick.route?.[locale.value])
   return true

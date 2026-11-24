@@ -14,7 +14,7 @@ Object.entries({ computed, nextTick, ref, watch, useI18n }).forEach(([name, fn])
 
 const brick = serializeSchema(defineSite({
   site: 'docs', name: 'Docs', url: 'https://docs.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: {},
-  bricks: { docs: collection({ listing: { title: 'title' }, label: 'Doku', max: 100, order: 'manual', fields: { title: f.text('Titel'), section: f.text('Abschnitt', { optional: true }), parent: f.ref('Über', { to: 'docs', optional: true }), slug: f.slug('Adresse', { from: 'title' }) } }) },
+  bricks: { docs: collection({ listing: { title: 'title' }, tree: { parent: 'parent', section: 'section' }, label: 'Doku', max: 100, order: 'manual', fields: { title: f.text('Titel'), section: f.text('Abschnitt', { optional: true }), parent: f.ref('Über', { to: 'docs', optional: true }), slug: f.slug('Adresse', { from: 'title' }) } }) },
 })).bricks.docs as CollectionBrick
 
 type Row = { _id: string; rev?: number; state?: string; parent?: string; section?: string }

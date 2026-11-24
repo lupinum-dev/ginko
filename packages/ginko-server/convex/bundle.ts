@@ -127,7 +127,7 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     // An entry that does not exist yet (a create that is only proposed) joins its collection where entries.create puts it.
     const brick = schema.bricks[key]!
     for (const item of added) {
-      if (item.brick === key && brick.kind === 'collection') list.push({ id: item.id, order: newOrder(key, brick, list.map((e) => e.order ?? 0)), data: item.data, prints: {}, updatedAt: new Date().toISOString() })
+      if (item.brick === key && brick.kind === 'collection') list.push({ id: item.id, order: newOrder(brick, list.map((e) => e.order ?? 0)), data: item.data, prints: {}, updatedAt: new Date().toISOString() })
     }
     entries[key] = list
   }

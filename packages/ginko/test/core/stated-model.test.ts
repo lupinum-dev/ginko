@@ -64,3 +64,38 @@ describe('listing: how an entry appears in lists', () => {
     ])
   })
 })
+
+describe('tree: a collection states its navigation tree', () => {
+  const bundle = {
+    format: 3, site: 'x', locale: 'de', locales: ['de'], mainLocale: 'de', currency: 'EUR', schemaRev: 1, contentRev: 1, generatedAt: '2026-10-11T00:00:00.000Z',
+    bricks: { docs: { kind: 'collection', items: [
+      { id: 'a', data: { title: 'Start' }, fallback: [], urls: { de: '/start' } },
+      { id: 'b', data: { title: 'Schlüssel', oben: 'a', parent: 'a' }, fallback: [], urls: { de: '/schluessel' } },
+    ] } },
+  } as unknown as Bundle
+  const docs = (tree?: CollectionBrick['tree']) => ({ bricks: { docs: {
+    kind: 'collection', label: 'Doku', order: 'manual', listing: { title: 'title' }, ...(tree ? { tree } : {}),
+    fields: { title: { type: 'text', label: 'Titel' }, oben: { type: 'ref', label: 'Oben', to: 'docs' }, parent: { type: 'ref', label: 'Oben', to: 'docs' } },
+  } as unknown as Brick } })
+  const shape = (schema: ReturnType<typeof docs>) => navTree(bundle, ['docs'], 'de', schema).map((n) => [n.title, n.children.map((c) => c.title)])
+
+  // Wrong (guess 6): a field called `parent` nests the pages of any collection, and a field with another name never does.
+  it('nests pages by the field tree.parent names, and not at all without tree', () => {
+    expect(shape(docs({ parent: 'oben' }))).toEqual([['Start', ['Schlüssel']]])
+    expect(shape(docs())).toEqual([['Start', []], ['Schlüssel', []]])
+  })
+
+  // Wrong: a tree whose parent field points to another brick, holds several entries, or whose order is not the owner's
+  // is accepted, and the Studio moves pages in an order the site does not show.
+  it('needs a ref to the collection itself and the owner\'s order', () => {
+    const schema = stored()
+    const events = schema.bricks.events as CollectionBrick
+    events.fields.up = { type: 'ref', label: 'Oben', to: 'menu' }
+    events.tree = { parent: 'up', section: 'title' }
+    events.order = { field: 'title' }
+    expect(checkSchema(schema)).toEqual([
+      'events.tree.parent: “up” is not a ref field to events itself (one entry).',
+      'events.tree: a navigation tree is sorted by hand. Write `order: \'manual\'`.',
+    ])
+  })
+})

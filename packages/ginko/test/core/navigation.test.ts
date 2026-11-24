@@ -34,7 +34,8 @@ describe('navTree', () => {
   it('lets a parent ref override the URL rule and ignores cycles', () => {
     const b = bundle({ docs: [doc('a', '/a'), doc('b', '/a/b', { parent: 'c' }), doc('c', '/c', { parent: 'b' })] })
     // b goes under c by ref; c under b would be a cycle, so c falls back to the URL rule (root)
-    expect(shape(navTree(b, ['docs'], 'de', schema))).toEqual(['/a', { '/c': ['/a/b'] }])
+    const tree = collection({ label: 'Doku', listing: { title: 'title' }, tree: { parent: 'parent' }, max: 50, order: 'manual', fields: { title: f.text('Titel', { optional: true }), parent: f.ref('Oben', { to: 'docs', optional: true }) } })
+    expect(shape(navTree(b, ['docs'], 'de', { bricks: { docs: tree } }))).toEqual(['/a', { '/c': ['/a/b'] }])
   })
 })
 

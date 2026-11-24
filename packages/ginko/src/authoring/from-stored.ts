@@ -48,6 +48,7 @@ export function defOf(brick: Brick, more: { item?: Label } = {}): BrickDef {
     max: brick.max,
     order: brick.order,
     listing: brick.listing,
+    ...(brick.tree ? { tree: brick.tree } : {}),
     ...(visible ? { showUntil: { field: visible.field, ...(visible.days !== undefined ? { plusDays: visible.days } : {}), ...(visible.deleteExpired ? { thenDelete: true } : {}) } } : {}),
     ...(brick.untranslated ? { untranslated: brick.untranslated } : {}),
     ...(brick.plans ? { plans: brick.plans } : {}),
