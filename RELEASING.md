@@ -42,19 +42,24 @@ for the package it changes.
 There is no npm token. The pack job needs `pnpm build` to work and `scripts/release.mjs` to find no dependency
 cycle between the published packages (a peer dependency counts).
 
-### First publication of the new packages
+### First publication of a new package
 
-npm attaches a trusted publisher only to a package that exists. These packages of the group are not on npm yet:
-`@lupinum/ginko-server`, `@lupinum/ginko-studio`. `@lupinum/ginko-editor` is on npm as `0.1.0`, published from the
-earlier repository `lupinum-dev/ginko-editor`, so it has no trusted publisher for this repository. The first
-publication of these three from this repository is by hand, by Matthias with his 2FA code; the other packages of the
-group publish by the workflow afterwards.
+All ten packages of the group are on npm. The platform packages (`-server`, `-studio`, `-editor`) joined with 0.18.0
+on 24 Nov 2026, published by hand.
+
+npm attaches a trusted publisher only to a package that exists, so a package that joins the group later is first
+published by hand, by Matthias with his 2FA code. First ask npm whether the name exists already (`npm view <name>`):
+`@lupinum/ginko-editor` did, as `0.1.0` from the earlier repository `lupinum-dev/ginko-editor`.
 Follow "First publication of a new package" in the handbook: reject the `npm` deployment of the first run, download its
-`release` artifact, publish only those tarballs by hand with
+`release` artifact, publish only the new tarballs by hand with
 `npm publish ./release/<file>.tgz --access public --ignore-scripts --tag latest` (`--tag next` for a prerelease) and your 2FA code,
-then set on every package the trusted publisher (workflow `release.yml`, environment `npm`) and "Require two-factor
+then set on every new package the trusted publisher (workflow `release.yml`, environment `npm`) and "Require two-factor
 authentication and disallow tokens". Then run `release.yml` by hand on `main`: it publishes the packages that already
-exist (the seven of the first release) with provenance and creates the tag and GitHub release.
+existed with provenance and creates the tag and GitHub release.
+
+If the `npm` deployment was approved instead: the job publishes the packages that existed and fails at the first new
+one. Publish the new tarballs by hand, wait until `npm view <name>@<version>` answers for each (a new package takes a
+few minutes), then use "Re-run failed jobs" on the same run. It skips every version that is on npm and creates the tag.
 
 ## Repository
 
@@ -62,8 +67,9 @@ exist (the seven of the first release) with provenance and creates the tag and G
 history is in the private `lupinum-dev/ginko-archive`; internal working files (plan, reviews, spikes) are
 in the private `lupinum-dev/ginko-internal`. Keep them out of this repository.
 
-Docs deploy: the Vercel project `lupinum-ginko-docs` (root `sites/docs`) builds every push to `main` and serves
-`https://ginko.lupinum.com`. The shadcn registry items point at `<url>/r`, with `url` from `sites/docs/ginko.config.ts`; keep that
+Docs deploy: the Vercel project `lupinum-ginko-docs` (root `sites/docs`) builds only on a release (D70: the merge of
+"Version packages") and serves `https://ginko.lupinum.com`. So merge docs for a release before its "Version packages"
+pull request; a docs fix between releases goes live with "Redeploy" in Vercel or with the next release. The shadcn registry items point at `<url>/r`, with `url` from `sites/docs/ginko.config.ts`; keep that
 `url` the public docs address (`GINKO_REGISTRY_URL` overrides it).
 
 ## CI
