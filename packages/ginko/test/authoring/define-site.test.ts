@@ -191,6 +191,16 @@ describe('a config or a brick in the form of 0.18', () => {
       "- bricks.news is a brick of the stored form (Ginko 0.18). Take its pattern from '@lupinum/ginko/patterns' or from the preset, or write it with `single` or `collection` of '@lupinum/ginko'.",
     )
   })
+
+  // Wrong: `bricks: { faq: undefined }` (a conditional spread) throws a bare TypeError, or a string is called a brick
+  // of the stored form.
+  it('says that a value that is no object is not a brick', () => {
+    expect(() => defineSite({ ...base, locales: ['de'], bricks: { faq: undefined, news: 'news' } as never })).toThrow([
+      'ginko.config.ts:',
+      '- bricks.faq is not a brick. Write it with single(...) or collection(...), or call a pattern.',
+      '- bricks.news is not a brick. Write it with single(...) or collection(...), or call a pattern.',
+    ].join('\n'))
+  })
 })
 
 describe('what the site file must say', () => {

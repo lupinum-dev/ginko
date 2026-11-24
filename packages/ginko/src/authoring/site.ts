@@ -96,9 +96,11 @@ export function defineSite<
 
   // A ready-made brick is a function with options; given without its call it has no fields to read.
   const notCalled = Object.entries(bricks).filter(([, input]) => typeof input === 'function').map(([key]) => `bricks.${key} is a function. Call it: \`${key}: ${key}()\`.`)
+  // A value that is no object (`undefined` from a conditional spread, a string, `true`) is no brick at all.
+  const notBricks = Object.entries(bricks).filter(([, input]) => typeof input !== 'function' && (typeof input !== 'object' || input === null)).map(([key]) => `bricks.${key} is not a brick. Write it with single(...) or collection(...), or call a pattern.`)
   // A brick object of Ginko 0.18 (`collection()` of '@lupinum/ginko/internal', or an old preset) has no written form to read.
-  const stored = Object.entries(bricks).filter(([, input]) => typeof input !== 'function' && !isDef(input)).map(([key]) => `bricks.${key} is a brick of the stored form (Ginko 0.18). Take its pattern from '@lupinum/ginko/patterns' or from the preset, or write it with \`single\` or \`collection\` of '@lupinum/ginko'.`)
-  if (notCalled.length || stored.length) throw new Error(`ginko.config.ts:\n${[...notCalled, ...stored].map((p) => `- ${p}`).join('\n')}`)
+  const stored = Object.entries(bricks).filter(([, input]) => typeof input === 'object' && input !== null && !isDef(input)).map(([key]) => `bricks.${key} is a brick of the stored form (Ginko 0.18). Take its pattern from '@lupinum/ginko/patterns' or from the preset, or write it with \`single\` or \`collection\` of '@lupinum/ginko'.`)
+  if (notCalled.length || notBricks.length || stored.length) throw new Error(`ginko.config.ts:\n${[...notCalled, ...notBricks, ...stored].map((p) => `- ${p}`).join('\n')}`)
 
   const compiled = Object.fromEntries(Object.entries(bricks).map(([key, input]) => {
     const own: Record<Locale, BrickTexts | undefined> = Object.fromEntries(Object.entries(texts).map(([locale, record]) => [locale, record?.[key]]))
