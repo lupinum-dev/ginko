@@ -7,6 +7,13 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
   return `${get('year')}-${get('month')}-${get('day')}`
 }
 
+/** `YYYY-MM-DDTHH:MM` of `now` on the wall clock of `timeZone` (no seconds, no offset): the form of `$publishAt`. */
+export function wallClockIn(timeZone: string, now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(now)
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`
+}
+
 const readers = new Map<string, Intl.DateTimeFormat>()
 
 /** How far `timeZone` is ahead of UTC at the instant `ms`, in ms (+1 h for Vienna in winter, +2 h in summer). */

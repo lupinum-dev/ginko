@@ -55,8 +55,8 @@ links. Other builds (CI, your computer) only print a warning.
 
 **Static files.** This site can also be built as static files for any web host (`npm run generate`, output in
 `.output/public/`). Nothing on it depends on today's date except the notices and the releases: with static files, a
-notice leaves the site with the next build after its last day, not at midnight, and a release dated after the build day
-appears with the first build on or after that date. `$draft: true` in a release file holds that release back. Rebuild
+notice leaves the site with the next build after its last day, not at midnight, and a release with `$publishAt`
+appears with the first build at or after that time. `$draft: true` in a release file holds that release back. Rebuild
 when you change a notice or a release, and add a daily rebuild (for example a Vercel cron job or a scheduled GitHub
 Action).
 

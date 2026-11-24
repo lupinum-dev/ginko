@@ -5,7 +5,6 @@ import { dirname, join } from 'node:path'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, single } from '@lupinum/ginko/internal'
-import { changelog } from '@lupinum/ginko/basics'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { buildFileBundles, publicBundle } from '../src/index.ts'
 import { errorLine, readContent } from '../src/read.ts'
@@ -372,32 +371,21 @@ describe('checks that never hide a broken entry', () => {
       }),
     },
   }))
-  const readBlog = (files: Record<string, string>) => { const s = site(files); return readContent(s.content, s.public, blog, { drafts: false, today: '2026-10-17' }) }
+  const readBlog = (files: Record<string, string>) => { const s = site(files); return readContent(s.content, s.public, blog, { drafts: false, now: new Date('2026-10-17T10:00:00Z') }) }
   const author = { 'content/authors/ann.yml': 'name: Ann' }
 
-  // Wrong behaviour caught: a date in another format counts as "after today" and the post vanishes without an error.
-  it('reports a scheduling date that is not an ISO date instead of leaving the entry out', async () => {
-    const r = await readBlog({ ...author, 'content/posts/a.yml': 'title: A\ndate: 24.10.2026\nauthor: authors/ann' })
-    expect(r.errors.map((e) => [e.file, e.path])).toEqual([['posts/a.yml', 'date']])
+  // Wrong behaviour caught: a time with an offset or seconds (a second written form) is taken, or ignored so the entry
+  // goes online at once.
+  it('reports a $publishAt that is not a day or a day and time', async () => {
+    const r = await readBlog({ ...author, 'content/posts/a.yml': "title: A\ndate: 2026-10-24\nauthor: authors/ann\n$publishAt: '2026-10-24T09:00:00+02:00'" })
+    expect(r.errors).toEqual([{ file: 'posts/a.yml', path: '$publishAt', message: '“$publishAt” must be a day or a day and time in the site\'s time zone, such as 2026-12-01 or 2026-12-01T09:00 (no offset, no seconds).' }])
   })
 
-  // Wrong behaviour caught: a scheduled post with a broken reference passes every check and fails at the later build that publishes it.
-  it('checks a scheduled entry like a published one and leaves it out of the bundle', async () => {
-    const r = await readBlog({ ...author, 'content/posts/a.yml': 'title: A\ndate: 2026-10-24\nauthor: authors/nobody', 'content/posts/b.yml': 'title: B\ndate: 2026-10-24\nauthor: authors/ann' })
+  // Wrong behaviour caught: a planned post with a broken reference passes every check and fails at the later build that publishes it.
+  it('checks a planned entry like an online one and leaves it out of the bundle', async () => {
+    const r = await readBlog({ ...author, 'content/posts/a.yml': 'title: A\ndate: 2026-10-24\nauthor: authors/nobody\n$publishAt: 2026-10-24', 'content/posts/b.yml': 'title: B\ndate: 2026-10-24\nauthor: authors/ann\n$publishAt: 2026-10-24' })
     expect(r.errors.map((e) => [e.file, e.path])).toEqual([['posts/a.yml', 'author']])
     expect(r.entries.posts ?? []).toEqual([])
-  })
-
-  // Wrong behaviour caught: the changelog basic has no drafts line, so a release dated in the future is published at once.
-  it('leaves out a changelog entry dated after the build day', async () => {
-    const log = serializeSchema(defineSite({
-      site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/' } },
-      bricks: { changelog: changelog({ source: 'files' }) },
-    }))
-    const s = site({ 'content/changelog/v1.md': '---\nversion: 1.0.0\ndate: 2026-10-01\n---\nOut.', 'content/changelog/v9.md': '---\nversion: 9.0.0\ndate: 2031-01-01\n---\nLater.' })
-    const r = await readContent(s.content, s.public, log, { drafts: false, today: '2026-10-17' })
-    expect(r.errors).toEqual([])
-    expect((r.entries.changelog ?? []).map((e) => e.id)).toEqual(['changelog/v1'])
   })
 
   // Wrong behaviour caught: the duplicate was reported on one file only, often the old one, so the owner did not see the

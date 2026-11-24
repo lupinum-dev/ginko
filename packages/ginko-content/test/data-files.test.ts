@@ -166,7 +166,7 @@ describe('drafts', () => {
   // Wrong behaviour caught: a misspelt or future `$` key ($changes) is dropped in silence, or read as a field.
   it('refuses a $ key Ginko does not know', async () => {
     const r = await read({ 'content/angebote/a.yml': 'title: A\n$changes: ja' })
-    expect(r.errors).toEqual([{ file: 'angebote/a.yml', path: '$changes', message: '“$changes” is not a key Ginko knows. Keys that start with $ are $draft, $redirectFrom; every other key is a field of the brick.' }])
+    expect(r.errors).toEqual([{ file: 'angebote/a.yml', path: '$changes', message: '“$changes” is not a key Ginko knows. Keys that start with $ are $draft, $publishAt, $redirectFrom; every other key is a field of the brick.' }])
   })
 
   // Wrong behaviour caught: `$draft: false` or `$draft: yes` is taken as a second written form, or a translation
@@ -180,36 +180,46 @@ describe('drafts', () => {
   })
 })
 
-describe('scheduled entries', () => {
+describe('$publishAt', () => {
+  // Auckland is 13 hours ahead of UTC in November: at 12:00 UTC on 30 November it is 01:00 on 1 December there.
   const site = serializeSchema(defineSite({
-    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/' } },
+    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Pacific/Auckland', locales: ['en'], currency: 'NZD', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/' } },
     bricks: {
       posts: collection({ listing: { title: 'title' }, label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
-      events: collection({ listing: { title: 'title' }, label: 'Events', source: 'files', max: 50, order: { field: 'date', dir: 'asc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
     },
   }))
-  const files = {
-    'content/posts/past.yml': 'title: Past\ndate: 2026-10-15',
-    'content/posts/today.yml': 'title: Today\ndate: 2026-10-16',
-    'content/posts/tomorrow.yml': 'title: Tomorrow\ndate: 2026-10-17',
-    'content/events/tomorrow.yml': 'title: Tomorrow\ndate: 2026-10-17',
-  }
-
-  // Wrong behaviour caught: a post dated in the future is online (pages, feed, sitemap) before its day, or a coming
-  // event is hidden because its collection also has drafts.
-  it.each([
-    [{ drafts: false }, ['posts/today', 'posts/past']],
-    [{ drafts: true }, ['posts/tomorrow', 'posts/today', 'posts/past']],
-  ])('a post dated after the build day is left out with %j; a coming event stays', async (options, posts) => {
-    const root = mkdtempSync(join(tmpdir(), 'ginko-scheduled-'))
+  const now = new Date('2026-11-30T12:00:00Z')
+  const readAt = (files: Record<string, string>, drafts: boolean) => {
+    const root = mkdtempSync(join(tmpdir(), 'ginko-planned-'))
     for (const [path, text] of Object.entries(files)) {
       mkdirSync(dirname(join(root, path)), { recursive: true })
       writeFileSync(join(root, path), text)
     }
-    const r = await readContent(join(root, 'content'), join(root, 'public'), site, { ...options, today: '2026-10-16' })
+    return readContent(join(root, 'content'), join(root, 'public'), site, { drafts, now })
+  }
+  const files = {
+    'content/posts/day.yml': 'title: Day\ndate: 2026-12-01\n$publishAt: 2026-12-01',
+    'content/posts/passed.yml': "title: Passed\ndate: 2026-11-30\n$publishAt: '2026-11-30T23:30'",
+    'content/posts/later.yml': 'title: Later\ndate: 2026-12-01\n$publishAt: 2026-12-01T09:00',
+    'content/posts/dated.yml': 'title: Dated\ndate: 2027-01-01',
+  }
+
+  // Wrong behaviour caught: the time is read in UTC or on the build machine's clock (the day entry stays out a day too
+  // long), a planned entry goes online before its time, the dev server hides it, or a date field in the future hides a
+  // post without `$publishAt` (guess 9).
+  it.each([
+    [false, ['posts/dated', 'posts/day', 'posts/passed']],
+    [true, ['posts/dated', 'posts/day', 'posts/later', 'posts/passed']],
+  ])('with drafts %s, an entry is online from its time in the site\'s time zone', async (drafts, ids) => {
+    const r = await readAt(files, drafts)
     expect(r.errors).toEqual([])
-    expect(r.entries.posts!.map((e) => e.id).sort()).toEqual([...posts].sort())
-    expect(r.entries.events!.map((e) => e.id)).toEqual(['events/tomorrow'])
+    expect(r.entries.posts!.map((e) => e.id).sort()).toEqual(ids)
+  })
+
+  // Wrong behaviour caught: a file that is both a draft and planned goes online at the time, or never, without a word.
+  it('refuses $draft together with $publishAt', async () => {
+    const r = await readAt({ 'content/posts/a.yml': 'title: A\ndate: 2026-12-01\n$draft: true\n$publishAt: 2026-12-01T09:00' }, false)
+    expect(r.errors).toEqual([{ file: 'posts/a.yml', path: '$publishAt', message: '“$draft” and “$publishAt” together: a draft with a time is `$publishAt` alone. Remove `$draft: true`.' }])
   })
 })
 

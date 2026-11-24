@@ -15,7 +15,7 @@ export default defineSite({
     color: '#4f46e5',
   },
   url: siteUrl('https://example.com'),
-  // "Today" for the build: a post dated after it is not published yet (content/posts/, README "Write a post").
+  // The clock of `$publishAt`: a post planned for 09:00 goes online at 09:00 here (content/posts/, README "Write a post").
   timeZone: 'Europe/Berlin',
   // The site's week: the calendar starts on firstDay, and workdays are the days you work.
   week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
@@ -48,8 +48,8 @@ export default defineSite({
       },
     }),
     // The posts, newest first (content/posts/). `authors` names entries of `people`. A file with `$draft: true` never
-    // goes online, and a post dated after the day of the build waits for the first build on or after its date.
-    // In the Studio, Today lists the drafts and the scheduled posts.
+    // goes online, and a post with `$publishAt` waits for the first build at or after that time.
+    // In the Studio, Today lists the drafts and the planned posts.
     posts: extend(posts({ authors: 'people' }), {
       tasks: [{ id: 'write', kind: 'add', label: { en: 'Write a post', de: 'Beitrag schreiben', fr: 'Écrire un article' } }],
     }),

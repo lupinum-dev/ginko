@@ -5,7 +5,7 @@ import type {
   Brick, Field, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, imageSizeProps, isTranslatable, printOf, sha256, slugify, slugKeyOf, routeUrls, todayIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, imageSizeProps, isTranslatable, printOf, sha256, slugify, slugKeyOf, routeUrls, wallClockIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -35,13 +35,12 @@ export function errorLine(e: ContentError): string {
 
 export interface ReadOptions {
   /**
-   * `false` leaves out entries marked `$draft: true`, and scheduled entries: in a collection that lists its entries
-   * newest first by a date (`order: { field, dir: 'desc' }`), an entry dated after `today`.
-   * Default `true` (dev shows both).
+   * `false` leaves out entries marked `$draft: true`, and entries whose `$publishAt` is still to come (those are
+   * checked in full first). Default `true` (dev shows both).
    */
   drafts?: boolean
-  /** The build day (`YYYY-MM-DD`) for scheduled entries. Default: today in the schema's time zone. */
-  today?: string
+  /** The time counted as "now": for `$publishAt` (on the site's wall clock) and, in a build, the visibility windows and `generatedAt`. Default: the current time. */
+  now?: Date
   /** `text` keeps each Markdown field as its source text, the form the platform stores and the Studio edits
    * (`pnpm local:files-export`). Default `tree`: the parsed tree the site's bundle carries. */
   markdown?: 'tree' | 'text'
@@ -104,7 +103,7 @@ function fail(cx: FileCx, path: string, message: string) {
  * The keys of a content file that are no fields: they start with `$`, and a field name never does (V2 5.6). A key
  * that starts with `$` and is not one of these is a problem.
  */
-const DOLLAR_KEYS = ['$draft', '$redirectFrom'] as const
+const DOLLAR_KEYS = ['$draft', '$publishAt', '$redirectFrom'] as const
 /** Keys that were reserved before the `$` keys, with the key that replaced each. */
 const RENAMED: Record<string, string> = {
   draft: '`$draft: true`',
@@ -131,6 +130,17 @@ function splitKeys(cx: FileCx, fields: Fields, data: Record<string, unknown>): {
     } else own[key] = value
   }
   return { fields: own, dollar }
+}
+
+/**
+ * `$publishAt`: the day (`2026-12-01`, meaning 00:00) or day and time (`2026-12-01T09:00`) the entry goes online, on
+ * the wall clock of the site's time zone, as `YYYY-MM-DDTHH:MM`. No offset and no seconds: one written form.
+ */
+function publishTime(cx: FileCx, value: unknown): string | undefined {
+  const match = typeof value === 'string' ? /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(value) : null
+  if (match && isDate(match[1]) && Number(match[2] ?? 0) < 24 && Number(match[3] ?? 0) < 60) return `${match[1]}T${match[2] ?? '00'}:${match[3] ?? '00'}`
+  fail(cx, '$publishAt', '“$publishAt” must be a day or a day and time in the site\'s time zone, such as 2026-12-01 or 2026-12-01T09:00 (no offset, no seconds).')
+  return undefined
 }
 
 /** `$redirectFrom`: one old path or a list of them, each starting with `/`. */
@@ -411,7 +421,8 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
  */
 export async function readContent(contentDir: string, publicDir: string, schema: Schema, options: ReadOptions = {}): Promise<ReadResult> {
   const drafts = options.drafts ?? true
-  const today = options.today ?? todayIn(schema.timeZone)
+  // `$publishAt` is compared with the site's wall clock, so a time in Vienna means Vienna whatever the build machine.
+  const now = wallClockIn(schema.timeZone, options.now)
   const errors: ContentError[] = []
   const entries: Record<string, StoredEntry[]> = {}
   const files: Record<string, FileInfo> = {}
@@ -513,7 +524,6 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     let next = Math.max(0, ...sorted.map(([, g]) => g.number ?? 0))
 
     const slugKey = slugKeyOf(brick)
-    const dateKey = scheduleKeyOf(brick)
     const slugOwner = new Map<string, string>()
     for (const [name, group] of sorted) {
       if (group.main === undefined) {
@@ -614,8 +624,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       }
       urlOwners.push({ id, urls })
       for (const t of taken) slugOwner.set(t.key, id)
-      // Checked above like a published entry; a scheduled one stays out until its date.
-      if (mainView.scheduled) { leftOut.add(id); continue }
+      // Checked above like an online entry; a planned one stays out until its `$publishAt`.
+      if (mainView.planned) { leftOut.add(id); continue }
       if (order !== undefined) entry.order = order
       entry.updatedAt = times.updatedAt(Object.values(rels))
       entry.sources = Object.fromEntries(Object.entries(rels).map(([locale, rel]) => [locale, times.source(rel!)]))
@@ -628,7 +638,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
      * the parsed body; YAML, JSON and CSV: the whole file or row is data and there is no body).
      * `'draft'` when the entry is marked `$draft: true` and drafts are off.
      */
-    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; scheduled?: true } | 'draft' | undefined> {
+    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; planned?: true } | 'draft' | undefined> {
       const { rel } = src
       const ext = extOf(rel)
       const markdownKey = markdownKeyOf(brick)
@@ -679,13 +689,12 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const redirects = dollar.$redirectFrom === undefined ? undefined : redirectPaths(cx, dollar.$redirectFrom)
       if (dollar.$draft !== undefined && dollar.$draft !== true) fail(cx, '$draft', '“$draft” takes only true. Leave it out for an entry that is online.')
       const draft = dollar.$draft === true
+      const publishAt = dollar.$publishAt === undefined ? undefined : publishTime(cx, dollar.$publishAt)
+      if (draft && dollar.$publishAt !== undefined) fail(cx, '$publishAt', '“$draft” and “$publishAt” together: a draft with a time is `$publishAt` alone. Remove `$draft: true`.')
       if (draft && !drafts && fileErrors.length === 0) return 'draft'
-      // A scheduled entry (dated after the build day) is left out like a draft; the first build on or after its date
-      // publishes it. Only the main file holds the date.
-      // Only a real ISO date schedules: any other text is left to validate(), which reports it. The entry is checked
-      // like a published one (it goes live at a later build nobody watches) and left out of the bundle afterwards.
-      const dateValue = dateKey === undefined ? undefined : fields[dateKey]
-      const scheduled = isMain && !drafts && isDate(dateValue) && dateValue > today
+      // Before its `$publishAt` an entry is treated as a draft (shown only when drafts are), but it is checked in full
+      // like an online entry: it goes online at a later build nobody watches, so a broken one fails the build now.
+      const planned = !drafts && publishAt !== undefined && publishAt > now
       const view = convertFields(brick.fields, fields, cx)
       const hasBody = parsed !== undefined && parsed.value.nodes.length > 0
       if (parsed === undefined && markdownKey !== undefined) {
@@ -696,7 +705,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
-      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, scheduled: scheduled ? true : undefined }
+      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, planned: planned ? true : undefined }
     }
   }
 
@@ -836,16 +845,6 @@ async function entryNames(dir: string): Promise<string[]> {
 async function dataNames(dir: string): Promise<string[]> {
   const dirents = await readdir(dir, { withFileTypes: true }).catch(() => [])
   return dirents.filter((d) => d.isFile() && extensions.some((e) => d.name.endsWith(`.${e}`))).map((d) => d.name).sort()
-}
-
-/**
- * The date field that schedules an entry: in a collection that lists its entries newest first by a date (posts, a
- * changelog), an entry dated after the build day is not published yet. A list in date order from the
- * oldest (events) shows coming dates on purpose, so it has none.
- */
-function scheduleKeyOf(brick: Brick): string | undefined {
-  if (brick.kind !== 'collection' || brick.order === 'manual' || brick.order.dir !== 'desc') return undefined
-  return brick.fields[brick.order.field]?.type === 'date' ? brick.order.field : undefined
 }
 
 /** Problems that make every file of a brick unreadable: more than one markdown field. */
