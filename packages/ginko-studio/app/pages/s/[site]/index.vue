@@ -75,7 +75,7 @@ watch([open, picking], ([sheet, pick]) => {
 })
 
 /**
- * "Nächste Woche planen" when that week is planned already: the person's edit task on that plan. A second plan for
+ * "Nächste Woche planen" when that week is planned already: the person's task `edit` on that plan. A second plan for
  * the same week would never show (the server refuses it).
  */
 function planOfWeek(key: string, task: Task): { task: Task; entry: Entry } | undefined {
@@ -84,7 +84,7 @@ function planOfWeek(key: string, task: Task): { task: Task; entry: Entry } | und
   if (task.kind !== 'create' || brick.kind !== 'collection' || !brick.plans) return undefined
   const token = task.prefill?.[brick.plans.field]
   const week = typeof token === 'string' ? resolveToken(token, schema.timeZone, schema.week) : undefined
-  const edit = sections.value.find((x) => x.key === key)?.tasks.find((t) => t.kind === 'edit')
+  const edit = sections.value.find((x) => x.key === key)?.tasks.find((t) => t.id === 'edit')
   const entry = week && entriesOf(key).find((e) => e.state !== 'draft' && e.data[brick.plans!.field] === week)
   return edit && entry ? { task: edit, entry } : undefined
 }

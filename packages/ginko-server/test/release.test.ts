@@ -12,6 +12,12 @@ type Write = { entry: string; fields: Record<string, Json> }
 
 const commit = () => crypto.randomUUID().replaceAll('-', '')
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+/** Removes the field `hours.closedNote` and takes it out of the tasks, so the only problem left is the missing retirement. */
+const dropClosedNote = (schema: Schema) => {
+  const hours = schema.bricks.hours!
+  delete hours.fields.closedNote
+  hours.tasks = hours.tasks?.map((task) => ('fields' in task && task.fields ? { ...task, fields: task.fields.filter((name) => name !== 'closedNote') } : task))
+}
 
 async function storedSite(s: Setup) {
   return (await s.t.run((ctx) => ctx.db.get(s.site)))!
@@ -93,7 +99,7 @@ describe('release mutation (SPEC 5.2)', () => {
   it('a rejected diff is SCHEMA_REJECTED with the fix text and changes nothing', async () => {
     const s = await setup()
     const schema = copy(await storedSchema(s))
-    delete schema.bricks.hours!.fields.closedNote
+    dropClosedNote(schema)
     const error = await errorOf(release(s, { schema }))
     expect(error).toMatchObject({
       code: 'SCHEMA_REJECTED',
@@ -262,7 +268,7 @@ describe('push keys and the HTTP routes (SPEC 5.1, 10)', () => {
     expect(await stale.json()).toMatchObject({ code: 'CHANGED_SINCE' })
 
     const schema = copy(await storedSchema(s))
-    delete schema.bricks.hours!.fields.closedNote
+    dropClosedNote(schema)
     const rejected = await post(s, token, { commit: 'x2', expectedSchemaRev: 1, expectedContentRev: 1, schema, writes: [] })
     expect(rejected.status).toBe(400)
     expect(await rejected.json()).toMatchObject({ code: 'SCHEMA_REJECTED', details: { rejected: [expect.objectContaining({ path: 'hours.closedNote' })] } })
@@ -295,7 +301,7 @@ describe('devPush (SPEC 5.3)', () => {
     vi.stubEnv('GINKO_LOCAL', '1')
     const s = await setup()
     const schema = copy(await storedSchema(s))
-    delete schema.bricks.hours!.fields.closedNote
+    dropClosedNote(schema)
     const pushed = await s.t.mutation(internal.release.devPush, { site: 'restaurant', schema })
     expect(pushed).toMatchObject({ schemaRev: 2, warnings: [expect.objectContaining({ path: 'hours.closedNote' })] })
     expect((await storedSite(s)).schemaRev).toBe(2)

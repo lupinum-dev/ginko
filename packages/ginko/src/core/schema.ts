@@ -373,6 +373,7 @@ function schemaProblems(schema: Schema): string[] {
       problems.push(...checkField(`${key}.${name}`, field, brick.fields, true, schema))
       if (field.retired && !schema.retired[`${key}.${name}`]) problems.push(`${key}.${name}: marked as retired, but has no rule in retired.`)
     }
+    problems.push(...taskIdProblems(key, brick))
     for (const task of brick.tasks ?? []) {
       pushLabel(`${key}.${task.id}.label`, task.label)
       // A prefill is checked like a default: a value the field cannot hold would start the form broken.
@@ -551,6 +552,31 @@ function isWeek(week: unknown): boolean {
   if (typeof week !== 'object' || week === null) return false
   const { firstDay, weekend } = week as { firstDay?: unknown; weekend?: unknown }
   return isIsoDay(firstDay) && Array.isArray(weekend) && weekend.length <= 6 && weekend.every(isIsoDay)
+}
+
+/** The kind each standard task id stands for: the Studio opens the task `edit` from a row, so the ids are fixed. */
+const STANDARD_KINDS: Record<string, Task['kind']> = { add: 'create', edit: 'edit', remove: 'remove' }
+
+/**
+ * The ids of a brick's tasks: a letter, then letters and digits; unique in the brick; `add`, `edit` and `remove` only for
+ * the task of that kind. An edit task names fields the brick has.
+ */
+function taskIdProblems(key: string, brick: Brick): string[] {
+  const problems: string[] = []
+  const seen = new Set<string>()
+  for (const task of brick.tasks ?? []) {
+    const id: unknown = task.id
+    if (typeof id !== 'string' || !/^[a-z][a-zA-Z0-9]{0,40}$/.test(id)) problems.push(`${key}.tasks: “${String(id)}” is not a task id. Write a letter, then letters and digits, such as “price”.`)
+    else if (seen.has(id)) problems.push(`${key}.tasks: the id “${id}” is used by two tasks. Give one of them another id.`)
+    else if (Object.hasOwn(STANDARD_KINDS, id) && STANDARD_KINDS[id] !== task.kind) problems.push(`${key}.${id}: “${id}” is the id of the standard ${STANDARD_KINDS[id] === 'create' ? 'add' : STANDARD_KINDS[id]} task. Give this ${task.kind === 'create' ? 'add' : task.kind} task another id.`)
+    if (typeof id === 'string') seen.add(id)
+    if (task.kind === 'edit') {
+      for (const name of Array.isArray(task.fields) ? task.fields : []) {
+        if (!Object.hasOwn(brick.fields, name)) problems.push(`${key}.${String(id)}.fields: “${name}” is not a field of this brick.`)
+      }
+    }
+  }
+  return problems
 }
 
 /**

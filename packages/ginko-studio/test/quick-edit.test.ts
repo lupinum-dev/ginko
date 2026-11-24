@@ -91,6 +91,31 @@ test('a row\'s "Entfernen" stays disabled while its removal runs, also when anot
   wrapper.unmount()
 })
 
+// Wrong (design V2 guess 11): a tap on a row opens the first edit task in the list ("Text korrigieren"), so the order of
+// the buttons decides what a row opens; the standard task is the one with the id `edit`, and without it a row opens nothing.
+test.each([
+  ['fix first, then edit', [{ id: 'fix', label: 'Text korrigieren', kind: 'edit', pick: true, fields: ['text'] }, { id: 'edit', label: 'Hinweis bearbeiten', kind: 'edit', pick: true, fields: ['text', 'until'] }], 'edit'],
+  ['fix only', [{ id: 'fix', label: 'Text korrigieren', kind: 'edit', pick: true, fields: ['text'] }], undefined],
+])('a row opens the task `edit` (%s)', async (_name, tasks, opened) => {
+  const brick = notices.bricks.notices!
+  schema = { ...notices, bricks: { ...notices.bricks, notices: { ...brick, tasks: [...brick.tasks!, ...tasks] as never } } }
+  listed = [notice('e1', 'Heute geschlossen')]
+  const sheet = { name: 'TaskSheet', props: ['task'], template: '<p data-test="sheet">{{ task.id }}</p>' }
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+    global: { stubs: { TaskSheet: sheet, PickSheet: true, I18nT: true, NuxtLink: true } },
+  })
+  await flushPromises()
+  const row = wrapper.get('section[aria-labelledby="b-notices"]').findAll('li button').find((b) => b.text().includes('Heute geschlossen'))
+  expect(!!row).toBe(opened !== undefined)
+  if (row) {
+    await row.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-test="sheet"]').text()).toBe(opened)
+  }
+  wrapper.unmount()
+  schema = notices
+})
+
 const DAY = 86_400_000
 // Wrong behaviour caught: a timed collection of 450 events listed every one, expired ones too: a page of 32,000 px; or
 // past 50 expired entries the oldest showed and the rest could not be reached (volume-11); or focus fell to <body>

@@ -125,7 +125,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       const tasks = (brick.tasks ?? []).filter((t) => s.may(key, t))
       // Drafts are not on the website: they have their own list (TodayDrafts).
       const listed = isTimed(brick) ? entriesOf(key).filter((e) => e.state !== 'draft') : []
-      return { key, brick, tasks, remove: tasks.find((t) => t.kind === 'remove'), listed, removeOnRows: removeOnRows(brick, listed) }
+      return { key, brick, tasks, remove: tasks.find((t) => t.id === 'remove'), listed, removeOnRows: removeOnRows(brick, listed) }
     })
     const placed = new Map(cardsOf(s.schema.value!, parts).flatMap((card) => card.sections.map((x) => [x.key, { owner: x.plan ? card.key : undefined, split: x.split }] as const)))
     return parts.map((p) => ({ ...p, ...placed.get(p.key)! }))
@@ -145,11 +145,11 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   })
 
   /**
-   * What a tap on a listed entry opens: the edit task's sheet when the person has one, else the entry in Content when
-   * they may edit it there, else nothing (the row is plain text then).
+   * What a tap on a listed entry opens: the sheet of the task `edit` (by its id, never the first edit task) when the
+   * person has it, else the entry in Content when they may edit it there, else nothing (the row is plain text then).
    */
   function rowTarget(sec: Pick<Section, 'key' | 'tasks'>, entry: Entry): Row['target'] {
-    const task = sec.tasks.find((t) => t.kind === 'edit')
+    const task = sec.tasks.find((t) => t.id === 'edit')
     if (task) return { task }
     if (s.isManager.value) return { to: `/s/${s.slug.value}/all/${sec.key}/${entry._id}` }
     return undefined

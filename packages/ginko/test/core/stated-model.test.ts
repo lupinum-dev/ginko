@@ -113,3 +113,23 @@ describe('one address field per collection', () => {
     expect(checkSchema(schema)).toEqual([])
   })
 })
+
+describe('task ids', () => {
+  const withTasks = (tasks: unknown[]) => {
+    const schema = stored()
+    ;(schema.bricks.events as unknown as { tasks: unknown[] }).tasks = tasks
+    return checkSchema(schema)
+  }
+  const edit = (id: string, fields = ['title']) => ({ id, label: 'Bearbeiten', kind: 'edit', pick: true, fields })
+
+  // Wrong (guess 11): the Studio cannot rely on the id `edit` (what a row opens) when any task may carry it, two tasks
+  // may share an id (a grant then names both), or a task names a field the brick does not have.
+  it.each([
+    ['a pattern', [edit('Preis-ändern')], 'events.tasks: “Preis-ändern” is not a task id. Write a letter, then letters and digits, such as “price”.'],
+    ['unique in the brick', [edit('fix'), edit('fix')], 'events.tasks: the id “fix” is used by two tasks. Give one of them another id.'],
+    ['the standard ids for their kind', [{ id: 'edit', label: 'Neu', kind: 'create' }], 'events.edit: “edit” is the id of the standard edit task. Give this add task another id.'],
+    ['fields that exist', [edit('fix', ['title', 'subtitle'])], 'events.fix.fields: “subtitle” is not a field of this brick.'],
+  ])('are checked: %s', (_rule, tasks, problem) => {
+    expect(withTasks(tasks)).toEqual([problem])
+  })
+})

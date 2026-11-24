@@ -129,8 +129,8 @@ describe('ginko release and check against the platform (SPEC 5.1, 5.3)', () => {
     const { platform, posts } = await platformFor(s)
     const fields = { ...menu.fields }
     delete (fields as Record<string, unknown>).allergens
-    // The create task no longer lists the field either, so the only problem left is the missing retirement.
-    const tasks = menu.tasks.map((task) => (task.kind === 'create' ? { ...task, fields: task.fields.filter((name) => name !== 'allergens') } : task))
+    // The tasks no longer list the field either, so the only problem left is the missing retirement.
+    const tasks = menu.tasks.map((task) => ('fields' in task && task.fields ? { ...task, fields: task.fields.filter((name) => name !== 'allergens') } : task))
     const removed: SiteInput = { ...restaurant, bricks: { ...restaurant.bricks, menu: { ...menu, fields, tasks } } }
     const error = await release(inputFor(platform, removed)).catch((e: unknown) => e)
     expect(error).toBeInstanceOf(CliError)

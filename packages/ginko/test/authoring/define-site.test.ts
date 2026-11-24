@@ -23,7 +23,7 @@ const services = collection({
   planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
   showUntil: { field: 'until', plusDays: 2, thenDelete: true },
   status: { show: 'ending' },
-  tasks: ['add', 'edit', { id: 'price', label: 'Preis ändern', fields: ['price'] }, { id: 'edit-all', label: 'Alles ändern', needsApproval: true }, 'remove'],
+  tasks: ['add', 'edit', { id: 'price', label: 'Preis ändern', fields: ['price'] }, { id: 'editAll', label: 'Alles ändern', needsApproval: true }, 'remove'],
 })
 
 describe('defineSite writes the stored form', () => {
@@ -62,7 +62,7 @@ describe('defineSite writes the stored form', () => {
       { id: 'add', label: { de: 'Leistung hinzufügen', en: 'Add a service' }, kind: 'create' },
       { id: 'edit', label: { de: 'Leistung bearbeiten', en: 'Edit a service' }, kind: 'edit', pick: true, fields: ['title', 'until', 'price', 'nextPrice', 'priceFrom'] },
       { id: 'price', label: { de: 'Preis ändern', en: 'Change a price' }, kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'] },
-      { id: 'edit-all', label: 'Alles ändern', kind: 'edit', pick: true, fields: ['title', 'until', 'price', 'nextPrice', 'priceFrom'], needsApproval: true },
+      { id: 'editAll', label: 'Alles ändern', kind: 'edit', pick: true, fields: ['title', 'until', 'price', 'nextPrice', 'priceFrom'], needsApproval: true },
       { id: 'remove', label: { de: 'Leistung entfernen', en: 'Remove a service' }, kind: 'remove' },
     ])
     expect(site.bricks.home.tasks).toEqual([{ id: 'edit', label: 'Startseite bearbeiten', kind: 'edit', fields: ['title'] }])
