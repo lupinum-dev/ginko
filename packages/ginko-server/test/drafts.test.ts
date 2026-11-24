@@ -298,6 +298,47 @@ describe('entry names (D96)', () => {
     expect((await s.row(draft.entry))!.fieldRevs.slug).toBe(renamed.rev)
   })
 
+  // Wrong behaviour caught: the undo of a title change the slug followed puts the old slug into the data while the
+  // slug rows keep the new one.
+  it('the undo of a title change brings back name, slugs and slug rows', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    const renamed = await retitle(s, draft.entry, 1, 'Herbstball')
+    if (!('change' in renamed)) throw new Error('the title change wrote nothing')
+    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: renamed.change })
+    const first = { de: 'erster-titel', en: 'erster-titel' }
+    expect(await addressOf(s, draft.entry)).toEqual({ name: 'erster-titel', data: first, rows: first })
+  })
+
+  // Wrong behaviour caught: undoing an address change puts the old slug into the data while the slug rows keep the
+  // new one, so the website's page and the reserved address differ.
+  it('an unfixed draft: changeSlug, a title change, then undo of the changeSlug keeps data and slug rows equal', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    const moved = await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: draft.entry, locale: 'de', slug: 'handgemacht' })
+    const step1 = { de: 'handgemacht', en: 'erster-titel' }
+    expect(await addressOf(s, draft.entry)).toEqual({ name: 'erster-titel', data: step1, rows: step1 })
+    await retitle(s, draft.entry, moved.rev, 'Herbstball')
+    // A slug set by hand stays; the English one was copied from the old main slug, which was not "handgemacht".
+    expect(await addressOf(s, draft.entry)).toEqual({ name: 'herbstball', data: step1, rows: step1 })
+    const change = await s.t.run(async (ctx) => (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect()).find((c) => c.fields?.length === 1 && c.fields[0] === 'slug')!)
+    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id })
+    const step3 = { de: 'erster-titel', en: 'erster-titel' }
+    expect(await addressOf(s, draft.entry)).toEqual({ name: 'herbstball', data: step3, rows: step3 })
+  })
+
+  // Wrong behaviour caught: the undo takes an address another entry holds now, so two pages share one URL.
+  it('the undo of an address change is refused when the old slug is taken now', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    const moved = await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: draft.entry, locale: 'de', slug: 'handgemacht' })
+    const other = await s.createDraft('Anderes')
+    await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: other.entry, locale: 'de', slug: 'erster-titel' })
+    const change = await s.t.run(async (ctx) => (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect()).at(-1)!)
+    expect(change.entryRev).toBe(moved.rev)
+    expect(await errorOf(s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id }))).toMatchObject({ code: 'NOT_UNDOABLE', key: 'errors.undoAddressTaken' })
+  })
+
   // Wrong behaviour caught: a name that links and the export already use changes once the entry was planned or online.
   it.each([
     { case: 'published', publish: {} },

@@ -304,17 +304,7 @@ export const changeSlug = mutation({
       if (slug === was) return { entry: entry._id, rev: entry.rev, slug }
       if ((await freeSlug(ctx, actor, entry.brick, locale, slug, entry._id)) !== slug) fail('INVALID', 'errors.addressTaken')
 
-      // A page that is online keeps its old address as a forward; one that is not (a draft, an untranslated language) just moves.
-      const online = stateOf(entry) === 'live' && !!urlsFor(schema, entry.brick, brick, { id: entry._id, data: before, prints: entry.prints as Prints })[locale]
-      const rows = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).filter((r) => r.locale === locale)
-      const currentRow = rows.find((r) => !r.old)
-      const back = rows.find((r) => r.old && r.slug === slug)
-      if (currentRow) {
-        if (online) await ctx.db.patch(currentRow._id, { old: true })
-        else await ctx.db.delete(currentRow._id)
-      }
-      if (back) await ctx.db.patch(back._id, { old: undefined })
-      else await ctx.db.insert('slugs', { site: actor.site._id, brick: entry.brick, locale, slug, entry: entry._id })
+      await moveSlugRow(ctx, actor, entry, brick, locale, slug)
 
       const data: Data = { ...before, [key]: { ...plainObject(before[key]), [locale]: slug } }
       const history = recorded(msg('history.addressChanged', { title: labelOf(schema, entry.brick, data), from: was, to: slug }), schema)
@@ -326,6 +316,47 @@ export const changeSlug = mutation({
     })
   },
 })
+
+/**
+ * Moves an entry's current slug row in `locale` to `slug`, as `changeSlug` and the undo of an address change do. A page
+ * that is online keeps its old address as a forward; one that is not (a draft, an untranslated language) just moves.
+ * Taking back one of its own old slugs makes that one current again. Called before the entry's data changes.
+ */
+async function moveSlugRow(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, brick: CollectionBrick, locale: Locale, slug: string) {
+  const schema = actor.site.schema as Schema
+  const online = stateOf(entry) === 'live' && !!urlsFor(schema, entry.brick, brick, { id: entry._id, data: entry.data as Data, prints: entry.prints as Prints })[locale]
+  const rows = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).filter((r) => r.locale === locale)
+  const currentRow = rows.find((r) => !r.old)
+  const back = rows.find((r) => r.old && r.slug === slug)
+  if (currentRow) {
+    if (online) await ctx.db.patch(currentRow._id, { old: true })
+    else await ctx.db.delete(currentRow._id)
+  }
+  if (back) await ctx.db.patch(back._id, { old: undefined })
+  else await ctx.db.insert('slugs', { site: actor.site._id, brick: entry.brick, locale, slug, entry: entry._id })
+}
+
+/**
+ * The slugs an undo brings back (a change that held the address: `changeSlug`, or a title change the slug followed),
+ * per language. Each must still be free; the rows move as in `changeSlug`, and unpublished changes that hold the
+ * address take the slug that comes back.
+ */
+async function undoSlugs(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, brick: Brick, roots: readonly string[], data: Data) {
+  const key = slugKeyOf(brick)
+  if (brick.kind !== 'collection' || key === undefined || !roots.includes(key)) return
+  const now = plainObject((entry.data as Data)[key])
+  const back = plainObject(data[key])
+  const moves = Object.entries(back).flatMap(([locale, value]) => {
+    const slug = textOf(value)
+    return slug && slug !== textOf(now[locale]) ? [{ locale: locale as Locale, slug }] : []
+  })
+  for (const { locale, slug } of moves) {
+    if ((await freeSlug(ctx, actor, entry.brick, locale, slug, entry._id)) !== slug) fail('NOT_UNDOABLE', 'errors.undoAddressTaken', { slug }, { slug })
+  }
+  for (const { locale, slug } of moves) await moveSlugRow(ctx, actor, entry, brick, locale, slug)
+  const held = moves.length ? await pendingOf(ctx, entry._id) : null
+  if (held && Object.hasOwn(held.fields, key)) await ctx.db.patch(held._id, { fields: { ...held.fields, [key]: { ...plainObject(held.fields[key] as Json), ...Object.fromEntries(moves.map((m) => [m.locale, m.slug])) } } })
+}
 
 // ---- Unpublished changes (lib/pending.ts): saved, published, scheduled, discarded. ----
 
@@ -580,6 +611,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     await checkNewFiles(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     if (stateOf(entry) === 'live') await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before: entry.data as Data, after: data }])
 
+    await undoSlugs(ctx, actor, entry, brick, roots, data)
     const followed = await followName(ctx, actor, entry, brick, entry.data as Data, data)
     const written = await commitEntry(ctx, {
       actor, entry, fields: brick.fields, roots: rootsWith(roots, brick, followed), data, prints, kind: 'undo', history: recorded(msg('history.undo', { what: change.msg ? (change.msg as HistoryMsg) : change.sentence }), schema), opId: args.opId,

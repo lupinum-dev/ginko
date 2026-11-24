@@ -177,6 +177,7 @@
     "siteTimezoneInvalid": "Invalid time zone “{timeZone}” (e.g. “Europe/Vienna”).",
     "siteCurrencyInvalid": "Invalid currency “{currency}” (an ISO 4217 code such as “EUR” or “CHF”).",
     "addressTaken": "This address is already taken.",
+    "undoAddressTaken": "The earlier address “{slug}” is taken now. This change cannot be undone.",
     "onlyAdminsCreateSites": "Only admins create sites.",
     "tokenTooShort": "The token needs at least 32 characters.",
     "taskNotFound": "This task does not exist.",
