@@ -227,6 +227,7 @@ describe('$publishAt', () => {
       'content/posts/early.yml': 'title: Early\ndate: 2026-11-20\n$publishAt: 2026-12-02T10:00',
       'content/posts/day.yml': 'title: Day\ndate: 2026-12-01\n$publishAt: 2026-12-01',
       'content/posts/today.yml': 'title: Today\ndate: 2026-12-01',
+      'content/posts/sketch.yml': 'title: Sketch\ndate: 2027-01-01\n$draft: true',
     }
     for (const [path, text] of Object.entries(notes)) {
       mkdirSync(dirname(join(root, path)), { recursive: true })
@@ -239,6 +240,8 @@ describe('$publishAt', () => {
       { file: 'posts/dated.yml', path: 'date', message: '“date” (publishedOn) is 2027-01-01, after today, and the entry has no $publishAt: it is online now. Add `$publishAt: 2027-01-01` to hold it back until that day.' },
       { file: 'posts/early.yml', path: 'date', message: '“date” (publishedOn) is 2026-11-20, before the day of $publishAt (2026-12-02): the entry shows a day before it goes online.' },
     ])
+    // Read with drafts on, the draft dated after today is no post that is "online now".
+    expect((await readContent(join(root, 'content'), join(root, 'public'), stated, { drafts: true, now })).notes).toEqual(r.notes)
   })
 
   // Wrong behaviour caught: a file that is both a draft and planned goes online at the time, or never, without a word.

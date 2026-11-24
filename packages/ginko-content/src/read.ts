@@ -645,13 +645,14 @@ export async function readContent(contentDir: string, publicDir: string, schema:
      * day before it goes online), or it is after today and nothing holds the entry back (it is online now; before
      * `$publishAt`, a date in the future hid it).
      */
-    function notePublishedOn(src: Src, fields: Record<string, unknown>, publishAt: string | undefined) {
+    function notePublishedOn(src: Src, fields: Record<string, unknown>, publishAt: string | undefined, draft: boolean) {
       const name = brick.kind === 'collection' ? brick.publishedOn : undefined
       const day = name === undefined ? undefined : fields[name]
       if (name === undefined || !isDate(day)) return
       const note = (message: string) => notes.push({ file: src.rel, path: name, message, ...(src.csv ? { line: src.csv.row.line } : {}) })
       if (publishAt !== undefined && day < publishAt.slice(0, 10)) note(`“${name}” (publishedOn) is ${day}, before the day of $publishAt (${publishAt.slice(0, 10)}): the entry shows a day before it goes online.`)
-      else if (publishAt === undefined && day > now.slice(0, 10)) note(`“${name}” (publishedOn) is ${day}, after today, and the entry has no $publishAt: it is online now. Add \`$publishAt: ${day}\` to hold it back until that day.`)
+      // A draft (read with drafts on) is not online, whatever its date says.
+      else if (publishAt === undefined && !draft && day > now.slice(0, 10)) note(`“${name}” (publishedOn) is ${day}, after today, and the entry has no $publishAt: it is online now. Add \`$publishAt: ${day}\` to hold it back until that day.`)
     }
 
     /**
@@ -726,7 +727,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       // The slug defaults to the entry's name: the file name without its number (CONTENT.md "Slug"), for CSV the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.name
       errors.push(...fileErrors)
-      if (isMain && fileErrors.length === 0) notePublishedOn(src, fields, publishAt)
+      if (isMain && fileErrors.length === 0) notePublishedOn(src, fields, publishAt, draft)
       return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, planned: planned ? true : undefined }
     }
   }
