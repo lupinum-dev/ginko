@@ -1,0 +1,22 @@
+{
+  "home": {
+    "label": "Startseite",
+    "fields": { "title": "Titel", "lead": "Einleitung", "body": "Text" }
+  },
+  "pages": {
+    "label": "Seiten",
+    "item": "Seite",
+    "fields": {
+      "title": "Titel",
+      "slug": "Adresse",
+      "summary": { "label": "Kurzbeschreibung", "hint": "Steht unter dem Titel und in Suchergebnissen." },
+      "image": "Bild",
+      "actionLabel": {
+        "label": "Button-Text",
+        "hint": "Ein Button unter dem Titel, zum Beispiel „Online spenden“. Braucht auch die Adresse."
+      },
+      "actionUrl": "Button-Adresse",
+      "body": "Text"
+    }
+  }
+}

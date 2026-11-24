@@ -1,0 +1,22 @@
+{
+  "home": {
+    "label": "Page d’accueil",
+    "fields": { "title": "Titre", "lead": "Introduction", "body": "Texte" }
+  },
+  "pages": {
+    "label": "Pages",
+    "item": "Page",
+    "fields": {
+      "title": "Titre",
+      "slug": "Adresse",
+      "summary": { "label": "Résumé", "hint": "Affiché sous le titre et dans les résultats de recherche." },
+      "image": "Image",
+      "actionLabel": {
+        "label": "Texte du bouton",
+        "hint": "Un bouton sous le titre, par exemple « Faire un don en ligne ». Il faut aussi l’adresse."
+      },
+      "actionUrl": "Adresse du bouton",
+      "body": "Texte"
+    }
+  }
+}

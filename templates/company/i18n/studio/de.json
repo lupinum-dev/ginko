@@ -1,0 +1,73 @@
+{
+  "home": {
+    "label": "Startseite",
+    "fields": { "title": "Titel", "lead": "Einleitung", "image": "Bild" }
+  },
+  "serviceLine": {
+    "label": "Service-Nummer",
+    "fields": {
+      "contact": "Wer antwortet",
+      "hours": { "label": "Erreichbar", "hint": "Kurz, zum Beispiel „Mo–Fr 7–17 Uhr, Sa 8–12 Uhr“." }
+    }
+  },
+  "services": {
+    "label": "Leistungen",
+    "item": "Leistung",
+    "fields": {
+      "title": "Titel",
+      "slug": "Adresse",
+      "summary": { "label": "Kurzbeschreibung", "hint": "Steht auf der Karte, unter dem Titel und in Suchergebnissen." },
+      "pricing": {
+        "label": "Preis",
+        "hint": "Ein fester Preis braucht auch den Betrag.",
+        "options": { "price": "Fester Preis", "onRequest": "Auf Anfrage" }
+      },
+      "price": "Betrag",
+      "duration": "Dauer in Minuten",
+      "specs": {
+        "label": "Eckdaten",
+        "item": "Angabe",
+        "hint": "Kurz, zum Beispiel „Garantie“ und „zwei Jahre“.",
+        "fields": { "label": "Bezeichnung", "value": "Wert" }
+      },
+      "contact": {
+        "label": "Ansprechperson",
+        "hint": "Bekommt die Anfragen zu diesem Eintrag. Leer: die E-Mail-Adresse und Telefonnummer der Website."
+      },
+      "image": "Bild",
+      "sheet": "Produktblatt",
+      "body": "Text"
+    },
+    "tasks": { "price": "Preis ändern" }
+  },
+  "pages": {
+    "label": "Seiten",
+    "item": "Seite",
+    "fields": {
+      "title": "Titel",
+      "slug": "Adresse",
+      "summary": { "label": "Kurzbeschreibung", "hint": "Steht unter dem Titel und in Suchergebnissen." },
+      "image": "Bild",
+      "actionLabel": {
+        "label": "Button-Text",
+        "hint": "Ein Button unter dem Titel, zum Beispiel „Online spenden“. Braucht auch die Adresse."
+      },
+      "actionUrl": "Button-Adresse",
+      "body": "Text"
+    }
+  },
+  "logos": {
+    "label": "Logos",
+    "item": "Logo",
+    "fields": { "name": "Name", "image": "Logo", "url": "Website" }
+  },
+  "quotes": {
+    "label": "Zitate",
+    "item": "Zitat",
+    "fields": {
+      "text": "Zitat",
+      "name": "Name",
+      "role": { "label": "Rolle", "hint": "Zum Beispiel „Kundin seit 2021“." }
+    }
+  }
+}
