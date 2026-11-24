@@ -340,22 +340,27 @@ describe('entry names (D96)', () => {
   })
 
   // Wrong behaviour caught: a name that links and the export already use changes once the entry was planned or online.
+  // The entry is a draft again when its title changes, so only `nameFixed` (set by the publish or the plan) keeps it.
   it.each([
-    { case: 'published', publish: {} },
-    { case: 'planned', publish: { at: NOW + DAY } },
-  ])('after it is $case, a title change leaves the name', async ({ publish }) => {
+    { case: 'published and taken offline', at: undefined },
+    { case: 'planned and the plan cancelled', at: NOW + DAY },
+  ])('after it was $case, a title change leaves the name', async ({ at }) => {
     const s = await draftSetup()
-    const entry = await s.createDraft('Sommerfest', publish)
-    await retitle(s, entry.entry, 1, 'Sommernachtsfest')
+    const entry = await s.createDraft('Sommerfest')
+    const published = await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: entry.entry, lifeRev: 1, ...(at ? { at } : {}) })
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: entry.entry, lifeRev: published.lifeRev })
+    const draft = (await s.row(entry.entry))!
+    expect([draft.state, draft.publishAt]).toEqual(['draft', undefined])
+    await retitle(s, entry.entry, draft.rev, 'Sommernachtsfest')
     expect(await nameOf(s, entry.entry)).toEqual({ name: 'sommerfest', nameFixed: true, slug: 'sommerfest' })
   })
 
   // Wrong behaviour caught: a new address renames the entry, so its links by name break.
-  it('changeSlug leaves the name', async () => {
+  it('changeSlug leaves the name of a draft', async () => {
     const s = await draftSetup()
-    const entry = await s.createDraft('Gansl-Essen', {})
+    const entry = await s.createDraft('Gansl-Essen')
     await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: entry.entry, locale: 'de', slug: 'gansl-im-november' })
-    expect(await nameOf(s, entry.entry)).toEqual({ name: 'gansl-essen', nameFixed: true, slug: 'gansl-im-november' })
+    expect(await nameOf(s, entry.entry)).toEqual({ name: 'gansl-essen', nameFixed: undefined, slug: 'gansl-im-november' })
   })
 
   // Wrong behaviour caught: a live entry removed before its name was fixed comes back with a name that follows its
