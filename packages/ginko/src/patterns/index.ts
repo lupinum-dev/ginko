@@ -60,6 +60,9 @@ const peopleWithPages = (o: PatternOptions) => defOf(basics.people({ label: o.la
  */
 export const posts = (o: PatternOptions & { authors: string; max?: number }) => defOf(basics.posts(o), { item: t('Beitrag', 'a post', 'un artículo', 'un article') })
 
+/** The people who write posts, without a page of their own: name, role, picture and a link. `posts({ authors: 'authors' })` names it. */
+export const authors = (o: PatternOptions = {}) => defOf(basics.authors(o), { item: t('Autorin oder Autor', 'an author', 'un autor', 'un auteur') })
+
 /** Releases of a product, newest first. `max`: most releases. */
 export const changelog = (o: PatternOptions & { max?: number } = {}) => defOf(basics.changelog(o), { item: t('Version', 'a release', 'una versión', 'une version') })
 

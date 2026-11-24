@@ -25,6 +25,7 @@ const cases: [call: string, name: keyof typeof patterns, pattern: BrickDef, stor
   ['people({ pages: true })', 'people', patterns.people({ pages: true }), basics.people({ route }), '/team/[slug]'],
   ['posts({ authors: \'people\' })', 'posts', patterns.posts({ authors: 'people' }), basics.posts({ authors: 'people' })],
   ['posts({ authors: \'team\', max: 50 })', 'posts', patterns.posts({ authors: 'team', max: 50 }), basics.posts({ authors: 'team', max: 50 })],
+  ['authors()', 'authors', patterns.authors(), basics.authors()],
   ['changelog()', 'changelog', patterns.changelog(), basics.changelog()],
   ['jobs()', 'jobs', patterns.jobs(), { ...basics.jobs(), status: { count: true } }],
   ['events()', 'events', patterns.events(), { ...basics.events({}), status: { next: 'when' } }],

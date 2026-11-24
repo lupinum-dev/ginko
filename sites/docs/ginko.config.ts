@@ -1,6 +1,6 @@
 // The Ginko docs. Every page comes from Markdown in content/docs; the layout,
 // search and components come from @lupinum/ginko-docs. This site never asks the platform.
-import { defineSite } from '@lupinum/ginko'
+import { defineSite, extend } from '@lupinum/ginko'
 import { blogCollections, changelogCollection, components, docsCollection, docsHome } from '@lupinum/ginko-docs/config'
 
 // The docs are in English only.
@@ -129,6 +129,7 @@ export default defineSite({
   locales,
   currency: 'EUR',
   pages: { home: '/', blog: '/blog', changelog: '/changelog' },
+  entries: { docs: '/docs/[slug]', posts: '/blog/[slug]' },
   // The share cards: the leaf logo on the docs' emerald.
   seo: { color: '#047857', organization: { logo: '/logo.svg' } },
   components,
@@ -159,5 +160,5 @@ export default defineSite({
     ]),
     { from: '/de/changelog', to: '/changelog' },
   ],
-  bricks: { home: docsHome(), docs: docsCollection({ locales }), ...blogCollections({ locales }), changelog: { ...changelogCollection(), preview: 'changelog' } },
+  bricks: { home: docsHome(), docs: docsCollection(), ...blogCollections(), changelog: extend(changelogCollection(), { preview: 'changelog' }) },
 })

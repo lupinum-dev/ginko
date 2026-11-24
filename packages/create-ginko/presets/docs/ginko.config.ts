@@ -15,9 +15,10 @@ export default defineSite({
   locales,
   currency: 'EUR', // change for your country
   pages: { home: '/' },
+  entries: { docs: '/docs/[slug]' }, // the address of each page
   // Shown in search results and link previews. Replace it with one sentence about your site.
   // `color`: the brand colour of the generated share cards.
   seo: { description: 'Documentation for our product.', color: '#047857' },
   components, // the Markdown components (::callout, ::tabs …) and their checked props
-  bricks: { docs: docsCollection({ locales }) },
+  bricks: { docs: docsCollection() },
 })

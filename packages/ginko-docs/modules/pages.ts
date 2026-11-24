@@ -3,6 +3,7 @@
 import { addServerHandler, createResolver, defineNuxtModule, useLogger } from '@nuxt/kit'
 import type { NuxtModule } from 'nuxt/schema'
 import { layerRoutes, type SiteOptions } from '../shared/layerRoutes.ts'
+import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
 
 export interface DocsModuleOptions {
   /** The key of the docs brick in ginko.config.ts (`bricks: { wissen: docsCollection(...) }`). Default `docs`. */
@@ -57,13 +58,13 @@ const docsPages: NuxtModule<DocsModuleOptions> = defineNuxtModule<DocsModuleOpti
       siteHasBlog = !!addresses.blog && !r.blog
       if (r.blog) {
         // The list pages work without an entry in `pages`, but the sitemap and the static build only know pages listed there.
-        if (!site?.pages?.blog) logger.warn(`The layer adds the blog at ${r.blog} but the site has no \`blog: blogPages({ locales })\` in \`pages\`: the blog list is missing from the sitemap and the static build.`)
+        if (!site?.pages?.blog) logger.warn(`The layer adds the blog at ${r.blog} but the site has no \`blog: '${BLOG_PATH}'\` in \`pages\`: the blog list is missing from the sitemap and the static build.`)
       }
-      if (r.changelog && !site?.pages?.changelog) logger.warn(`The layer adds the changelog at ${r.changelog} but the site has no \`changelog: changelogPages({ locales })\` in \`pages\`: it is missing from the sitemap and the static build.`)
+      if (r.changelog && !site?.pages?.changelog) logger.warn(`The layer adds the changelog at ${r.changelog} but the site has no \`changelog: '${CHANGELOG_PATH}'\` in \`pages\`: it is missing from the sitemap and the static build.`)
       for (const brick of r.noAddress)
         logger.warn(brick === 'changelog'
-          ? 'The changelog brick has no address: give it a `route` or add `changelog: changelogPages({ locales })` to `pages`. No changelog page is added.'
-          : 'The posts brick has no `route` for the main language, so the layer adds no blog page.')
+          ? `The changelog brick has no address: add \`changelog: '${CHANGELOG_PATH}'\` to \`pages\`. No changelog page is added.`
+          : `The posts brick has no page for the main language: add \`posts: '${BLOG_PATH}/[slug]'\` to \`entries\`. The layer adds no blog page.`)
     })
   },
 })

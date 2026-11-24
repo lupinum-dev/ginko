@@ -15,30 +15,31 @@ npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-i18n @lupinum/g
 ```ts
 // ginko.config.ts
 import { defineSite } from '@lupinum/ginko'
-import { components, docsCollection, homePages } from '@lupinum/ginko-docs/config'
+import { components, docsCollection } from '@lupinum/ginko-docs/config'
 
 const locales = ['en', 'de'] as const
 
 export default defineSite({
-  site: 'my-docs',
+  studio: { id: 'my-docs', bricks: [] }, // every brick in files
   name: 'My docs',
   url: 'https://docs.example.com',
   timeZone: 'Europe/Vienna',
   week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   currency: 'EUR',
-  pages: { home: homePages({ locales }) }, // the start page is the page `home`
+  pages: { home: '/' }, // the start page is the page `home`; Ginko adds /de for German
+  entries: { docs: '/docs/[slug]' }, // the address of each docs page: /docs/<slug>, /de/docs/<slug>
   components, // the Markdown components: ::callout, ::tabs, ::steps …
-  bricks: { docs: docsCollection({ locales }) },
+  bricks: { docs: docsCollection() },
 })
 ```
 
-`docsCollection`, `blogCollections`, `homePages`, `blogPages` and `changelogPages` take one options object. `locales` is the same list as
-in `defineSite` (the layer accepts any `readonly string[]`; `defineSite` itself needs the tuple, hence `as const`).
+`docsCollection`, `docsHome`, `blogCollections` and `changelogCollection` return bricks of the site file's form
+(patterns), so `extend` of `@lupinum/ginko` changes one: `extend(changelogCollection(), { preview: 'changelog' })`.
+The address of a docs page is its brick's line in `entries`, written without the language prefix.
 
-The bricks read Markdown files from `content/`. To edit them in Ginko Studio instead, pass `source: 'platform'` to
-`docsCollection`, `docsHome`, `blogCollections` or `changelogCollection` (each brick on its own; the default is
-`'files'`). The pages, their Markdown twins, the search (the search box and `search_docs`) and `read_doc` work the
+The bricks read Markdown files from `content/`. To edit them in Ginko Studio instead, name them in `studio.bricks`
+(each brick on its own). The pages, their Markdown twins, the search (the search box and `search_docs`) and `read_doc` work the
 same with either source: with platform bricks the site's server builds the search index from the published content
 and renews it like a page, so a page published in the Studio is found within a minute. A page from the platform shows
 no "Edit this page" unless the site sets `studioEditLink: true` (see "Options"). One thing is built from files only: an icon named only in Studio content
@@ -52,8 +53,9 @@ Limits of the layer:
 - It finds its content by brick key, so keep these names: `docs` (docsCollection), `home` (docsHome), `posts` and
   `authors` (blogCollections), `changelog` (changelogCollection). Only the docs brick is required. One site has one docs
   collection. The docs brick may have another key (see below); the others may not.
-- The docs move with `base`; the blog is always at `/blog` and the changelog at `/changelog` (with the language
-  prefix in other languages, for example `/de/blog`).
+- The docs live at their line in `entries`; the blog list at the parent of the posts' line (`/blog` for
+  `posts: '/blog/[slug]'`); the changelog at `pages.changelog`. Ginko adds the language prefix in other languages,
+  for example `/de/blog`.
 
 ```ts
 // nuxt.config.ts
@@ -68,7 +70,8 @@ brick (its "Parent page" field points at its own brick) and as the layer's optio
 
 ```ts
 // ginko.config.ts
-bricks: { wissen: docsCollection({ locales, base: '/wissen', brick: 'wissen' }) }
+entries: { wissen: '/wissen/[slug]' },
+bricks: { wissen: docsCollection({ brick: 'wissen' }) },
 // nuxt.config.ts
 export default defineNuxtConfig({ extends: ['@lupinum/ginko-docs'], modules: ['@lupinum/ginko/nuxt'], ginko, ginkoDocs: { brick: 'wissen' } })
 ```
@@ -135,7 +138,7 @@ Each docs page's frontmatter can set, besides `title` and `description`:
 | `icon` | An Iconify name, e.g. `lucide:rocket`, before the title in the navigation. Main locale only. |
 | `badge` | A short label after the title, e.g. "New". |
 
-`docsCollection({ locales, navExtras: false })` leaves out `tab`, `badge` and `icon` for sites that use none of them, so
+`docsCollection({ navExtras: false })` leaves out `tab`, `badge` and `icon` for sites that use none of them, so
 editors in the Studio see only the text and where the page sits. Set it when the site starts: on a site with released
 pages it removes fields, which the platform refuses; retire the three fields instead (`retired`).
 
@@ -220,12 +223,13 @@ export default defineNuxtConfig({ extends: ['@lupinum/ginko-docs'], modules: ['@
 // ginko.config.ts: the docs brick next to the site's own bricks, the Markdown components next to the site's own
 import { components, docsCollection } from '@lupinum/ginko-docs/config'
 
-bricks: { docs: docsCollection({ locales, base: '/handbook' }), /* … */ },
+entries: { docs: '/handbook/[slug]', /* … */ },
+bricks: { docs: docsCollection(), /* … */ },
 components: { ...components, /* the site's own components; same name wins */ },
 ```
 
 - **Only the docs pages are added.** The layer registers its pages from the bricks, after all pages of the site are
-  known: the docs at the `base` of `docsCollection` (default `/docs`), the blog (with its RSS feed) at the route of
+  known: the docs at the `entries` line of the docs brick, the blog (with its RSS feed) at the route of
   the `posts` brick and the changelog at the route of the `changelog` brick (or `pages.changelog`), and `/` only when
   the site has no start page of its own. A page the site defines itself at one of these addresses always wins, also
   when the page-paths module gives it that address (a page file `news.vue` that answers at `/blog`). Then the layer
@@ -302,7 +306,7 @@ Everything here is public and stays stable between releases.
 for the page and a `bar` slot for controls in the phone bar. A help center's start page, for example:
 
 ```vue
-<!-- app/pages/help/index.vue; the docs live at /help (docsCollection({ locales, base: '/help' })) -->
+<!-- app/pages/help/index.vue; the docs live at /help (entries: { docs: '/help/[slug]' }) -->
 <script setup lang="ts">
 const docs = useGinko('docs')
 </script>
@@ -332,21 +336,22 @@ A site opts in by adding the collections to `ginko.config.ts`. The layer then ad
 a site without them gets neither.
 
 ```ts
-import { blogCollections, blogPages, changelogCollection, changelogPages, docsCollection } from '@lupinum/ginko-docs/config'
+import { blogCollections, changelogCollection, docsCollection } from '@lupinum/ginko-docs/config'
 
 export default defineSite({
   // ...
-  pages: { /* home */ blog: blogPages({ locales }), changelog: changelogPages({ locales }) },
-  bricks: { docs: docsCollection({ locales }), ...blogCollections({ locales }), changelog: changelogCollection() },
+  pages: { /* home */ blog: '/blog', changelog: '/changelog' },
+  entries: { docs: '/docs/[slug]', posts: '/blog/[slug]' },
+  bricks: { docs: docsCollection(), ...blogCollections(), changelog: changelogCollection() },
 })
 ```
 
-- `blogCollections({ locales })` returns `{ posts, authors }`. Both are file bricks, so the folders are `content/posts/` and `content/authors/` (the brick name is the folder name).
-- **Posts** (`content/posts/<n>.<name>[.<locale>].md`) have `title`, `description`, `date` (`YYYY-MM-DD`), `authors` (a list of author ids), `image`, `tags` and `slug`. They live at `/blog/<slug>` (`/<l>/blog/<slug>` in other languages), the list at `/blog`, newest first.
+- `blogCollections()` returns `{ posts, authors }` (option: `max`, the most posts). Both are file bricks, so the folders are `content/posts/` and `content/authors/` (the brick name is the folder name).
+- **Posts** (`content/posts/<n>.<name>[.<locale>].md`) have `title`, `description`, `date` (`YYYY-MM-DD`), `authors` (a list of author ids), `image`, `tags` and `slug`. They live at the line `posts: '/blog/[slug]'` of `entries` (`/<l>/blog/<slug>` in other languages), the list at `/blog`, newest first.
 - **Authors** (`content/authors/<name>[.<locale>].yml`) have `name`, `role`, `avatar` and `url`. A post names them by id: `authors: [authors/jane]`. Authors have no page.
 - A post page writes Article JSON-LD with the author names, `datePublished` from `date` and `dateModified` from the entry's `updatedAt`.
 - **RSS:** `/blog/rss.xml` and `/<l>/blog/rss.xml`, RSS 2.0 with title and description (not the full text) and absolute links. It reads the build-time file bundle, so it works for file blogs only. `nuxt generate` writes it: the blog page sends the feed path in the `x-nitro-prerender` header, because Nitro's crawler does not follow `.xml` links.
-- **Addresses:** the blog list is the parent of the `posts` route (`/blog/[slug]` gives `/blog`; `blogCollections` uses `/blog`). The changelog page is at the route of the `changelog` brick, else at `pages.changelog` (`changelogPages({ locales })`, `/changelog`). A changelog brick with neither gets no page, and the build warns once. A site that has its own page at an address keeps it; the layer then adds nothing there.
+- **Addresses:** the blog list is the parent of the `posts` route (`/blog/[slug]` gives `/blog`). The changelog page is at `pages.changelog` (`changelog: '/changelog'`). A changelog brick with neither gets no page, and the build warns once. A site that has its own page at an address keeps it; the layer then adds nothing there.
 - **Changelog:** `changelogCollection()` (options: `max`) is one collection with `version`, `date` and Markdown text per release (`content/changelog/v1-2-0.md`; no dots in the file name, a dot reads as a language). The page `/changelog` shows all releases newest first, each with an anchor (`#v1-2-0`). It is a collection, not a docs page, so the date orders it and it has its own link in the header.
 
 The Ginko docs themselves are built this way: [sites/docs](https://github.com/lupinum-dev/ginko/tree/main/sites/docs).
