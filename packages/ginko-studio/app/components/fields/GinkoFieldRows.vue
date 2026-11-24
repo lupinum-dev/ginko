@@ -9,7 +9,7 @@ import type { Field, Json, Locale } from '@lupinum/ginko'
 import { isShown, ordered, rowKeysOf, type SiteWeek } from '@lupinum/ginko/internal'
 import { hasTranslation, rowLabel } from '../../utils/content'
 import GinkoField from './GinkoField.vue'
-import { messageOf } from '@studio/utils/messageOf'
+import { messageOf, type Described } from '@studio/utils/messageOf'
 import { BLOCKERS, issuesUnder, type Issue, textIn } from '@lupinum/ginko-editor'
 import { Button } from '@studio/components/ui/button'
 import { useStudioSite } from '../../utils/labels'
@@ -124,7 +124,7 @@ function holdSelection(event: MouseEvent) {
 
 const rowIssues = (key: string) => issuesUnder(props.issues, `${props.path}.${key}`).filter((i) => i.path === `${props.path}.${key}`)
 /** A row's own sentence ("the row … is missing") names the row as its heading does (the weekday), not by its key. */
-const rowText = (key: string, e: Issue) => messageOf({ ...e, ...(e.params ? { params: { ...e.params, row: titleOf(key) } } : {}) })
+const rowText = (key: string, e: Issue & Described) => messageOf({ ...e, ...(e.params ? { params: { ...e.params, row: titleOf(key) } } : {}) })
 const fieldIssues = computed(() => props.issues.filter((i) => i.path === props.path))
 </script>
 
