@@ -19,15 +19,12 @@ export const segments: Record<string, Partial<Record<SiteLocale, string>>> = {
   legal: { en: 'legal', de: 'rechtliches' },
 }
 
-/** The path prefix of a language: none for the main language, `/de` for German as a second language. */
-export const prefix = (locale: SiteLocale) => (locale === locales[0] ? '' : `/${locale}`)
-
 /** A path of `localized`: a route keeps its `[slug]`, so the result still fits a collection's `route`. */
 type Localized<P extends string> = P extends `${string}[slug]${string}` ? `/${string}[slug]${string}` : `/${string}`
 
-/** One address per language from a path in its English form, with the words of `segments`: `localized('/news')`. */
+/** One address per language from a path in its English form, with the words of `segments`: `localized('/news')`. Without the language prefix: Ginko adds it. */
 export function localized<const P extends `/${string}`>(path: P): Record<SiteLocale, Localized<P>> {
   const words = (locale: SiteLocale) => path.split('/').map((part) => segments[part]?.[locale] ?? part).join('/')
   // Object.fromEntries loses the key and value types; the keys are exactly `locales`, and the words never touch `[slug]`.
-  return Object.fromEntries(locales.map((locale) => [locale, String(path) === '/' ? prefix(locale) || '/' : `${prefix(locale)}${words(locale)}`])) as Record<SiteLocale, Localized<P>>
+  return Object.fromEntries(locales.map((locale) => [locale, words(locale)])) as Record<SiteLocale, Localized<P>>
 }

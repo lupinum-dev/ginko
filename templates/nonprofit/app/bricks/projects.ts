@@ -1,57 +1,43 @@
 // Synced from templates/_features/projects/app/bricks/projects.ts by `pnpm templates sync`. Edit the source, not this copy.
-import { collection, f, type BrickSource, type RouteTemplate } from '@lupinum/ginko/v1'
+import { collection, f } from '@lupinum/ginko'
 
 // Projects: what an organisation works on, one Markdown file each in content/projects/ (`1.my-project.md`,
 // translations `1.my-project.de.md`). The number sets the order. A campaign has an end date (`ends`): it leaves the
 // site after that day by itself, and the Studio's Today page lists campaigns that end within 7 days. A project may
 // have one button below its title (`actionLabel` and `actionUrl`, both needed), for example "Donate now".
-// `details: true` is for work that stays online: no end date and no button, but the facts of a commission (client,
-// year, place, scope) and the project's photos, each with its description (the build and the Studio refuse a photo
-// without one). A new project can wait as a draft (`draft: true` in its file), and Today lists the drafts. Without
-// `details` the stored shape stays as it is.
-type Options<R> = { route: R, source?: BrickSource }
-export function projects<const R extends Record<string, RouteTemplate>>(o: Options<R> & { details?: false }): ReturnType<typeof plain<R>>
-export function projects<const R extends Record<string, RouteTemplate>>(o: Options<R> & { details: true }): ReturnType<typeof detailed<R>>
-export function projects<const R extends Record<string, RouteTemplate>>(o: Options<R> & { details?: boolean }) {
-  return o.details ? detailed(o) : plain(o)
-}
+// `projectsWithDetails` is for work that stays online: no end date and no button, but the facts of a commission
+// (client, year, place, scope) and the project's photos, each with its description (the build and the Studio refuse a
+// photo without one). A new project can wait as a draft (`draft: true` in its file), and Today lists the drafts.
+// The address of a project is a line in `entries` of ginko.config.ts: `projects: '/projects/[slug]'`.
 
-/** What both kinds share. */
-const common = <R>(o: Options<R>) => ({
+const photo = { de: 'Foto', en: 'Photo', fr: 'Photo' }
+
+/** What both kinds share. The tasks are named with `item`: "Projekt bearbeiten", "Edit a project". */
+const common = {
   label: { de: 'Projekte', en: 'Projects', fr: 'Projets' },
-  ...(o.source ? { source: o.source } : {}),
+  item: { de: 'Projekt', en: 'project', fr: 'un projet' },
   max: 50,
-  order: 'manual',
-  route: o.route,
-} as const)
+} as const
 
-const editLabel = { de: 'Projekt bearbeiten', en: 'Edit a project', fr: 'Modifier un projet' }
-const add = { id: 'add', kind: 'create', label: { de: 'Projekt hinzufügen', en: 'Add a project', fr: 'Ajouter un projet' } } as const
+/** Projects and campaigns: a campaign leaves the site after its last day. */
+export const projects = collection({
+  ...common,
+  fields: { ...fields(), ...campaign(), body: body() },
+  showUntil: 'ends',
+  status: { show: 'ending' },
+  tasks: ['edit', 'add'],
+})
 
-function plain<const R extends Record<string, RouteTemplate>>(o: Options<R>) {
-  return collection({
-    ...common(o),
-    fields: { ...fields(), ...campaign(), body: body() },
-    visible: { mode: 'until', field: 'ends' },
-    status: { count: true },
-    tasks: [
-      { id: 'edit', kind: 'edit', pick: true, fields: ['title', 'summary', 'image', 'ends', 'actionLabel', 'actionUrl', 'body'], label: editLabel },
-      add,
-    ],
-  })
-}
-
-function detailed<const R extends Record<string, RouteTemplate>>(o: Options<R>) {
-  return collection({
-    ...common(o),
-    fields: { ...fields(), ...details(), body: body() },
-    tasks: [
-      { id: 'edit', kind: 'edit', pick: true, fields: ['title', 'summary', 'client', 'year', 'place', 'scope', 'image', 'photos', 'body'], label: editLabel },
-      { id: 'photos', kind: 'edit', pick: true, fields: ['image', 'photos'], label: { de: 'Fotos hinzufügen', en: 'Add photos', fr: 'Ajouter des photos' } },
-      add,
-    ],
-  })
-}
+/** Finished work with its facts and photos. */
+export const projectsWithDetails = collection({
+  ...common,
+  fields: { ...fields(), ...details(), body: body() },
+  tasks: [
+    { id: 'edit', fields: ['title', 'summary', 'client', 'year', 'place', 'scope', 'image', 'photos', 'body'] },
+    { id: 'photos', label: { de: 'Fotos hinzufügen', en: 'Add photos', fr: 'Ajouter des photos' }, fields: ['image', 'photos'] },
+    'add',
+  ],
+})
 
 function fields() {
   return {
@@ -81,7 +67,6 @@ function campaign() {
   }
 }
 
-const photo = { de: 'Foto', en: 'Photo', fr: 'Photo' }
 
 /** The facts of a commission and its photos (`details: true`). Every one is optional. */
 function details() {
@@ -100,7 +85,7 @@ function details() {
     }),
     // More photos after `image`, each with its description (required, so no photo goes online without one).
     photos: f.list({ de: 'Fotos', en: 'Photos', fr: 'Photos' }, {
-      itemLabel: photo,
+      item: photo,
       fields: { image: f.image(photo, { hint: { de: 'Beschreibe, was das Foto zeigt: Der Text steht darunter und wird vorgelesen.', en: 'Describe what the photo shows: the text is shown below it and read out.', fr: 'Décrivez ce que montre la photo : le texte s’affiche dessous et est lu à voix haute.' } }) },
       max: 24,
       optional: true,
