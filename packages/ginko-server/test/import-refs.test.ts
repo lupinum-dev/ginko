@@ -167,6 +167,18 @@ describe('import keeps references between entries', () => {
     expect(rows.map((e) => [e.brick, e.name, e.nameFixed]).sort()).toEqual([['authors', 'anna', true], ['posts', 'hello', true]])
   })
 
+  // Wrong behaviour caught: an entry stored before names existed gets a name that is not fixed, so its next title change
+  // moves its address without a forward (a draft that was online once included); or two entries get one name.
+  it('makes a fixed name for every entry of an export without names, -2 for the second of one title', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const entry = (id: string, state: 'draft' | 'live') => ({ id, brick: 'authors', kind: 'item' as const, order: 1, data: { name: { de: 'Anna' } }, prints: {}, rev: 1, state })
+    await s.t.mutation(makeFunctionReference<'mutation'>('seed:importExport'), { site: 'restaurant', files: [], entries: [entry('a1', 'live'), entry('a2', 'draft')] })
+    const rows = (await entriesOf(s, s.site)).filter((e) => e.brick === 'authors')
+    expect(rows.map((e) => [e.name, e.nameFixed, e.state ?? 'live'])).toEqual([['anna', true, 'live'], ['anna-2', true, 'draft']])
+  })
+
   // A post that names a short files-export ID 20000 times: 234 KiB in the export, 684 KiB once each `authors/a` is a
   // 32-character Convex ID. Wrong behaviour caught: the size is checked before the rewrite only, so the import clears the
   // site and stores an entry the Studio then refuses to grow.

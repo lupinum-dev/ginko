@@ -380,7 +380,7 @@ export const importExport = internalMutation({
       seen.add(row.id)
     }
     // One name per entry of a brick (D96), also against entries stored by an earlier batch. An entry without one (an
-    // older export) gets one made from its slug or title, as the upgrade makes them.
+    // older export) gets one made from its slug or title, fixed, as the upgrade makes them.
     const names = new Map<(typeof rows)[number], { name: string; nameFixed?: true }>()
     const storedNames = new Map<string, Set<string>>()
     const namesIn = async (brick: string) => {
@@ -412,9 +412,9 @@ export const importExport = internalMutation({
       const made = namesOf(brick, def, schema.locales[0]!, unnamed.map((item) => item.data), (name) => taken.has(name))
       unnamed.forEach((item, i) => {
         taken.add(made[i]!)
-        // Online or planned at the export, the name is fixed, as the upgrade fixes it; the trash is neither (a restore fixes it).
-        const fixed = item.row.deletedAt === undefined && (item.row.state !== 'draft' || item.row.publishAt !== undefined)
-        names.set(item, { name: made[i]!, ...(fixed ? { nameFixed: true as const } : {}) })
+        // Every made name is fixed, as the upgrade fixes them: an entry stored before names existed kept the slug it was
+        // created with, so a later title change must not move it (a draft that was online once included).
+        names.set(item, { name: made[i]!, nameFixed: true as const })
       })
     }
     const added = new Map<string, number>()
