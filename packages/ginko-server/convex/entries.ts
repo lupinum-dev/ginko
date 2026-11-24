@@ -999,7 +999,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     // A plain draft is not live; a live or scheduled entry is (SPEC 17).
     if (await needsProposal(ctx, actor, 'create', args.task, args.brick, { state: draft && at === undefined ? 'draft' : 'live' })) {
       // A proposal that would go live with a broken link is refused now, not only when approved. The entry does not exist yet: it joins the link check under a temporary id.
-      if (!draft || at !== undefined) await checkNewLinks(ctx, actor.site, [{ entry: { _id: 'proposed' as Id<'entries'>, brick: args.brick }, fields: brick.fields, before: {}, after: data, isNew: true }])
+      if (!draft || at !== undefined) await checkNewLinks(ctx, actor.site, [{ entry: { _id: 'proposed' as Id<'entries'>, brick: args.brick }, fields: brick.fields, before: {}, after: data, isNew: true }], at)
       return await propose(ctx, actor, {
         // A copy keeps its flag, so applying the proposal skips the fields check like the direct write.
         op: 'create', brick: args.brick, args: { ...args, ...(publish ? { publish } : {}), ...(opts.copy ? { copy: true } : {}) } as unknown as Json, base: {}, after: data as Json,
@@ -1028,7 +1028,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       await ctx.db.insert('slugs', { site: actor.site._id, brick: args.brick, locale: row.locale, slug: row.slug, entry })
     }
     // A live or scheduled entry puts its links online; checked after the insert so its own URL is known (a failure undoes the whole create).
-    if (!draft || at !== undefined) await checkNewLinks(ctx, actor.site, [{ entry: (await ctx.db.get(entry))!, fields: brick.fields, before: {}, after: data }])
+    if (!draft || at !== undefined) await checkNewLinks(ctx, actor.site, [{ entry: (await ctx.db.get(entry))!, fields: brick.fields, before: {}, after: data }], at)
     c.entryCount += 1
     c.bytes += size
     c.treeBytes += trees.bytes
@@ -1340,7 +1340,8 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     // Everything the draft holds goes live: the full check first, then every link in it counts as new. A plan is
     // checked now and again by the job at its time (D101).
     refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, entry))
-    await checkNewLinks(ctx, actor.site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }])
+    // A plan may link to an entry planned for its time or earlier (D106).
+    await checkNewLinks(ctx, actor.site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }], at)
 
     const label = labelOf(schema, entry.brick, entry.data as Data)
     if (await needsProposal(ctx, actor, 'publish', args.task, entry.brick, entry)) {
@@ -1483,7 +1484,8 @@ export const publishDue = internalMutation({
     }
     const invalid = await onlineErrors(ctx, site._id, schema, entry)
     if (invalid.length) return await stop({ code: 'invalid', fields: [...new Set(invalid.map((e) => e.path))] }, msg('history.publishStoppedInvalid', { title: label, ...failedFields(schema, entry.brick, invalid) }))
-    const broken = await brokenNewLinks(ctx, site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }])
+    // A target due at the same time counts as online, whichever job runs first (D106).
+    const broken = await brokenNewLinks(ctx, site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }], args.at)
     if (broken) return await stop({ code: 'link', href: broken.href }, msg('history.publishStoppedBrokenLink', { title: label, link: broken.href }))
     // The job is running now, so there is nothing left to cancel.
     await goLive(ctx, c, { ...entry, publishJob: undefined }, SYSTEM, `publish:${entry._id}:${args.at}`, recorded(msg('history.publishedDue', { title: label }), site.schema as Schema))

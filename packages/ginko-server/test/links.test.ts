@@ -123,3 +123,49 @@ describe('links when a write is not live yet', () => {
     expect(await proposals()).toBe(1)
   })
 })
+
+describe('links of a plan (D106)', () => {
+  const HOUR = 60 * 60 * 1000
+  /** Draft A links to draft B; B gets `bAt` (or no time), then A is planned for `at`. */
+  async function plannedPair(bAt: number | undefined) {
+    const s = await linkSetup()
+    const at = Date.now() + 2 * HOUR
+    const b = (await s.create('Ziel')) as { entry: Id<'entries'> }
+    if (bAt !== undefined) await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: b.entry, lifeRev: 1, at: bAt })
+    const slug = (await s.t.run((ctx) => ctx.db.get(b.entry)))!.data.slug as Record<string, string>
+    const a = (await s.create(`[Ziel]($events.${slug.de})`)) as { entry: Id<'entries'> }
+    const planA = () => s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: a.entry, lifeRev: 1, at })
+    return { ...s, a, b, at, planA }
+  }
+
+  // Wrong behaviour caught: a plan cannot link to an entry that goes online with it or before it, or it can link to
+  // one that comes later or never.
+  it.each([
+    { name: 'planned for the same time', offset: 0, ok: true },
+    { name: 'planned earlier', offset: -HOUR, ok: true },
+    { name: 'planned later', offset: HOUR, ok: false },
+    { name: 'a draft without a time', offset: undefined, ok: false },
+  ])('a plan may link to a draft $name: $ok', async ({ offset, ok }) => {
+    const base = Date.now() + 2 * HOUR
+    const s = await plannedPair(offset === undefined ? undefined : base + offset)
+    if (ok) expect(await s.planA()).toMatchObject({ state: 'draft', publishAt: s.at })
+    else expect(await errorOf(s.planA())).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
+  })
+
+  // The known edge, kept on purpose: A and B are due together, A's job runs first and counts B as online, then B
+  // stops. A is online with a link to a page that does not exist; the cancel and remove screen will name such links.
+  it('A and B due together, B stops: A is online with a link to B', async () => {
+    const s = await plannedPair(Date.now() + 2 * HOUR)
+    await s.planA()
+    await s.t.run(async (ctx) => {
+      const { description: _, ...data } = (await ctx.db.get(s.b.entry))!.data as Record<string, unknown>
+      await ctx.db.patch(s.b.entry, { data })
+    })
+    vi.setSystemTime(s.at + 1000)
+    await s.t.mutation(internal.entries.publishDue, { entry: s.a.entry, at: s.at })
+    await s.t.mutation(internal.entries.publishDue, { entry: s.b.entry, at: s.at })
+    const [a, b] = await s.t.run(async (ctx) => [await ctx.db.get(s.a.entry), await ctx.db.get(s.b.entry)])
+    expect(a!.state ?? 'live').toBe('live')
+    expect(b).toMatchObject({ state: 'draft', stopped: { reason: { code: 'invalid' } } })
+  })
+})
