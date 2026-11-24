@@ -20,7 +20,7 @@ const key = computed(() => String(route.params.brick))
 const brick = computed(() => s.schema.value?.bricks[key.value])
 const access = computed(() => (brick.value ? tasksFor(key.value, brick.value) : undefined))
 const allowed = computed(() => editable.value.some(([k]) => k === key.value))
-const { shown } = useStudioSite()
+const { shown, currency } = useStudioSite()
 const { t, format, locale: uiLocale } = useI18n()
 useHead(() => ({ title: t('site.title.area', { area: brick.value ? shown(brick.value.label) : t('site.fallback.area') }) }))
 // A single's form (EntryEditor) replaces these crumbs with its own.
@@ -134,7 +134,7 @@ const ops = useOps(s.slug)
           <li v-for="(e, i) in rows" :key="e._id" class="group/row relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 min-[900px]:min-h-13 min-[900px]:py-2.5 hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03] sm:flex-nowrap" :data-dim="(!!status(e) && !e.pending) || undefined">
             <div class="min-w-0 flex-1">
               <NuxtLink :to="`/s/${s.slug.value}/all/${key}/${e._id}`" class="line-clamp-2 font-medium text-foreground no-underline outline-none after:absolute after:inset-0 focus-visible:after:ring-3 focus-visible:after:ring-ring/80 focus-visible:after:ring-inset group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground min-[900px]:text-sm">{{ rowTitle(e) }}</NuxtLink>
-              <span v-if="listingDetail(brick, e.dates, s.main.value, { t, format })" class="block text-[13px] text-muted-foreground tabular-nums">{{ listingDetail(brick, e.dates, s.main.value, { t, format }) }}</span>
+              <span v-if="listingDetail(brick, e.dates, s.main.value, { t, format, currency: currency() })" class="block text-[13px] text-muted-foreground tabular-nums">{{ listingDetail(brick, e.dates, s.main.value, { t, format, currency: currency() }) }}</span>
             </div>
             <!-- Phones: badges move under the title so the name keeps the full width. -->
             <div class="relative flex flex-wrap items-center gap-1.5 max-sm:order-last max-sm:basis-full sm:justify-end">

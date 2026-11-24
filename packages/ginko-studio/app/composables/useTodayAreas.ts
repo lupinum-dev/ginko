@@ -215,7 +215,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     const until = visibleUntil(brick, entry.data)
     if (!until) return { text: t('site.status.noEnd'), dim: false }
     const visible = until >= today
-    if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format }), dim: !visible }
+    if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format, currency: s.schema.value!.currency }), dim: !visible }
     return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired', { date: formatDay(until, format) }), dim: true }
   }
 

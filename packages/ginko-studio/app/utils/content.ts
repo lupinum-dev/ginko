@@ -1,12 +1,15 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
-import { formatMoney, type Brick, type CollectionBrick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
+import { formatMoney, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
 import { DAY_KEYS, createAsks, entryTitle, fileRefsIn, isTranslatable, isVisible, leavesOf, ordered, printOf, slugBases, stableJson, untranslatedMode, urlsFor, weeklyTask, weekStartField, type DayKey, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import type { api } from '#convex/api'
 import type { FunctionReturnType } from 'convex/server'
 import { shownLabel } from './labels'
 import type { Words } from './when'
+
+/** The Studio's words (`useI18n()`: t, format) and the site's currency (`useStudioSite().currency()`), for values shown as text. */
+export type ValueWords = Words & { currency: Currency }
 
 export type Data = Record<string, Json>
 export type { Task }
@@ -46,7 +49,7 @@ export function publishQuestion(brick: Brick, data: Data, locale: Locale, t: Wor
 }
 
 /** The name of a list row: its first filled text or choice column ("Dienstag", a dish). `key` tells which column it is. */
-export function rowTitle(columns: Fields, row: unknown, locale: Locale, words: Words): { key: string; text: string } | undefined {
+export function rowTitle(columns: Fields, row: unknown, locale: Locale, words: ValueWords): { key: string; text: string } | undefined {
   if (!row || typeof row !== 'object') return undefined
   for (const [key, field] of ordered(columns)) {
     if (field.retired || (field.type !== 'text' && field.type !== 'longtext' && field.type !== 'choice')) continue
@@ -230,13 +233,13 @@ export function mainLocaleOf(schema: Schema): Locale {
   return schema.locales[0]!
 }
 
-/** A value as a short text for people (conflict notes, summaries). `words` is the Studio's `useI18n()` (t, format). */
-export function displayValue(field: Field, value: unknown, locale: Locale, words: Words): string {
+/** A value as a short text for people (conflict notes, summaries). Money shows in the field's currency, else the site's. */
+export function displayValue(field: Field, value: unknown, locale: Locale, words: ValueWords): string {
   const { t, format } = words
   if (value === undefined || value === null || value === '') return t('ops.value.empty')
   switch (field.type) {
     case 'text': case 'longtext': case 'slug': return textIn(value, locale) || t('ops.value.empty')
-    case 'money': return formatMoney({ amount: (value as { amount: number }).amount, currency: field.currency ?? 'EUR' }, locale)
+    case 'money': return formatMoney({ amount: (value as { amount: number }).amount, currency: field.currency ?? words.currency }, locale)
     case 'boolean': return value ? t('ops.value.yes') : t('ops.value.no')
     case 'date': return formatDay(String(value), format)
     case 'daterange': { const r = value as { from: string; to: string }; return r.from === r.to ? formatDay(r.from, format) : `${formatDay(r.from, format)} – ${formatDay(r.to, format)}` }
@@ -259,7 +262,7 @@ export function formatDay(date: string, format: Words['format']): string {
  * The line under an entry's name in a list: the value of the field `listing.detail` names, in the main language `main`
  * (a range shows "von – bis", money its amount). Undefined when the brick names none or the value is empty.
  */
-export function listingDetail(brick: Brick, data: Data, main: Locale, words: Words): string | undefined {
+export function listingDetail(brick: Brick, data: Data, main: Locale, words: ValueWords): string | undefined {
   const key = brick.kind === 'collection' ? brick.listing.detail : undefined
   const field = key !== undefined && Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
   if (key === undefined || !field || field.retired) return undefined

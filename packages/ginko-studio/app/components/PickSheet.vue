@@ -13,7 +13,7 @@ import { SHEET_DIALOG } from '../utils/sheetDialog'
 const props = defineProps<{ brick: Brick; task: Task; entries: Entry[]; main: Locale; /** Today in the site's time zone: a planned price from today on is the price. */ today: string }>()
 const emit = defineEmits<{ pick: [entry: Entry]; close: [] }>()
 
-const { shown } = useStudioSite()
+const { shown, currency } = useStudioSite()
 const { t, format } = useI18n()
 const term = ref('')
 const dialog = ref<HTMLDialogElement | null>(null)
@@ -31,7 +31,7 @@ const detailOf = (e: Entry) => {
   const key = detailKey.value
   if (!key) return ''
   const value = (key === props.brick.planned?.field ? duePlan(props.brick, e.data, props.today) : undefined) ?? e.data[key]
-  return value != null ? displayValue(props.brick.fields[key]!, value, props.main, { t, format }) : ''
+  return value != null ? displayValue(props.brick.fields[key]!, value, props.main, { t, format, currency: currency() }) : ''
 }
 const matches = computed(() => {
   const t = searchable(term.value.trim())
