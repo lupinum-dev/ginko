@@ -474,7 +474,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
               <div class="grid gap-2">
                 <p id="key-purpose-label" class="text-sm font-medium">{{ t('site.keys.purpose') }}</p>
                 <RadioGroup :model-value="keyForm.purpose" class="grid gap-2" aria-labelledby="key-purpose-label" @update:model-value="(next) => { if (next === 'release' || next === 'export') keyForm.purpose = next }">
-                  <UiLabel v-for="purpose in PURPOSES" :key="purpose" :for="`key-purpose-${purpose}`" class="min-h-10 cursor-pointer gap-2 rounded-md border border-input px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11">
+                  <UiLabel v-for="purpose in PURPOSES" :key="purpose" :for="`key-purpose-${purpose}`" class="min-h-10 cursor-pointer gap-2 rounded-md border border-input px-3 py-2 has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11">
                     <RadioGroupItem :id="`key-purpose-${purpose}`" :value="purpose" />{{ purposeText(purpose) }}
                   </UiLabel>
                 </RadioGroup>

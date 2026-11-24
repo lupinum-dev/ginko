@@ -10,16 +10,27 @@ const app = fileURLToPath(new URL('../app/', import.meta.url))
 const css = readFileSync(join(app, 'assets/css/tailwind.css'), 'utf8')
 
 type Tokens = Record<string, string>
-/** The `--name: #rrggbb` lines of the first block that starts with `head`. */
-function block(head: string): Tokens {
+/** The text of the first block that starts with `head`. */
+function body(head: string): string {
   const start = css.indexOf(head)
   expect(start, `block ${head}`).toBeGreaterThan(-1)
-  const body = css.slice(css.indexOf('{', start + head.length - 1) + 1, css.indexOf('}', start))
-  return Object.fromEntries([...body.matchAll(/--([a-z-]+):\s*(#[0-9a-f]{6});/g)].map((m) => [m[1]!, m[2]!]))
+  return css.slice(css.indexOf('{', start + head.length - 1) + 1, css.indexOf('}', start))
 }
-const light = block(':root {')
-const darkBySystem = block(":root:not([data-theme='light']) {")
-const darkByChoice = block("[data-theme='dark'] {")
+/** The `--name: #rrggbb` lines of a block. */
+const block = (head: string): Tokens =>
+  Object.fromEntries([...body(head).matchAll(/--([a-z-]+):\s*(#[0-9a-f]{6});/g)].map((m) => [m[1]!, m[2]!]))
+/** `--hover-strength` of a block as a share (6% is 0.06): how much of the text colour `bg-hover` lays over a ground. */
+function hoverStrength(head: string): number {
+  const match = /--hover-strength:\s*(\d+)%;/.exec(body(head))
+  expect(match, `--hover-strength in ${head}`).not.toBeNull()
+  return Number(match![1]) / 100
+}
+const LIGHT = ':root {'
+const DARK_BY_SYSTEM = ":root:not([data-theme='light']) {"
+const DARK_BY_CHOICE = "[data-theme='dark'] {"
+const light = block(LIGHT)
+const darkBySystem = block(DARK_BY_SYSTEM)
+const darkByChoice = block(DARK_BY_CHOICE)
 
 const rgb = (hex: string) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
 const luminance = (hex: string) => {
@@ -41,7 +52,7 @@ const TEXT: [text: string, ground: Ground][] = [
   ['card-foreground', 'card'], ['popover-foreground', 'popover'], ['secondary-foreground', 'secondary'],
   ['muted-foreground', 'background'], ['muted-foreground', 'sidebar'], ['muted-foreground', 'muted'], ['muted-foreground', 'canvas'],
   ['primary-foreground', 'primary'], ['sidebar-primary-foreground', 'sidebar-primary'], ['sidebar-accent-foreground', 'sidebar-accent'],
-  ['accent-foreground', 'accent'], ['marker-foreground', 'marker'],
+  ['accent-foreground', 'accent'], ['marker-foreground', 'marker'], ['background', 'ring'],
   ['link', 'background'], ['link', 'sidebar'], ['link', 'muted'],
   ['success', 'background'], ['success', ['success', 0.12, 'background']],
   ['warning', 'background'], ['warning', ['warning', 0.14, 'background']], ['foreground', ['warning', 0.12, 'background']],
@@ -52,7 +63,7 @@ const EDGES: [edge: string, ground: string, modes: ('light' | 'dark')[]][] = [
   ['ring', 'background', ['light', 'dark']], ['ring', 'sidebar', ['light', 'dark']], ['marker', 'canvas', ['dark']], ['input', 'background', ['dark']],
 ]
 
-describe.each([['light', light], ['dark', darkByChoice]] as const)('colour tokens, %s', (mode, tokens) => {
+describe.each([['light', light, hoverStrength(LIGHT)], ['dark', darkByChoice, hoverStrength(DARK_BY_CHOICE)]] as const)('colour tokens, %s', (mode, tokens, hover) => {
   const value = (name: string) => {
     expect(tokens[name], `--${name}`).toBeDefined()
     return tokens[name]!
@@ -67,6 +78,11 @@ describe.each([['light', light], ['dark', darkByChoice]] as const)('colour token
     expect(contrast(value(edge), value(on))).toBeGreaterThanOrEqual(3)
   })
 
+  // `bg-hover` under a ghost button, a menu item or a row: the text on it stays readable, also the muted text.
+  it.each(['background', 'sidebar', 'popover'].flatMap((on) => [['foreground', on], ['muted-foreground', on]]))('%s can be read on a hovered item on %s', (text, on) => {
+    expect(contrast(value(text!), over(value('foreground'), hover, value(on!)))).toBeGreaterThanOrEqual(4.5)
+  })
+
   it('white text can be read on a filled destructive button', () => {
     // Button and badge: `bg-destructive text-white`, in dark mode `bg-destructive/60`.
     const fill = mode === 'dark' ? over(value('destructive'), 0.6, value('background')) : value('destructive')
@@ -77,6 +93,7 @@ describe.each([['light', light], ['dark', darkByChoice]] as const)('colour token
 describe('dark mode', () => {
   it('has the same values for the system preference and for the chosen theme', () => {
     expect(darkBySystem).toEqual(darkByChoice)
+    expect(hoverStrength(DARK_BY_SYSTEM)).toBe(hoverStrength(DARK_BY_CHOICE))
   })
 
   it('sets every colour that light mode sets', () => {

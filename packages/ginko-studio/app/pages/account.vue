@@ -105,7 +105,7 @@ const HINT = 'text-[13px] text-muted-foreground'
           <p id="language-hint" :class="HINT">{{ t('account.languageHint') }}</p>
         </div>
         <Select :model-value="locale" @update:model-value="(code) => code && pickLocale(String(code))">
-          <SelectTrigger id="language" class="h-10 w-full sm:max-w-72" aria-labelledby="language-label" aria-describedby="language-hint">
+          <SelectTrigger id="language" class="w-full sm:max-w-72" aria-labelledby="language-label" aria-describedby="language-hint">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

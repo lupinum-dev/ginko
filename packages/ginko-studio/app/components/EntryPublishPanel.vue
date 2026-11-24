@@ -18,8 +18,8 @@ const { t } = useI18n()
   <div class="grid basis-full gap-2.5 rounded-lg border border-primary bg-card p-3.5" role="group" aria-labelledby="publish-title">
     <p id="publish-title" class="font-semibold">{{ question }}</p>
     <RadioGroup v-model="when" class="flex flex-wrap gap-2" aria-labelledby="publish-title">
-      <Label for="publish-now" class="min-h-10 cursor-pointer gap-2 rounded-md border px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11"><RadioGroupItem id="publish-now" value="now" />{{ t('entry.publish.now') }}</Label>
-      <Label for="publish-later" class="min-h-10 cursor-pointer gap-2 rounded-md border px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11"><RadioGroupItem id="publish-later" value="later" />{{ t('entry.publish.later') }}</Label>
+      <Label for="publish-now" class="min-h-10 cursor-pointer gap-2 rounded-md border px-3 py-2 has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11"><RadioGroupItem id="publish-now" value="now" />{{ t('entry.publish.now') }}</Label>
+      <Label for="publish-later" class="min-h-10 cursor-pointer gap-2 rounded-md border px-3 py-2 has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11"><RadioGroupItem id="publish-later" value="later" />{{ t('entry.publish.later') }}</Label>
     </RadioGroup>
     <div v-if="when === 'later'" class="grid max-w-80 gap-1.5">
       <Label for="publish-at" class="font-medium">{{ t('entry.publish.dateTime') }}</Label>

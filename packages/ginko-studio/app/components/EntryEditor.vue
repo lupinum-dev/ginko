@@ -789,9 +789,8 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <EntryFields v-bind="fieldProps" :entries="mainUngrouped" @update="setField" />
         <template v-if="tabbed">
           <Tabs v-if="mainGroups.length" v-model="activeTab">
-            <!-- Underlined, so the tabs never look like the language switch above them. -->
-            <TabsList class="h-auto w-full flex-wrap justify-start gap-5 rounded-none border-b bg-transparent p-0">
-              <TabsTrigger v-for="g in mainGroups" :key="g.id" :value="g.id" class="-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-0 pt-1 pb-2 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent">
+            <TabsList>
+              <TabsTrigger v-for="g in mainGroups" :key="g.id" :value="g.id">
                 {{ shown(g.label) }}
                 <span v-if="groupHasIssue(g)" class="size-2 rounded-full bg-destructive" role="img" :aria-label="t('entry.groupHasIssues')" />
                 <span v-if="groupHasGap(g)" class="size-2 rounded-full bg-warning" role="img" :aria-label="t('entry.groupHasGaps')" />
