@@ -15,7 +15,7 @@ import { join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { serializeSchema, withoutFiles, type SiteInput } from '../../packages/ginko/src/core/index.ts'
 import { loadConfig } from '../../packages/ginko/src/cli/config.ts'
-import { confirmLocal, findBackend, knownTargetError, prepareLocalBackend, readDeploymentTarget, targetEnv } from '../../packages/ginko/src/cli/local.ts'
+import { backendAt, confirmLocal, knownTargetError, prepareLocalBackend, readDeploymentTarget, targetEnv } from '../../packages/ginko/src/cli/local.ts'
 import { manifestOf, shiftDates, weeksShift } from '../../packages/create-ginko/template-files.mjs'
 import { answers, busyPorts, CONVEX_READY, PLATFORM_PORTS, recoverCrashedRun, startSession, waitFor, type Session } from '../lib/runs.ts'
 
@@ -92,7 +92,7 @@ export async function siteExport(root: string, siteDir: string, work: string, ru
 
 export async function platformGate(name: string, root: string): Promise<Step[]> {
   const steps: Step[] = []
-  const backendDir = findBackend(root, 'templates test --platform')
+  const backendDir = backendAt(join(root, 'packages/ginko-server'), 'templates test --platform')
   const templateDir = join(root, 'templates', name)
   const pkg = JSON.parse(readFileSync(join(templateDir, 'package.json'), 'utf8')) as { ginko?: { sampleAnchor?: string; features?: string[] } }
   const note = (check: string, ok: boolean, detail?: string) => {

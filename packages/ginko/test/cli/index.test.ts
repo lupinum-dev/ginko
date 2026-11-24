@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { main } from '../../src/cli/index.ts'
+import { main as platformMain } from '../../src/cli/ginko-platform.ts'
 import { main as monorepoMain } from '../../src/cli/monorepo.ts'
 import { PlatformError } from '../../src/cli/platform.ts'
 import { exitCodeOf, type CliDeps } from '../../src/cli/run.ts'
@@ -130,5 +131,33 @@ describe('pnpm local:*', () => {
     const { code, stdout } = await run(['import'], {}, monorepoMain)
     expect(code).toBe(2)
     expect(JSON.parse(stdout)).toEqual({ ok: false, error: { code: 'USAGE', message: 'local:import needs a folder: local:import <folder>.' } })
+  })
+})
+
+describe('ginko-platform', () => {
+  async function platform(argv: string[], cwd = import.meta.dirname) {
+    const log: string[] = []
+    const error: string[] = []
+    const code = await platformMain(argv, { cwd, log: (line) => log.push(line), error: (line) => error.push(line) })
+    return { code, log: log.join('\n'), error: error.join('\n') }
+  }
+
+  // Wrong behaviour caught: a typo (`ginko-platform deV`) or a bare call starts nothing and says nothing, or exits 0 in a script.
+  it.each([
+    ['no command', [], 'Give a command.'],
+    ['an unknown command', ['start'], 'Unknown command "start".'],
+    ['an extra argument', ['dev', 'now'], 'Unknown argument "now".'],
+  ])('%s: exit 2 with the usage', async (_name, argv, message) => {
+    const { code, error } = await platform(argv)
+    expect(code).toBe(2)
+    expect(error).toContain(message)
+    expect(error).toContain('Usage: ginko-platform <command>')
+  })
+
+  // Wrong behaviour caught: run in the wrong folder, `convex dev` would create a new, empty Convex project there.
+  it('dev outside a platform project (no convex.json): exit 2, nothing started', async () => {
+    const { code, error } = await platform(['dev'])
+    expect(code).toBe(2)
+    expect(error).toMatch(/ginko-platform dev stopped: .* has no convex\.json/)
   })
 })

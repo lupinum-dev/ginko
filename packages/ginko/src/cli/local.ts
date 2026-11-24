@@ -1,30 +1,21 @@
-// The local Convex deployment, shared by the monorepo tools that write to it (`local:dev`, `local:import`,
-// `local:pull`): finding packages/ginko-server (the Convex project), confirming that the Convex CLI points at the
-// LOCAL backend before any write, and running `npx convex run` against exactly that deployment.
+// The local Convex deployment, shared by the tools that write to it (`local:dev`, `local:import`, `local:pull` in the
+// monorepo, `ginko-platform dev` in a platform project): checking the Convex project folder (the one with convex.json),
+// confirming that the Convex CLI points at the LOCAL backend before any write, and running `npx convex run` against
+// exactly that deployment.
 import { spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { join, relative } from 'node:path'
 import { CliError, isObject } from './model.ts'
 
 /**
- * Walks up from the site folder (then from the working directory) to the monorepo and returns its Convex project, packages/ginko-server:
- * the folder with convex.json, where `convex dev` runs and writes .env.local.
+ * The Convex project: the folder with convex.json, where `convex dev` runs and writes .env.local. In the monorepo that is
+ * packages/ginko-server; in a platform project it is the project's root, whose convex.json points `functions` into
+ * node_modules/@lupinum/ginko-server/convex/. Returns the folder, or throws when it has no convex.json.
  */
-export function findBackend(from: string, command = 'local:dev'): string {
-  // Above the site first (sites/<name> in the monorepo), then above the working directory, so a site in its own
-  // repository runs with `pnpm local:dev --config <path>` from the monorepo root.
-  for (const start of [from, process.cwd()]) {
-    let dir = start
-    for (;;) {
-      const candidate = join(dir, 'packages', 'ginko-server')
-      if (existsSync(join(candidate, 'package.json'))) return candidate
-      const parent = dirname(dir)
-      if (parent === dir) break
-      dir = parent
-    }
-  }
-  throw new CliError(`packages/ginko-server was not found. Run \`${command}\` from the Ginko monorepo.`, 'USAGE')
+export function backendAt(dir: string, command: string): string {
+  if (!existsSync(join(dir, 'convex.json'))) throw new CliError(`${command} stopped: ${dir} has no convex.json. Run it in the folder of the platform project, the one with convex.json. Nothing was started.`, 'USAGE')
+  return dir
 }
 
 /** The Convex deployment that a command writes to. Empty values are missing, not guessed. */
@@ -77,7 +68,7 @@ function isLocalUrl(url: string): boolean {
   }
 }
 
-/** The target as the Convex CLI sees it: process environment first, then packages/ginko-server/.env.local (its own precedence). */
+/** The target as the Convex CLI sees it: process environment first, then backendDir/.env.local (its own precedence). */
 export function readDeploymentTarget(backendDir: string): DeploymentTarget {
   const file = parseEnvFile(join(backendDir, '.env.local'))
   const dotenv = parseEnvFile(join(backendDir, '.env'))
@@ -164,7 +155,7 @@ export async function prepareLocalBackend(backendDir: string, command: string, l
     const line = `${name}=${value}`
     const pattern = new RegExp(`^${name}=.*$`, 'm')
     file = pattern.test(file) ? file.replace(pattern, line) : `${file.replace(/\n?$/, '\n')}${line}\n`
-    log(`wrote ${name} to packages/ginko-server/.env.local`)
+    log(`wrote ${name} to ${relative(process.cwd(), envFile)}`)
   }
   if (file !== before) writeFileSync(envFile, file)
   await convex('run', 'auth:ensureSigningKey')
@@ -179,10 +170,9 @@ export type Runner = (fn: string, args: Record<string, unknown>) => Promise<unkn
 
 /**
  * Confirms the local deployment and returns the runner for it. Throws before anything is written when
- * the Convex CLI points anywhere else. `from` is the folder to search packages/ginko-server upwards from.
+ * the Convex CLI points anywhere else. `backendDir` is the Convex project (backendAt).
  */
-export function connectLocal(from: string, command: string): Runner {
-  const backendDir = findBackend(from, command)
+export function connectLocal(backendDir: string, command: string): Runner {
   const env = targetEnv(confirmLocal(backendDir, command))
   return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', fn, JSON.stringify(args)], backendDir, env))
 }
@@ -246,10 +236,9 @@ export function runOnce(command: string, args: string[], cwd: string, env: NodeJ
 }
 
 /**
- * The runner for the HOSTED platform (`pnpm ops:import`): every call is `npx convex run --prod`, in packages/ginko-server,
- * with the credentials the Convex CLI finds (login or CONVEX_DEPLOY_KEY). The caller has made the operator say `--prod`.
+ * The runner for the HOSTED platform (`pnpm ops:import`): every call is `npx convex run --prod`, in the Convex project
+ * backendDir, with the credentials the Convex CLI finds (login or CONVEX_DEPLOY_KEY). The caller has made the operator say `--prod`.
  */
-export function connectProd(from: string, command: string): Runner {
-  const backendDir = findBackend(from, command)
+export function connectProd(backendDir: string): Runner {
   return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', '--prod', fn, JSON.stringify(args)], backendDir))
 }

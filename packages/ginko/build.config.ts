@@ -50,6 +50,7 @@ export default defineBuildConfig({
     { input: 'src/basics/index', name: 'basics' },
     { input: 'src/internal/search', name: 'internal/search' },
     { input: 'src/cli/index', name: 'cli/index' },
+    { input: 'src/cli/ginko-platform', name: 'cli/ginko-platform' },
     { input: 'src/nuxt/module', name: 'nuxt/module' },
     // Declarations for the .ts files: a site's types for useGinko, useGinkoEntry and GinkoItem come from
     // composables.d.mts (types/ginko.d.ts augments it). The .vue page is copied without one (that would need vue-tsc).
