@@ -1282,6 +1282,19 @@ function failedFields(schema: Schema, brickKey: string, errors: Issue[]): { fiel
   return { fields: Object.fromEntries(schema.locales.map((l) => [l, roots.map((r) => labelIn(brick.fields[r]!.label, l, main)).join(', ')])), count: roots.length }
 }
 
+/**
+ * A plan takes the entry as the person last saw it (D105): content saved after `rev` (the rev the form was opened or
+ * last saved with) refuses the plan, naming who changed what, as a save's conflict does. A move (the order, a place in
+ * a navigation tree) changes no content and refuses nothing.
+ */
+async function refuseChangedSince(ctx: QueryCtx, actor: Actor, entry: Doc<'entries'>, rev: number) {
+  const brick = structuralBrick(actor.site.schema as Schema, entry.brick)
+  const tree = treeOf(brick)
+  const place = new Set<string>(tree ? treeFields(tree) : [])
+  const conflicts = Object.keys(brick.fields).filter((root) => !place.has(root) && (entry.fieldRevs[root] ?? 0) > rev)
+  if (conflicts.length) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, { ...(current(entry) as object), conflicts, by: await conflictAuthors(ctx, actor, entry, conflicts, rev, null) })
+}
+
 /** Draft → live: state, no schedule, `contentAt`, lifeRev+1, contentRev+1 and one 'publish' change. Shared by `publishAs` and `publishDue`. */
 async function goLive(ctx: MutationCtx, c: Counters, entry: Doc<'entries'>, by: By, opId: string, history: Recorded, now = Date.now()) {
   await cancelJob(ctx, entry)
@@ -1300,7 +1313,10 @@ const publishArgs = {
   lifeRev: v.number(),
   /** Absent: online now. Present: online at this time (ms, in the future, within a year). */
   at: v.optional(v.number()),
-  /** For a live entry's unpublished changes: the entry rev the person saw; a newer save refuses the publish. */
+  /**
+   * The entry rev the person saw. For a live entry's unpublished changes a newer save refuses the publish; for a draft
+   * with a time, content saved since refuses the plan (D105).
+   */
   rev: v.optional(v.number()),
 }
 
@@ -1320,6 +1336,7 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     const late = lapsed(actor, args.at)
     const at = late ? undefined : args.at
     if (at !== undefined) checkFuture(at)
+    if (at !== undefined && args.rev !== undefined) await refuseChangedSince(ctx, actor, entry, args.rev)
     // Everything the draft holds goes live: the full check first, then every link in it counts as new. A plan is
     // checked now and again by the job at its time (D101).
     refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, entry))

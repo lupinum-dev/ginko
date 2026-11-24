@@ -371,6 +371,23 @@ describe('people are told when a plan stops (D104)', () => {
   })
 })
 
+describe('a plan takes the entry as the person saw it (D105)', () => {
+  // Wrong behaviour caught: a person plans a draft that someone else changed since they opened it, and the other
+  // text goes online unseen; or a move of the entry in the list refuses a plan although no content changed.
+  it('content saved after the form\'s rev refuses the plan, naming who changed what; a move does not', async () => {
+    const s = await draftSetup()
+    const at = NOW + 2 * HOUR
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish('Vorgemerkt') })
+    const plan = (rev: number) => s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 1, at, rev })
+    await s.as.admin.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 1, fields: { name: { de: 'Geändert' } }, sentence: 'Name' })
+    expect(await errorOf(plan(1))).toMatchObject({ code: 'CHANGED_SINCE', key: 'errors.someoneChangedMeanwhile', details: { conflicts: ['name'], by: { name: expect.not.objectContaining({ self: true }) } } })
+
+    await s.as.owner.mutation(api.entries.move, { site: 'restaurant', opId: opId(), entry: draft.entry, direction: 'down' })
+    expect((await s.row(draft.entry))!.rev).toBe(3)
+    expect(await plan(2)).toMatchObject({ state: 'draft', publishAt: at })
+  })
+})
+
 describe('revisions and slugs of a draft', () => {
   it('editing a draft bumps rev and fieldRevs but not contentRev; publishing a live entry\'s saved changes bumps all three', async () => {
     const s = await draftSetup()

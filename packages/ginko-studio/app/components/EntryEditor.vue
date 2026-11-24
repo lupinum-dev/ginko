@@ -552,7 +552,8 @@ async function doPublish() {
       publishing.value = false
       return
     }
-    await ops.publishEntry(props.entry._id, props.entry.lifeRev, { at: ms, task: publishTask.value, timeZone: timeZone.value, main: main.value })
+    // A plan sends the rev the form last saved or read: content someone else saved since refuses it (D105).
+    await ops.publishEntry(props.entry._id, props.entry.lifeRev, { at: ms, rev: ms === undefined ? undefined : form.baseRev.value, task: publishTask.value, timeZone: timeZone.value, main: main.value })
     publishing.value = false
   } catch (error) {
     publishError.value = opErrorOf(error).message
