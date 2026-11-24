@@ -214,6 +214,22 @@ export function mapRows(field: TableField, value: Json, fn: (row: Record<string,
   return isRow(value) ? Object.fromEntries(Object.entries(value).map(([key, row]) => [key, isRow(row) ? fn(row) : row])) : value
 }
 
+/**
+ * `data` without the rows its rows fields no longer have (a backup made before a row was retired); everything else stays
+ * as it is. Validation warns about such a row (UNKNOWN_ROW); a restore then stores the data without it.
+ */
+export function withoutUnknownRows(fields: Fields, data: Record<string, Json>, week: SiteWeek): Record<string, Json> {
+  const out = { ...data }
+  for (const [name, field] of Object.entries(fields)) {
+    const value = out[name]
+    if (field.type !== 'rows' || !isRow(value)) continue
+    const keys = rowKeysOf(field, week)
+    if (Object.keys(value).every((key) => keys.includes(key))) continue
+    out[name] = Object.fromEntries(Object.entries(value).filter(([key]) => keys.includes(key)))
+  }
+  return out
+}
+
 /** One row of the columns `of` filled with their defaults; undefined when a required live column has none. */
 export function rowDefaults(of: Fields): Record<string, Json> | undefined {
   const row: Record<string, Json> = {}

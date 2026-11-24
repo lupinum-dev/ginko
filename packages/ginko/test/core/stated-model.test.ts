@@ -2,7 +2,7 @@
 // the wrong behaviour it catches: the behaviour coming back from the shape instead of its key.
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
-import { checkSchema, checkSite, diffSchema, entryTitle, f, navTree, resolveEntry, resolveToken, serializeSchema, single, validate, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
+import { checkSchema, checkSite, diffSchema, entryTitle, f, navTree, resolveEntry, resolveToken, serializeSchema, single, validate, withoutUnknownRows, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
 
 const stored = (): Schema => structuredClone(serializeSchema(restaurant))
 
@@ -217,6 +217,26 @@ describe('f.rows: rows of workdays and retired rows', () => {
     const schema = stored()
     schema.retired[path] = rule as Schema['retired'][string]
     expect(checkSchema(schema)).toEqual([sentence])
+  })
+})
+
+describe('f.rows: what the website reads', () => {
+  const day = (dish: string) => ({ dish: { de: dish }, allergens: [] })
+  // As Convex stores it: keys sorted, and a Saturday the field no longer has (retired, or from an old backup).
+  const days = { fr: day('Fisch'), mo: day('Suppe'), sa: day('Alt'), th: day('Knödel'), tu: day('Gulasch'), we: day('Strudel') }
+
+  // Wrong: the lunch week reads "Freitag, Montag, Samstag, …" (the stored order), or shows a day the restaurant dropped.
+  it('gives the rows the field has, in its order, and leaves a stored row it no longer has out', () => {
+    const { data } = resolveEntry(stored(), 'lunch', { id: 'lunch', data: { weekOf: '2026-10-05', days } }, { locale: 'de', files: () => undefined })
+    expect(Object.keys(data.days as object)).toEqual(['mo', 'tu', 'we', 'th', 'fr'])
+  })
+
+  // Wrong: a backup made before a row was retired brings the row back into the stored entry.
+  it('a restore drops a row the field no longer has, with its warning', async () => {
+    const schema = stored()
+    const { errors, warnings } = await validate(schema, 'lunch', { weekOf: '2026-10-05', days }, { mode: 'restore' })
+    expect([errors, warnings.map((w) => [w.path, w.code])]).toEqual([[], [['days.sa', 'UNKNOWN_ROW']]])
+    expect(Object.keys(withoutUnknownRows(schema.bricks.lunch!.fields, { days }, schema.week).days as object).sort()).toEqual(['fr', 'mo', 'th', 'tu', 'we'])
   })
 })
 

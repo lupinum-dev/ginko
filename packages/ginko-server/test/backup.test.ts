@@ -400,6 +400,24 @@ describe('import of a backup with the same picture twice', () => {
   })
 })
 
+describe('import of a backup made before a row was retired', () => {
+  // Wrong behaviour caught: the restore stores a Saturday the lunch week no longer has, so the entry carries a row
+  // no form shows and every later save warns about it.
+  it('drops the row with its warning and stores the rest', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    const day = (dish: string) => ({ dish: { de: dish }, allergens: [] })
+    const days = { mo: day('Suppe'), tu: day('Gulasch'), we: day('Strudel'), th: day('Knödel'), fr: day('Fisch'), sa: day('Alt') }
+    const result = await s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [], entries: [{ id: 'plan-kw50', brick: 'lunchPlans', kind: 'item', order: 2, data: { weekOf: '2026-12-07', days }, prints: {}, rev: 1 }],
+    })
+    expect([result.warnings, result.firstWarning]).toEqual([1, expect.objectContaining({ id: 'plan-kw50', path: 'days.sa', key: 'issues.unknownRow' })])
+    const [, id] = result.ids[0]!
+    const stored = await s.t.run((ctx) => ctx.db.get(id))
+    expect(Object.keys(stored!.data.days as object).sort()).toEqual(['fr', 'mo', 'th', 'tu', 'we'])
+  })
+})
+
 describe('import budget (SPEC 3)', () => {
   // Wrong behaviour caught: an import stores entries over the entry limit (the Studio then cannot save them), and the
   // CLI clears the local site before the platform refuses anything, so a refused import leaves it half-imported.

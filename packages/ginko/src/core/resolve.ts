@@ -1,4 +1,4 @@
-import { effectiveAlt, isTranslatable, slugKeyOf, startValue } from './fields.ts'
+import { effectiveAlt, isTranslatable, rowKeysOf, slugKeyOf, startValue } from './fields.ts'
 import { addDays, type SiteWeek } from './time.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { resolveRouteLinks } from './links.ts'
@@ -155,8 +155,14 @@ function resolveValue(field: Field, value: Json, path: string, state: State): un
     }
     case 'list':
       return (value as Record<string, Json>[]).map((row) => ({ _id: row._id, ...resolveFields(field.of, row, `${path}.${String(row._id)}`, state) }))
-    case 'rows':
-      return Object.fromEntries(Object.entries(value as Record<string, Record<string, Json>>).map(([key, row]) => [key, resolveFields(field.of, row, `${path}.${key}`, state)]))
+    case 'rows': {
+      // The rows the field has, in its order (the site's week for days); a stored row the field no longer has is left out.
+      const rows = value as Record<string, Record<string, Json> | undefined>
+      return Object.fromEntries(rowKeysOf(field, state.schema.week).flatMap((key) => {
+        const row = Object.hasOwn(rows, key) ? rows[key] : undefined
+        return row ? [[key, resolveFields(field.of, row, `${path}.${key}`, state)]] : []
+      }))
+    }
     default:
       return value
   }
