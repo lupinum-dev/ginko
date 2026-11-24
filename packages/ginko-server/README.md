@@ -21,7 +21,9 @@ bundles `sharp`, and the deploy fails on Convex's Linux runtime.
 (`apps/platform/vercel.json` runs `ginko-platform build --convex ../../packages/ginko-server`, the command every
 platform project builds with). A failed Convex deploy fails the build, and the previous release stays live. Preview
 builds deploy nothing; a build outside Vercel deploys only when `CONVEX_DEPLOY_KEY` holds a production key. The
-Vercel project's root directory is `apps/platform`.
+Vercel project's root directory is `apps/platform`. A deploy key made in the Convex dashboard needs the rights
+`deployment:deploy` and `deployment:functions:runInternalMutations`; without the second, the build deploys but only
+warns that it could not start the data migrations.
 
 **Preview builds** still run the Nuxt build, and it stops without `SITE_URL` and the Convex URLs. So choose one:
 add **Preview** variables in Vercel that point at a separate staging Convex project (see

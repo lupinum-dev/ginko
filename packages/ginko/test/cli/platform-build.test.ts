@@ -6,13 +6,13 @@ const DEPLOY = 'npx convex deploy'
 const MIGRATE = 'npx convex run --prod migrations:runPending'
 const STUDIO = 'npx nuxt build'
 
-async function runBuild(env: Record<string, string>, failing?: string) {
+async function runBuild(env: Record<string, string>, failing?: string, reason = 'exit code 1') {
   const ran: string[] = []
   const log: string[] = []
   const run = async (step: Step) => {
     const line = commandLine(step)
     ran.push(line)
-    if (line === failing) throw new StepError(step, 'exit code 1')
+    if (line === failing) throw new StepError(step, reason)
     return line === MIGRATE ? 'Migrations: all 5 done.\n"Migrations: all 5 done."\n' : ''
   }
   try {
@@ -49,6 +49,16 @@ describe('ginko-platform build', () => {
     expect(result.ran).toEqual([DEPLOY, MIGRATE, STUDIO])
     expect(result.error).toBeUndefined()
     expect(result.log.join('\n')).toContain('Warning: the data migrations could not be started.')
+  })
+
+  // Wrong behaviour caught: a deploy key made in the Convex dashboard without the migration right gives only the general
+  // warning, so nobody learns which right to add, and the migrations never run.
+  it('a deploy key without the right to run migrations is named, with both ways out, and the Studio still builds', async () => {
+    const convex = 'exit code 1: ✖ You do not have permission to perform this operation (deployment:functions:runInternalMutations). | This is determined by the permissions granted to CONVEX_DEPLOY_KEY.'
+    const result = await runBuild({ CONVEX_DEPLOY_KEY: 'prod:happy-cat-1|x' }, MIGRATE, convex)
+    expect(result.ran).toEqual([DEPLOY, MIGRATE, STUDIO])
+    expect(result.error).toBeUndefined()
+    expect(result.log).toEqual(['Warning: CONVEX_DEPLOY_KEY may deploy but may not start the data migrations. The backend is deployed and the Studio builds. To fix it, make a new deploy key with the rights deployment:deploy and deployment:functions:runInternalMutations and set it as CONVEX_DEPLOY_KEY, or start them once with your own login: npx convex run --prod migrations:runPending'])
   })
 
   // Wrong behaviour caught: a failed backend deploy still ships the new Studio against the old backend.
