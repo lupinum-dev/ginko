@@ -26,6 +26,8 @@ export interface LocalDraftRow {
 
 /** One of the person's own proposals as proposals.mine returns it. */
 export type OwnRow = FunctionReturnType<typeof api.proposals.mine>['open'][number]
+/** A plan that did not go online (entries.stoppedPlans): the planner's and the owners' (D104). */
+export type StoppedRow = FunctionReturnType<typeof api.entries.stoppedPlans>[number]
 
 /** A section's tasks: the visible buttons, in schema order, and the rare ones behind "⋯". */
 export interface Split { buttons: Task[]; more: Task[] }
@@ -79,20 +81,23 @@ export type WaitingItem =
   | { kind: 'rejected'; key: string; p: OwnRow; fix: Task | undefined }
   | { kind: 'review'; count: number }
   | { kind: 'unsaved'; row: LocalDraftRow }
+  | { kind: 'stopped'; row: StoppedRow }
   | { kind: 'notLive'; key: string; p: OwnRow }
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
 /**
  * "Wartet auf dich": rejected own proposals (newest decision first), the review count for managers, unsaved input
- * (newest first, as given), then planned changes that did not go live in the last 7 days (newest first). The caller
- * passes only proposals of sections on Today.
+ * (newest first, as given), plans of entries that did not go online (newest first; they stay until someone acts on
+ * them), then planned changes that did not go live in the last 7 days (newest first). The caller passes only proposals
+ * of sections on Today; a stopped plan shows wherever its entry is.
  */
 export function waitingOf(i: {
   manager: boolean
   review?: number
   rejected: readonly { key: string; p: OwnRow; fix?: Task }[]
   unsaved: readonly LocalDraftRow[]
+  stopped?: readonly StoppedRow[]
   notLive: readonly { key: string; p: OwnRow }[]
   now: number
 }): WaitingItem[] {
@@ -102,13 +107,14 @@ export function waitingOf(i: {
     ...newest(i.rejected, (p) => p.decidedAt ?? 0).map((r): WaitingItem => ({ kind: 'rejected', key: r.key, p: r.p, fix: r.fix })),
     ...(i.manager && i.review ? [{ kind: 'review', count: i.review } as const] : []),
     ...i.unsaved.map((row): WaitingItem => ({ kind: 'unsaved', row })),
+    ...(i.stopped ?? []).toSorted((a, b) => b.at - a.at).map((row): WaitingItem => ({ kind: 'stopped', row })),
     ...newest(i.notLive.filter((r) => decided(r.p) >= i.now - WEEK_MS), decided).map((r): WaitingItem => ({ kind: 'notLive', key: r.key, p: r.p })),
   ]
 }
 
-/** What the verdict counts: each tile that is work (a not-live change is information) and each due area. */
+/** What the verdict counts: each tile that is work (a plan that did not go online or live is information) and each due area. */
 export function verdictCount(items: readonly WaitingItem[], dueKeys: readonly string[]): number {
-  return items.filter((x) => x.kind !== 'notLive').length + dueKeys.length
+  return items.filter((x) => x.kind !== 'notLive' && x.kind !== 'stopped').length + dueKeys.length
 }
 
 /** The yes/no fields a row marks with a badge ("Ausgebucht"): set on the entry and changed by an edit task the person holds. */

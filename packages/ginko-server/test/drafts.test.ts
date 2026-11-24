@@ -5,7 +5,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, setup, upload } from './setup'
+import { errorOf, opId, people, setup, upload } from './setup'
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
 const HOUR = 60 * 60 * 1000
@@ -312,6 +312,62 @@ describe('a stopped plan (D103)', () => {
     const s = await draftSetup()
     const draft = await s.createDraft('Nichts geplant')
     expect(await errorOf(s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 1 }))).toMatchObject({ code: 'INVALID', key: 'errors.entryAlreadyDraft' })
+  })
+})
+
+describe('people are told when a plan stops (D104)', () => {
+  /** A draft planned by the owner, handed to `planner`, that fails the full check at its time. */
+  async function stoppedBy(planner: string, mail = true, ownerLocale?: string) {
+    if (mail) {
+      vi.stubEnv('GINKO_MAIL', 'outbox')
+      vi.stubEnv('SITE_URL', 'https://ginko.test')
+    }
+    const s = await draftSetup()
+    if (ownerLocale) await s.t.run((ctx) => ctx.db.insert('userSettings', { user: people.owner, remindByMail: false, locale: ownerLocale }))
+    const at = Date.parse('2026-10-08T12:30:00Z')
+    const draft = await s.createDraft('Herbstfest', { at })
+    await s.t.run((ctx) => ctx.db.patch(draft.entry as Id<'entries'>, { publishBy: planner }))
+    await breakDraft(s, draft.entry)
+    await s.advanceTo(at + 1000)
+    return { ...s, draft, at }
+  }
+  afterEach(() => vi.unstubAllEnvs())
+  const outbox = (s: Awaited<ReturnType<typeof draftSetup>>) => s.t.run((ctx) => ctx.db.query('outbox').collect())
+
+  // Wrong behaviour caught: a plan stops at night and nobody hears of it, or a person who left the site still gets mail.
+  it('mails the planner while a member and every owner, each once, in their language, with the entry\'s link', async () => {
+    const s = await stoppedBy(people.cook)
+    const mails = await outbox(s)
+    expect(mails.map((m) => m.to).sort()).toEqual(['koch@example.com', 'wirtin@example.com'])
+    expect(mails[0]).toMatchObject({
+      subject: '„Herbstfest“ ging nicht online',
+      text: `Hallo,\n\ndein Eintrag war für Donnerstag, 8. Oktober, 14:30 Uhr geplant. Er ging nicht online, weil „Beschreibung“ fehlt oder ungültig ist.\n\nDer Eintrag ist sicher. Korrigiere ihn, dann veröffentliche ihn oder gib ihm einen neuen Tag.\n\nEintrag öffnen: https://ginko.test/s/restaurant/all/events/${s.draft.entry}\n`,
+    })
+
+    const left = await stoppedBy('u-weg')
+    expect((await outbox(left)).map((m) => m.to)).toEqual(['wirtin@example.com'])
+  })
+
+  it('the owner gets one mail when she planned it herself, in her language', async () => {
+    const s = await stoppedBy(people.owner, true, 'en')
+    expect(await outbox(s)).toMatchObject([{
+      to: 'wirtin@example.com',
+      subject: '“Herbstfest” did not go online',
+      text: `Hello,\n\nyour entry was planned for Thursday, October 8, 14:30. It did not go online, because “Description” is missing or not valid.\n\nThe entry is safe. Fix it, then publish it or give it a new day.\n\nOpen the entry: https://ginko.test/s/restaurant/all/events/${s.draft.entry}\n`,
+    }])
+  })
+
+  // Wrong behaviour caught: a stopped plan is not on Today, or staff see the plans of others.
+  it('Today lists a stopped plan for the owners and for its planner, with the cause as second line', async () => {
+    const s = await stoppedBy(people.cook, false)
+    const row = { entry: s.draft.entry, brick: 'events', at: s.at, titleText: '„Herbstfest“ ging nicht online', causeText: '„Beschreibung“ fehlt oder ist ungültig.' }
+    expect(await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })).toMatchObject([row])
+    expect(await s.as.cook.query(api.entries.stoppedPlans, { site: 'restaurant' })).toMatchObject([row])
+    await s.t.run((ctx) => ctx.db.patch(s.draft.entry as Id<'entries'>, { stopped: { at: s.at, by: people.owner, reason: { code: 'late' } } }))
+    expect(await s.as.cook.query(api.entries.stoppedPlans, { site: 'restaurant' })).toEqual([])
+    // Cancelling the plan takes it off Today.
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: s.draft.entry, lifeRev: (await s.row(s.draft.entry))!.lifeRev })
+    expect(await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })).toEqual([])
   })
 })
 

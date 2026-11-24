@@ -344,9 +344,26 @@
       "subject": "Did not go live: a planned change for {site}",
       "text": "Hello,\n\na change you planned for “{site}” did not go live, because it no longer fits:\n\n{what}\n\nThe reason is in the history: {path}\n"
     },
+    "stopped": {
+      "subject": "“{title}” did not go online",
+      "text": "Hello,\n\nyour entry was planned for {at, date, ::EEEEdMMMM}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}. It did not go online, because {because}\n\nThe entry is safe. Fix it, then publish it or give it a new day.\n\nOpen the entry: {path}\n"
+    },
     "rejected": {
       "subject": "Not approved: your change for {site}",
       "text": "Hello,\n\nyour change for “{site}” was not approved:\n\n{what}\n\nReason: “{reason}”\n\nFix it: {path}\n"
+    }
+  },
+  "stopped": {
+    "title": "“{title}” did not go online",
+    "cause": {
+      "link": "It links to a page that does not exist: {href}",
+      "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
+      "late": "Its time had passed when the content was imported."
+    },
+    "because": {
+      "link": "it links to a page that does not exist: {href}",
+      "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
+      "late": "its time had passed when the content was imported."
     }
   },
   "content": {

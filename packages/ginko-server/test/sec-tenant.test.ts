@@ -103,6 +103,7 @@ const calls: Call[] = [
   { fn: 'navigation.heading', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, baseRev: 1, field: 'section', locale: 'de', text: 'x' }) },
   { fn: 'entries.removed', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
   { fn: 'entries.trash', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
+  { fn: 'entries.stoppedPlans', kind: 'query', args: (site) => ({ site }) },
   { fn: 'entries.whyNotPublic', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'entries.list', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
   { fn: 'entries.list#search', kind: 'query', args: (site) => ({ site, brick: 'menu', search: 'Saibling' }) },

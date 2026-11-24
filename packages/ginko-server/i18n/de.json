@@ -344,9 +344,26 @@
       "subject": "Nicht live gegangen: eine geplante Änderung für {site}",
       "text": "Hallo,\n\neine Änderung, die du für „{site}“ geplant hast, ist nicht live gegangen, weil sie nicht mehr passt:\n\n{what}\n\nDen Grund findest du im Verlauf: {path}\n"
     },
+    "stopped": {
+      "subject": "„{title}“ ging nicht online",
+      "text": "Hallo,\n\ndein Eintrag war für {at, date, ::EEEEdMMMM}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm} Uhr}} geplant. Er ging nicht online, weil {because}\n\nDer Eintrag ist sicher. Korrigiere ihn, dann veröffentliche ihn oder gib ihm einen neuen Tag.\n\nEintrag öffnen: {path}\n"
+    },
     "rejected": {
       "subject": "Nicht freigegeben: deine Änderung für {site}",
       "text": "Hallo,\n\ndeine Änderung für „{site}“ wurde nicht freigegeben:\n\n{what}\n\nGrund: „{reason}“\n\nKorrigieren: {path}\n"
+    }
+  },
+  "stopped": {
+    "title": "„{title}“ ging nicht online",
+    "cause": {
+      "link": "Er verlinkt auf eine Seite, die es nicht gibt: {href}",
+      "invalid": "{count, plural, one {{fields} fehlt oder ist ungültig.} other {{fields} fehlen oder sind ungültig.}}",
+      "late": "Seine Zeit war schon vorbei, als die Inhalte importiert wurden."
+    },
+    "because": {
+      "link": "er auf eine Seite verlinkt, die es nicht gibt: {href}",
+      "invalid": "{count, plural, one {{fields} fehlt oder ungültig ist.} other {{fields} fehlen oder ungültig sind.}}",
+      "late": "seine Zeit schon vorbei war, als die Inhalte importiert wurden."
     }
   },
   "content": {

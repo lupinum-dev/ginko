@@ -11,13 +11,14 @@ import { internalMutation, internalQuery, mutation, query, type MutationCtx, typ
 import { actorFor, authorize, authorizeWriter, byOf, checkRev, createdBy, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
 import { fieldLabelAt, fileIdsOf, mergeField, newOrder, nextPrints, refIdsIn, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { labeler, type Who } from './lib/names'
-import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
+import { historyText, msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
 import { DEFAULT_LOCALE, isLocale, t, type MessageKey } from './lib/i18n'
 import { dropPending, dropPendingRoots, keepsPending, overlay, pendingBySite, pendingInfo, pendingOf, syncPendingRefs, type Pending } from './lib/pending'
 import { countersOf, DELETED_KEPT, NO_PLAN, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { translationNotes } from './lib/translation'
+import { mailStopped, stoppedLines } from './lib/stopped'
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
@@ -1454,7 +1455,9 @@ export const publishDue = internalMutation({
     // (D101). A throwing job would fail silently, so the entry stays a draft and the history says why.
     // The entry stays a draft and keeps why, for its planner and the owners (D103).
     const stop = async (reason: StopReason, history: HistoryMsg) => {
-      await ctx.db.patch(entry._id, { ...NO_PLAN, stopped: { at: args.at, ...(entry.publishBy ? { by: entry.publishBy } : {}), reason } })
+      const stopped = { at: args.at, ...(entry.publishBy ? { by: entry.publishBy } : {}), reason }
+      await ctx.db.patch(entry._id, { ...NO_PLAN, stopped })
+      await mailStopped(ctx, site, { _id: entry._id, brick: entry.brick, stopped, title: label })
       await ctx.db.insert('changes', {
         site: entry.site, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `publish:${entry._id}:${args.at}`, kind: 'publishStopped',
         ...recorded(history, schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
@@ -1767,6 +1770,27 @@ const trashBricks = (schema: Schema, only?: string) =>
  * paginated query (`useConvexPaginatedQuery`), at most 50 entries a page. Any member may read; `mayRestore` says
  * whether this person can use `restore` (staff needs the remove task, and it must not need approval).
  */
+/**
+ * Plans that did not go online (D103) for Today's "waits for you" (D104): every one for an owner or admin, a staff
+ * member's own. Newest first, at most 50: a stopped plan stays until someone plans, publishes, cancels or removes it.
+ * Each row says it in the catalog's words and, as the fallback, in German.
+ */
+export const stoppedPlans = query({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const schema = actor.site.schema as Schema
+    // Absent `stopped` sorts before numbers, so the lower bound keeps every other entry out.
+    const rows = await ctx.db.query('entries').withIndex('by_site_stopped', (q) => q.eq('site', actor.site._id).gt('stopped.at', 0)).order('desc').take(50)
+    return rows.flatMap((row) => {
+      const stopped = row.stopped
+      if (!stopped || row.deletedAt || (actor.role === 'staff' && stopped.by !== actor.user.id)) return []
+      const { title, cause } = stoppedLines(schema, { brick: row.brick, stopped, title: labelOf(schema, row.brick, row.data as Data) })
+      return [{ entry: row._id, brick: row.brick, at: stopped.at, title, titleText: historyText(title, DEFAULT_LOCALE, schema), cause, causeText: historyText(cause, DEFAULT_LOCALE, schema) }]
+    })
+  },
+})
+
 export const trash = query({
   args: { site: v.string(), brick: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {

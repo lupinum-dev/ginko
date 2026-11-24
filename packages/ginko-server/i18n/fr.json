@@ -344,9 +344,26 @@
       "subject": "Pas passé en ligne : une modification planifiée pour {site}",
       "text": "Bonjour,\n\nune modification que vous aviez planifiée pour « {site} » n’est pas passée en ligne, car elle ne convient plus :\n\n{what}\n\nLe motif figure dans l’historique : {path}\n"
     },
+    "stopped": {
+      "subject": "« {title} » n’est pas passé en ligne",
+      "text": "Bonjour,\n\nvotre entrée était planifiée pour le {at, date, ::EEEEdMMMM}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}. Elle n’est pas passée en ligne, car {because}\n\nL’entrée est en sécurité. Corrigez-la, puis publiez-la ou donnez-lui un nouveau jour.\n\nOuvrir l’entrée : {path}\n"
+    },
     "rejected": {
       "subject": "Non approuvée : votre modification pour {site}",
       "text": "Bonjour,\n\nvotre modification pour « {site} » n’a pas été approuvée :\n\n{what}\n\nMotif : « {reason} »\n\nCorrigez-la : {path}\n"
+    }
+  },
+  "stopped": {
+    "title": "« {title} » n’est pas passé en ligne",
+    "cause": {
+      "link": "Il renvoie vers une page qui n’existe pas : {href}",
+      "invalid": "{count, plural, one {{fields} manque ou n’est pas valide.} other {{fields} manquent ou ne sont pas valides.}}",
+      "late": "Son heure était déjà passée lors de l’import du contenu."
+    },
+    "because": {
+      "link": "il renvoie vers une page qui n’existe pas : {href}",
+      "invalid": "{count, plural, one {{fields} manque ou n’est pas valide.} other {{fields} manquent ou ne sont pas valides.}}",
+      "late": "son heure était déjà passée lors de l’import du contenu."
     }
   },
   "content": {

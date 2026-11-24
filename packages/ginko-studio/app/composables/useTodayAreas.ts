@@ -335,6 +335,8 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   // paint: each section says what of theirs waits for approval; a rejection is a tile with "Korrigieren" and a note in
   // the section. The server keeps a rejection only while it is the thing to fix.
   const ownRead = useConvexQuery(api.proposals.mine, () => ({ site: s.slug.value }))
+  // Plans that did not go online (D104): the person's own, every one for an owner.
+  const stoppedRead = useConvexQuery(api.entries.stoppedPlans, () => ({ site: s.slug.value }))
   const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone ?? 'UTC', main: s.main.value }))
   const ownLine = (p: OwnRow) => textOf(p.msg, p.sentence)
   const ownWhen = (at: number) => whenFull(at, s.schema.value?.timeZone ?? 'UTC', format)
@@ -356,9 +358,10 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     && (!sections.value.length || statusRead.data.value !== undefined)
     && (!shownBricks.value.length || shownRead.data.value !== undefined)
     && ownRead.data.value !== undefined
+    && stoppedRead.data.value !== undefined
     && (!s.isManager.value || reviewRead.data.value !== undefined))
   /** A read failed before it had data: the state is unknown (an error after data keeps the last state). */
-  const loadError = computed(() => [statusRead, shownRead, ownRead, ...(s.isManager.value ? [reviewRead] : [])].some((q) => !!q.error?.value && q.data.value === undefined))
+  const loadError = computed(() => [statusRead, shownRead, ownRead, stoppedRead, ...(s.isManager.value ? [reviewRead] : [])].some((q) => !!q.error?.value && q.data.value === undefined))
   const views = computed<Record<string, View>>(() => Object.fromEntries(sections.value.map((sec): [string, View] => {
     const status = statusOf(sec)
     const flag = sec.brick.kind === 'single' ? todayFlag(sec.key, sec.brick, sec.tasks) : undefined
@@ -393,6 +396,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       review: reviewRead.data.value,
       rejected: keyed(ownRead.data.value?.rejected).map((r) => ({ ...r, fix: fixTask(r.key, r.p) })),
       unsaved: localRows.value,
+      stopped: stoppedRead.data.value,
       notLive: keyed(ownRead.data.value?.notLive),
       now: Date.now(),
     })

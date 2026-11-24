@@ -1332,7 +1332,8 @@
     "waiting": {
       "label": "Waiting for you",
       "more": "{count} more",
-      "inHistory": "See in History"
+      "inHistory": "See in History",
+      "open": "Open"
     },
     "due": {
       "badge": "Due"

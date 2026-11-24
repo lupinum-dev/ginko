@@ -95,7 +95,7 @@ export const create = mutation({
       : lines.length ? t(locale, 'mail.invite.rightsStaff', { lines: lines.map((line) => `- ${line}`).join('\n') })
       : t(locale, 'mail.invite.rightsNone', { inviter })
     // Sending is checked in the same mutation: without a mail the invite is not created.
-    await queueMail(ctx, {
+    await queueMail(ctx, 'invite', {
       to: email,
       subject: t(locale, 'mail.invite.subject', { site: actor.site.name, inviter }),
       text: t(locale, 'mail.invite.text', { site: actor.site.name, url: actor.site.url, inviter, rights, days: INVITE_DAYS, link: `${siteOrigin()}/invite/${token}` }),
