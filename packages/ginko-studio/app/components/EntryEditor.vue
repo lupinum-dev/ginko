@@ -127,16 +127,15 @@ const form = useEntryForm({
 const { draft, baseline, issues, problem, conflict, busy, offline, waiting, dirty, confirm, localOffer } = form
 
 /**
- * A new entry starts like the brick's create task in Schnell ändern: its title and its prefill (e.g. today's date).
- * With several create tasks the general one counts (no prefill); "Heute ausgebucht" fills in values for its own case
- * only. Staff get it only when it is the create task they work with.
+ * A new entry starts like the brick's standard add task (id `add`, D85) in Schnell ändern: its title and its prefill
+ * (e.g. today's date). Other create tasks, such as "Heute ausgebucht", fill in values for their own case only. Staff
+ * get it only when it is the create task they work with.
  */
 const createTask = computed(() => {
   if (props.entry || props.brick.kind !== 'collection') return undefined
-  const creates = (props.brick.tasks ?? []).filter((task): task is Extract<Task, { kind: 'create' }> => task.kind === 'create')
-  const general = creates.length === 1 ? creates[0] : creates.find((task) => !task.prefill)
-  if (!general || (props.tasks && props.tasks.create !== taskRef(props.brickKey, general))) return undefined
-  return general
+  const add = props.brick.tasks?.find((task): task is Extract<Task, { kind: 'create' }> => task.id === 'add' && task.kind === 'create')
+  if (!add || (props.tasks && props.tasks.create !== taskRef(props.brickKey, add))) return undefined
+  return add
 })
 const createPrefill = useConvexQuery(api.tasks.prefill, () => (createTask.value ? { site: props.site.slug, task: taskRef(props.brickKey, createTask.value) } : 'skip'), { server: false })
 /** The server resolves the prefill (tokens such as @today in the site's time zone); only fields of this form. */
@@ -245,7 +244,7 @@ const shown = (label: LabelText) => shownLabel(label, main.value)
  * form shows no fields and no Speichern, but a note that says why and whom to ask. Vorschau, Mehr and publishing stay.
  */
 const readOnly = computed(() => !!props.entry && !!props.tasks && !props.tasks.save)
-const readOnlyNote = computed(() => props.tasks?.create
+const readOnlyNote = computed(() => props.tasks?.held?.some((task) => task.kind === 'create')
   ? t('entry.readOnlyOthers')
   : t('entry.readOnly', { area: shown(props.brick.label), tasks: (props.tasks?.held ?? []).map((task) => shown(task.label)).join(', ') }))
 const title = computed(() => {

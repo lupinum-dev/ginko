@@ -37,7 +37,10 @@ const more = computed(() => drafts.value.length > SHOWN)
 
 /** The same rule as the server's publish: any create or edit task the staff holds that needs approval sends it to review. */
 const review = computed(() => !props.isManager && props.tasks.some((task) => task.kind !== 'remove' && task.needsApproval === true))
-/** Publishing belongs to the brick's edit and create tasks (staff need one of them). */
+/**
+ * Publishing belongs to the brick's edit and create tasks: a rights search, not "the standard task". The server's
+ * publish takes any create or edit task the person holds (lib/access.ts `authorizeWriter`), so any of them will do.
+ */
 const publishTask = computed(() => props.tasks.find((task) => task.kind === 'edit') ?? props.tasks.find((task) => task.kind === 'create'))
 
 const line = (e: Entry) => e.pending

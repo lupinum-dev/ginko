@@ -134,15 +134,15 @@ function answering(name: string, data: vue.Ref<unknown>, asked: unknown[] = []) 
 
 // Wrong behaviour caught (J9, romi-13): Alles bearbeiten opened a new post empty and titled "Neuer Eintrag", while the
 // task sheet started with today's date, so the first save failed on the required date. A late prefill must not wipe
-// what the person typed meanwhile, and with several create tasks the general one counts: else every new notice of the
-// gastro preset opened as "Heute ausgebucht" with that day's date.
+// what the person typed meanwhile, and with several create tasks the standard one counts (id `add`, design V2 guess 11),
+// not the first one or the one without prefill: else every new notice of the gastro preset opened as "Heute ausgebucht".
 test('a new entry starts like its create task: the task title and the prefill the server resolves', async () => {
   const blog = (tasks: NonNullable<Parameters<typeof collection>[0]['tasks']>) => serializeSchema(defineSite({
     site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/' } },
     bricks: { blog: collection({ untranslated: 'fallback', label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, tasks, fields: { title: f.text('Titel'), date: f.date('Datum') } }) },
   }))
-  const posts = blog([{ id: 'write', label: 'Beitrag schreiben', kind: 'create', prefill: { date: '@today' } }])
+  const posts = blog([{ id: 'add', label: 'Beitrag schreiben', kind: 'create', prefill: { date: '@today' } }])
   const open = (schema: ReturnType<typeof blog>) => mount(EntryEditor, {
     props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, canRemove: false },
     global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
@@ -153,7 +153,7 @@ test('a new entry starts like its create task: the task title and the prefill th
   try {
     const wrapper = open(posts)
     expect(wrapper.get('h1').text()).toBe('Beitrag schreiben')
-    expect(asked).toEqual([{ site: 'restaurant', task: 'blog.write' }])
+    expect(asked).toEqual([{ site: 'restaurant', task: 'blog.add' }])
     // The answer arrives after the form opened.
     prefill.value = { date: '2026-10-15' }
     await flushPromises()
@@ -169,11 +169,11 @@ test('a new entry starts like its create task: the task title and the prefill th
 
     asked.length = 0
     const several = open(blog([
-      { id: 'soldOut', label: 'Heute ausgebucht', kind: 'create', prefill: { title: 'Heute ausgebucht', date: '@today' } },
-      { id: 'write', label: 'Beitrag schreiben', kind: 'create' },
+      { id: 'soldOut', label: 'Heute ausgebucht', kind: 'create' },
+      { id: 'add', label: 'Beitrag schreiben', kind: 'create', prefill: { date: '@today' } },
     ]))
     expect(several.get('h1').text()).toBe('Beitrag schreiben')
-    expect(asked).toEqual([{ site: 'restaurant', task: 'blog.write' }])
+    expect(asked).toEqual([{ site: 'restaurant', task: 'blog.add' }])
   } finally {
     vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
   }
