@@ -18,7 +18,8 @@
    borders one step above the page, so panels read as surfaces instead of outlines. Its greys are neutral with only a
    trace of green: green is left for what it says (links, focus, checked, chosen).
    The canvas is ink in light mode too. Text on it takes --canvas-foreground (the current item) or
-   --canvas-muted-foreground; --canvas-leaf draws the large leaf behind the rail. No page puts its content on the
+   --canvas-muted-foreground; --canvas-leaf draws the large leaf behind the rail (lighter than the canvas in light
+   mode, darker in dark mode: a dark leaf near the panel's grey reads as a part of the panel). No page puts its content on the
    canvas: content sits in the panel. --paper is the ground of pages without a rail (sign-in, invitation, error). */
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
@@ -83,7 +84,7 @@
     --canvas: #0b0d0c;
     --canvas-foreground: #f6f3ea;
     --canvas-muted-foreground: #b4bfb7;
-    --canvas-leaf: #151a17;
+    --canvas-leaf: #040504;
     --paper: #101311;
     --background: #141816;
     --foreground: #e9ece9;
@@ -127,7 +128,7 @@
   --canvas: #0b0d0c;
   --canvas-foreground: #f6f3ea;
   --canvas-muted-foreground: #b4bfb7;
-  --canvas-leaf: #151a17;
+  --canvas-leaf: #040504;
   --paper: #101311;
   --background: #141816;
   --foreground: #e9ece9;
