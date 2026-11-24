@@ -250,9 +250,19 @@ describe('$publishAt', () => {
     expect(r.notes).toEqual([
       { file: 'posts/dated.yml', path: 'date', message: '“date” (publishedOn) is 2027-01-01, after today, and the entry has no $publishAt: it is online now. Add `$publishAt: 2027-01-01` to hold it back until that day.' },
       { file: 'posts/early.yml', path: 'date', message: '“date” (publishedOn) is 2026-11-20, before the day of $publishAt (2026-12-02): the entry shows a day before it goes online.' },
+      { file: 'posts/early.yml', path: '$publishAt', message: '“$publishAt” is 2026-12-02T10:00, still to come: the entry goes online at the first build after that time. Build the site on that day, for example with a daily build.' },
     ])
     // Read with drafts on, the draft dated after today is no post that is "online now".
     expect((await readContent(join(root, 'content'), join(root, 'public'), stated, { drafts: true, now })).notes).toEqual(r.notes)
+  })
+
+  // Wrong behaviour caught: a site without a build on the day of `$publishAt` keeps the entry offline, and nobody is told
+  // that file content goes online only with a build; or a time that has passed is noted too.
+  it('notes each entry whose $publishAt is still to come, once', async () => {
+    const r = await readAt(files, false)
+    expect(r.notes).toEqual([
+      { file: 'posts/later.yml', path: '$publishAt', message: '“$publishAt” is 2026-12-01T09:00, still to come: the entry goes online at the first build after that time. Build the site on that day, for example with a daily build.' },
+    ])
   })
 
   // Wrong behaviour caught: a file that is both a draft and planned goes online at the time, or never, without a word.

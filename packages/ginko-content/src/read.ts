@@ -728,6 +728,10 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.name
       errors.push(...fileErrors)
       if (isMain && fileErrors.length === 0) notePublishedOn(src, fields, publishAt, draft)
+      // File content changes only with a build: a time still to come needs a build on that day (spec 5.5, rule 10).
+      if (isMain && fileErrors.length === 0 && publishAt !== undefined && publishAt > now) {
+        notes.push({ file: src.rel, path: '$publishAt', message: `“$publishAt” is ${publishAt}, still to come: the entry goes online at the first build after that time. Build the site on that day, for example with a daily build.`, ...(src.csv ? { line: src.csv.row.line } : {}) })
+      }
       return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, planned: planned ? true : undefined }
     }
   }
