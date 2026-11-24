@@ -90,6 +90,14 @@ describe('local:files-export', () => {
     expect(logs).toContain('Warning: 1 entry stays out of the export as drafts, scheduled for later or part of a draft (blog/entwurf); add them in the Studio.')
   })
 
+  // Wrong behaviour caught: the old paths of `$redirectFrom` vanish without a word when the content moves to the platform.
+  it('names each entry whose $redirectFrom the export does not carry', async () => {
+    const s = site({ 'content/blog/3.umzug.md': '---\ntitle: Umzug\n$redirectFrom: [/alt, /noch-aelter]\n---\n\nText.\n' })
+    const logs: string[] = []
+    expect((await run(['files-export', '--config', s.config, s.out], logs)).code).toBe(0)
+    expect(logs).toContain('Warning: “blog/umzug” has $redirectFrom (/alt, /noch-aelter), which the export does not carry. Add these paths to `redirects` in ginko.config.ts, or they stop forwarding once the entry lives on the platform.')
+  })
+
   // Wrong behaviour caught: a self-hoster without the repository cannot export, or `ginko files-export` writes another
   // export than the monorepo command.
   it('is the public `ginko files-export` too, with the same export', async () => {
