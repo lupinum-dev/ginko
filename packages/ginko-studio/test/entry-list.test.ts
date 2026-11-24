@@ -178,3 +178,20 @@ test('a price in a list row shows in the site\'s currency', async () => {
   await flushPromises()
   expect(wrapper.get('li[class*="group/row"]').text()).toContain('14,50\u00a0CHF')
 })
+
+// Wrong behaviour caught (design V2 guess 5): the line under an entry's name shows the first date or price of the brick,
+// or nothing, instead of the value of the field `listing.detail` names; a row without that value gets an empty line.
+test('the line under the title of a list row is the value of listing.detail', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
+    global: { mocks: { shownLabel }, stubs },
+  })
+  await flushPromises()
+  list.error.value = undefined
+  answer({ rows: [
+    { _id: 'e1', title: 'Rösti', state: 'live', dates: { price: { amount: 900 } }, gaps: [] },
+    { _id: 'e2', title: 'Suppe', state: 'live', dates: {}, gaps: [] },
+  ], total: 2 })
+  await flushPromises()
+  const lines = wrapper.findAll('li[class*="group/row"]').map((row) => row.findAll('div.min-w-0 > span').map((span) => span.text()))
+  expect(lines).toEqual([['9,00 CHF'], []])
+})

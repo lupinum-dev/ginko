@@ -84,6 +84,19 @@ describe('readContent', () => {
     expect(r.entries.pages!.map((e) => e.data.adresse)).toEqual([{ de: 'ueber-uns' }])
   })
 
+  // Wrong (design V2 guess 10): the text below the front matter goes to a field found by its name or type, not the
+  // one `body` names, so a brick whose text field is called otherwise loses its text.
+  it('puts the text of a file in the field `body` names', async () => {
+    const story = serializeSchema(defineSite({
+      site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
+      bricks: { about: single({ body: 'story', label: 'Über uns', source: 'files', fields: { title: f.text('Titel'), story: f.markdown('Geschichte') } }) },
+    }))
+    const s = site({ 'content/about.md': md('title: Über uns', 'Seit 1990.') })
+    const r = await readContent(s.content, s.public, story)
+    expect(r.errors).toEqual([])
+    expect(r.entries.about![0]!.data).toMatchObject({ title: { de: 'Über uns' }, story: { de: { nodes: [['p', {}, 'Seit 1990.']] } } })
+  })
+
   it('reads a single and never touches platform bricks', async () => {
     const r = await read({ 'content/legal.md': md('title: Impressum'), 'content/legal.en.md': md('title: Imprint') })
     expect(r.errors).toEqual([])

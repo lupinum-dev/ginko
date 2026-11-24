@@ -70,7 +70,9 @@ vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => ({
 vi.stubGlobal('useConvex', () => ({ query: async () => [] }))
 // Each removal runs until the test lets it finish.
 const finish = new Map<string, () => void>()
-vi.stubGlobal('useOps', () => ({ removeEntry: (entry: string) => new Promise<boolean>((resolve) => finish.set(entry, () => resolve(true))) }))
+/** The task each removal went through (useOps.removeEntry's third argument). */
+const removedWith: (string | undefined)[] = []
+vi.stubGlobal('useOps', () => ({ removeEntry: (entry: string, _lifeRev: number, task?: string) => { removedWith.push(task); return new Promise<boolean>((resolve) => finish.set(entry, () => resolve(true))) } }))
 
 // Wrong behaviour caught: removing one notice, then another, re-enabled the second's button when the first finished,
 // so a second click sent its removal twice.
@@ -114,6 +116,27 @@ test.each([
   }
   wrapper.unmount()
   schema = notices
+})
+
+// Wrong (design V2 guess 11): a row's "Entfernen" goes through the first remove task in the list, so the order of the
+// tasks decides it; the standard task is the one with the id `remove`.
+test('a row\'s "Entfernen" is the task `remove`, not the first remove task', async () => {
+  const brick = notices.bricks.notices!
+  schema = { ...notices, bricks: { ...notices.bricks, notices: { ...brick, tasks: [{ id: 'archive', label: 'Hinweis ablegen', kind: 'remove' }, ...brick.tasks!] } } }
+  listed = [notice('e1', 'Heute geschlossen')]
+  removedWith.length = 0
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+    global: { stubs: { TaskSheet: true, PickSheet: true, I18nT: true, NuxtLink: true } },
+  })
+  await flushPromises()
+  await wrapper.get('button[aria-label="Heute geschlossen entfernen"]').trigger('click')
+  await flushPromises()
+  expect(removedWith).toEqual(['notices.remove'])
+  finish.get('e1')!()
+  await flushPromises()
+  wrapper.unmount()
+  schema = notices
+  listed = [notice('e1', 'Heute geschlossen'), notice('e2', 'Neue Karte')]
 })
 
 const DAY = 86_400_000

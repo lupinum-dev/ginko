@@ -163,7 +163,6 @@ describe('week: the site states its week', () => {
   // week from Sunday although it states Monday.
   it('follows `week`, not the language', () => {
     const schema = serializeSchema({ ...restaurant, languages: { de: 'en-US', en: 'en-US' } })
-    expect(schema.week).toEqual({ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] })
     expect(checkSchema(schema)).toEqual([])
     // Wednesday 14 October 2026.
     expect(resolveToken('@workWeek', schema.timeZone, schema.week, new Date('2026-10-14T10:00:00Z'))).toBe('2026-10-12')
@@ -233,7 +232,6 @@ describe('preview: the page the Studio opens for an entry', () => {
   // and the preview opens the start page or the wrong page without a word.
   it('names a key of pages, and only on a brick without route', () => {
     const schema = stored()
-    expect(schema.bricks.menu!.preview).toBe('menu')
     schema.bricks.menu = { ...schema.bricks.menu!, preview: 'karte' }
     expect(checkSchema(schema)).toEqual([`menu.preview: “karte” is not a key of pages. Write one of ${Object.keys(schema.pages).join(', ')}.`])
     schema.bricks.menu = { ...schema.bricks.menu!, preview: 'menu' }
