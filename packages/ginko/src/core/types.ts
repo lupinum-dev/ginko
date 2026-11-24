@@ -252,8 +252,16 @@ export interface MigrationDescriptor {
   fingerprint: string
 }
 
+/**
+ * The number of the stored model's form. A platform reads one form only (it serves every site from one deployment), so
+ * it refuses a schema of another form, and a release never changes it: the platform's upgrade does.
+ */
+export const SCHEMA_FORMAT = 2
+
 /** The serialized schema (JSON). `serializeSchema()` produces it; the platform stores it. */
 export interface Schema {
+  /** The form of the stored model (`SCHEMA_FORMAT`). */
+  format: typeof SCHEMA_FORMAT
   site: string
   name: string
   url: string

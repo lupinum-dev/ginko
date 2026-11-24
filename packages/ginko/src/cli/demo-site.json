@@ -3,6 +3,7 @@
   "site": "demo",
   "name": "Demo",
   "schema": {
+    "format": 2,
     "site": "demo",
     "name": "Demo",
     "url": "https://example.com",

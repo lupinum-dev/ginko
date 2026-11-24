@@ -9,7 +9,7 @@ import { componentProblems, type ComponentDef, type ComponentRegistry } from './
 import { factComponent, factProblem, FACT_TAG } from './facts.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
-import { isPrefillToken, PREFILL_TOKENS, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema, type Task } from './types.ts'
+import { isPrefillToken, PREFILL_TOKENS, SCHEMA_FORMAT, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema, type Task } from './types.ts'
 import { coreMessage } from './messages.ts'
 import { aspectProblems } from './frames.ts'
 import { checkValue } from './validate.ts'
@@ -22,7 +22,7 @@ const LINK_HEADS = new Set(['page', 'file'])
 const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 
 // The serialized schema grammar. Unknown properties are rejected here and in diffSchema (deny by default).
-export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'languages', 'currency', 'week', 'holidays', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
+export const SCHEMA_KEYS = new Set(['format', 'site', 'name', 'url', 'timeZone', 'locales', 'languages', 'currency', 'week', 'holidays', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
@@ -54,6 +54,7 @@ export function serializeSchema(site: SiteInput): Schema {
     .map(([id, m]) => ({ id, brick: m.brick, fills: m.fills, fingerprint: migrationFingerprint(m.brick, m.fills, m.compute) }))
     .sort((a, b) => a.id.localeCompare(b.id))
   return plain({
+    format: SCHEMA_FORMAT,
     site: site.site,
     name: site.name,
     url: site.url,
@@ -291,6 +292,10 @@ export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site
  */
 export function checkSchema(schema: unknown): string[] {
   if (typeof schema !== 'object' || schema === null || Array.isArray(schema)) return ['The schema is not an object.']
+  // Every other rule belongs to one form; a schema of another form would get a list of problems that are not its own.
+  const format = (schema as { format?: unknown }).format
+  if (format === undefined) return [`The schema has no format number, so it was written by a Ginko older than this one. Update @lupinum/ginko in the site to the version of the platform (format ${SCHEMA_FORMAT}) and release again.`]
+  if (format !== SCHEMA_FORMAT) return [`The schema has format ${JSON.stringify(format)}, and this Ginko reads format ${SCHEMA_FORMAT} only. Use the same version of Ginko in the site and on the platform.`]
   try {
     return schemaProblems(schema as Schema)
   } catch {

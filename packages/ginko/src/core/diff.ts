@@ -37,6 +37,8 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   unknownChanges('Schema', prod, next, SCHEMA_KEYS, no)
 
   if (prod.site !== next.site) no('site', 'site', msg('diff.siteRenamed'), fx('newSite'))
+  // A release never changes the form of the stored model; the platform's upgrade does, for every site at once.
+  if (prod.format !== next.format) no('format', 'formatChanged', msg('diff.unknownChange', { at: 'Schema', prop: 'format' }), fx('keepProperty'))
   // A site without bricks has no content yet (sites.create, sites:bootstrap): its first release sets
   // currency, languages and time zone freely; from then on they are fixed (Astra 9).
   const fresh = Object.keys(prod.bricks).length === 0

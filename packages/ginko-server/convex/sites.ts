@@ -1,5 +1,5 @@
 // Site queries for the UI and the admin-only creation of a site (SPEC 4.2, 10).
-import { isCurrency, isLocale, isTimeZone, isVisible, labelOf as labelIn, MAX_LOCALES, ordered, todayIn, weekInfoOf, type Schema } from '@lupinum/ginko/internal'
+import { isCurrency, isLocale, isTimeZone, isVisible, labelOf as labelIn, MAX_LOCALES, ordered, SCHEMA_FORMAT, todayIn, weekInfoOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
@@ -186,6 +186,7 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
   if (existing) fail('SLUG_TAKEN', 'errors.addressTaken')
 
   const schema = {
+    format: SCHEMA_FORMAT,
     site: args.slug,
     name,
     url: args.url,
