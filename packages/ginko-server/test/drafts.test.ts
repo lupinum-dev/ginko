@@ -174,6 +174,58 @@ describe('scheduled publishing', () => {
   })
 })
 
+describe('the full check where a draft goes online (D101)', () => {
+  /** Takes the required description out of a stored draft, as an import keeps it (only the shape is checked there). */
+  const dropDescription = (s: Awaited<ReturnType<typeof draftSetup>>, id: string) => s.t.run(async (ctx) => {
+    const { description: _, ...data } = (await ctx.db.get(id as Id<'entries'>))!.data as Record<string, unknown>
+    await ctx.db.patch(id as Id<'entries'>, { data })
+  })
+  const paths = (error: { details?: unknown }) => (error.details as { errors: { path: string }[] }).errors.map((e) => e.path)
+
+  // Wrong behaviour caught: a draft that misses a required field goes online half-filled, now or by a plan.
+  it('publish now and publish with a time refuse a draft that fails the full check, with the field errors', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Halb')
+    await dropDescription(s, draft.entry)
+    for (const at of [undefined, NOW + 2 * HOUR]) {
+      const error = await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 1, ...(at ? { at } : {}) }))
+      expect(error.code).toBe('INVALID')
+      expect(paths(error)).toEqual(['description'])
+    }
+    expect(await s.row(draft.entry)).toMatchObject({ state: 'draft', lifeRev: 1 })
+    expect((await s.row(draft.entry))!.publishAt).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: the job at the time publishes what changed under the plan without checking it again.
+  it('the job at the time stops a planned draft that fails the full check: it stays a draft and the history says why', async () => {
+    const s = await draftSetup()
+    const at = NOW + 2 * HOUR
+    const draft = await s.createDraft('Geplant halb', { at })
+    await dropDescription(s, draft.entry)
+    await s.advanceTo(at + 1000)
+    const row = (await s.row(draft.entry))!
+    expect(row).toMatchObject({ state: 'draft' })
+    expect(row.publishAt).toBeUndefined()
+    expect(idsOf(await s.bundle())).not.toContain(draft.entry)
+    const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect())
+    expect(changes.at(-1)).toMatchObject({ kind: 'publishStopped', actor: 'system', msg: { key: 'history.publishStoppedInvalid', params: { count: 1, fields: { de: 'Beschreibung', en: 'Description' } } } })
+  })
+
+  // Wrong behaviour caught: a save of a planned draft passes on the changed field alone and the plan stops at its time.
+  it('a save of a planned draft that leaves it failing the full check is refused; a draft without a time saves', async () => {
+    const s = await draftSetup()
+    const planned = await s.createDraft('Geplant', { at: NOW + 2 * HOUR })
+    const plain = await s.createDraft('Ohne Zeit')
+    for (const id of [planned.entry, plain.entry]) await dropDescription(s, id)
+    const retitle = (id: string, baseRev: number) =>
+      s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: id, baseRev, fields: { title: { de: 'Neu' } }, sentence: 'Titel' })
+    const error = await errorOf(retitle(planned.entry, 1))
+    expect(error.code).toBe('INVALID')
+    expect(paths(error)).toEqual(['description'])
+    expect(await retitle(plain.entry, 1)).toMatchObject({ rev: 2 })
+  })
+})
+
 describe('revisions and slugs of a draft', () => {
   it('editing a draft bumps rev and fieldRevs but not contentRev; publishing a live entry\'s saved changes bumps all three', async () => {
     const s = await draftSetup()

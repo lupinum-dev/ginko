@@ -259,6 +259,7 @@
     "publishProposal": "Publicar “{title}”",
     "publishProposalScheduled": "Publicar “{title}”, en línea a partir del {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "publishStoppedBrokenLink": "“{title}” no se publicó: el enlace “{link}” no lleva a ninguna parte.",
+    "publishStoppedInvalid": "“{title}” no se publicó: {count, plural, one {el campo {fields} falta o no es válido} other {los campos {fields} faltan o no son válidos}}.",
     "published": "Se publicó “{title}”",
     "publishedDue": "Se publicó “{title}” (según lo programado)",
     "publishedLate": "Se publicó “{title}” de inmediato (la hora programada ya había pasado al aprobarlo)",

@@ -259,6 +259,7 @@
     "publishProposal": "Publier « {title} »",
     "publishProposalScheduled": "Publier « {title} », en ligne à partir du {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "publishStoppedBrokenLink": "« {title} » n’est pas passé en ligne : le lien « {link} » ne mène nulle part.",
+    "publishStoppedInvalid": "« {title} » n’est pas passé en ligne : {count, plural, one {le champ {fields} manque ou n’est pas valide} other {les champs {fields} manquent ou ne sont pas valides}}.",
     "published": "« {title} » publié",
     "publishedDue": "« {title} » publié (comme prévu)",
     "publishedLate": "« {title} » publié tout de suite (l’heure prévue était déjà passée au moment de l’approbation)",

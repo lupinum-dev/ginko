@@ -259,6 +259,7 @@
     "publishProposal": "Publish “{title}”",
     "publishProposalScheduled": "Publish “{title}”, online from {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "publishStoppedBrokenLink": "“{title}” did not go live: the link “{link}” leads nowhere.",
+    "publishStoppedInvalid": "“{title}” did not go online: {count, plural, one {the field {fields} is} other {the fields {fields} are}} missing or not valid.",
     "published": "“{title}” published",
     "publishedDue": "“{title}” published (as scheduled)",
     "publishedLate": "“{title}” published at once (the planned time had already passed at approval)",

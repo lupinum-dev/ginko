@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry, type ValidationResult } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -228,6 +228,9 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
 
   const { errors, warnings } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
   if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
+  // A planned draft goes online at its time without a person: a save that leaves it failing the full check is refused
+  // now, not stopped then (D101). The person fills the field or cancels the plan first.
+  if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }))
   await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed })
   await checkNewFiles(ctx, actor.site._id, brick.fields, before, data)
   // A draft and unpublished changes are not online yet: their links are checked when they go live.
@@ -606,6 +609,8 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     const { errors } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('NOT_UNDOABLE', 'errors.oldVersionNoLongerFitsSchema', undefined, { errors: errors as unknown as Json })
+    // An undo of a planned draft is held to the full check, as a save is (D101).
+    if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }))
     // Moving a plan back to a week that was planned again since would hide one of the two.
     await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed: roots, whole: true })
     await checkNewFiles(ctx, actor.site._id, brick.fields, entry.data as Data, data)
@@ -1249,6 +1254,32 @@ async function cancelJob(ctx: MutationCtx, entry: Doc<'entries'>) {
 /** Planned or online, an item's name no longer follows its title (D96). */
 const nameFixedFor = (entry: Doc<'entries'>) => (entry.kind === 'item' ? { nameFixed: true as const } : {})
 
+type Issue = ValidationResult['errors'][number]
+
+/**
+ * The full check of a draft that goes online or gets a time (D101): every rule of the schema, as a create runs it.
+ * A draft may hold what a create refuses (an import keeps what fits the shape, a referenced entry was removed since,
+ * a field became required), so passing as a draft says nothing about going online. The field errors; empty: it passes.
+ */
+async function onlineErrors(ctx: QueryCtx, site: Id<'sites'>, schema: Schema, entry: { brick: string; data: unknown }): Promise<Issue[]> {
+  const fields = structuralBrick(schema, entry.brick).fields
+  const data = entry.data as Data
+  return (await validate(schema, entry.brick, data, { mode: 'create', ...(await lookupsFor(ctx, site, fields, data)) })).errors
+}
+
+/** Refuses a write with the field errors of `onlineErrors`, as the form shows them. */
+function refuseOnlineErrors(errors: Issue[]) {
+  if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
+}
+
+/** The fields of the errors, by their label in each language: what the history names when a plan stopped. */
+function failedFields(schema: Schema, brickKey: string, errors: Issue[]): { fields: Label; count: number } {
+  const brick = structuralBrick(schema, brickKey)
+  const main = schema.locales[0]!
+  const roots = [...new Set(errors.map((e) => rootOf(e.path)).filter((r) => Object.hasOwn(brick.fields, r)))]
+  return { fields: Object.fromEntries(schema.locales.map((l) => [l, roots.map((r) => labelIn(brick.fields[r]!.label, l, main)).join(', ')])), count: roots.length }
+}
+
 /** Draft → live: state, no schedule, `contentAt`, lifeRev+1, contentRev+1 and one 'publish' change. Shared by `publishAs` and `publishDue`. */
 async function goLive(ctx: MutationCtx, c: Counters, entry: Doc<'entries'>, by: By, opId: string, history: Recorded, now = Date.now()) {
   await cancelJob(ctx, entry)
@@ -1287,7 +1318,9 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     const late = lapsed(actor, args.at)
     const at = late ? undefined : args.at
     if (at !== undefined) checkFuture(at)
-    // Everything the draft holds goes live, so every link in it counts as new (also when it is only scheduled: the job does not check again).
+    // Everything the draft holds goes live: the full check first, then every link in it counts as new. A plan is
+    // checked now and again by the job at its time (D101).
+    refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, entry))
     await checkNewLinks(ctx, actor.site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }])
 
     const label = labelOf(schema, entry.brick, entry.data as Data)
@@ -1415,16 +1448,20 @@ export const publishDue = internalMutation({
     const c = countersOf(site)
     const schema = site.schema as Schema
     const label = labelOf(schema, entry.brick, entry.data as Data)
-    // Links may have broken since it was scheduled. A throwing job would fail silently, so the entry stays a draft and the history says why.
-    const broken = await brokenNewLinks(ctx, site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }])
-    if (broken) {
+    // The full check and the links run again: the entry or what it points to may have changed since it was planned
+    // (D101). A throwing job would fail silently, so the entry stays a draft and the history says why.
+    const stop = async (history: HistoryMsg) => {
       await ctx.db.patch(entry._id, { publishAt: undefined, publishJob: undefined })
       await ctx.db.insert('changes', {
         site: entry.site, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `publish:${entry._id}:${args.at}`, kind: 'publishStopped',
-        ...recorded(msg('history.publishStoppedBrokenLink', { title: label, link: broken.href }), schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
+        ...recorded(history, schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
       })
       return null
     }
+    const invalid = await onlineErrors(ctx, site._id, schema, entry)
+    if (invalid.length) return await stop(msg('history.publishStoppedInvalid', { title: label, ...failedFields(schema, entry.brick, invalid) }))
+    const broken = await brokenNewLinks(ctx, site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }])
+    if (broken) return await stop(msg('history.publishStoppedBrokenLink', { title: label, link: broken.href }))
     // The job is running now, so there is nothing left to cancel.
     await goLive(ctx, c, { ...entry, publishJob: undefined }, SYSTEM, `publish:${entry._id}:${args.at}`, recorded(msg('history.publishedDue', { title: label }), site.schema as Schema))
     await writeCounters(ctx, site._id, c)

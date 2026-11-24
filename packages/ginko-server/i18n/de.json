@@ -259,6 +259,7 @@
     "publishProposal": "„{title}“ veröffentlichen",
     "publishProposalScheduled": "„{title}“ veröffentlichen, online ab {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "publishStoppedBrokenLink": "„{title}“ ging nicht online: Der Link „{link}“ führt ins Leere.",
+    "publishStoppedInvalid": "„{title}“ ging nicht online: {count, plural, one {Das Feld {fields} fehlt oder ist ungültig} other {Die Felder {fields} fehlen oder sind ungültig}}.",
     "published": "„{title}“ veröffentlicht",
     "publishedDue": "„{title}“ veröffentlicht (geplant)",
     "publishedLate": "„{title}“ sofort veröffentlicht (die geplante Zeit war bei der Freigabe schon vorbei)",
