@@ -179,10 +179,10 @@ from the contact page (Markdown link), or embed its form in a Vue page. Name the
 
 ## Move to the Studio
 
-Ginko Studio is Lupinum's hosted editor: owners change texts and notices on their phone, without Git. It is open by
-invitation, and Lupinum moves your content with you. The site stays the same code: each brick in
-`ginko.config.ts` loses its `source: 'files'`, and its content then comes from the Studio. Until then, everything here
-works without it. Ask at [lupinum.com](https://lupinum.com).
+Ginko Studio is the editor of the Ginko platform: owners change texts and notices on their phone, without Git. You
+host the platform yourself: see [Host the platform](https://ginko.lupinum.com/docs/host-the-platform). The site stays
+the same code: each brick in `ginko.config.ts` loses its `source: 'files'`, and its content then comes from the
+Studio. Until then, everything here works without it.
 
 ## Updating
 
