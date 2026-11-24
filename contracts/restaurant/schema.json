@@ -61,11 +61,6 @@
         "de": "Öffnungszeiten",
         "en": "Opening hours"
       },
-      "status": {
-        "hours": {
-          "plans": "hourPlans"
-        }
-      },
       "fields": {
         "week": {
           "type": "rows",
@@ -412,6 +407,11 @@
           ]
         }
       ],
+      "status": {
+        "hours": {
+          "plans": "hourPlans"
+        }
+      },
       "pos": 0
     },
     "hourPlans": {
@@ -420,11 +420,6 @@
         "de": "Öffnungszeiten ab Datum",
         "en": "Opening hours from a date"
       },
-      "listing": {
-        "title": "label",
-        "detail": "from"
-      },
-      "untranslated": "fallback",
       "fields": {
         "label": {
           "type": "text",
@@ -584,11 +579,6 @@
           "pos": 4
         }
       },
-      "max": 12,
-      "order": {
-        "field": "from",
-        "dir": "asc"
-      },
       "tasks": [
         {
           "id": "add",
@@ -623,6 +613,16 @@
           "kind": "remove"
         }
       ],
+      "max": 12,
+      "order": {
+        "field": "from",
+        "dir": "asc"
+      },
+      "listing": {
+        "title": "label",
+        "detail": "from"
+      },
+      "untranslated": "fallback",
       "pos": 1
     },
     "notices": {
@@ -631,11 +631,6 @@
         "de": "Hinweise",
         "en": "Notices"
       },
-      "listing": {
-        "title": "text",
-        "detail": "until"
-      },
-      "untranslated": "fallback",
       "fields": {
         "text": {
           "type": "text",
@@ -659,13 +654,6 @@
           },
           "pos": 1
         }
-      },
-      "max": 5,
-      "order": "manual",
-      "visible": {
-        "mode": "until",
-        "field": "until",
-        "deleteExpired": true
       },
       "tasks": [
         {
@@ -700,6 +688,18 @@
           "kind": "remove"
         }
       ],
+      "max": 5,
+      "order": "manual",
+      "listing": {
+        "title": "text",
+        "detail": "until"
+      },
+      "visible": {
+        "mode": "until",
+        "field": "until",
+        "deleteExpired": true
+      },
+      "untranslated": "fallback",
       "pos": 2
     },
     "lunch": {
@@ -885,6 +885,7 @@
           "pos": 3
         }
       },
+      "preview": "lunch",
       "tasks": [
         {
           "id": "lunchWeek",
@@ -904,7 +905,6 @@
           "needsApproval": true
         }
       ],
-      "preview": "lunch",
       "pos": 3
     },
     "lunchPlans": {
@@ -913,10 +913,6 @@
         "de": "Mittagsmenü vorausplanen",
         "en": "Plan the lunch menu ahead"
       },
-      "listing": {
-        "title": "weekOf"
-      },
-      "untranslated": "fallback",
       "fields": {
         "weekOf": {
           "type": "date",
@@ -1080,21 +1076,6 @@
           "pos": 2
         }
       },
-      "max": 3,
-      "order": {
-        "field": "weekOf",
-        "dir": "asc"
-      },
-      "visible": {
-        "mode": "until",
-        "field": "weekOf",
-        "days": 6,
-        "deleteExpired": true
-      },
-      "plans": {
-        "brick": "lunch",
-        "field": "weekOf"
-      },
       "tasks": [
         {
           "id": "planNext",
@@ -1130,6 +1111,25 @@
           "kind": "remove"
         }
       ],
+      "max": 3,
+      "order": {
+        "field": "weekOf",
+        "dir": "asc"
+      },
+      "listing": {
+        "title": "weekOf"
+      },
+      "visible": {
+        "mode": "until",
+        "field": "weekOf",
+        "days": 6,
+        "deleteExpired": true
+      },
+      "untranslated": "fallback",
+      "plans": {
+        "brick": "lunch",
+        "field": "weekOf"
+      },
       "pos": 4
     },
     "menu": {
@@ -1138,12 +1138,6 @@
         "de": "Speisekarte",
         "en": "Menu"
       },
-      "listing": {
-        "title": "name",
-        "detail": "price",
-        "group": "category"
-      },
-      "untranslated": "fallback",
       "fields": {
         "category": {
           "type": "choice",
@@ -1407,13 +1401,7 @@
           "pos": 9
         }
       },
-      "planned": {
-        "field": "price",
-        "next": "nextPrice",
-        "from": "priceFrom"
-      },
-      "max": 150,
-      "order": "manual",
+      "preview": "menu",
       "tasks": [
         {
           "id": "soldOut",
@@ -1489,7 +1477,19 @@
           "kind": "remove"
         }
       ],
-      "preview": "menu",
+      "planned": {
+        "field": "price",
+        "next": "nextPrice",
+        "from": "priceFrom"
+      },
+      "max": 150,
+      "order": "manual",
+      "listing": {
+        "title": "name",
+        "detail": "price",
+        "group": "category"
+      },
+      "untranslated": "fallback",
       "pos": 5
     },
     "events": {
@@ -1498,13 +1498,6 @@
         "de": "Veranstaltungen",
         "en": "Events"
       },
-      "listing": {
-        "title": "title",
-        "detail": "when",
-        "image": "image"
-      },
-      "untranslated": "hide",
-      "body": "description",
       "fields": {
         "title": {
           "type": "text",
@@ -1589,15 +1582,7 @@
           "pos": 8
         }
       },
-      "max": 30,
-      "order": {
-        "field": "when",
-        "dir": "asc"
-      },
-      "visible": {
-        "mode": "until",
-        "field": "when"
-      },
+      "body": "description",
       "tasks": [
         {
           "id": "add",
@@ -1628,6 +1613,21 @@
           "kind": "remove"
         }
       ],
+      "max": 30,
+      "order": {
+        "field": "when",
+        "dir": "asc"
+      },
+      "listing": {
+        "title": "title",
+        "detail": "when",
+        "image": "image"
+      },
+      "visible": {
+        "mode": "until",
+        "field": "when"
+      },
+      "untranslated": "hide",
       "route": {
         "de": "/veranstaltungen/[slug]",
         "en": "/en/events/[slug]"
@@ -1666,6 +1666,7 @@
           "pos": 0
         }
       },
+      "preview": "gallery",
       "tasks": [
         {
           "id": "edit",
@@ -1679,7 +1680,6 @@
           ]
         }
       ],
-      "preview": "gallery",
       "pos": 7
     },
     "contact": {

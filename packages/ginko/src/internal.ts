@@ -8,6 +8,8 @@ export { defaultDir, pathOf } from './cli/model.ts'
 export { hoursBrick, hourPlansBrick, type HoursTexts, type WeekDefault } from './basics/hours-bricks.ts'
 export { noticesBrick, type NoticeTask } from './basics/notices.ts'
 export { eventsBrick } from './basics/events.ts'
+// A stored brick turned into the written form, so a preset's bricks work with `extend` (the gastro preset).
+export { defOf } from './authoring/from-stored.ts'
 export { offerPrice, postalAddress, type PostalAddressInput } from './basics/offer.ts'
 // Today's hours line for the Studio status (computed on the server).
 export { hoursLine, type HourPlan, type HoursLine, type HoursLineContext } from './basics/hours.ts'

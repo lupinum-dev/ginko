@@ -1,8 +1,11 @@
-// Restaurant bricks with the owner's quick tasks. Labels and prefilled texts come in German and English. The site keeps
-// the texts of its own locales when its main locale is `de` or `en` (exactly: `de-CH` does not count); otherwise it
-// starts without the prefilled texts (`serializeSchema`).
-import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate, type Task } from '@lupinum/ginko/internal'
-import { gallery, type HoursOptions } from '@lupinum/ginko/basics'
+// Restaurant bricks with the owner's quick tasks, as patterns: each function returns a brick of the written form, so a
+// site changes it with `extend` of '@lupinum/ginko' (`extend(menu(), { preview: 'menu' })`). Where a brick lives and
+// the address of an event are in the site file (`studio`, `entries`). Each brick is made from a private builder of the
+// stored form and turned into the written form by `defOf`, so its stored model is exactly what it was.
+// Labels and prefilled texts come in German and English. The site keeps the texts of its own locales when its main
+// locale is `de` or `en` (exactly: `de-CH` does not count); otherwise it starts without the prefilled texts.
+import { collection, defOf, f, single, type ChoiceOption, type Task } from '@lupinum/ginko/internal'
+import { gallery } from '@lupinum/ginko/patterns'
 import { DAY_KEYS, eventsBrick, hourPlansBrick, hoursBrick, noticesBrick, type ChoicesField, type DateField, type HoursTexts, type RowsField, type WeekDefault } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
 
@@ -35,15 +38,6 @@ function allergenChoices(set: AllergenSet | undefined): readonly ChoiceOption[] 
   if (set === undefined || set === 'EU') return allergensEU
   return set
 }
-
-/** Options every factory takes. */
-export interface GastroOptions {
-  /** Where the content comes from: absent means the Ginko platform (the owner edits it), `'files'` means Markdown in `content/`. */
-  source?: BrickSource
-}
-
-/** `source` as a brick property, only when set, so a platform brick's schema stays as it was. */
-const sourceOf = (opts: GastroOptions) => (opts.source ? { source: opts.source } : {})
 
 /** Closed on Monday; 11:30–14:00 and 17:30–22:00 on the other days. */
 const weekDefault = Object.fromEntries(DAY_KEYS.map((day) => [day, day === 'mo' ? { closed: true } : { closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00' }])) as WeekDefault
@@ -90,22 +84,26 @@ const hoursTexts: HoursTexts = {
 }
 
 /**
- * Weekly hours, closures and the owner's choice for public holidays (the basics `hours` with restaurant wording and
+ * Weekly hours, closures and the owner's choice for public holidays (the `hours` pattern with restaurant wording and
  * times). Which holidays count is `calendar` or `country` in the context of the hours rules (`hoursOn`, `todayState`);
  * neither means Austria. `plans`: the key of the site's `hourPlans()`, so the Studio's line for today follows them.
  */
-export function hours(opts: GastroOptions & Pick<HoursOptions, 'plans'> = {}) {
-  return hoursBrick(hoursTexts, weekDefault, opts)
+export function hours(opts: { plans?: string } = {}) {
+  return defOf(hoursBrick(hoursTexts, weekDefault, opts))
 }
 
 /** Own weekly hours for a date range: a season (yearly) or "new hours from a date" (open end). */
-export function hourPlans(opts: GastroOptions = {}) {
-  return hourPlansBrick(hoursTexts, weekDefault, opts)
+export function hourPlans() {
+  return defOf(hourPlansBrick(hoursTexts, weekDefault, {}), { item: both('Zeitraum', 'a period') })
 }
 
-/** The basics notices with "Fully booked today" as the first quick task. */
-export function notices(opts: GastroOptions = {}) {
-  return noticesBrick(opts, [
+/** The `notices` pattern with "Fully booked today" as the first quick task. */
+export function notices() {
+  return defOf(storedNotices(), { item: both('Hinweis', 'a notice') })
+}
+
+function storedNotices() {
+  return noticesBrick({}, [
     // The weekly job first: it becomes the main quick task.
     { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { text: soldOutText, until: '@today' } },
   ])
@@ -129,10 +127,13 @@ function lunchDays<A extends AllergenSet>(allergens: A | undefined) {
  * This week's lunch. `weekOf`: the start value of the week on the platform (a Monday). `needsApproval`: the week a
  * staff member enters waits for the owner's yes.
  */
-export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { weekOf?: string; allergens?: A; needsApproval?: boolean } = {}) {
+export function lunch<const A extends AllergenSet = 'EU'>(opts: { weekOf?: string; allergens?: A; needsApproval?: boolean } = {}) {
+  return defOf(storedLunch(opts))
+}
+
+function storedLunch<const A extends AllergenSet>(opts: { weekOf?: string; allergens?: A; needsApproval?: boolean }) {
   return single({
     label: both('Mittagsmenü', 'Lunch menu'),
-    ...sourceOf(opts),
     fields: {
       weekOf: f.date(both('Woche ab', 'Week starting'), opts.weekOf ? { default: opts.weekOf } : {}),
       days: lunchDays(opts.allergens),
@@ -148,13 +149,16 @@ export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & 
 
 /** Lunch weeks planned ahead (at most 3). Nested lists are not allowed, so planned weeks are entries, not a list on `lunch`. A week shows from its first day (see `lunchWeekOn`). */
 /** `lunchBrick` is the key the site gives the `lunch()` brick; a planned week there counts as entered for it. */
-export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { allergens?: A; lunchBrick?: string } = {}) {
+export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: { allergens?: A; lunchBrick?: string } = {}) {
+  return defOf(storedLunchPlans(opts), { item: both('Woche', 'a week') })
+}
+
+function storedLunchPlans<const A extends AllergenSet>(opts: { allergens?: A; lunchBrick?: string }) {
   const lunchBrick = opts.lunchBrick ?? 'lunch'
   return collection({
     label: both('Mittagsmenü vorausplanen', 'Plan the lunch menu ahead'),
     listing: { title: 'weekOf' },
     untranslated: 'fallback',
-    ...sourceOf(opts),
     fields: {
       weekOf: f.date(both('Woche ab', 'Week starting')),
       days: lunchDays(opts.allergens),
@@ -173,7 +177,12 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptio
   })
 }
 
-export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { allergens?: A } = {}) {
+/** The dishes of the menu, with allergens (`allergens`: the EU list, `'none'` or your own), a planned price and "sold out today". */
+export function menu<const A extends AllergenSet = 'EU'>(opts: { allergens?: A } = {}) {
+  return defOf(storedMenu(opts), { item: both('Gericht', 'a dish') })
+}
+
+function storedMenu<const A extends AllergenSet>(opts: { allergens?: A }) {
   const choices = allergenChoices(opts.allergens)
   const fields = {
     category: f.choice(both('Kategorie', 'Category'), {
@@ -225,7 +234,6 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
     label: both('Speisekarte', 'Menu'),
     listing: { title: 'name', detail: 'price', group: 'category' },
     untranslated: 'fallback', // a dish without an English name is shown in German
-    ...sourceOf(opts),
     fields,
     // The platform checks that a plan has both its price and its date, and opens "Preis ändern" on the price in effect.
     planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
@@ -244,12 +252,12 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
 }
 
 /**
- * The basics events as in 0.4: no end time, place or online address, and a reservation link. In a site file the
- * address of an event is a line in `entries`; `route` is for a site built with the stored-form builders (tests).
+ * The events pattern as in 0.4: no end time, place or online address, and a reservation link. The page of an event is
+ * a line in the site's `entries`: `events: '/events/[slug]'`.
  */
-export function events(opts: GastroOptions & { route?: Record<Locale, RouteTemplate> } = {}) {
-  return eventsBrick(opts, both('Reservierungs-Link', 'Booking link'), {})
+export function events() {
+  return defOf(eventsBrick({}, both('Reservierungs-Link', 'Booking link'), {}), { item: both('Veranstaltung', 'an event') })
 }
 
-/** The basics gallery. */
+/** The `gallery` pattern. */
 export { gallery }
