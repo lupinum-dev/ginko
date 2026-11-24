@@ -53,7 +53,7 @@ const TEXT: [text: string, ground: Ground][] = [
   ['card-foreground', 'card'], ['popover-foreground', 'popover'], ['secondary-foreground', 'secondary'],
   ['muted-foreground', 'background'], ['muted-foreground', 'sidebar'], ['muted-foreground', 'muted'], ['muted-foreground', 'paper'],
   ['primary-foreground', 'primary'], ['sidebar-primary-foreground', 'sidebar-primary'], ['sidebar-accent-foreground', 'sidebar-accent'],
-  ['accent-foreground', 'accent'], ['marker-foreground', 'marker'], ['background', 'ring'],
+  ['accent-foreground', 'accent'], ['foreground', 'accent'], ['muted-foreground', 'accent'], ['marker-foreground', 'marker'], ['background', 'ring'],
   ['link', 'background'], ['link', 'sidebar'], ['link', 'muted'],
   ['success', 'background'], ['success', ['success', 0.12, 'background']],
   ['warning', 'background'], ['warning', ['warning', 0.14, 'background']], ['foreground', ['warning', 0.12, 'background']],

@@ -66,10 +66,10 @@ async function advance(e: Entry) {
 
 <template>
   <div v-if="rows.length" class="grid gap-3" data-test="today-drafts">
-    <ul class="m-0 list-none overflow-hidden rounded-xl border p-0">
-      <li v-for="e in rows" :key="e._id" class="flex items-center gap-2 border-b px-4 py-3 last:border-b-0">
+    <ul class="m-0 list-none overflow-hidden rounded-[10px] border bg-card p-0">
+      <li v-for="e in rows" :key="e._id" class="flex min-h-[54px] items-center gap-3 border-b px-3 py-2 last:border-b-0">
         <span class="grid min-w-0 flex-1 gap-0.5">
-          <span class="font-medium [overflow-wrap:anywhere]">{{ titleOf(brick, e.data, main) }}</span>
+          <span class="text-sm font-medium [overflow-wrap:anywhere]">{{ titleOf(brick, e.data, main) }}</span>
           <span class="text-[13px] text-muted-foreground">{{ line(e) }}</span>
         </span>
         <Button type="button" variant="outline" size="sm" :disabled="busy.has(e._id)" :aria-label="`${review ? t('entry.publish.review') : t('entry.publish.go')}: ${titleOf(brick, e.data, main)}`" @click="advance(e)">{{ review ? t('entry.publish.review') : t('entry.publish.go') }}</Button>

@@ -59,7 +59,8 @@ export interface Listing {
 export interface TodayFlag { task: Task; entry: Entry; date: string; field: Field }
 
 export interface View {
-  status?: { text: string; due: boolean; hours: boolean }
+  /** `open`: the hours line of an open day in two parts ("Open today" and the times), for the large time on the card. */
+  status?: { text: string; due: boolean; hours: boolean; open?: { lead: string; times: string; count: number } }
   /** sites.today is loading and this brick can have a line: a skeleton holds its place. */
   statusPending: boolean
   flag?: TodayFlag
@@ -290,6 +291,8 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     return !!stateOf(key)?.due || weekState(key, brick)?.current === false
   }
 
+  /** A day's opening times in words: "11:30–14:30, 17:30–22:00". */
+  const timesOf = (ranges: readonly (readonly [string, string])[]) => new Intl.ListFormat(locale.value, { style: 'short', type: 'unit' }).format(ranges.map(([from, to]) => `${from}–${to}`))
   /** The words of a status line; "<n> online" only when the list is cut (`folded`), else null for a count. */
   function statusText(brick: Brick, line: StatusLine, folded: boolean): string | null {
     const title = (value: string | null) => value ?? shownLabel(brick.label, s.main.value)
@@ -301,17 +304,25 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       case 'drafts': return t('server.status.drafts', { drafts: line.drafts, scheduled: line.scheduled })
       case 'hours': {
         const today = line.today
-        if ('ranges' in today) return t('server.status.open', { ranges: new Intl.ListFormat(locale.value, { style: 'short', type: 'unit' }).format(today.ranges.map(([from, to]) => `${from}–${to}`)) })
+        if ('ranges' in today) return t('server.status.open', { ranges: timesOf(today.ranges) })
         if ('unknown' in today) return t('server.status.hoursUnknown')
         return today.reason ? t('server.status.closedBecause', { reason: shownLabel(today.reason, s.main.value) }) : t('server.status.closed')
       }
     }
   }
   /** A section's status line: words, and whether it is due. */
-  function statusOf(sec: Section): { text: string; due: boolean; hours: boolean } | undefined {
+  function statusOf(sec: Section): View['status'] {
     const state = stateOf(sec.key)
-    const text = state?.line ? statusText(sec.brick, state.line, !!listings.value[sec.key]?.more) : null
-    return text ? { text, due: state!.due, hours: state!.line!.kind === 'hours' } : undefined
+    const line = state?.line
+    const text = line ? statusText(sec.brick, line, !!listings.value[sec.key]?.more) : null
+    if (!text) return undefined
+    const status: NonNullable<View['status']> = { text, due: state!.due, hours: line!.kind === 'hours' }
+    // The sentence ends with the times in every language we have; one that does not keeps the plain line.
+    if (line!.kind === 'hours' && 'ranges' in line!.today) {
+      const times = timesOf(line!.today.ranges)
+      if (text.endsWith(times) && text.length > times.length) status.open = { lead: text.slice(0, -times.length).trim(), times, count: line!.today.ranges.length }
+    }
+    return status
   }
   /** A brick that can have a status line: a skeleton holds its place while sites.today loads. */
   const canHaveLine = (brick: Brick) => !!brick.status || brick.kind === 'collection' || (brick.kind === 'single' && !!weeklyTask(brick))

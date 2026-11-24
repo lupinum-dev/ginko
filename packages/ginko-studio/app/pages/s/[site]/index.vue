@@ -226,7 +226,7 @@ const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
       id: `r-${item.p.proposal}`, kind: 'rejected', title: ownLine(item.p), sub: t('site.quick.rejected', { reason: item.p.reason ?? '' }), subWarn: true,
       action: item.fix ? { label: t('site.quick.fix'), primary: true, run: () => fix(item.key, item.p) } : { label: t('today.waiting.inHistory'), to: history.value },
     }
-    case 'review': return { id: 'review', kind: 'review', title: t('site.quick.toReview', { count: item.count }), action: { label: t('nav.review'), to: `/s/${s.slug.value}/review` } }
+    case 'review': return { id: 'review', kind: 'review', title: t('site.quick.toReview', { count: item.count }), action: { label: t('nav.review'), primary: true, to: `/s/${s.slug.value}/review` } }
     case 'unsaved': {
       const row = item.row
       const task = row.task
@@ -252,18 +252,18 @@ provide(TODAY, reactive({
 </script>
 
 <template>
-  <div class="@container w-full max-w-[1400px] px-4 pt-4 pb-10 min-[900px]:px-8 min-[900px]:pt-7 min-[900px]:pb-12">
-    <header class="mb-4 grid gap-1 @[680px]:mb-5">
+  <div class="@container w-full max-w-[1400px] px-4 pt-4 pb-10 min-[900px]:px-8 min-[900px]:pt-[26px] min-[900px]:pb-12">
+    <header class="mb-4 grid gap-2">
       <div class="flex flex-wrap items-baseline gap-x-3">
         <h1>{{ t('nav.quick') }}</h1>
-        <p v-if="s.today.value" class="text-[13px] text-muted-foreground">{{ format.date(s.today.value, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }}</p>
+        <p v-if="s.today.value" class="text-sm text-muted-foreground">{{ format.date(s.today.value, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }}</p>
       </div>
       <TodayVerdict v-if="sections.length" :verdict="verdict" :load-error="loadError" :label-of="labelOf" @area="focusArea" />
     </header>
 
     <TodayWaiting :tiles="tiles" />
 
-    <p v-if="!sections.length && s.schema.value" class="rounded-xl border bg-card p-4 text-muted-foreground">{{ t('site.quick.nothingForYou') }}</p>
+    <p v-if="!sections.length && s.schema.value" class="rounded-[14px] border bg-card p-[18px] text-muted-foreground">{{ t('site.quick.nothingForYou') }}</p>
     <!-- A <div>, never a <section>: each card is the section that has its heading. -->
     <div v-else class="grid grid-cols-1 gap-3 @[680px]:grid-cols-2 @[680px]:gap-4 @[1060px]:grid-cols-3">
       <TodayCard v-for="card in cards" :key="card.key" :card="card" :views="views" :own-line="ownLine" :own-when="ownWhen" />

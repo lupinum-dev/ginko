@@ -3,7 +3,7 @@
      list shows its first rows until opened; expired rows follow on request; the area list is linked when cut. -->
 <script setup lang="ts">
 import { inject } from 'vue'
-import { ChevronRightIcon } from '@lucide/vue'
+import { ChevronRightIcon, CircleCheckIcon } from '@lucide/vue'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
 import { Skeleton } from '@studio/components/ui/skeleton'
@@ -30,20 +30,21 @@ const targetClass = 'flex min-w-0 flex-1 items-center gap-2 bg-transparent p-0 t
 </script>
 
 <template>
-  <div class="grid gap-2">
+  <!-- In a card the block takes the room that is left, so the "nothing" box fills a card that shares its row's height. -->
+  <div class="flex flex-col gap-2" :class="!plan && 'flex-1'">
     <!-- The caption names a list: none when there is no list to name. -->
     <p v-if="!plan && (pending || listing.rows.length)" :id="labelId()" class="text-xs text-muted-foreground">{{ t('today.rows.label') }}</p>
     <div v-if="pending" class="grid gap-1.5" aria-hidden="true">
-      <Skeleton class="h-11 rounded-md" />
-      <Skeleton class="h-11 rounded-md" />
+      <Skeleton class="h-[54px] rounded-[10px]" />
+      <Skeleton class="h-[54px] rounded-[10px]" />
     </div>
     <template v-else>
-      <ul v-if="listing.rows.length" tabindex="-1" :aria-labelledby="labelId()" class="m-0 list-none overflow-hidden rounded-lg border border-border/70 p-0 outline-none focus-visible:ring-3 focus-visible:ring-ring/80 dark:border-border/50">
+      <ul v-if="listing.rows.length" tabindex="-1" :aria-labelledby="labelId()" class="m-0 list-none overflow-hidden rounded-[10px] border bg-card p-0 outline-none focus-visible:ring-3 focus-visible:ring-ring/80">
         <li
           v-for="row in listing.rows"
           :key="row.e._id"
-          class="group/row relative flex min-h-12 items-center gap-2 border-b px-3 py-2 last:border-b-0 max-[679px]:min-h-14 dark:border-border/50"
-          :class="row.target && 'hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03]'"
+          class="group/row relative flex min-h-[54px] items-center gap-3 border-b px-3 py-2 last:border-b-0 max-[679px]:min-h-14"
+          :class="row.target && 'hover:bg-hover focus-within:bg-hover'"
           :data-dim="row.timing.dim || undefined"
         >
           <button v-if="row.target && 'task' in row.target" type="button" :class="[targetClass, 'cursor-pointer']" @click="ctx.openRow(sec.key, row.target.task, row.e._id)">
@@ -54,7 +55,7 @@ const targetClass = 'flex min-w-0 flex-1 items-center gap-2 bg-transparent p-0 t
                 <Badge v-for="flag in row.flags" :key="flag" variant="outline">{{ flag }}</Badge>
               </span>
             </span>
-            <ChevronRightIcon class="size-4 flex-none text-muted-foreground" aria-hidden="true" />
+            <ChevronRightIcon class="size-4 flex-none text-muted-foreground/70" aria-hidden="true" />
           </button>
           <NuxtLink v-else-if="row.target" :to="row.target.to" :class="targetClass">
             <span class="grid min-w-0 flex-1 gap-0.5">
@@ -64,7 +65,7 @@ const targetClass = 'flex min-w-0 flex-1 items-center gap-2 bg-transparent p-0 t
                 <Badge v-for="flag in row.flags" :key="flag" variant="outline">{{ flag }}</Badge>
               </span>
             </span>
-            <ChevronRightIcon class="size-4 flex-none text-muted-foreground" aria-hidden="true" />
+            <ChevronRightIcon class="size-4 flex-none text-muted-foreground/70" aria-hidden="true" />
           </NuxtLink>
           <span v-else :class="targetClass">
             <span class="grid min-w-0 flex-1 gap-0.5">
@@ -88,9 +89,14 @@ const targetClass = 'flex min-w-0 flex-1 items-center gap-2 bg-transparent p-0 t
         </li>
       </ul>
       <Button v-if="listing.collapsed > 0" type="button" variant="ghost" size="sm" class="justify-self-start max-[679px]:min-h-12" @click="ctx.expand(sec.key)">{{ t('site.all.showMore', { count: listing.collapsed }) }}</Button>
-      <div v-if="!listing.rows.length || listing.hiddenExpired || listing.more" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
-        <p v-if="!listing.rows.length && !listing.hiddenExpired" class="text-muted-foreground">{{ t('site.quick.nothingNow') }}</p>
-        <p v-else-if="!listing.rows.length" class="text-muted-foreground">{{ t('today.nothingOnline') }}</p>
+      <div
+        v-if="!listing.rows.length || listing.hiddenExpired || listing.more"
+        class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]"
+        :class="!plan && !listing.rows.length && 'min-h-[88px] flex-1 flex-col justify-center rounded-[10px] bg-sidebar px-3 py-4 text-center group-data-[tint]/card:bg-background/60'"
+      >
+        <p v-if="!listing.rows.length" class="flex items-center gap-2 text-muted-foreground">
+          <CircleCheckIcon v-if="!plan" class="size-4 flex-none" aria-hidden="true" />{{ listing.hiddenExpired ? t('today.nothingOnline') : t('site.quick.nothingNow') }}
+        </p>
         <Button v-if="listing.hiddenExpired" type="button" variant="link" size="sm" class="h-auto px-0 max-[679px]:min-h-12" @click="ctx.showExpired(sec.key)">{{ t('site.quick.showExpired', { count: listing.hiddenExpired }) }}</Button>
         <Button v-if="listing.more" as-child variant="link" size="sm" class="h-auto px-0 max-[679px]:min-h-12">
           <NuxtLink :to="`/s/${ctx.slug}/all/${sec.key}`">{{ t('site.quick.allIn', { brick: shownLabel(sec.brick.label, ctx.main) }) }}</NuxtLink>

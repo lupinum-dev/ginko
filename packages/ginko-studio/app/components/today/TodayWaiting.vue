@@ -23,7 +23,8 @@ const { t } = useI18n()
 
 const icons: Record<Tile['kind'], Component> = { rejected: CircleXIcon, review: ClipboardCheckIcon, unsaved: PencilLineIcon, notLive: CalendarXIcon }
 const hooks: Record<Tile['kind'], string> = { rejected: 'own-rejected', review: 'to-review', unsaved: 'unsaved', notLive: 'not-live' }
-const accent = (tile: Tile) => tile.kind === 'rejected' || tile.kind === 'unsaved'
+/** The icon tile is orange for what the person must act on; a planned change that did not go live only informs. */
+const accent = (tile: Tile) => tile.kind !== 'notLive'
 
 const expanded = ref(false)
 const list = ref<HTMLElement>()
@@ -39,24 +40,26 @@ function expand() {
 </script>
 
 <template>
-  <section v-if="tiles.length" :aria-label="t('today.waiting.label')" class="mb-3 grid gap-2 @[680px]:mb-5">
+  <section v-if="tiles.length" :aria-label="t('today.waiting.label')" class="mb-3 grid gap-2 @[680px]:mb-4">
     <ul ref="list" class="m-0 grid list-none grid-cols-1 gap-2 p-0 @[680px]:grid-cols-2 @[680px]:gap-4 @[1060px]:grid-cols-3">
       <li
         v-for="(tile, i) in tiles"
         :key="tile.id"
-        :class="[hiddenClass(i), accent(tile) && 'border-l-[3px] border-l-warning dark:border-l-warning']"
-        class="min-h-12 items-center gap-3 rounded-lg border border-border/70 bg-card px-3 py-1.5 @[680px]:min-h-16 @[680px]:px-4 @[680px]:py-3 dark:border-border/50"
+        :class="hiddenClass(i)"
+        class="min-h-12 items-center gap-3 rounded-[14px] border bg-card px-3 py-2 @[680px]:min-h-16 @[680px]:gap-3.5 @[680px]:p-3.5"
         :data-test="hooks[tile.kind]"
       >
-        <component :is="icons[tile.kind]" class="size-4 flex-none" :class="accent(tile) ? 'text-warning' : 'text-muted-foreground'" aria-hidden="true" />
+        <span class="flex size-9 flex-none items-center justify-center rounded-[10px]" :class="accent(tile) ? 'bg-warning/12 text-warning' : 'bg-muted text-muted-foreground'">
+          <component :is="icons[tile.kind]" class="size-[18px]" aria-hidden="true" />
+        </span>
         <div class="min-w-0 flex-1">
           <p :id="`w-${i}`" class="line-clamp-2 text-sm leading-[18px] font-medium [overflow-wrap:anywhere]">{{ tile.title }}</p>
           <p v-if="tile.sub" class="mt-0.5 line-clamp-2 text-[13px] leading-[18px] [overflow-wrap:anywhere]" :class="tile.subWarn ? 'font-medium text-warning' : 'text-muted-foreground'">{{ tile.sub }}</p>
         </div>
-        <Button v-if="tile.action.to" as-child :variant="tile.action.primary ? 'default' : 'outline'" size="sm" class="shrink-0 max-[679px]:min-h-12">
+        <Button v-if="tile.action.to" as-child :variant="tile.action.primary ? 'default' : 'outline'" class="shrink-0 max-[679px]:min-h-12">
           <NuxtLink :to="tile.action.to" :aria-describedby="`w-${i}`">{{ tile.action.label }}</NuxtLink>
         </Button>
-        <Button v-else type="button" :variant="tile.action.primary ? 'default' : 'outline'" size="sm" class="shrink-0 max-[679px]:min-h-12" :aria-describedby="`w-${i}`" @click="tile.action.run?.()">{{ tile.action.label }}</Button>
+        <Button v-else type="button" :variant="tile.action.primary ? 'default' : 'outline'" class="shrink-0 max-[679px]:min-h-12" :aria-describedby="`w-${i}`" @click="tile.action.run?.()">{{ tile.action.label }}</Button>
       </li>
     </ul>
     <Button v-if="n > 2 && !expanded" type="button" variant="ghost" size="sm" class="justify-self-start max-[679px]:min-h-12" :class="n === 3 && '@[1060px]:hidden'" @click="expand">

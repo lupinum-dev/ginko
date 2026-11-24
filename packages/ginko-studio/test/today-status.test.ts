@@ -107,24 +107,26 @@ test('describe is the section\'s one-line lede under its heading', async () => {
   wrapper.unmount()
 })
 
-// Wrong behaviour caught: every first button shouts (or none does), so the one section that needs doing is lost.
-test.each([[true, 'default'], [false, 'secondary']])('a section due: %s fills its first button: %s', async (due, variant) => {
+// Wrong behaviour caught: a card has no filled button or two (nothing says which task is its daily one), or the section
+// that needs doing looks like the others. Since the brand look (D73) every card fills its first task; "Fällig" is the
+// badge beside the heading.
+test.each([[true], [false]])('a card fills only its first task; due: %s shows as the badge', async (due) => {
   states = [{ brick: 'events', line: { kind: 'missing', count: due ? 2 : 0, field: 'image' }, due }]
   const wrapper = await page()
-  const buttons = section(wrapper, 'events').findAll('button[data-slot="button"]')
-  expect(buttons.map((b) => b.attributes('data-variant'))).toEqual([variant, 'outline'])
-  expect(section(wrapper, 'hours').get('button[data-slot="button"]').attributes('data-variant')).toBe('secondary')
+  const events = section(wrapper, 'events')
+  expect(events.findAll('button[data-slot="button"]').map((b) => b.attributes('data-variant'))).toEqual(['default', 'outline'])
+  expect(events.findAll('[data-slot="badge"]').some((b) => b.text() === 'Fällig')).toBe(due)
+  expect(section(wrapper, 'hours').get('button[data-slot="button"]').attributes('data-variant')).toBe('default')
   wrapper.unmount()
 })
 
-// Wrong behaviour caught: after the cook sent this week's lunch for approval, the area still says "Fällig" and fills its
-// button, so they do the week a second time and a competing proposal waits.
-test.each([[false, 'default'], [true, 'secondary']])('own weekly proposal waiting: %s, first button: %s', async (sent, variant) => {
+// Wrong behaviour caught: after the cook sent this week's lunch for approval, the area still says "Fällig", so they do
+// the week a second time and a competing proposal waits.
+test.each([[false], [true]])('own weekly proposal waiting: %s takes "Fällig" away', async (sent) => {
   states = [{ brick: 'lunch', line: null, due: true }]
   ownOpen = sent ? [{ proposal: 'p1', task: 'lunch.week', via: 'ui', sentence: 'Mittagsmenü geändert', msg: null, createdAt: Date.UTC(2026, 9, 15, 9) }] : []
   const wrapper = await page()
   const lunch = section(wrapper, 'lunch')
-  expect(lunch.get('button[data-slot="button"]').attributes('data-variant')).toBe(variant)
   expect(lunch.find('[data-slot="badge"]').exists()).toBe(!sent)
   wrapper.unmount()
   ownOpen = []
@@ -174,12 +176,15 @@ test('the hours line replaces the today flag sentence and keeps Aufheben', async
   expect(hours.find('[data-k="site.quick.todayDone"]').exists()).toBe(false)
   expect(hours.text()).not.toContain('„Wasserrohrbruch“')
   expect(hours.findAll('button').map((b) => b.text())).toContain('Aufheben')
+  // The green "open" card must not show on a day entered as closed.
+  expect(hours.attributes('data-tint')).toBeUndefined()
   wrapper.unmount()
-  // Without the flag the hours line stands under the heading.
+  // Without the flag the hours line stands under the heading: one sentence, also where the times stand large.
   states = [{ brick: 'hours', line: { kind: 'hours', today: { ranges: [['11:30', '14:30'], ['17:30', '22:00']] } }, due: false }]
   hoursEntry = {}
   const open = await page()
   expect(section(open, 'hours').get('[data-test="status"]').text()).toBe('Heute geöffnet 11:30–14:30, 17:30–22:00')
+  expect(section(open, 'hours').attributes('data-tint')).toBe('')
   open.unmount()
 })
 

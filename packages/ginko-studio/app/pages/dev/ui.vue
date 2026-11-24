@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@studio/components/ui/
 import { Textarea } from '@studio/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@studio/components/ui/tooltip'
+import TodayWaiting, { type Tile } from '../../components/today/TodayWaiting.vue'
 
 definePageMeta({ convexAuth: false, layout: false })
 useHead({ title: 'Base components · Ginko' })
@@ -37,6 +38,11 @@ const fresh = ref(false)
 const when = ref('now')
 const view = ref('week')
 const menuCheck = ref(true)
+const WAITING: Tile[] = [
+  { id: 'review', kind: 'review', title: '2 changes wait for you', sub: 'Proposed by the kitchen', action: { label: 'Review', primary: true, to: '/dev/ui' } },
+  { id: 'rejected', kind: 'rejected', title: 'Wiener Schnitzel: new price', sub: 'Rejected: the price list changes in January', subWarn: true, action: { label: 'Fix', primary: true, run: () => {} } },
+  { id: 'notLive', kind: 'notLive', title: 'Winter menu', sub: 'It did not go live on Monday, 23 November: a dish has no price.', action: { label: 'In History', to: '/dev/ui' } },
+]
 </script>
 
 <template>
@@ -262,6 +268,12 @@ const menuCheck = ref(true)
           </Alert>
         </div>
       </div>
+    </section>
+
+    <!-- Parts of pages that need content the demo site does not have. -->
+    <section class="@container grid gap-4" aria-labelledby="dev-today">
+      <h2 id="dev-today">Today: what waits for the person</h2>
+      <TodayWaiting :tiles="WAITING" />
     </section>
   </main>
 </template>
