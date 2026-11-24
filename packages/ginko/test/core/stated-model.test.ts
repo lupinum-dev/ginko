@@ -179,7 +179,7 @@ describe('week: the site states its week', () => {
 })
 
 describe('f.rows: a fixed table is its own field type', () => {
-  it('a list with min = max stays a list, and a stored `unique` is refused, not read as fixed rows', async () => {
+  it('a list with min = max and a `unique` column stays a list, not fixed rows', async () => {
     const schema = serializeSchema({
       ...restaurant,
       bricks: { slots: single({ label: 'Termine', fields: { days: f.list('Termine', { itemLabel: 'Termin', min: 2, max: 2, fields: { day: f.choice('Tag', { options: ['mo', 'tu'] }) } }) } }) },
@@ -191,7 +191,24 @@ describe('f.rows: a fixed table is its own field type', () => {
     expect((await validate(schema, 'slots', asRows, { mode: 'create' })).errors.map((e) => [e.path, e.code])).toEqual([['days', 'TYPE']])
     const withUnique = structuredClone(schema)
     ;(withUnique.bricks.slots!.fields.days as unknown as Record<string, unknown>).unique = 'day'
-    expect(checkSchema(withUnique)).toContain('slots.days: unknown property “unique”.')
+    expect(checkSchema(withUnique)).toEqual([])
+    expect((await validate(withUnique, 'slots', asRows, { mode: 'create' })).errors.map((e) => [e.path, e.code])).toEqual([['days', 'TYPE']])
+  })
+
+  // Wrong behaviour caught: a list of session times takes the same time twice (`unique` on a normal list, as a real site
+  // uses it), or a rows field takes `unique` although its rows are unique by their key.
+  it('a list with `unique` refuses a doubled value; a rows field with `unique` is refused', async () => {
+    const schema = serializeSchema({
+      ...restaurant,
+      bricks: { practice: single({ label: 'Praxis', fields: { times: f.list('Zeiten', { itemLabel: 'Zeit', min: 1, max: 12, unique: 'time', fields: { time: f.time('Zeit') } }) } }) },
+    })
+    expect(checkSchema(schema)).toEqual([])
+    const times = (...values: string[]) => ({ times: values.map((time, i) => ({ _id: `time00000${i}`, time })) })
+    expect((await validate(schema, 'practice', times('09:00', '10:00'), { mode: 'create' })).errors).toEqual([])
+    expect((await validate(schema, 'practice', times('09:00', '09:00'), { mode: 'create' })).errors.map((e) => [e.path, e.code])).toEqual([['times', 'DUPLICATE']])
+    const rows = stored()
+    ;(rows.bricks.lunch!.fields.days as unknown as Record<string, unknown>).unique = 'dish'
+    expect(checkSchema(rows)).toContain('lunch.days: unknown property “unique”.')
   })
 })
 

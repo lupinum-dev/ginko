@@ -339,6 +339,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " Einträge."
    ],
+   "duplicateRowValue": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: „",
+    [
+     "a",
+     "value"
+    ],
+    "“ kommt mehrfach vor."
+   ],
    "notRows": [
     "„",
     [
@@ -1258,6 +1271,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“."
    ],
+   "uniqueChanged": [
+    "„",
+    [
+     "a",
+     "at"
+    ],
+    "“: unique kann nicht neu gesetzt oder geändert werden."
+   ],
+   "uniqueDropped": [
+    "„",
+    [
+     "a",
+     "at"
+    ],
+    "“: unique entfällt."
+   ],
    "rowAdded": [
     "Neue Zeile „",
     [
@@ -1333,6 +1362,7 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "min beibehalten.",
     "minOnGrid": "min so senken, dass der Unterschied ein Vielfaches von step ist.",
     "keepOption": "Option behalten; sie kann umbenannt (label) werden.",
+    "newList": "Neue Liste anlegen und mit einer Migration füllen.",
     "retireRow": [
      "Zeile behalten, oder ",
      [
@@ -1718,6 +1748,19 @@ export const compiled: Record<string, MessageTree> = {
      "min"
     ],
     " items."
+   ],
+   "duplicateRowValue": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: “",
+    [
+     "a",
+     "value"
+    ],
+    "” appears more than once."
    ],
    "notRows": [
     "“",
@@ -2638,6 +2681,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”."
    ],
+   "uniqueChanged": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: unique cannot be set or changed."
+   ],
+   "uniqueDropped": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: unique removed."
+   ],
    "rowAdded": [
     "New row “",
     [
@@ -2713,6 +2772,7 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Keep min.",
     "minOnGrid": "Lower min so that the difference is a multiple of step.",
     "keepOption": "Keep the option; it can be renamed (label).",
+    "newList": "Add a new list and fill it with a migration.",
     "retireRow": [
      "Keep the row, or write ",
      [
@@ -3098,6 +3158,19 @@ export const compiled: Record<string, MessageTree> = {
      "min"
     ],
     " elementos."
+   ],
+   "duplicateRowValue": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: “",
+    [
+     "a",
+     "value"
+    ],
+    "” aparece más de una vez."
    ],
    "notRows": [
     "“",
@@ -4020,6 +4093,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”."
    ],
+   "uniqueChanged": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: unique no se puede definir ni cambiar."
+   ],
+   "uniqueDropped": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: unique eliminado."
+   ],
    "rowAdded": [
     "Fila nueva “",
     [
@@ -4095,6 +4184,7 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Conserva min.",
     "minOnGrid": "Reduce min para que la diferencia sea un múltiplo de step.",
     "keepOption": "Conserva la opción; se puede renombrar (label).",
+    "newList": "Añade una lista nueva y rellénala con una migración.",
     "retireRow": [
      "Conserva la fila, o escribe ",
      [
@@ -4480,6 +4570,19 @@ export const compiled: Record<string, MessageTree> = {
      "min"
     ],
     " éléments."
+   ],
+   "duplicateRowValue": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : « ",
+    [
+     "a",
+     "value"
+    ],
+    " » apparaît plusieurs fois."
    ],
    "notRows": [
     "« ",
@@ -5401,6 +5504,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " »."
    ],
+   "uniqueChanged": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : unique ne peut être ni défini ni modifié."
+   ],
+   "uniqueDropped": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : unique a été retiré."
+   ],
    "rowAdded": [
     "Nouvelle ligne « ",
     [
@@ -5476,6 +5595,7 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Conservez min.",
     "minOnGrid": "Abaissez min pour que la différence soit un multiple de step.",
     "keepOption": "Conservez l’option ; elle peut être renommée (label).",
+    "newList": "Ajoutez une nouvelle liste et remplissez-la avec une migration.",
     "retireRow": [
      "Conservez la ligne, ou écrivez ",
      [
@@ -5861,6 +5981,19 @@ export const compiled: Record<string, MessageTree> = {
      "min"
     ],
     " elementi."
+   ],
+   "duplicateRowValue": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: “",
+    [
+     "a",
+     "value"
+    ],
+    "” compare più di una volta."
    ],
    "notRows": [
     "“",
@@ -6783,6 +6916,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”."
    ],
+   "uniqueChanged": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: unique non può essere impostato né modificato."
+   ],
+   "uniqueDropped": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: unique è stato rimosso."
+   ],
    "rowAdded": [
     "Nuova riga “",
     [
@@ -6858,6 +7007,7 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Mantieni min.",
     "minOnGrid": "Abbassa min in modo che la differenza sia un multiplo di step.",
     "keepOption": "Mantieni l’opzione; può essere rinominata (label).",
+    "newList": "Aggiungi un nuovo elenco e riempilo con una migrazione.",
     "retireRow": [
      "Mantieni la riga, oppure scrivi ",
      [
@@ -7311,6 +7461,19 @@ export const compiled: Record<string, MessageTree> = {
      0
     ],
     " على الأقل."
+   ],
+   "duplicateRowValue": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: القيمة «",
+    [
+     "a",
+     "value"
+    ],
+    "» تتكرّر أكثر من مرة."
    ],
    "notRows": [
     "يحتاج «",
@@ -8350,6 +8513,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "»."
    ],
+   "uniqueChanged": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: لا يمكن تعيين unique أو تغييره."
+   ],
+   "uniqueDropped": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: تمت إزالة unique."
+   ],
    "rowAdded": [
     "صف جديد «",
     [
@@ -8425,6 +8604,7 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "أبقِ min.",
     "minOnGrid": "اخفض min بحيث يكون الفرق مضاعفًا لـ step.",
     "keepOption": "أبقِ الخيار؛ يمكن إعادة تسميته (label).",
+    "newList": "أضِف قائمة جديدة واملأها بترحيل.",
     "retireRow": [
      "أبقِ الصف، أو اكتب ",
      [

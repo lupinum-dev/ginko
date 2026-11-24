@@ -80,6 +80,8 @@ export interface ListField<F extends Fields = Fields> extends FieldBase {
   type: 'list'; of: F; itemLabel: Label; max: number
   /** Fewest rows. */
   min?: number
+  /** A required subfield (choice, text, date or time) whose value must differ in every row, such as session times. */
+  unique?: string
 }
 /** One row of a rows field with its own rows: `key` names it in the stored value and in paths, `label` heads it in the Studio. */
 export interface RowDef { key: string; label: Label }

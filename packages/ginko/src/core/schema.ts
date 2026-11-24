@@ -27,7 +27,7 @@ export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'sl
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
 export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'visible', 'untranslated', 'publishedOn', 'plans', 'planned', 'drafts', 'status', 'retired'])
-export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'rows', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
+export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'rows', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
 
@@ -818,6 +818,7 @@ export function mirrorProblem(target: Field, source: Field, siteCurrency: Curren
     }
     case 'list': case 'rows': {
       const src = source as typeof target
+      if (target.type === 'list' && target.unique && (src.type !== 'list' || src.unique !== target.unique)) return 'different uniqueness'
       if (target.type === 'rows' && stableJson(src.type === 'rows' ? src.rows as Json : null) !== stableJson(target.rows as Json)) return 'different rows'
       const tKeys = Object.keys(target.of).sort().join(',')
       if (Object.keys(src.of).sort().join(',') !== tKeys) return 'different columns'
@@ -956,6 +957,10 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       if (!topLevel) problems.push(`${path}: lists and rows fields cannot be nested.`)
       if (!(field.max >= 1 && field.max <= 50)) problems.push(`${path}: max must be between 1 and 50.`)
       if (field.min !== undefined && !(Number.isInteger(field.min) && field.min >= 0 && field.min <= field.max)) problems.push(`${path}: min must be between 0 and max.`)
+      if (field.unique !== undefined) {
+        const u = field.of[field.unique]
+        if (!u || u.optional || !['choice', 'text', 'date', 'time'].includes(u.type) || (u.type === 'text' && isTranslatable(u))) problems.push(`${path}: unique needs a required column of type choice, date, time or a text that is not translatable.`)
+      }
       { const p = labelProblem(`${path}.itemLabel`, field.itemLabel, schema.locales[0] ?? ''); if (p) problems.push(p) }
       for (const [name, inner] of Object.entries(field.of)) {
         if (!/^[a-z][a-zA-Z0-9]{0,40}$/.test(name) || name === '_id' || RESERVED_KEYS.has(name)) problems.push(`${path}: invalid column name “${name}”.`)
@@ -966,6 +971,8 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       break
     case 'rows':
       if (!topLevel) problems.push(`${path}: lists and rows fields cannot be nested.`)
+      // A row is unique by its key; `unique` belongs to lists.
+      if (Object.hasOwn(field, 'unique')) problems.push(`${path}: unknown property “unique”.`)
       problems.push(...rowSetProblems(path, field.rows, schema.locales[0] ?? ''))
       // The rows of workdays follow the site's week, so a value for them all would break when the week changes.
       if (field.rows === 'workdays' && field.default !== undefined) problems.push(`${path}: rows of workdays follow the site's week, so they take no default. Give the columns defaults instead (each new row starts with them).`)

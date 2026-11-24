@@ -273,6 +273,16 @@ function checkScalar(field: Field, value: unknown, path: string, locale: Locale 
       if (value.length > field.max) return fail('TOO_MANY', 'tooManyRows', { max: field.max })
       if (field.min !== undefined && value.length < field.min) return fail('TOO_FEW', 'tooFewRows', { min: field.min })
       const out: Issue[] = []
+      if (field.unique) {
+        const key = field.unique
+        const seen = new Set<string>()
+        for (const row of value) {
+          const v = isRecord(row) ? row[key] : undefined
+          if (typeof v !== 'string') continue
+          if (seen.has(v)) { out.push(issue(path, 'DUPLICATE', 'duplicateRowValue', { label, value: v })); break }
+          seen.add(v)
+        }
+      }
       const ids = new Set<string>()
       value.forEach((row, index) => {
         const id = isRecord(row) && typeof row._id === 'string' ? row._id : undefined

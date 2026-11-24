@@ -260,6 +260,10 @@ function diffField(at: string, old: Field, next: Field, newFills: Set<string>, o
   }
   if (old.type === 'list' && next.type === 'list') {
     if (!sameLabel(old.itemLabel, next.itemLabel)) ok(at, 'text', msg('diff.textChanged'))
+    if (old.unique !== next.unique) {
+      if (next.unique) no(at, 'uniqueChanged', msg('diff.uniqueChanged', { at }), fx('newList'))
+      else ok(at, 'uniqueDropped', msg('diff.uniqueDropped', { at }))
+    }
     diffFields(at, old.of, next.of, newFills, ok, no, sides)
   }
   if (old.type === 'rows' && next.type === 'rows') {

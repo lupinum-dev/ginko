@@ -209,10 +209,13 @@ function stored(field: Field, value: Json, before: Json | undefined, ctx: ToolIn
   }
   if (field.type === 'list' && Array.isArray(value)) {
     const old = Array.isArray(before) ? before.filter(isObject) : []
-    // A row keeps its ID when it is the same row: the same position.
+    // A row keeps its ID when it is the same row: same `unique` value, else the same position.
+    const match = (row: Record<string, Json>, index: number) => field.unique
+      ? old.find((o) => o[field.unique!] !== undefined && o[field.unique!] === row[field.unique!])
+      : old[index]
     return value.map((row, index) => {
       if (!isObject(row)) return row
-      const prev = old[index]
+      const prev = match(row, index)
       const id = typeof prev?._id === 'string' ? prev._id : ctx.newRowId()
       return { _id: id, ...fromToolInput(field.of, row, { ...ctx, stored: prev }) }
     })
