@@ -517,21 +517,22 @@ describe('brick describe', () => {
   })
 })
 
-describe('visible', () => {
-  const withVisible = (visible: unknown) => site({}, {
-    bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name', { max: 120 }), until: f.date('Bis', optional), when: f.daterange('Wann', optional) }, max: 20, order: 'manual', visible: visible as never }) },
+describe('showUntil', () => {
+  const withShowUntil = (showUntil: unknown) => site({}, {
+    bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name', { max: 120 }), until: f.date('Bis', optional), when: f.daterange('Wann', optional) }, max: 20, order: 'manual', showUntil: showUntil as never }) },
   })
-  // Wrong behaviour caught: a mode or option name from before 0.4 is stored and every entry shows for ever.
+  // Wrong behaviour caught: an option name of the old `visible` shape is stored and every entry shows for ever.
   it.each([
-    [{ mode: 'until', field: 'until', days: 6, deleteExpired: true }, []],
-    [{ mode: 'until', field: 'when' }, []],
-    [{ mode: 'active', field: 'until' }, ['menu: visible.mode must be “always” or “until”.']],
-    [{ mode: 'until', field: 'name' }, ['menu: visibility needs a date or daterange field.']],
-    [{ mode: 'until', field: 'until', autoRemoveExpired: true }, ['menu.visible: unknown property “autoRemoveExpired”.']],
-    [{ mode: 'always', field: 'until' }, ['menu: visible: “always” takes no other options.']],
-    [{ mode: 'until', field: 'until', deleteExpired: 'yes' }, ['menu: visibility: deleteExpired must be true or false.']],
-  ])('%j', (visible, problems) => {
-    expect(problemsOf(withVisible(visible))).toEqual(problems)
+    [{ field: 'until', plusDays: 6, thenDelete: true }, []],
+    [{ field: 'when' }, []],
+    [{ mode: 'until', field: 'until' }, ['menu.showUntil: unknown property “mode”.']],
+    [{ field: 'until', days: 6 }, ['menu.showUntil: unknown property “days”.']],
+    [{ field: 'name' }, ['menu.showUntil needs a date or daterange field.']],
+    [{ field: 'until', plusDays: -1 }, ['menu.showUntil: plusDays must be a whole number from 0.']],
+    [{ field: 'until', thenDelete: 'yes' }, ['menu.showUntil: thenDelete must be true or false.']],
+    ['until', ['menu: showUntil must be an object { field, plusDays?, thenDelete? }.']],
+  ])('%j', (showUntil, problems) => {
+    expect(problemsOf(withShowUntil(showUntil))).toEqual(problems)
   })
 })
 
@@ -765,7 +766,7 @@ describe('status (Today page status line)', () => {
     ['age on a text field', set('events', { age: 'title' }), ['events: status.age needs a date or daterange field, “title” is a text field.']],
     ['missing on a required field', set('events', { missing: 'title' }), ['events: status.missing needs an optional field without a default, “title” is not.']],
     ['missing on an optional field with a default', (s) => { node(s, 'bricks.events.fields.soldOut').default = false; set('events', { missing: 'soldOut' })(s) }, ['events: status.missing needs an optional field without a default, “soldOut” is not.']],
-    ['count without visible until', set('menu', { count: true }), ['menu: status { count: true } needs visible: { mode: \'until\' }.']],
+    ['count without showUntil', set('menu', { count: true }), ['menu: status { count: true } needs showUntil.']],
     ['count that is not true', set('notices', { count: 1 }), ['notices: status.count must be true.']],
     ['two kinds at once', set('events', { next: 'when', age: 'when' }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
     ['a rule on a collection', set('events', { rule: 'opening-hours' }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
@@ -788,7 +789,7 @@ describe('status (Today page status line)', () => {
   it('collection() and single() carry the status into the stored schema', () => {
     const input = site({ until: f.date('Bis', optional) }, {
       bricks: {
-        menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name'), until: f.date('Bis', optional) }, max: 20, order: 'manual', visible: { mode: 'until', field: 'until' }, status: { count: true } }),
+        menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name'), until: f.date('Bis', optional) }, max: 20, order: 'manual', showUntil: { field: 'until' }, status: { count: true } }),
       },
     })
     expect(serializeSchema(input).bricks.menu!.status).toEqual({ count: true })

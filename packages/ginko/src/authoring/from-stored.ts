@@ -38,8 +38,7 @@ export function defOf(brick: Brick, more: { item?: Label } = {}): BrickDef {
     // A stored rule name is one the pattern itself wrote; `checkSchema` checks it against the known rules.
     return { ...common, kind: 'single', ...(status ? { status: { rule: status.rule as StatusRuleName, ...(status.plans !== undefined ? { plans: status.plans } : {}) } } : {}) }
   }
-  const { visible, status } = brick
-  if (visible && visible.mode !== 'until') throw new Error('defOf: `visible: { mode: \'always\' }` has no written form; leave it out.')
+  const { showUntil, status } = brick
   const line: CollectionStatusInput | undefined = !status ? undefined
     : 'next' in status ? { show: 'next', field: status.next }
     : 'count' in status ? { show: 'ending' }
@@ -53,7 +52,7 @@ export function defOf(brick: Brick, more: { item?: Label } = {}): BrickDef {
     order: brick.order,
     listing: brick.listing,
     ...(brick.tree ? { tree: brick.tree } : {}),
-    ...(visible ? { showUntil: { field: visible.field, ...(visible.days !== undefined ? { plusDays: visible.days } : {}), ...(visible.deleteExpired ? { thenDelete: true } : {}) } } : {}),
+    ...(showUntil ? { showUntil } : {}),
     ...(brick.untranslated ? { untranslated: brick.untranslated } : {}),
     ...(brick.publishedOn ? { publishedOn: brick.publishedOn } : {}),
     ...(brick.plans ? { plans: brick.plans } : {}),

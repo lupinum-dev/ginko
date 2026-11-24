@@ -1,7 +1,7 @@
 // The sitemap as pure functions (SPEC 8 "Sitemap"), so it can be unit tested without Nuxt: one list of
 // URLs, which /sitemap.xml renders and /__ginko/sitemap.json hands to @nuxtjs/sitemap as a source.
 import { alternatesOf, type LocaleConfig } from '@lupinum/ginko-i18n/core'
-import { isVisible, type Brick, type Bundle, type Fields, type Locale, type Schema } from '../../../internal.ts'
+import { shownOn, type Brick, type Bundle, type Fields, type Locale, type Schema } from '../../../internal.ts'
 
 /** One `<url>`, in the shape @nuxtjs/sitemap reads from a source. All URLs are absolute. */
 export interface SitemapUrl {
@@ -87,7 +87,7 @@ function entryGroups(site: Schema, bundles: Partial<Record<Locale, Bundle>>, tod
       const value = bundle.bricks[key]
       if (!isRoutedCollection(brick) || value?.kind !== 'collection') continue
       for (const item of value.items) {
-        if (!item.urls || !isVisible(brick, item.data, today)) continue
+        if (!item.urls || !shownOn(brick, item.data, today)) continue
         const id = `${key}/${item.id}`
         const group = groups.get(id) ?? { urls: {}, alternates: true }
         // The locale copies of one entry share a time; the latest wins if they ever differ.

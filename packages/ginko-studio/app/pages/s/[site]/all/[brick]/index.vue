@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ChevronDownIcon, ChevronUpIcon, PlusIcon } from '@lucide/vue'
 import { api } from '#convex/api'
-import { treeOf, visibleUntil } from '@lupinum/ginko/internal'
+import { treeOf, shownUntil } from '@lupinum/ginko/internal'
 import { formatDay, languageName, listingDetail } from '../../../../../utils/content'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
@@ -71,10 +71,10 @@ function status(row: Row): string {
   // A draft is not on the website, whatever its dates say (SPEC 15).
   if (row.state === 'draft') return row.publishAt ? t('site.status.onlineFrom', { when: whenText(row.publishAt, s.schema.value?.timeZone ?? 'Europe/Vienna', format) }) : t('site.status.draft')
   if (row.pending) return t('entry.status.changes')
-  if (!b || b.kind !== 'collection' || !b.visible || b.visible.mode === 'always') return ''
-  const until = visibleUntil(b, row.dates)
+  if (!b || b.kind !== 'collection' || !b.showUntil) return ''
+  const until = shownUntil(b, row.dates)
   if (until === undefined || until >= s.today.value) return ''
-  return b.fields[b.visible.field]?.type === 'daterange' ? t('site.status.ended') : t('site.status.expired', { date: formatDay(until, format) })
+  return b.fields[b.showUntil.field]?.type === 'daterange' ? t('site.status.ended') : t('site.status.expired', { date: formatDay(until, format) })
 }
 
 const moving = ref(false)

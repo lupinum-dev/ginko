@@ -3,7 +3,7 @@
 // server, for file bricks and platform bricks alike.
 import { createError, useRuntimeConfig, type RequestEvent } from 'nuxt/server'
 import schema from '#ginko/schema'
-import { isVisible, todayIn, type Brick, type BundleItem, type Locale } from '../../../internal.ts'
+import { shownOn, todayIn, type Brick, type BundleItem, type Locale } from '../../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from '../shared.ts'
 import { loadServerBundles } from './bundles.ts'
 
@@ -24,6 +24,6 @@ export async function getGinkoItems(event: RequestEvent, brick: string, locale?:
   const value = bundle?.bricks[brick]
   if (!bundle || value?.kind !== 'collection') return []
   const today = todayIn(config.timeZone)
-  const items = value.items.filter((item) => isVisible(def, item.data, today))
+  const items = value.items.filter((item) => shownOn(def, item.data, today))
   return def.route ? withUrl(items, bundle.locale, bundle.mainLocale) : items
 }

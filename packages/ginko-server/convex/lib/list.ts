@@ -13,7 +13,7 @@ import { overlay, pendingInfo, type Pending } from './pending'
  */
 function shownKeys(brick: Brick): string[] {
   const keys = new Set<string>()
-  if (brick.kind === 'collection' && brick.visible && brick.visible.mode !== 'always') keys.add(brick.visible.field)
+  if (brick.kind === 'collection' && brick.showUntil) keys.add(brick.showUntil.field)
   if (brick.kind === 'collection' && brick.listing.detail !== undefined) keys.add(brick.listing.detail)
   return [...keys]
 }
@@ -91,7 +91,7 @@ export function editorEntry(row: Doc<'entries'>, held?: Pending | null, user?: s
  * change; a sheet that edits the entry reads it whole (entries.get).
  */
 export function slimEntry(brick: Brick, row: Doc<'entries'>, held?: Pending | null, user?: string) {
-  const dates = new Set([brick.kind === 'collection' ? brick.plans?.field : undefined, brick.kind === 'collection' && brick.visible?.mode === 'until' ? brick.visible.field : undefined, brick.planned?.from])
+  const dates = new Set([brick.kind === 'collection' ? brick.plans?.field : undefined, brick.kind === 'collection' ? brick.showUntil?.field : undefined, brick.planned?.from])
   const small = new Set(['text', 'longtext', 'choice', 'money', 'boolean'])
   const keep = (key: string) => dates.has(key) || small.has(brick.fields[key]?.type ?? '')
   const entry = editorEntry(row, held, user)

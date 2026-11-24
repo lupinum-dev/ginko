@@ -25,7 +25,7 @@ const notices = serializeSchema(defineSite({
       listing: { title: 'text' },
       label: 'Hinweise', max: 20, order: 'manual',
       fields: { text: f.text('Text'), until: f.date('Gilt bis', { optional: true }) },
-      visible: { mode: 'until', field: 'until' },
+      showUntil: { field: 'until' },
       tasks: [{ id: 'remove', label: 'Hinweis entfernen', kind: 'remove' }, { id: 'add', label: 'Hinweis hinzufügen', kind: 'create' }],
     }),
     hours: single({
@@ -422,7 +422,7 @@ test('a drafts collection lists its drafts apart from what is on the website, st
         listing: { title: 'text' },
         label: 'Hinweise', max: 20, order: 'manual',
         fields: { text: f.text('Text'), until: f.date('Gilt bis', { optional: true }) },
-        visible: { mode: 'until', field: 'until' },
+        showUntil: { field: 'until' },
         tasks: [{ id: 'add', label: 'Hinweis hinzufügen', kind: 'create' }],
       }),
     },

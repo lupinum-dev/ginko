@@ -71,9 +71,9 @@ describe('defineSite writes the stored form', () => {
 
   // Wrong: a default or a renamed key is stored under another name or value than the stored form reads.
   it('stores the defaults and the renamed keys in the stored form', () => {
-    const { max, order, visible, status, label } = site.bricks.services
-    expect({ max, order, visible, status, label }).toEqual({
-      max: 500, order: 'manual', visible: { mode: 'until', field: 'until', days: 2, deleteExpired: true }, status: { count: true }, label: { de: 'Leistungen', en: 'Services' },
+    const { max, order, showUntil, status, label } = site.bricks.services
+    expect({ max, order, showUntil, status, label }).toEqual({
+      max: 500, order: 'manual', showUntil: { field: 'until', plusDays: 2, thenDelete: true }, status: { count: true }, label: { de: 'Leistungen', en: 'Services' },
     })
     expect(checkSite(site, statusRules)).toEqual([])
   })
@@ -241,7 +241,7 @@ describe('extend', () => {
     })
     const site = defineSite({ ...base, locales: ['de'], bricks: { jobs: own }, entries: { jobs: '/jobs/[slug]' } })
     expect(Object.keys(site.bricks.jobs.fields)).toEqual(['title', 'slug', 'until', 'team'])
-    expect(site.bricks.jobs).toMatchObject({ label: 'Jobs', status: { missing: 'team' }, visible: { mode: 'until', field: 'until' } })
+    expect(site.bricks.jobs).toMatchObject({ label: 'Jobs', status: { missing: 'team' }, showUntil: { field: 'until' } })
     expect(site.bricks.jobs.tasks!.map((task) => task.id)).toEqual(['add', 'team'])
     // The original is not changed.
     expect(Object.keys(jobs.fields)).toEqual(['title', 'slug', 'until'])

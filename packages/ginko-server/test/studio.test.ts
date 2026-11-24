@@ -1,6 +1,6 @@
 // Studio basics (SPEC 4.2): search, saved views, duplicate, trash, translation status and "why is this
 // not public?". One test per realistic failure. The clock is fixed because event visibility depends on today.
-import { isVisible, type Schema } from '@lupinum/ginko/internal'
+import { shownOn, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
@@ -399,7 +399,7 @@ describe('sites.translationStatus', () => {
       expect([...missing].filter(([, count]) => count).map(([id]) => id).sort(), brick.brick).toEqual(withFallback.map((i) => i.id).sort())
       for (const item of withFallback) expect(missing.get(item.id), `${brick.brick} ${item.id}`).toBe(item.fallback.length)
       // The status counts what the site shows: the bundle still holds a past event, its listings leave it out.
-      const shown = withFallback.filter((item) => isVisible(schema.bricks[brick.brick]!, item.data, '2026-10-08'))
+      const shown = withFallback.filter((item) => shownOn(schema.bricks[brick.brick]!, item.data, '2026-10-08'))
       expect(brick.locales.en!.missing, brick.brick).toBe(shown.length)
     }
     expect(menu.outdated).toBeGreaterThan(0)

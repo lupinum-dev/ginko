@@ -3,7 +3,7 @@
 // (status line, today flag, week, own proposals, timed rows) as one `View`, "Wartet auf dich" and the verdict line.
 // The sheets and the writes stay on the page. Generic: nothing here knows the restaurant.
 import type { Brick, CollectionBrick, Field, Json } from '@lupinum/ginko'
-import { plannedWeeks, plansThisWeek, staleOf, visibleUntil, weekInfo, weeklyTask, workWeekOf, type TodayLine } from '@lupinum/ginko/internal'
+import { plannedWeeks, plansThisWeek, staleOf, shownUntil, weekInfo, weeklyTask, workWeekOf, type TodayLine } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { api } from '#convex/api'
 import type { Entry } from './useSiteData'
@@ -88,7 +88,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   const { t, format, locale } = useI18n()
 
   /** A collection whose entries only show for a time: Today lists them. */
-  const isTimed = (brick: Brick) => brick.kind === 'collection' && !!brick.visible && brick.visible.mode !== 'always'
+  const isTimed = (brick: Brick) => brick.kind === 'collection' && !!brick.showUntil
   /** The bricks with tasks this person may do, in schema order. */
   const withTasks = computed(() => s.bricks.value.filter(([key, brick]) => (brick.tasks ?? []).some((t) => s.may(key, t))))
   /**
@@ -171,7 +171,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     const expired = rows.filter((r) => r.timing.dim)
     const showExpired = expiredShown.has(sec.key)
     const open = showExpired || expanded.has(sec.key) || current.length <= LONG
-    const endOf = (r: Row) => visibleUntil(sec.brick, r.e.data) ?? ''
+    const endOf = (r: Row) => shownUntil(sec.brick, r.e.data) ?? ''
     const latest = new Set(expired.toSorted((a, b) => endOf(b).localeCompare(endOf(a))).slice(0, LISTED))
     const shown = current.slice(0, open ? LISTED : COLLAPSED)
     return [sec.key, {
@@ -209,10 +209,10 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
 
   /** "until 8.10." / the date range / "expired on 7.10." for a timed entry. */
   function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: boolean } {
-    const vis = brick.visible
-    if (!vis || vis.mode === 'always') return { text: '', dim: false }
+    const vis = brick.showUntil
+    if (!vis) return { text: '', dim: false }
     const today = s.today.value
-    const until = visibleUntil(brick, entry.data)
+    const until = shownUntil(brick, entry.data)
     if (!until) return { text: t('site.status.noEnd'), dim: false }
     const visible = until >= today
     if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format, currency: s.schema.value!.currency }), dim: !visible }

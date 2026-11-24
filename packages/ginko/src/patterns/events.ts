@@ -46,7 +46,7 @@ export function eventsBrick<const E extends Fields, const B extends Fields = Rec
     max: 30,
     order: { field: 'when', dir: 'asc' },
     // `extra` keeps the fields generic, so the type cannot see that `when` is still the daterange.
-    visible: { mode: 'until', field: 'when' as never },
+    showUntil: { field: 'when' as never },
     tasks: tasks as unknown as readonly Task<typeof fields>[],
   })
 }
@@ -100,7 +100,7 @@ function sessionsBrick<S extends Field>(opts: BasicsOptions & { events?: string 
     // Core orders by one field: sessions of one day share a date and come in no fixed order here (also in the Studio
     // list). Pages sort with `sessionsInOrder` (date, then start time).
     order: { field: 'date', dir: 'asc' },
-    visible: { mode: 'until', field: 'date' },
+    showUntil: { field: 'date' },
     tasks: [
       // The job during the event: a session moves, changes its room, fills up or is cancelled.
       { id: 'change', label: both('Programmpunkt ändern', 'Change a session'), kind: 'edit', pick: true, fields: ['from', 'to', 'room', 'status'] },

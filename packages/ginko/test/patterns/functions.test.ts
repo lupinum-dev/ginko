@@ -45,7 +45,7 @@ describe('the functions behind the patterns', () => {
   })
 
   it('leaves a job out after `validUntil`', () => {
-    expect(jobs().visible).toEqual({ mode: 'until', field: 'validUntil' })
+    expect(jobs().showUntil).toEqual({ field: 'validUntil' })
   })
 
   // Wrong behaviour caught: speaker pages need a slug, but adding one to every people() brick would change the stored

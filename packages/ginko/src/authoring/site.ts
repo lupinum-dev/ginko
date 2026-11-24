@@ -210,7 +210,7 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
     // Required by type; a config without it reaches `checkSite`, which says what to write.
     listing: brick.listing,
     ...(brick.tree ? { tree: brick.tree } : {}),
-    ...(until ? { visible: { mode: 'until' as const, field: until.field, ...(until.plusDays !== undefined ? { days: until.plusDays } : {}), ...(until.thenDelete ? { deleteExpired: true } : {}) } } : {}),
+    ...(until ? { showUntil: { field: until.field, ...(until.plusDays !== undefined ? { plusDays: until.plusDays } : {}), ...(until.thenDelete ? { thenDelete: true } : {}) } } : {}),
     ...(brick.untranslated ? { untranslated: brick.untranslated } : {}),
     ...(brick.publishedOn ? { publishedOn: brick.publishedOn } : {}),
     ...(brick.plans ? { plans: brick.plans } : {}),

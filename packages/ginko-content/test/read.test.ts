@@ -195,7 +195,7 @@ describe('publicBundle', () => {
     bricks: {
       events: collection({ body: 'body',
         listing: { title: 'title' },
-        label: 'Termine', source: 'files', max: 50, order: 'manual', visible: { mode: 'until', field: 'when' },
+        label: 'Termine', source: 'files', max: 50, order: 'manual', showUntil: { field: 'when' },
         route: { de: '/termine/[slug]' },
         fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), when: f.daterange('Wann'), body: f.markdown('Text') },
       }),

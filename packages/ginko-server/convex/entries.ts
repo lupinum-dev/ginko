@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry, type ValidationResult } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesEnded, shownOn, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, shownUntil, weeklyTask, type Schema, type StoredEntry, type ValidationResult } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -941,7 +941,7 @@ function roomPlan(actor: Actor, brick: CollectionBrick, rows: Doc<'entries'>[]):
   const need = live.length - brick.max + 1
   const today = todayIn((actor.site.schema as Schema).timeZone)
   // A draft is never expired: it is not published yet (SPEC 15). It still takes a place in `max`.
-  const expired = deletesExpired(brick) ? live.filter((r) => r.state !== 'draft' && !isVisible(brick as Brick, r.data, today)) : []
+  const expired = deletesEnded(brick) ? live.filter((r) => r.state !== 'draft' && !shownOn(brick as Brick, r.data, today)) : []
   if (expired.length < need) fail('INVALID', 'errors.collectionFull', { max: brick.max }, { max: brick.max })
   return expired.slice(0, need)
 }
@@ -1773,7 +1773,7 @@ export const single = query({
 
 /**
  * The live entries of a brick by title (lib/list.ts titleOf; null while untitled), with their state and the last day
- * they show (`until`, for `visible: until`): what a ref picker, a pick list and the duplicate check need. About 60 B a row.
+ * they show (`until`, for `showUntil`): what a ref picker, a pick list and the duplicate check need. About 60 B a row.
  * A retired brick still answers: a ref field that points at it keeps showing the titles of the entries it holds.
  */
 export const titles = query({
@@ -1784,7 +1784,7 @@ export const titles = query({
     const brick = Object.hasOwn(schema.bricks, args.brick) ? schema.bricks[args.brick] : undefined
     if (!brick) fail('INVALID', 'errors.brickNoLongerEditable')
     return (await liveRowsOf(ctx, actor.site._id, args.brick, brick)).map((row) => {
-      const until = visibleUntil(brick, row.data as Data)
+      const until = shownUntil(brick, row.data as Data)
       return {
         _id: row._id,
         title: titleOf(schema, brick, row.data as Data, args.language),

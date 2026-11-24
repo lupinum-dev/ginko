@@ -5,7 +5,7 @@
      away and the form and the preview share the panel. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, slugKeyOf, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, visibleUntil, type Place, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, slugKeyOf, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, shownUntil, type Place, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
@@ -656,7 +656,7 @@ const previewUrls = computed(() => {
  * a new entry's address cannot be made yet, or the entry has no page in this language until it is translated.
  */
 const previewNotice = computed(() => {
-  const last = visibleUntil(props.brick, { ...props.entry?.data, ...typed.value })
+  const last = shownUntil(props.brick, { ...props.entry?.data, ...typed.value })
   if (last && last < todayIn(timeZone.value)) return t('entry.preview.ended', { date: formatDay(last, format) })
   const urls = previewUrls.value
   if (!urls) return undefined

@@ -6,7 +6,7 @@ import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import { useSchemaOrg } from '#ginko/schema-org'
 import {
-  applyDefaults, breadcrumbs, factText, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, weekInfo, websiteLd, withCountry, withAbsoluteImages,
+  applyDefaults, breadcrumbs, factText, shownOn as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, weekInfo, websiteLd, withCountry, withAbsoluteImages,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from './shared.ts'

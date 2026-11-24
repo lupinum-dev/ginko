@@ -693,10 +693,9 @@
         "title": "text",
         "detail": "until"
       },
-      "visible": {
-        "mode": "until",
+      "showUntil": {
         "field": "until",
-        "deleteExpired": true
+        "thenDelete": true
       },
       "untranslated": "fallback",
       "pos": 2
@@ -1118,11 +1117,10 @@
       "listing": {
         "title": "weekOf"
       },
-      "visible": {
-        "mode": "until",
+      "showUntil": {
         "field": "weekOf",
-        "days": 6,
-        "deleteExpired": true
+        "plusDays": 6,
+        "thenDelete": true
       },
       "untranslated": "fallback",
       "plans": {
@@ -1622,8 +1620,7 @@
         "detail": "when",
         "image": "image"
       },
-      "visible": {
-        "mode": "until",
+      "showUntil": {
         "field": "when"
       },
       "untranslated": "hide",

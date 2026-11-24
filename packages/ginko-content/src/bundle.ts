@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import type { Locale } from '@lupinum/ginko'
-import { buildBundle, imageInfo, isVisible, resolveRouteLinks, todayIn, type Bundle, type FileInfo, type Schema } from '@lupinum/ginko/internal'
+import { buildBundle, imageInfo, shownOn, resolveRouteLinks, todayIn, type Bundle, type FileInfo, type Schema } from '@lupinum/ginko/internal'
 import { hashOf, head } from './images.ts'
 import { makeVariants } from './variants.ts'
 import { readContent, type ContentError, type ReadOptions } from './read.ts'
@@ -24,7 +24,7 @@ export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options:
     if (brick.kind !== 'collection') return [key, brick]
     const def = schema.bricks[key]
     const items = brick.items
-      .filter((item) => !def || isVisible(def, item.data, today))
+      .filter((item) => !def || shownOn(def, item.data, today))
       .map(({ source, ...item }) => (options.keepSource && source !== undefined ? { ...item, source } : item))
     return [key, { ...brick, items }]
   }))

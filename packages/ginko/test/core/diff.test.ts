@@ -106,9 +106,9 @@ const allowed: Row[] = [
     mutate: (s) => { node(s, 'bricks.notices').route = { de: '/hinweise/[slug]', en: '/en/hinweise/[slug]' } },
   },
   {
-    name: 'visible and order changed',
+    name: 'showUntil and order changed',
     mutate: (s) => {
-      node(s, 'bricks.events').visible = { mode: 'always' }
+      node(s, 'bricks.events').showUntil = { field: 'when', plusDays: 1 }
       node(s, 'bricks.events').order = { field: 'when', dir: 'desc' }
     },
   },

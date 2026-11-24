@@ -4,7 +4,7 @@ import type { LinkConfig } from './links.ts'
 import type { Redirect } from './redirects.ts'
 import type { SiteWeek } from './time.ts'
 import type {
-  Brick, BrickSource, CollectionBrick, CollectionListing, CollectionStatus, CollectionTree, Currency, Fields, Json, Label, Locale, RetiredRule, SingleBrick, SingleStatus, Task, Visibility,
+  Brick, BrickSource, CollectionBrick, CollectionListing, CollectionStatus, CollectionTree, Currency, Fields, Json, Label, Locale, RetiredRule, ShowUntilRule, SingleBrick, SingleStatus, Task,
 } from './types.ts'
 
 export interface MigrationContext {
@@ -204,7 +204,7 @@ export function collection<const F extends Fields, const R extends Record<Locale
   /** The entries are pages of a navigation tree: `parent` (a ref to this collection), `section` and `tab` (text fields). */
   tree?: CollectionTree<keyof F & string, keyof F & string, keyof F & string, keyof F & string, keyof F & string>
   route?: R
-  visible?: Visibility<FieldsOfType<F, 'date' | 'daterange'>>
+  showUntil?: ShowUntilRule<FieldsOfType<F, 'date' | 'daterange'>>
   /**
    * A required translatable field is missing in a language: `'hide'` leaves the entry out there; `'fallback'` shows the
    * main language and links to the main-language page. Required when the site has more than one language.
