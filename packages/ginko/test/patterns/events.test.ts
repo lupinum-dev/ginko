@@ -2,6 +2,7 @@
 // the winter offset in summer), a cancelled session still looks scheduled, a session that ends before it starts is
 // saved, and the sessions brick does not pass the platform's schema check.
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { collection, coreMessage, defineSite, f, serializeSchema, checkSchema, validate, type Issue } from '../../src/core/index.ts'
 import { events, sessions } from '../../src/patterns/functions.ts'
 import { eventJsonLd, sessionsInOrder, type EventJsonLdInput } from '../../src/patterns/index.ts'
@@ -69,7 +70,7 @@ const pairs = (issues: Issue[]) => issues.map((i) => [i.path, i.code])
 describe('sessions', () => {
   it.each([['with a people collection', true], ['with speakers as text', false]])('passes the schema check %s', (_, withPeople) => {
     const schema = serializeSchema(site(withPeople))
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
     expect(schema.bricks.sessions!.fields.speakers).toMatchObject(withPeople ? { type: 'ref', to: 'people', multiple: true } : { type: 'text' })
   })
 
@@ -95,7 +96,7 @@ describe('sessions', () => {
       ...site(false),
       bricks: { slots: collection({ untranslated: 'fallback', listing: { title: 'day' }, label: 'Slots', max: 5, order: 'manual', fields: { day: f.date('Day'), to: f.time('To', { after: 'day' }) } }) },
     }))
-    expect(checkSchema(schema)).toEqual(['slots.to.after: “day” is not another time field of the brick.'])
+    expect(checkSchema(schema, statusRules)).toEqual(['slots.to.after: “day” is not another time field of the brick.'])
   })
 
   it('sessionsInOrder sorts by date, then start time', () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { explainChanges, explainRejected } from '../../src/cli/report.ts'
 import { checkSchema, collection, defineSite, diffSchema, f, serializeSchema } from '../../src/core/index.ts'
 
@@ -71,7 +72,7 @@ describe('ginko check report', () => {
       },
       retired: { 'menu.price': { value: { de: 'auf Anfrage' } }, 'menu.note': { from: 'note2' } },
     }))
-    expect(checkSchema(next)).toEqual([])
+    expect(checkSchema(next, statusRules)).toEqual([])
     expect(diffSchema(prod, next).rejected).toEqual([])
   })
 })

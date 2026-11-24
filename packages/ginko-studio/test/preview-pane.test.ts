@@ -37,7 +37,7 @@ test.each([
     locales: ['de', 'en'],
     pages: { events: { de: '/veranstaltungen', en: '/en/events' }, gallery: { de: '/galerie' }, start: { de: '/', en: '/en' }, lunch: { de: '/mittagsmenue' }, menu: { de: '/speisekarte', en: '/en/menu' } },
     bricks: {
-      hours: { kind: 'single', status: { hours: { plans: 'hourPlans' } }, fields: {} },
+      hours: { kind: 'single', status: { rule: 'opening-hours', plans: 'hourPlans' }, fields: {} },
       hourPlans: { kind: 'collection', fields: {} },
       notices: { kind: 'collection', fields: {} },
       lunch: { kind: 'single', preview: 'lunch', fields: {} },

@@ -24,6 +24,8 @@ export {
 } from './holidays.ts'
 export { calendarOfCountry, type StoredHolidays } from '../core/holidays.ts'
 export { openingHoursJsonLd } from './hours-jsonld.ts'
+// The status rules, for every caller that checks a schema or computes a Today line (the server, the CLI).
+export { statusRules, type StatusRuleName } from './rules.ts'
 
 // Events and their sessions.
 export { eventJsonLd, sessionsInOrder, type EventJsonLdInput, type SessionJsonLdInput, type SessionStatus } from './events.ts'

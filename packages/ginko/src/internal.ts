@@ -13,7 +13,7 @@ export { posts as postsBrick, authors as authorsBrick, changelog as changelogBri
 // A stored brick turned into the written form, so a preset's bricks work with `extend` (the gastro preset).
 export { defOf } from './authoring/from-stored.ts'
 export { offerPrice, postalAddress, type PostalAddressInput } from './patterns/offer.ts'
-// Today's hours line for the Studio status (computed on the server).
-export { hoursLine, type HourPlan, type HoursLine, type HoursLineContext } from './patterns/hours.ts'
+// The line of the opening-hours status rule, as the Studio and the weekly mail render it.
+export type { HoursToday, TodayLine } from './patterns/rules.ts'
 // The one zone-offset reading: core writes event times with it, the Studio reads drafts' times with it.
 export { zoneOffset } from './core/time.ts'

@@ -1,6 +1,7 @@
 // The form a site is written in ('@lupinum/ginko': defineSite, single, collection, extend, f) and the stored form it
 // produces. Wrong behaviour these tests catch is named on each test.
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { checkSite } from '../../src/core/index.ts'
 import type { BrickValue } from '../../src/core/infer.ts'
 import { collection, defineSite, extend, f, single } from '../../src/index.ts'
@@ -74,7 +75,7 @@ describe('defineSite writes the stored form', () => {
     expect({ max, order, visible, status, label }).toEqual({
       max: 500, order: 'manual', visible: { mode: 'until', field: 'until', days: 2, deleteExpired: true }, status: { count: true }, label: { de: 'Leistungen', en: 'Services' },
     })
-    expect(checkSite(site)).toEqual([])
+    expect(checkSite(site, statusRules)).toEqual([])
   })
 
   // Checked by `tsc`: an entry of a brick with a line in `entries` has `url`; one without has none.

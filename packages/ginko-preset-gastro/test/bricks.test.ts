@@ -2,6 +2,7 @@
 import { defineSite, extend } from '@lupinum/ginko'
 import { checkSchema, serializeSchema } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { allergensEU, events, isLunchPlaceholder, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '../src/index.ts'
 
 const siteWith = (bricks: Record<string, any>) =>
@@ -32,7 +33,7 @@ describe('labels', () => {
     // even when the site has both of the preset's languages as well.
     const swiss = serializeSchema({ ...siteWith({ lunch: lunch(), notices: notices() }), locales: ['fr', 'de', 'en'], timeZone: 'Europe/Zurich' })
     expect(swiss.bricks.lunch!.fields.days!.default).toBeUndefined()
-    expect(checkSchema(swiss)).toEqual([])
+    expect(checkSchema(swiss, statusRules)).toEqual([])
   })
   it('a Spanish site built from the preset passes checkSchema (labels fall back to English)', () => {
     const site = defineSite({
@@ -40,7 +41,7 @@ describe('labels', () => {
       bricks: { hours: hours(), hourPlans: hourPlans(), notices: notices(), lunch: lunch(), lunchPlans: lunchPlans(), menu: menu(), events: events(), gallery: gallery() },
       entries: { events: '/eventos/[slug]' },
     })
-    expect(checkSchema(serializeSchema(site))).toEqual([])
+    expect(checkSchema(serializeSchema(site), statusRules)).toEqual([])
   })
 })
 
@@ -49,7 +50,7 @@ describe('allergens', () => {
   it('"none" leaves the field out of menu and lunch, and the schema is valid', () => {
     const site = siteWith({ menu: menu({ allergens: 'none' }), lunch: lunch({ allergens: 'none' }), lunchPlans: lunchPlans({ allergens: 'none' }), notices: notices() })
     expect(JSON.stringify(serializeSchema(site))).not.toMatch(/llergen/)
-    expect(checkSchema(serializeSchema(site))).toEqual([])
+    expect(checkSchema(serializeSchema(site), statusRules)).toEqual([])
   })
   it('a custom list replaces the EU codes', () => {
     const json = fieldsOf({ menu: menu({ allergens: [{ value: 'nut', label: 'Nuts' }] }) })

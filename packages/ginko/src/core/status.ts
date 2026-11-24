@@ -4,25 +4,44 @@ import { isTranslatable } from './fields.ts'
 import { entryTitle, textIn } from './list.ts'
 import { isVisible, visibleUntil } from './resolve.ts'
 import { addDays } from './time.ts'
-import type { Brick, Field, Json, Label, Locale } from './types.ts'
+import type { Brick, Field, FieldType, Json, Locale, Schema } from './types.ts'
+
+/** A field a status rule reads: its type, and for a rows field its row set (`'weekdays'`). */
+export interface RuleField { type: FieldType; rows?: string }
 
 /**
- * Today's opening hours of a single with `status: { hours: true }`: closed (with the owner's reason or the public
- * holiday's name, when there is one), open in `ranges` (`['11:30', '14:30']`), or unknown (the rules give no answer for
- * today, which makes the section due).
+ * A status rule: a named line for a single on the Today page (`status: { rule: '<name>' }`). A pattern brings it; the
+ * core knows it only by name, from the rules its caller passes (`statusRules` of `@lupinum/ginko/patterns`). The rule
+ * states the fields it reads, so the core guesses nothing: `checkSchema` refuses a brick without them.
  */
-export type HoursToday = { closed: true; reason?: Label } | { ranges: readonly (readonly [string, string])[] } | { unknown: true }
+export interface StatusRule<T = unknown> {
+  /** The fields the brick must have, by name. */
+  inputs: Readonly<Record<string, RuleField>>
+  /** The fields a collection named in `status.plans` must have. Without it, the rule takes no plans. */
+  plans?: Readonly<Record<string, RuleField>>
+  /**
+   * The line on `today` (`YYYY-MM-DD`, the site's day) from the single's data and the live entries of its plans, and
+   * whether the section is due. Null: no line.
+   */
+  today(data: Record<string, Json>, ctx: { today: string; plans: readonly Record<string, Json>[]; schema: Schema }): { line: T; due: boolean } | null
+}
+
+/** The rules a caller knows, by name. */
+export type StatusRules = Readonly<Record<string, StatusRule>>
+
+/** The line of a rule: its name and what its `today` answers (`{ kind: 'rule', rule: 'x', today: … }`). */
+export type RuleLine<R extends StatusRules> = { [K in keyof R & string]: { kind: 'rule'; rule: K; today: R[K] extends StatusRule<infer T> ? T : never } }[keyof R & string]
 
 /**
  * What the status line says. Titles are in the site's main language (null while an entry has none: the Studio shows the
- * brick's label), dates are `YYYY-MM-DD`, `field` is the field's name.
+ * brick's label), dates are `YYYY-MM-DD`, `field` is the field's name. `R`: the known rules, for the lines of rules.
  */
-export type StatusLine =
+export type StatusLine<R extends StatusRules = StatusRules> =
   | { kind: 'next'; title: string | null; date: string }
   | { kind: 'count'; ending: number; online: number }
   | { kind: 'missing'; count: number; field: string }
   | { kind: 'age'; title: string | null; date: string; weeks: number }
-  | { kind: 'hours'; today: HoursToday }
+  | RuleLine<R>
   | { kind: 'drafts'; drafts: number; scheduled: number }
 
 /** An entry as the status reads it: its data, and for a draft its state and when it goes live. */
@@ -37,16 +56,17 @@ const WINDOW = 7
 
 /**
  * The status line of `brick` and whether its section is due (`due`), from the brick's entries (removed ones left out;
- * drafts count only for the drafts line). `hours` is today's answer of the hours rules for `{ hours: true }`; without
- * it (null) the brick shows no hours line. Due: entries end within 7 days, entries miss the `missing` field, the next
- * entry starts within 7 days with a required text empty in a site language, or today's hours are unknown. The weekly
- * upkeep rule (`staleOf`) is the caller's: it needs the other bricks.
+ * drafts count only for the drafts line). A single with `status: { rule }` asks the rule of that name in `rules`, with
+ * `site.plans`: the live entries of the collection its status names. Due: entries end within 7 days, entries miss the
+ * `missing` field, the next entry starts within 7 days with a required text empty in a site language, or the rule says
+ * so. The weekly upkeep rule (`staleOf`) is the caller's: it needs the other bricks.
  */
-export function brickStatus(
+export function brickStatus<R extends StatusRules>(
   brick: Brick,
   entries: readonly StatusEntry[],
-  site: { today: string; locales: readonly Locale[]; hours?: HoursToday | null },
-): { line: StatusLine | null; due: boolean } {
+  site: { today: string; locales: readonly Locale[]; schema: Schema; plans?: readonly Record<string, Json>[] },
+  rules: R,
+): { line: StatusLine<R> | null; due: boolean } {
   const { today, locales } = site
   const main = locales[0]!
   const status = brick.status
@@ -59,9 +79,12 @@ export function brickStatus(
     const scheduled = drafts.filter((e) => e.publishAt !== undefined).length
     return drafts.length ? { line: { kind: 'drafts', drafts: drafts.length - scheduled, scheduled }, due: false } : { line: null, due: false }
   }
-  if ('hours' in status) {
-    const hours = site.hours ?? null
-    return hours ? { line: { kind: 'hours', today: hours }, due: 'unknown' in hours } : { line: null, due: false }
+  if ('rule' in status) {
+    const rule = Object.hasOwn(rules, status.rule) ? rules[status.rule] : undefined
+    const data = entries[0]?.data
+    const answer = rule && data ? rule.today(data, { today, plans: site.plans ?? [], schema: site.schema }) : null
+    // `rule` is a key of `rules`, and `today` is what that rule answers: the line of exactly that rule.
+    return answer ? { line: { kind: 'rule', rule: status.rule, today: answer.line } as RuleLine<R>, due: answer.due } : { line: null, due: false }
   }
   if ('count' in status) {
     const online = live.filter((e) => isVisible(brick, e.data, today))

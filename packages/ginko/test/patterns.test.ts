@@ -2,6 +2,7 @@
 // gives. Wrong behaviour this catches: a pattern differs from its function in a name, a limit, a label or a task, so
 // a site that takes the pattern in place of the function call gets a changed model, which a release reports or refuses.
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import * as basics from '../src/patterns/functions.ts'
 import { checkSite } from '../src/core/index.ts'
 import type { Brick } from '../src/core/types.ts'
@@ -72,7 +73,7 @@ describe('patterns', () => {
       },
       entries: { legal: '/legal/[slug]', news: '/news/[slug]', jobs: null, fairs: '/fairs/[slug]', team: { de: '/team/[slug]', en: '/people/[slug]' } },
     })
-    expect(checkSite(config)).toEqual([])
+    expect(checkSite(config, statusRules)).toEqual([])
     expect(config.bricks.team.route).toEqual({ de: '/team/[slug]', en: '/en/people/[slug]' })
     expect(config.bricks.jobs.route).toBeUndefined()
     expect(config.bricks.team.tasks!.map((task) => task.label)).toEqual([

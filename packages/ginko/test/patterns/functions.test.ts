@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { buildFileBundles, publicBundle } from '@lupinum/ginko-content'
 import { checkSite, collection, defineSite, f, serializeSchema, siteForContent, withoutFiles, type Brick, type Field, type Label } from '@lupinum/ginko/internal'
 import { faqJsonLd, jobJsonLd, offerJsonLd, personJsonLd, postJsonLd, releaseAnchor, siteJsonLd } from '@lupinum/ginko/patterns'
@@ -56,7 +57,7 @@ describe('the functions behind the patterns', () => {
       site: 'conf', name: 'Conf', url: 'https://conf.example', timeZone: 'Europe/Vienna', locales: ['en', 'de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/', de: '/de' } },
       bricks: { people: { ...people({ pages: true }), route: route('speakers') } },
     })
-    expect(checkSite(site)).toEqual([])
+    expect(checkSite(site, statusRules)).toEqual([])
   })
 
   // Wrong behaviour caught: a template with a people() brick cannot name its writers there, so it needs a second,
@@ -68,7 +69,7 @@ describe('the functions behind the patterns', () => {
       site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Berlin', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/' } },
       bricks: { people: people(), posts: posts({ authors: 'people' }) },
     })
-    expect(checkSite(site)).toEqual([])
+    expect(checkSite(site, statusRules)).toEqual([])
   })
 
   it('labels every brick, field, option and task in German, English, Spanish and French', () => {
@@ -302,8 +303,8 @@ describe('a files site with every basic', () => {
 
   it('passes checkSite, and so does its platform twin without any `source`', () => {
     const twin = withoutFiles(config)
-    expect(checkSite(config)).toEqual([])
-    expect(checkSite(twin)).toEqual([])
+    expect(checkSite(config, statusRules)).toEqual([])
+    expect(checkSite(twin, statusRules)).toEqual([])
     expect(Object.values(twin.bricks).filter((b) => Object.hasOwn(b, 'source'))).toEqual([])
     // @ts-expect-error The twin's type has no `source` either: a tool that reads it must not see 'files'.
     expect(twin.bricks.site.source).toBeUndefined()

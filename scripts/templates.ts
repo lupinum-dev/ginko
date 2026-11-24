@@ -635,8 +635,9 @@ export function gateSummary(text: string, reportPath: string): string {
 async function platformReady(siteDir: string) {
   const probe = join(siteDir, '.platform-ready.mjs')
   writeFileSync(probe, `import { checkSite, coreMessage, diffSchema, serializeSchema, withoutFiles } from '@lupinum/ginko/internal'
+import { statusRules } from '@lupinum/ginko/patterns'
 const site = withoutFiles((await import('./ginko.config.ts')).default)
-const problems = checkSite(site)
+const problems = checkSite(site, statusRules)
 const schema = serializeSchema(site)
 const empty = { site: schema.site, name: schema.name, url: schema.url, timeZone: schema.timeZone, locales: schema.locales, currency: schema.currency, week: schema.week, pages: {}, bricks: {}, migrations: [], retired: {} }
 for (const r of diffSchema(empty, schema).rejected) problems.push(\`first release: \${r.path}: \${coreMessage('en', r.key, r.params)}\`)

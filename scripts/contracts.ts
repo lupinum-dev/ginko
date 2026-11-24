@@ -12,6 +12,7 @@ import {
   checkSchema, servedBundle, serializeSchema, startValue, validate,
   type FileInfo, type SiteInput, type StoredEntry,
 } from '../packages/ginko/src/core/index.ts'
+import { statusRules } from '../packages/ginko/src/patterns/rules.ts'
 
 export const demos = { restaurant, industrie, saas } satisfies Record<string, SiteInput>
 export type DemoName = keyof typeof demos
@@ -55,7 +56,7 @@ const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`
 export async function render(name: DemoName): Promise<Rendered> {
   const problems: string[] = []
   const schema = serializeSchema(demos[name])
-  problems.push(...checkSchema(schema).map((p) => `${name}: ${p}`))
+  problems.push(...checkSchema(schema, statusRules).map((p) => `${name}: ${p}`))
 
   // Stored data per brick (SPEC 6): singles hold one row, collections hold entries.
   const data = JSON.parse(readFileSync(new URL(`../contracts/${name}/data.json`, import.meta.url), 'utf8')) as Record<string, StoredEntry[]>

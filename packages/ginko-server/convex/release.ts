@@ -16,6 +16,7 @@ import { putTrees } from './lib/trees'
 import { BUDGET, checkNewFiles, checkNewLinks, entryUses, overBudget, same, sizeText, syncEntryRefs } from './lib/write'
 import { labelOf } from './entries'
 import { droppedFactsInUse } from './facts'
+import { statusRules } from '@lupinum/ginko/patterns'
 
 const scope = v.union(v.literal('release'), v.literal('pull'), v.literal('check'), v.literal('export'))
 
@@ -211,7 +212,7 @@ export const release = internalMutation({
 
     const stored = site.schema as Schema
     const next = args.schema as Schema
-    const problems = checkSchema(next)
+    const problems = checkSchema(next, statusRules)
     if (problems.length) fail('INVALID', 'errors.schemaInvalid', undefined, { problems: problems as unknown as Json })
     // The key names the site; its config may not speak for another one. (checkSchema already requires an
     // http(s) URL: it is where "Update website now" sends the site's refresh token.)
@@ -389,7 +390,7 @@ export const devPush = internalMutation({
   handler: async (ctx, args) => {
     if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.devPushLocalOnly')
     const next = args.schema as Schema
-    const problems = checkSchema(next)
+    const problems = checkSchema(next, statusRules)
     if (problems.length) fail('INVALID', 'errors.schemaInvalid', undefined, { problems: problems as unknown as Json })
     if (next.site !== args.site) fail('INVALID', 'errors.siteNameMismatchInSchema')
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()

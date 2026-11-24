@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { defaultsFor, isHourPlans, isShown, leavesOf, stableJson, weeklyTask, type Schema } from '@lupinum/ginko/internal'
+import { defaultsFor, isShown, leavesOf, stableJson, weeklyTask, type Schema } from '@lupinum/ginko/internal'
 import { textIn, TRANSLATION } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
@@ -26,6 +26,7 @@ import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
 import { formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
+import { planOwner } from '../utils/today'
 import { opErrorOf } from '../composables/useOps'
 import { isModKey } from '../utils/keys'
 import { shrunkHint, shrunkTexts } from '../utils/shrunk'
@@ -321,8 +322,9 @@ async function finish(ok: boolean) {
 // The publish step (TEMPLATES 7.3): a create task asks what happens to the new entry; an edit of a live entry whether
 // the change goes online now or waits unpublished. Only the Veröffentlichen button publishes.
 const publishStep = computed(() => isCreate.value || (!!props.entry && props.entry.state !== 'draft'))
-// A planned week or hours from a date take effect on their own date: "Später veröffentlichen" would be a second time.
-const laterOffered = computed(() => isCreate.value && props.brick.kind === 'collection' && !props.brick.plans && !isHourPlans(props.brick))
+// A planned week or hours from a date take effect on their own date: "Später veröffentlichen" would be a second time. A
+// plan is a collection that plans a single (`plans`) or that a single's status rule reads (`status: { rule, plans }`).
+const laterOffered = computed(() => isCreate.value && props.brick.kind === 'collection' && planOwner(props.schema, props.brickKey) === undefined)
 const later = ref(false)
 const at = ref('')
 /** The instant `at` names (ScheduleField); undefined while it names none or two. */

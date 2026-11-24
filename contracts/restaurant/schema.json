@@ -408,9 +408,8 @@
         }
       ],
       "status": {
-        "hours": {
-          "plans": "hourPlans"
-        }
+        "rule": "opening-hours",
+        "plans": "hourPlans"
       },
       "pos": 0
     },

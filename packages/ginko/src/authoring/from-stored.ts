@@ -4,6 +4,7 @@
 // the result back into the same stored brick (test/patterns.test.ts proves it for every pattern).
 //
 // Where a brick lives and its address are not taken over: they are facts of the site file (`studio`, `entries`).
+import type { StatusRuleName } from '../patterns/rules.ts'
 import type { Brick, CollectionBrick, Fields, Label, SingleBrick, Task } from '../core/types.ts'
 import { DEF, type BrickDef, type CollectionDef, type CollectionStatusInput, type SingleDef, type TaskInput } from './bricks.ts'
 
@@ -33,8 +34,9 @@ export function defOf(brick: Brick, more: { item?: Label } = {}): BrickDef {
     ...(brick.planned ? { planned: brick.planned } : {}),
   }
   if (brick.kind === 'single') {
-    const hours = brick.status?.hours
-    return { ...common, kind: 'single', ...(hours ? { status: { show: 'opening-hours' as const, ...(hours === true ? {} : { plans: hours.plans }) } } : {}) }
+    const status = brick.status
+    // A stored rule name is one the pattern itself wrote; `checkSchema` checks it against the known rules.
+    return { ...common, kind: 'single', ...(status ? { status: { rule: status.rule as StatusRuleName, ...(status.plans !== undefined ? { plans: status.plans } : {}) } } : {}) }
   }
   const { visible, status } = brick
   if (visible && visible.mode !== 'until') throw new Error('defOf: `visible: { mode: \'always\' }` has no written form; leave it out.')

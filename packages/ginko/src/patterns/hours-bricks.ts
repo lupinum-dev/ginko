@@ -106,7 +106,7 @@ export function hoursBrick(t: HoursTexts, week: WeekDefault, opts: HoursOptions)
     label: opts.label ?? t.hours,
     // Today's hours on the Studio's Today page (closed, open from … to …, or due when nothing is entered for today),
     // with the hour plans when the site names them.
-    status: { hours: opts.plans ? { plans: opts.plans } : true },
+    status: { rule: 'opening-hours', ...(opts.plans ? { plans: opts.plans } : {}) },
     fields: {
       week: weekField(t, week),
       exceptions: f.list(t.exceptions, {

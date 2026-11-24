@@ -2,6 +2,7 @@
 // disagree about a holiday because one of them guessed the calendar; a config without `country` silently changes a
 // 0.4 site; an explicit calendar loses to the country.
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { hoursOn, type HoursContext } from '../../src/patterns/index.ts'
 import { checkSchema, checkSite, collection, defineSite, diffSchema, f, serializeSchema, type SiteInput } from '../../src/core/index.ts'
 
@@ -29,13 +30,13 @@ describe('schema.holidays', () => {
     const schema = serializeSchema(site({ ...(country ? { country } : {}), ...(calendar ? { calendar } : {}) }))
     expect(schema.holidays).toBe(stored)
     expect('holidays' in schema).toBe(stored !== undefined)
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
   })
 
   it('checkSchema refuses an unknown calendar, checkSite a malformed country or calendar', () => {
-    expect(checkSchema({ ...serializeSchema(base), holidays: 'FR' })).toEqual(['holidays must be one of AT, DE, SG, none, custom.'])
-    expect(checkSite(site({ country: 'at' }))).toEqual(['country: invalid country “at” (expected an ISO 3166-1 code such as “AT” or “DE”).'])
-    expect(checkSite(site({ calendar: 'custom' as never }))).toEqual(['calendar: unknown calendar “custom” (expected AT, DE, SG, none or a function (year) => holidays).'])
+    expect(checkSchema({ ...serializeSchema(base), holidays: 'FR' }, statusRules)).toEqual(['holidays must be one of AT, DE, SG, none, custom.'])
+    expect(checkSite(site({ country: 'at' }), statusRules)).toEqual(['country: invalid country “at” (expected an ISO 3166-1 code such as “AT” or “DE”).'])
+    expect(checkSite(site({ calendar: 'custom' as never }), statusRules)).toEqual(['calendar: unknown calendar “custom” (expected AT, DE, SG, none or a function (year) => holidays).'])
   })
 
   it('a changed calendar is a release change that goes through', () => {

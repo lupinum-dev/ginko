@@ -17,9 +17,9 @@ export function previewPageOf(schema: Schema, brickKey: string, locale: Locale):
   return startPage(schema, locale)
 }
 
-/** The single whose status reads the plans of `key` (`hours({ plans: 'hourPlans' })`). */
+/** The single whose status reads the plans of `key` (`hours({ plans: 'hourPlans' })`: `status: { rule, plans }`). */
 function plannedBy(schema: Schema, key: string): string | undefined {
-  return Object.entries(schema.bricks).find(([, b]) => b.kind === 'single' && typeof b.status?.hours === 'object' && b.status.hours.plans === key)?.[0]
+  return Object.entries(schema.bricks).find(([, b]) => b.kind === 'single' && b.status?.plans === key)?.[0]
 }
 
 /** The page whose path in the main language is `/`, in `locale`; else `/`. */
