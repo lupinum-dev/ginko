@@ -10,6 +10,7 @@ import GinkoFieldChoices from '../app/components/fields/GinkoFieldChoices.vue'
 import GinkoFieldDate from '../app/components/fields/GinkoFieldDate.vue'
 import EntryFields from '../app/components/EntryFields.vue'
 import GinkoFieldList from '../app/components/fields/GinkoFieldList.vue'
+import GinkoFieldRows from '../app/components/fields/GinkoFieldRows.vue'
 import GinkoFieldRef from '../app/components/fields/GinkoFieldRef.vue'
 import { REFS, type RefOptions } from '../app/components/fields/refs'
 import { FACT_USES } from '../app/utils/facts'
@@ -337,6 +338,36 @@ describe('a list with default rows', () => {
     tu!.focus()
     expect([tu!.selectionStart, tu!.selectionEnd]).toEqual([3, 3])
     wrapper.unmount()
+  })
+})
+
+describe('a rows field without a stored value', () => {
+  const field = {
+    type: 'rows', label: 'Tage', rows: 'workdays', optional: true,
+    of: { dish: { type: 'text', label: 'Gericht', translate: false, default: 'Folgt' }, price: { type: 'money', label: 'Preis', optional: true } },
+  } as Extract<Field, { type: 'rows' }>
+  const week = ref({ firstDay: 'mo', workdays: ['mo', 'tu', 'we'] })
+  function host() {
+    const value = shallowRef<Json | undefined>(undefined)
+    const wrapper = mount(defineComponent({
+      setup: () => () => h(GinkoFieldRows, { id: 'f-days', field, modelValue: value.value, path: 'days', locale: 'de', locales: ['de'], issues: [], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+    }), { global: { provide: { 'ginko:week': week } } })
+    return { wrapper, value }
+  }
+
+  // Wrong behaviour caught: editing Tuesday of an optional (or newly added) rows field sent `{ tu: { … } }` alone, and the
+  // server refused the save with "row mo is missing".
+  test('editing one cell sends every row, the others from the column defaults', async () => {
+    const { wrapper, value } = host()
+    await wrapper.findAll('input[type="text"]')[1]!.setValue('Gulasch')
+    expect(value.value).toEqual({ mo: { dish: 'Folgt' }, tu: { dish: 'Gulasch' }, we: { dish: 'Folgt' } })
+  })
+
+  // Wrong behaviour caught: the optional field is stored with default rows although nobody touched it.
+  test('an untouched field stays unset', () => {
+    const { wrapper, value } = host()
+    expect(wrapper.findAll('h3').length).toBe(3)
+    expect(value.value).toBeUndefined()
   })
 })
 

@@ -39,7 +39,16 @@ const isRow = (value: unknown): value is Row => !!value && typeof value === 'obj
 const value = computed<Record<string, Json>>(() => (isRow(props.modelValue) ? props.modelValue : {}))
 /** The rows in the order of the field: the site's week for days (stored maps come back with their keys sorted). */
 const keys = computed(() => (siteWeek.value ? rowKeysOf(props.field, siteWeek.value) : []))
-const rowOf = (key: string): Row => { const row = value.value[key]; return isRow(row) ? row : {} }
+/**
+ * A row the value lacks (an optional rows field never filled, or a field a later release added) starts as the field's
+ * `default` row, else with the columns' defaults: the editor shows and sends what a new entry would start with.
+ */
+const freshRow = (key: string): Row => {
+  const given = isRow(props.field.default) ? props.field.default[key] : undefined
+  if (isRow(given)) return given
+  return Object.fromEntries(live.value.flatMap(([name, column]) => (column.default === undefined ? [] : [[name, column.default]])))
+}
+const rowOf = (key: string): Row => { const row = value.value[key]; return isRow(row) ? row : freshRow(key) }
 const titleOf = (key: string) => rowLabel(props.field, key, props.locale, { t, format })
 
 const live = computed(() => ordered(props.field.of).filter(([, f]) => !f.retired))
@@ -51,11 +60,15 @@ const columns = computed(() => (foreign.value ? live.value.filter(([, f]) => has
 /** A column with `showWhen` shows only while the row's other value matches; the stored value stays. */
 const shown = (row: Row, sub: Field) => isShown(sub, row)
 
+/**
+ * The whole map, every row of the field: a save of one cell never sends that row alone (the server refuses a map that
+ * lacks a row). Nothing is sent until someone edits a cell, so an untouched optional rows field stays unset.
+ */
 function setCell(key: string, column: string, cell: Json | undefined) {
   const row: Row = { ...rowOf(key) }
   if (cell === undefined) delete row[column]
   else row[column] = cell
-  emit('update:modelValue', { ...value.value, [key]: row })
+  emit('update:modelValue', Object.fromEntries(keys.value.map((k) => [k, k === key ? row : rowOf(k)])))
 }
 
 // "Noch richtig?": as in a list (GinkoFieldList), a choices column with `askAgainWhen` next to its changed text column.
