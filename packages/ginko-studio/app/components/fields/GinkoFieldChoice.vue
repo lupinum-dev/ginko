@@ -6,7 +6,7 @@ import type { Field, Json } from '@lupinum/ginko'
 import { Label } from '@studio/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@studio/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@studio/components/ui/select'
-import { OPTION_CHIP } from './sizes'
+import { OPTION_CHIP, OPTION_INPUT } from './sizes'
 import { useStudioSite } from '../../utils/labels'
 
 const props = defineProps<{ id: string; field: Extract<Field, { type: 'choice' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string }>()
@@ -20,7 +20,7 @@ const current = computed(() => (typeof props.modelValue === 'string' ? props.mod
 <template>
   <RadioGroup v-if="few" :id="id" class="flex flex-wrap gap-2" :model-value="current" :aria-labelledby="`${id}-label`" :aria-describedby="describedBy" :aria-invalid="invalid" @update:model-value="emit('update:modelValue', $event as string)">
     <Label v-for="o in field.options" :key="o.value" :for="`${id}-${o.value}`" :class="OPTION_CHIP">
-      <RadioGroupItem :id="`${id}-${o.value}`" :value="o.value" />
+      <RadioGroupItem :id="`${id}-${o.value}`" :value="o.value" :class="OPTION_INPUT" />
       {{ shown(o.label) }}
     </Label>
   </RadioGroup>

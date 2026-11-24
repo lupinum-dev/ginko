@@ -5,6 +5,7 @@ import { Button } from '@studio/components/ui/button'
 import { Label } from '@studio/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@studio/components/ui/radio-group'
 import ScheduleField from './ScheduleField.vue'
+import { RADIO_CARD } from './fields/sizes'
 
 defineProps<{ question: string; timeZone: string; scheduled: boolean; busy: boolean; error: string }>()
 const when = defineModel<'now' | 'later'>('when', { required: true })
@@ -15,11 +16,12 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="grid basis-full gap-2.5 rounded-lg border border-primary bg-card p-3.5" role="group" aria-labelledby="publish-title">
-    <p id="publish-title" class="font-semibold">{{ question }}</p>
+  <!-- The one green panel of the editor: the leaf corner and the tint say "this goes to the website". -->
+  <div class="grid basis-full gap-3.5 rounded-2xl rounded-bl-[4px] border border-ring bg-accent/50 p-4 min-[900px]:px-5 min-[900px]:py-[18px]" role="group" aria-labelledby="publish-title">
+    <p id="publish-title" class="text-base leading-[1.3] font-semibold">{{ question }}</p>
     <RadioGroup v-model="when" class="flex flex-wrap gap-2" aria-labelledby="publish-title">
-      <Label for="publish-now" class="min-h-10 cursor-pointer gap-2 rounded-md border px-3 py-2 has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11"><RadioGroupItem id="publish-now" value="now" />{{ t('entry.publish.now') }}</Label>
-      <Label for="publish-later" class="min-h-10 cursor-pointer gap-2 rounded-md border px-3 py-2 has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11"><RadioGroupItem id="publish-later" value="later" />{{ t('entry.publish.later') }}</Label>
+      <Label for="publish-now" :class="RADIO_CARD"><RadioGroupItem id="publish-now" value="now" />{{ t('entry.publish.now') }}</Label>
+      <Label for="publish-later" :class="RADIO_CARD"><RadioGroupItem id="publish-later" value="later" />{{ t('entry.publish.later') }}</Label>
     </RadioGroup>
     <div v-if="when === 'later'" class="grid max-w-80 gap-1.5">
       <Label for="publish-at" class="font-medium">{{ t('entry.publish.dateTime') }}</Label>
@@ -27,9 +29,9 @@ const { t } = useI18n()
     </div>
     <p v-if="error" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ error }}</p>
     <div class="flex flex-wrap gap-2">
-      <Button type="button" :disabled="busy" @click="emit('publish')">{{ when === 'now' ? t('entry.publish.publishNow') : t('entry.publish.schedule') }}</Button>
-      <Button v-if="scheduled" type="button" variant="outline" :disabled="busy" @click="emit('clearSchedule')">{{ t('entry.publish.clearSchedule') }}</Button>
-      <Button type="button" variant="ghost" @click="emit('cancel')">{{ t('entry.cancel') }}</Button>
+      <Button type="button" size="lg" class="px-4 font-semibold" :disabled="busy" @click="emit('publish')">{{ when === 'now' ? t('entry.publish.publishNow') : t('entry.publish.schedule') }}</Button>
+      <Button v-if="scheduled" type="button" variant="outline" size="lg" class="px-3.5" :disabled="busy" @click="emit('clearSchedule')">{{ t('entry.publish.clearSchedule') }}</Button>
+      <Button type="button" variant="ghost" size="lg" class="px-3.5" @click="emit('cancel')">{{ t('entry.cancel') }}</Button>
     </div>
   </div>
 </template>

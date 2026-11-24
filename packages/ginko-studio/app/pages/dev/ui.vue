@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@studio/components/ui/
 import { Textarea } from '@studio/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@studio/components/ui/tooltip'
+import { OPTION_CHIP, OPTION_INPUT, RADIO_CARD } from '../../components/fields/sizes'
 import TodayWaiting, { type Tile } from '../../components/today/TodayWaiting.vue'
 
 definePageMeta({ convexAuth: false, layout: false })
@@ -36,6 +37,7 @@ const sort = ref('name')
 const sold = ref(true)
 const fresh = ref(false)
 const when = ref('now')
+const course = ref('Mains')
 const view = ref('week')
 const menuCheck = ref(true)
 const WAITING: Tile[] = [
@@ -148,8 +150,12 @@ const WAITING: Tile[] = [
         <Label for="dev-switch-dis" class="opacity-60"><Switch id="dev-switch-dis" :model-value="true" disabled /> Disabled</Label>
       </div>
       <RadioGroup v-model="when" class="flex flex-wrap gap-2" aria-label="When">
-        <Label for="dev-radio-now" class="min-h-10 cursor-pointer gap-2 rounded-lg border border-input px-3 py-2 has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-accent"><RadioGroupItem id="dev-radio-now" value="now" /> Now</Label>
-        <Label for="dev-radio-later" class="min-h-10 cursor-pointer gap-2 rounded-lg border border-input px-3 py-2 has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-accent"><RadioGroupItem id="dev-radio-later" value="later" /> Later</Label>
+        <Label for="dev-radio-now" :class="RADIO_CARD"><RadioGroupItem id="dev-radio-now" value="now" /> Now</Label>
+        <Label for="dev-radio-later" :class="RADIO_CARD"><RadioGroupItem id="dev-radio-later" value="later" /> Later</Label>
+      </RadioGroup>
+      <!-- A choice as pills: the input is there but not drawn; the fill says "chosen". -->
+      <RadioGroup v-model="course" class="flex flex-wrap gap-2" aria-label="Course">
+        <Label v-for="c in ['Starters', 'Mains', 'Desserts']" :key="c" :for="`dev-course-${c}`" :class="OPTION_CHIP"><RadioGroupItem :id="`dev-course-${c}`" :value="c" :class="OPTION_INPUT" />{{ c }}</Label>
       </RadioGroup>
       <label class="flex items-center gap-2 text-sm"><input type="checkbox" checked class="size-4"> Native checkbox</label>
     </section>
