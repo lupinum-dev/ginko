@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/ginko-server",
-  "version": "0.17.1",
+  "version": "0.18.0",
   "type": "module",
   "description": "The Ginko platform backend for Convex: sites, entries, releases, uploads, sign-in.",
   "license": "MIT",
