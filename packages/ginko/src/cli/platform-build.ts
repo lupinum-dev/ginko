@@ -1,14 +1,14 @@
-// `ginko-platform build`: the build of a platform project, the logic of apps/platform/scripts/vercel-build.sh as a
-// command, so a fix reaches every platform project with a version bump (internals/migrations.md: the script goes once
-// apps/platform builds with this command). A production build deploys the Convex functions before it builds the
-// Studio, so the Studio never ships ahead of its backend; a failed deploy fails the build and the previous release stays.
+// `ginko-platform build`: the build of a platform project, and of apps/platform (its vercel.json), so a fix reaches every
+// platform project with a version bump and the hosted platform with the same commit. A production build deploys the
+// Convex functions before it builds the Studio, so the Studio never ships ahead of its backend; a failed deploy fails
+// the build and the previous release stays.
 // Then it starts the data migrations the new backend brings (one line in the log); they run in the background.
 import { parseOutput } from './local.ts'
 import { CliError } from './model.ts'
 import type { CommandRunner } from './platform-run.ts'
 
 /**
- * `convex run` with only CONVEX_DEPLOY_KEY set, as vercel-build.sh passes it. `--prod` with a production deploy key
+ * `convex run` with only CONVEX_DEPLOY_KEY set, as the Vercel build passes it. `--prod` with a production deploy key
  * alone works: confirmed by a real build on 2026-11-23 (a Vercel production build of a platform project, with the key
  * from `convex deployment token create`, which also has the rights `convex deploy` needs).
  */
