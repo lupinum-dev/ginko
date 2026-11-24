@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mergeKeyedRows, mergeRows } from '../../src/core/index.ts'
+import { keyedRowDiffs, mergeKeyedRows, mergeRows } from '../../src/core/index.ts'
 
 const row = (id: string, name = id) => ({ _id: id, name })
 const ids = (rows: { _id?: unknown }[]) => rows.map((r) => r._id)
@@ -38,5 +38,16 @@ describe('mergeKeyedRows', () => {
     ['only they changed', week('a', 'b'), week('a', 'b'), week('a', 'B2'), week('a', 'B2'), []],
   ])('%s', (_, base, mine, theirs, rows, clashes) => {
     expect(mergeKeyedRows(base, mine, theirs)).toEqual({ rows, clashes })
+  })
+})
+
+// Wrong behaviour caught: history and conflict lines follow the stored map's key order (Convex sorts keys), so they read
+// "Freitag, Montag, Samstag".
+describe('keyedRowDiffs', () => {
+  it('lists the rows in the field order, a row the field no longer has after them', () => {
+    const before = { fr: { dish: 'Fisch' }, mo: { dish: 'Suppe' }, sa: { dish: 'Alt' }, tu: { dish: 'Gulasch' } }
+    const after = { fr: { dish: 'Forelle' }, mo: { dish: 'Kürbissuppe' }, tu: { dish: 'Gulasch' }, we: { dish: 'Strudel' } }
+    const rows = keyedRowDiffs(before, after, ['mo', 'tu', 'we', 'th', 'fr']).rows
+    expect(rows.map((r) => [r.id, r.change])).toEqual([['mo', 'changed'], ['we', 'added'], ['fr', 'changed'], ['sa', 'removed']])
   })
 })

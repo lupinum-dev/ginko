@@ -665,7 +665,7 @@ export async function versionAtAs(ctx: QueryCtx, actor: Actor, args: { entry: st
   const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
   const fields = revertWrites(schema, entry, touched, data, now, args.task)
   const pick = (from: Data) => Object.fromEntries(Object.keys(fields).filter((root) => from[root] !== undefined).map((root) => [root, from[root]!]))
-  return { entry: entry._id, change: change._id, at: change.at, data, fields: touched, diff: diffFields(brick?.fields, pick(now), pick(data), schema.locales[0]!) }
+  return { entry: entry._id, change: change._id, at: change.at, data, fields: touched, diff: diffFields(brick?.fields, pick(now), pick(data), schema.locales[0]!, schema.week) }
 }
 
 export const versionAt = query({

@@ -6,11 +6,11 @@
 <script setup lang="ts">
 import { useI18n } from '#imports'
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { keyedRowDiffs, mergeKeyedRows, mergeRows, rowDiffs } from '@lupinum/ginko/internal'
+import { keyedRowDiffs, mergeKeyedRows, mergeRows, rowDiffs, rowKeysOf, type SiteWeek } from '@lupinum/ginko/internal'
 import { GitCompareArrowsIcon } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@studio/components/ui/alert'
 import { Button } from '@studio/components/ui/button'
-import { computed } from 'vue'
+import { computed, inject, ref, type Ref } from 'vue'
 import { displayValue, rowLabel, rowTitle, type Data } from '../utils/content'
 import { shownLabel, useStudioSite } from '../utils/labels'
 import { isYou, whoText, type Who } from '../utils/who'
@@ -30,6 +30,8 @@ const props = defineProps<{
 const emit = defineEmits<{ keepMine: []; takeTheirs: []; keepBoth: [] }>()
 const { t, format } = useI18n()
 const { currency } = useStudioSite()
+// The site's week (layouts/site.vue): rows of days are named in its order. Before the schema loads, in stored order.
+const siteWeek = inject<Ref<SiteWeek | undefined>>('ginko:week', ref(undefined))
 
 const shownField = (key: string) => (props.fields[key] ? shownLabel(props.fields[key]!.label, props.main) : key)
 const whoOf = (key: string) => {
@@ -93,7 +95,8 @@ const items = computed(() => props.conflict.fields.map((key) => {
   if (field?.type === 'rows') {
     const base = props.baseline[key]
     const name = (id: string) => rowLabel(field, id, props.locale, { t, format })
-    const [mineRows, theirRows] = [keyedRowDiffs(base, mine).rows.map((r) => r.id), keyedRowDiffs(base, stored).rows.map((r) => r.id)]
+    const order = siteWeek.value ? rowKeysOf(field, siteWeek.value) : []
+    const [mineRows, theirRows] = [keyedRowDiffs(base, mine, order).rows.map((r) => r.id), keyedRowDiffs(base, stored, order).rows.map((r) => r.id)]
     const { clashes } = mergeKeyedRows(base, mine, stored)
     const lines = [
       ...mineRows.filter((id) => !clashes.includes(id)).map((id) => t(YOU.changed, { row: name(id) })),

@@ -40,20 +40,26 @@ export function rowDiffs(before: Json | null | undefined, after: Json | null | u
   return reordered ? { rows, reordered } : { rows }
 }
 
-/** Added, removed and changed rows of a rows field (`{ mo: { … }, … }`) by row key, in the order of `after`. */
-export function keyedRowDiffs(before: Json | null | undefined, after: Json | null | undefined): { rows: RowDiff[] } {
+/**
+ * Added, removed and changed rows of a rows field (`{ mo: { … }, … }`) by row key, in `order`: the field's rows
+ * (`rowKeysOf`), so the lines read Monday to Friday whatever order the stored maps hold their keys in. A row the
+ * field no longer has comes after them.
+ */
+export function keyedRowDiffs(before: Json | null | undefined, after: Json | null | undefined, order: readonly string[]): { rows: RowDiff[] } {
   const was = isRow(before) ? before : {}
   const now = isRow(after) ? after : {}
   const rows: RowDiff[] = []
-  for (const [key, row] of Object.entries(now)) {
+  for (const key of new Set([...order, ...Object.keys(now), ...Object.keys(was)])) {
     const old = Object.hasOwn(was, key) ? was[key] : undefined
-    if (old === undefined) rows.push({ id: key, change: 'added', before: null, after: row })
+    const row = Object.hasOwn(now, key) ? now[key] : undefined
+    if (old === undefined && row === undefined) continue
+    if (old === undefined) rows.push({ id: key, change: 'added', before: null, after: row! })
+    else if (row === undefined) rows.push({ id: key, change: 'removed', before: old, after: null })
     else if (differs(old, row)) {
       const fields = isRow(old) && isRow(row) ? [...new Set([...Object.keys(old), ...Object.keys(row)])].filter((k) => differs(old[k], row[k])) : undefined
       rows.push({ id: key, change: 'changed', before: old, after: row, ...(fields ? { fields } : {}) })
     }
   }
-  for (const [key, row] of Object.entries(was)) if (!Object.hasOwn(now, key)) rows.push({ id: key, change: 'removed', before: row, after: null })
   return { rows }
 }
 
