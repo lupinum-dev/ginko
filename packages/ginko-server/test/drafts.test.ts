@@ -286,6 +286,18 @@ describe('entry names (D96)', () => {
     expect(await addressOf(s, draft.entry)).toEqual({ name: 'herbstball', data: slugs, rows: slugs })
   })
 
+  // Wrong behaviour caught: a followed slug is missing from the change row and its revision, so the history does not
+  // show it and another open form does not see the conflict.
+  it('a followed slug is part of the change: its revision rises and the change row holds it', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    const renamed = await retitle(s, draft.entry, 1, 'Herbstball')
+    if (!('change' in renamed)) throw new Error('the title change wrote nothing')
+    const change = await s.t.run((ctx) => ctx.db.get(renamed.change))
+    expect(change).toMatchObject({ fields: ['title', 'slug'], before: { slug: { de: 'erster-titel', en: 'erster-titel' } }, after: { slug: { de: 'herbstball', en: 'herbstball' } } })
+    expect((await s.row(draft.entry))!.fieldRevs.slug).toBe(renamed.rev)
+  })
+
   // Wrong behaviour caught: a name that links and the export already use changes once the entry was planned or online.
   it.each([
     { case: 'published', publish: {} },

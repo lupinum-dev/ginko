@@ -252,7 +252,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
 
   const followed = await followName(ctx, actor, entry, brick, before, data)
   const written = await commitEntry(ctx, {
-    actor, entry, fields: brick.fields, roots: changed, data, prints,
+    actor, entry, fields: brick.fields, roots: rootsWith(changed, brick, followed), data, prints,
     kind: onlyConfirm ? 'confirm' : 'save', history, opId: args.opId,
   })
   if (followed) await writeFollowedName(ctx, actor, entry, followed)
@@ -582,7 +582,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
 
     const followed = await followName(ctx, actor, entry, brick, entry.data as Data, data)
     const written = await commitEntry(ctx, {
-      actor, entry, fields: brick.fields, roots, data, prints, kind: 'undo', history: recorded(msg('history.undo', { what: change.msg ? (change.msg as HistoryMsg) : change.sentence }), schema), opId: args.opId,
+      actor, entry, fields: brick.fields, roots: rootsWith(roots, brick, followed), data, prints, kind: 'undo', history: recorded(msg('history.undo', { what: change.msg ? (change.msg as HistoryMsg) : change.sentence }), schema), opId: args.opId,
     })
     if (followed) await writeFollowedName(ctx, actor, entry, followed)
     await ctx.db.patch(change._id, { undoneBy: written.change })
@@ -819,6 +819,12 @@ async function followName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>,
   }
   if (name === entry.name && !Object.keys(slugs).length) return undefined
   return { name, slugs }
+}
+
+/** The roots a write commits: `roots`, plus the address field when `followName` moved a slug, so its revision and the change row carry it. */
+function rootsWith(roots: string[], brick: Brick, followed: { slugs: Record<string, string> } | undefined): string[] {
+  const slugKey = slugKeyOf(brick)
+  return followed && slugKey !== undefined && Object.keys(followed.slugs).length && !roots.includes(slugKey) ? [...roots, slugKey] : roots
 }
 
 /** Writes what `followName` made: the name, and each followed slug row in place (a draft has no address online, so no old row stays). */
