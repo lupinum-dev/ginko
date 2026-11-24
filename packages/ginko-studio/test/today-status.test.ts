@@ -15,7 +15,7 @@ Object.entries({ computed, nextTick, onMounted, reactive, ref, watch, watchEffec
 
 const TODAY = '2026-10-15'
 const schema = serializeSchema(defineSite({
-  site: 'linde', name: 'Linde', url: 'https://linde.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'linde', name: 'Linde', url: 'https://linde.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'monday', workdays: 5 },
   pages: { home: { de: '/' } },
   bricks: {
     events: collection({

@@ -133,7 +133,7 @@ describe('calendar dates, times and ranges (SPEC 2.2, 2.3)', () => {
 })
 
 describe('a week start (lunch.weekOf, lunchPlans.weekOf)', () => {
-  const sundayFirst = { ...schema, week: { firstDay: 7 as const, weekend: [6, 7] } }
+  const sundayFirst = { ...schema, week: { firstDay: 'sunday' as const, workdays: 6 as const } }
   // Wrong behaviour caught: a lunch week saved as a Thursday is stored and never shows, because the site looks for the
   // week that starts on the week's first day.
   it.each([

@@ -4,7 +4,7 @@
      writes. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
 import { provide } from 'vue'
-import { resolveToken, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
+import { resolveToken, weekInfo, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { useTodayAreas, type TodayFlag } from '../../../composables/useTodayAreas'
 import { taskRef, titleOf, type Task } from '../../../utils/content'
@@ -58,7 +58,7 @@ const copyFrom = computed(() => {
   if (plan) return plan.entry._id
   const single = singleOf(brick.plans.brick)
   const weekly = weeklyTask(schema!.bricks[brick.plans.brick]!)
-  return single && weekly && single.data[weekly.field] === workWeekOf(s.today.value, schema!.week) ? single._id : undefined
+  return single && weekly && single.data[weekly.field] === workWeekOf(s.today.value, weekInfo(schema!.week)) ? single._id : undefined
 })
 const picking = ref<{ key: string; task: Task } | null>(null)
 // The pick list groups by a choice field and shows prices, so it reads the entries of its one brick while open: slim

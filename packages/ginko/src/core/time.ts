@@ -46,21 +46,35 @@ export interface WeekInfo {
   weekend: number[]
 }
 
-/** Used when the runtime knows no week data, and for stored schemas that have no `week` yet. */
+/**
+ * The week of a site that states none (it has no weekly brick): Monday first, Saturday and Sunday off. Only the Studio's
+ * calendar and the day of the weekly reminder mail of such a site read it; a weekly brick reads the stated `week`.
+ */
 export const DEFAULT_WEEK: WeekInfo = { firstDay: 1, weekend: [6, 7] }
 
+/** The days of the week, Monday first, as `week.firstDay` names them. */
+export const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
+export type Weekday = (typeof WEEKDAYS)[number]
+
 /**
- * Week info of a BCP 47 language (`de-AT`, `en-US`) from the runtime's locale data. `firstDayOfWeek` is the site
- * owner's override of the first day. Computed once when the schema is built; everything else reads `schema.week`.
+ * The site's week, as the site states it (`defineSite({ week })`) and the schema stores it: the day the week starts on
+ * and how many days from that day on are workdays (`{ firstDay: 'monday', workdays: 5 }`: Monday to Friday). Weekly
+ * bricks (`@workWeek`, `plans`) start their weeks on `firstDay`; after the last workday, the coming week counts.
  */
-export function weekInfoOf(language: string, firstDayOfWeek?: WeekInfo['firstDay']): WeekInfo {
-  let info: WeekInfo = DEFAULT_WEEK
-  try {
-    const locale = new Intl.Locale(language) as Intl.Locale & { getWeekInfo?: () => Partial<WeekInfo>; weekInfo?: Partial<WeekInfo> }
-    const found = locale.getWeekInfo?.() ?? locale.weekInfo
-    if (found?.firstDay && Array.isArray(found.weekend)) info = { firstDay: found.firstDay as WeekInfo['firstDay'], weekend: [...found.weekend] }
-  } catch { /* invalid tag: checkSite reports it */ }
-  return { firstDay: firstDayOfWeek ?? info.firstDay, weekend: info.weekend }
+export interface SiteWeek {
+  firstDay: Weekday
+  workdays: 1 | 2 | 3 | 4 | 5 | 6 | 7
+}
+
+/**
+ * The week a site states, in ISO numbers for the date helpers. Throws when the site states none: `checkSchema` requires
+ * `week` on a site with a weekly brick, so only a reader outside a weekly brick can get here.
+ */
+export function weekInfo(week: SiteWeek | undefined): WeekInfo {
+  if (!week) throw new Error("The site states no week. Add `week: { firstDay: 'monday', workdays: 5 }` (your values) to defineSite in ginko.config.ts.")
+  const firstDay = (WEEKDAYS.indexOf(week.firstDay) + 1) as WeekInfo['firstDay']
+  const weekend = [...Array(7 - week.workdays).keys()].map((i) => ((firstDay - 1 + week.workdays + i) % 7) + 1)
+  return { firstDay, weekend }
 }
 
 const isoDay = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay() || 7 // 1 = Monday, 7 = Sunday
@@ -93,10 +107,10 @@ export function firstDayShown(weekStart: string, week: WeekInfo): string {
   return weekStart
 }
 
-export function resolveToken(token: string, timeZone: string, week: WeekInfo, now: Date = new Date()): string | undefined {
+export function resolveToken(token: string, timeZone: string, week: SiteWeek | undefined, now: Date = new Date()): string | undefined {
   const today = todayIn(timeZone, now)
   if (token === '@today') return today
-  if (token === '@workWeek') return workWeekOf(today, week)
-  if (token === '@nextWorkWeek') return addDays(workWeekOf(today, week), 7)
+  if (token === '@workWeek') return workWeekOf(today, weekInfo(week))
+  if (token === '@nextWorkWeek') return addDays(workWeekOf(today, weekInfo(week)), 7)
   return undefined
 }

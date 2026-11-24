@@ -10,6 +10,8 @@ export default defineSite({
   locales: ['de', 'en'],
   languages: { de: 'de-AT', en: 'en-GB' },
   currency: 'EUR',
+  // The site's week: the lunch week starts on this day.
+  week: { firstDay: 'monday', workdays: 5 },
   // Austrian public holidays for the opening hours (stored as `holidays: 'AT'`).
   country: 'AT',
   // The site's id on the platform. Every brick is edited in Ginko Studio.

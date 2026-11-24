@@ -2,7 +2,7 @@
 // the wrong behaviour it catches: the behaviour coming back from the shape instead of its key.
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
-import { checkSchema, diffSchema, entryTitle, navTree, resolveEntry, serializeSchema, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
+import { checkSchema, diffSchema, entryTitle, navTree, resolveEntry, resolveToken, serializeSchema, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
 
 const stored = (): Schema => structuredClone(serializeSchema(restaurant))
 
@@ -155,5 +155,25 @@ describe('untranslated: what an entry does in a language it has no text in', () 
     expect(checkSchema(schema)).toEqual(['menu: untranslated is missing. The site has more than one language, so say what an entry does in a language it has no text in: \'hide\' leaves it out there, \'fallback\' shows the main language.'])
     // With one language no entry is ever untranslated, so the key may stay out.
     expect(checkSchema({ ...schema, locales: ['de'] }).filter((p) => p.includes('untranslated'))).toEqual([])
+  })
+})
+
+describe('week: the site states its week', () => {
+  // Wrong: the first day of the week comes from the language again, so a site in American English plans its lunch
+  // week from Sunday although it states Monday.
+  it('follows `week`, not the language', () => {
+    const schema = serializeSchema({ ...restaurant, languages: { de: 'en-US', en: 'en-US' } })
+    expect(schema.week).toEqual({ firstDay: 'monday', workdays: 5 })
+    expect(checkSchema(schema)).toEqual([])
+    // Wednesday 14 October 2026.
+    expect(resolveToken('@workWeek', schema.timeZone, schema.week, new Date('2026-10-14T10:00:00Z'))).toBe('2026-10-12')
+    expect(resolveToken('@workWeek', schema.timeZone, { firstDay: 'sunday', workdays: 6 }, new Date('2026-10-14T10:00:00Z'))).toBe('2026-10-11')
+  })
+
+  // Wrong: a site with a weekly brick and no `week` gets a week from somewhere without saying so.
+  it('is required when a brick is weekly', () => {
+    const schema = stored()
+    delete schema.week
+    expect(checkSchema(schema)).toEqual([expect.stringMatching(/^week is missing\. The brick “lunch” is planned by the week/)])
   })
 })

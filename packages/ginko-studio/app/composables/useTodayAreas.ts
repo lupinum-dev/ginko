@@ -3,7 +3,7 @@
 // (status line, today flag, week, own proposals, timed rows) as one `View`, "Wartet auf dich" and the verdict line.
 // The sheets and the writes stay on the page. Generic: nothing here knows the restaurant.
 import type { Brick, CollectionBrick, Field, Json } from '@lupinum/ginko'
-import { plannedWeeks, plansThisWeek, staleOf, visibleUntil, weeklyTask, workWeekOf, type StatusLine } from '@lupinum/ginko/internal'
+import { plannedWeeks, plansThisWeek, staleOf, visibleUntil, weekInfo, weeklyTask, workWeekOf, type StatusLine } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { api } from '#convex/api'
 import type { Entry } from './useSiteData'
@@ -248,7 +248,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
    */
   function plannedNow(key: string, task = weeklyTask(s.schema.value!.bricks[key]!)?.task) {
     const schema = s.schema.value!
-    const start = workWeekOf(s.today.value, schema.week)
+    const start = workWeekOf(s.today.value, weekInfo(schema.week))
     if (!task) return undefined
     for (const [k, b] of Object.entries(schema.bricks)) {
       if (b.kind !== 'collection' || b.plans?.brick !== key) continue
@@ -267,7 +267,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       const field = s.schema.value!.bricks[plan.key]!.fields[plan.field]
       return { current: true, text: t('site.quick.plannedWeek', { label: field ? shownLabel(field.label, s.main.value) : '', date: formatDay(plan.start, format) }) }
     }
-    const state = staleOf(brick, entry.data, s.today.value, s.schema.value!.week, plannedWeeks(s.schema.value!, key, (k) => entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
+    const state = staleOf(brick, entry.data, s.today.value, weekInfo(s.schema.value!.week), plannedWeeks(s.schema.value!, key, (k) => entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
     if (!state) return undefined
     if (!state.stored) return { current: state.current, text: t('site.quick.notFilled') }
     const text = t('today.week.stored', { label: shownLabel(brick.fields[state.field]!.label, s.main.value), date: formatDay(state.stored, format) })

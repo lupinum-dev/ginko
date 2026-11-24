@@ -14,11 +14,8 @@
   },
   "currency": "EUR",
   "week": {
-    "firstDay": 1,
-    "weekend": [
-      6,
-      7
-    ]
+    "firstDay": "monday",
+    "workdays": 5
   },
   "holidays": "AT",
   "pages": {

@@ -1,5 +1,5 @@
 // Site queries for the UI and the admin-only creation of a site (SPEC 4.2, 10).
-import { isCurrency, isLocale, isTimeZone, isVisible, labelOf as labelIn, MAX_LOCALES, ordered, SCHEMA_FORMAT, todayIn, weekInfoOf, type Schema } from '@lupinum/ginko/internal'
+import { isCurrency, isLocale, isTimeZone, isVisible, labelOf as labelIn, MAX_LOCALES, ordered, SCHEMA_FORMAT, todayIn, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
@@ -193,8 +193,6 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
     timeZone,
     locales,
     currency,
-    // Every stored schema has `week` (the hourly reminder sweep reads it for every site); the first release replaces it.
-    week: weekInfoOf(locales[0]!),
     pages: {},
     bricks: {},
     migrations: [],

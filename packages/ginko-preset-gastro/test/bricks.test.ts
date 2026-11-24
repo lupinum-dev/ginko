@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { allergensEU, events, isLunchPlaceholder, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '../src/index.ts'
 
 const siteWith = (bricks: Record<string, any>) =>
-  defineSite({ site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', pages: { home: '/' }, bricks })
+  defineSite({ site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', week: { firstDay: 'monday', workdays: 5 }, pages: { home: '/' }, bricks })
 
 describe('labels', () => {
   it('brick, field, task and option labels come in German and English, whatever the site locales are', () => {
@@ -36,7 +36,7 @@ describe('labels', () => {
   })
   it('a Spanish site built from the preset passes checkSchema (labels fall back to English)', () => {
     const site = defineSite({
-      site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Madrid', locales: ['es'], currency: 'EUR', pages: { home: '/' },
+      site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Madrid', locales: ['es'], currency: 'EUR', week: { firstDay: 'monday', workdays: 5 }, pages: { home: '/' },
       bricks: {
         hours: hours(), hourPlans: hourPlans(), notices: notices(), lunch: lunch(), lunchPlans: lunchPlans(), menu: menu(),
         events: events({ route: { es: '/eventos/[slug]' } }), gallery: gallery(),

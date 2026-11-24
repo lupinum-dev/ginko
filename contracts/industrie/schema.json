@@ -13,13 +13,6 @@
     "en": "en-GB"
   },
   "currency": "EUR",
-  "week": {
-    "firstDay": 1,
-    "weekend": [
-      6,
-      7
-    ]
-  },
   "pages": {
     "home": {
       "de": "/",

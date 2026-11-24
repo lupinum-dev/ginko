@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
-import { createAsks, DEFAULT_WEEK, liveFrom, plannedWeeks, serializeSchema, staleOf, weekInfoOf, type Schema, type Task } from '../../src/core/index.ts'
+import { createAsks, DEFAULT_WEEK, liveFrom, plannedWeeks, serializeSchema, staleOf, weekInfo, type Schema, type Task } from '../../src/core/index.ts'
 
 const lunch = {
   fields: { weekOf: { type: 'date' }, note: { type: 'text' } },
@@ -20,8 +20,8 @@ describe('staleOf (weekly upkeep)', () => {
   })
 
   // Wrong behaviour caught: a Sunday-first site compares with a Monday, so its current week is called out of date.
-  it('uses the site week: on en-US Wednesday the week of Sunday 11 is current', () => {
-    expect(staleOf(lunch, { weekOf: '2026-10-11' }, '2026-10-14', weekInfoOf('en-US'))?.current).toBe(true)
+  it('uses the site week: on a Sunday-first Wednesday the week of Sunday 11 is current', () => {
+    expect(staleOf(lunch, { weekOf: '2026-10-11' }, '2026-10-14', weekInfo({ firstDay: 'sunday', workdays: 6 }))?.current).toBe(true)
     expect(staleOf(lunch, { weekOf: '2026-10-11' }, '2026-10-14', DEFAULT_WEEK)?.current).toBe(false)
   })
 

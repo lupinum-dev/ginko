@@ -2,6 +2,7 @@ import type { ComponentRegistry } from './components.ts'
 import type { HolidaysOption } from './holidays.ts'
 import type { LinkConfig } from './links.ts'
 import type { Redirect } from './redirects.ts'
+import type { SiteWeek } from './time.ts'
 import type {
   Brick, BrickSource, CollectionBrick, CollectionListing, CollectionStatus, CollectionTree, Currency, Fields, Json, Label, Locale, RetiredRule, SingleBrick, SingleStatus, Task, Visibility,
 } from './types.ts'
@@ -40,10 +41,12 @@ export interface SiteInput {
   /** The BCP 47 language per locale for `lang`, hreflang and dates, e.g. `{ de: 'de-AT' }`. Default: the locale itself. Keys are entries of `locales`. */
   languages?: Partial<Record<Locale, string>>
   /**
-   * The first day of the week, 1 (Monday) to 7 (Sunday). Default: the first day of the main locale's language
-   * (`languages`), e.g. Monday for `de-AT`, Sunday for `en-US`. Weekly bricks (`@workWeek`) start on this day.
+   * The site's week: the day it starts on and how many days from there are workdays, e.g.
+   * `{ firstDay: 'monday', workdays: 5 }`. Required when a brick is weekly (a task fills `@workWeek` or
+   * `@nextWorkWeek`, or a collection `plans` weeks): those weeks start on `firstDay`, and after the last workday the
+   * coming week counts. The language of the site does not decide it.
    */
-  firstDayOfWeek?: 1 | 2 | 3 | 4 | 5 | 6 | 7
+  week?: SiteWeek
   currency: Currency
   /**
    * The country of the site (ISO 3166-1 alpha-2, e.g. `AT`). It picks the public-holiday calendar (`calendar`) and is
@@ -194,7 +197,7 @@ export function collection<const F extends Fields, const R extends Record<Locale
    * main language and links to the main-language page. Required when the site has more than one language.
    */
   untranslated?: 'fallback' | 'hide'
-  /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`firstDayOfWeek`). */
+  /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`week.firstDay`). */
   plans?: { brick: string; field: FieldsOfType<F, 'date'> }
   /** The status line on the Studio's Today page (see `CollectionStatus`). */
   status?: CollectionStatus<FieldsOfType<F, 'date' | 'daterange'>, keyof F & string>

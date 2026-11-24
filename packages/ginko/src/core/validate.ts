@@ -6,7 +6,7 @@ import { bare, DEFAULT_LOCALE, msg, type CoreKey, type Described, type Msg } fro
 import { roundedMb, type UploadType } from './uploads.ts'
 import { SLUG_PATTERN } from './slug.ts'
 import { weekStartField } from './stale.ts'
-import { DEFAULT_WEEK, startOfWeek } from './time.ts'
+import { startOfWeek, weekInfo } from './time.ts'
 import type { Brick, Field, FileField, Fields, Issue, Json, Locale, MarkdownField, Schema } from './types.ts'
 
 /**
@@ -117,7 +117,7 @@ function ruleIssues(schema: Schema, brick: Brick, data: unknown): RuleIssue[] {
   }
   const week = weekStartField(brick)
   const start = week ? data[week] : undefined
-  if (week && isDate(start) && startOfWeek(start, schema.week ?? DEFAULT_WEEK) !== start) {
+  if (week && isDate(start) && startOfWeek(start, weekInfo(schema.week)) !== start) {
     out.push({ issue: issue(week, 'NOT_WEEK_START', 'notWeekStart', { label: shown(brick.fields[week]!, main) }), touches: [week] })
   }
   return out

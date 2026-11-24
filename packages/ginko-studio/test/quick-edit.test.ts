@@ -18,7 +18,7 @@ const { computed, defineComponent, h, nextTick, onMounted, reactive, ref, Suspen
 Object.entries({ computed, nextTick, onMounted, reactive, ref, watch, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const notices = serializeSchema(defineSite({
-  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'monday', workdays: 5 },
   pages: { home: { de: '/' } },
   bricks: {
     notices: collection({
@@ -392,7 +392,7 @@ test.each([
 // on the website, and nothing on Heute offered to publish it (or, for staff, showed someone else's draft).
 test('a drafts collection lists its drafts apart from what is on the website, staff only their own', async () => {
   const withDrafts = serializeSchema(defineSite({
-    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'monday', workdays: 5 },
     pages: { home: { de: '/' } },
     bricks: {
       notices: collection({

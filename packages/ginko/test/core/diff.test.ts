@@ -487,9 +487,9 @@ describe('checkSchema: limits and structure (SPEC 2.1)', () => {
       problems: ['gallery: too many fields.'],
     },
     {
-      name: 'a schema without week',
-      mutate: (s: Schema) => { delete (s as Partial<Schema>).week },
-      problems: ['week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).'],
+      name: 'a week in numbers',
+      mutate: (s: Schema) => { (s as { week: unknown }).week = { firstDay: 1, weekend: [6, 7] } },
+      problems: ['week must be { firstDay, workdays }: firstDay one of monday, tuesday, wednesday, thursday, friday, saturday, sunday, workdays a whole number from 1 to 7 (the days from firstDay on that are workdays).'],
     },
     {
       name: 'a schema over 256 KiB of ASCII',

@@ -2,7 +2,7 @@ import type { ComponentRegistry } from './components.ts'
 import type { MarkdownProfile } from './markdown.ts'
 import type { ValueInput } from './fields.ts'
 import type { Msg } from './messages.ts'
-import type { WeekInfo } from './time.ts'
+import type { SiteWeek } from './time.ts'
 import type { StoredHolidays } from './holidays.ts'
 // The schema as plain data. This is what `ginko.config.ts` describes, what
 // `ginko release` sends, and what the platform stores. SPEC.md part 2.
@@ -303,8 +303,8 @@ export interface Schema {
   /** The language tag per locale for numbers, money and dates (`SiteInput.languages`, "de-AT"); absent when the site sets none. */
   languages?: Partial<Record<Locale, string>>
   currency: Currency
-  /** First day of the week and weekend days of the site (computed once from the main language or `firstDayOfWeek`). */
-  week: WeekInfo
+  /** The site's week as the site states it (`SiteInput.week`); absent on a site without a weekly brick that states none. */
+  week?: SiteWeek
   /** The public-holiday calendar of the site (`calendar`, else from `country`); absent when the config sets neither. */
   holidays?: StoredHolidays
   /** Static pages by key, each with its path per locale (the home page is the one whose main-locale path is `/`). */

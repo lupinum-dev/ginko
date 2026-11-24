@@ -2,8 +2,8 @@ import { effectiveMax, effectiveMin, effectiveProfile, isTranslatable, MAX_CENTS
 import { isCurrency, isLocale, labelProblem, MAX_LOCALES } from './labels.ts'
 import { sha256 } from './sha256.ts'
 import { formatMb, limitOf } from './uploads.ts'
-import { weeklyTask } from './stale.ts'
-import { weekInfoOf } from './time.ts'
+import { weeklyTask, weekStartField } from './stale.ts'
+import { WEEKDAYS } from './time.ts'
 import { CALENDAR_NAMES, holidaysOf, STORED_HOLIDAYS } from './holidays.ts'
 import { componentProblems, type ComponentDef, type ComponentRegistry } from './components.ts'
 import { factComponent, factProblem, FACT_TAG } from './facts.ts'
@@ -63,9 +63,9 @@ export function serializeSchema(site: SiteInput): Schema {
     // The language tag per locale ("de-AT"), so the platform and the Studio format values (facts) as the site does.
     ...(site.languages && Object.keys(site.languages).length ? { languages: { ...site.languages } } : {}),
     currency: site.currency,
-    // Computed once here; the server, the Studio and the site all read `schema.week`.
-    week: weekInfoOf(site.languages?.[site.locales[0]] ?? site.locales[0], site.firstDayOfWeek),
-    // Like `week`: resolved once, so the server and the Studio never run the site's code to know its holidays.
+    // As the site states it; the server, the Studio and the site all read `schema.week`.
+    ...(site.week !== undefined ? { week: site.week } : {}),
+    // Resolved once, so the server and the Studio never run the site's code to know its holidays.
     ...withHolidays(site),
     pages: Object.fromEntries(Object.entries(site.pages).map(([key, page]) => [key, typeof page === 'string' ? { [site.locales[0]]: page } : page])),
     bricks,
@@ -246,7 +246,7 @@ export function mainLocale(schema: Pick<Schema, 'locales'>): Locale {
 
 // The top-level keys of a site config, typed against `SiteInput`: a new or renamed key fails the type check here.
 const SITE_KEYS = {
-  site: true, name: true, url: true, platform: true, timeZone: true, locales: true, languages: true, firstDayOfWeek: true, currency: true,
+  site: true, name: true, url: true, platform: true, timeZone: true, locales: true, languages: true, week: true, currency: true,
   pages: true, bricks: true, linkCheck: true, redirects: true, seo: true, agents: true, components: true, migrations: true,
   retired: true, country: true, calendar: true, facts: true,
 } satisfies Record<keyof SiteInput, true>
@@ -331,7 +331,12 @@ function schemaProblems(schema: Schema): string[] {
   for (const locale of new Set(schema.locales.filter((l, i) => schema.locales.indexOf(l) !== i))) problems.push(`Locale “${locale}” is listed twice.`)
   if (!isSiteUrl(schema.url)) problems.push(`Invalid site url “${String(schema.url)}” (expected an absolute http(s) address such as “https://linde.example”).`)
   if (!isTimeZone(schema.timeZone)) problems.push(`Invalid time zone “${String(schema.timeZone)}” (expected for example “Europe/Vienna”).`)
-  if (!isWeek(schema.week)) problems.push('week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).')
+  if (schema.week !== undefined && !isWeek(schema.week)) problems.push(`week must be { firstDay, workdays }: firstDay one of ${WEEKDAYS.join(', ')}, workdays a whole number from 1 to 7 (the days from firstDay on that are workdays).`)
+  else if (schema.week === undefined) {
+    // A weekly brick needs the site's week: it decides the first day of every week and when the coming week counts.
+    const weekly = Object.entries(schema.bricks ?? {}).find(([, brick]) => typeof brick === 'object' && brick !== null && weekStartField(brick))
+    if (weekly) problems.push(`week is missing. The brick “${weekly[0]}” is planned by the week, so say on which day the site's week starts and how many days are workdays, for example \`week: { firstDay: 'monday', workdays: 5 }\`.`)
+  }
   if (schema.holidays !== undefined && !STORED_HOLIDAYS.includes(schema.holidays)) problems.push(`holidays must be one of ${STORED_HOLIDAYS.join(', ')}.`)
   if (!isCurrency(schema.currency)) problems.push(`Invalid currency “${String(schema.currency)}” (expected an ISO 4217 code such as “EUR” or “JPY”).`)
   const pageOwner = new Map<string, string>()
@@ -551,11 +556,10 @@ function visibilityProblems(key: string, vis: unknown, fields: Fields): string[]
   return problems
 }
 
-const isIsoDay = (n: unknown) => Number.isInteger(n) && (n as number) >= 1 && (n as number) <= 7
 function isWeek(week: unknown): boolean {
-  if (typeof week !== 'object' || week === null) return false
-  const { firstDay, weekend } = week as { firstDay?: unknown; weekend?: unknown }
-  return isIsoDay(firstDay) && Array.isArray(weekend) && weekend.length <= 6 && weekend.every(isIsoDay)
+  if (typeof week !== 'object' || week === null || Array.isArray(week)) return false
+  const { firstDay, workdays, ...rest } = week as { firstDay?: unknown; workdays?: unknown }
+  return (WEEKDAYS as readonly unknown[]).includes(firstDay) && Number.isInteger(workdays) && (workdays as number) >= 1 && (workdays as number) <= 7 && !Object.keys(rest).length
 }
 
 /** The kind each standard task id stands for: the Studio opens the task `edit` from a row, so the ids are fixed. */

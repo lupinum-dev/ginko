@@ -110,7 +110,8 @@ export function taskBrickOf(schema: Schema, ref: string | undefined, entry: Pick
   const [taskBrick, taskId] = (ref ?? '').split('.')
   if (!taskBrick || taskBrick === entry.brick || entry.state === 'draft' || !Object.hasOwn(schema.bricks, taskBrick)) return entry.brick
   const task = schema.bricks[taskBrick]!.tasks?.find((t) => t.id === taskId)
-  const thisWeek = resolveToken('@workWeek', schema.timeZone, schema.week)
+  // Only a site with a weekly brick states its week; without one, no planned week can stand in.
+  const thisWeek = schema.week ? resolveToken('@workWeek', schema.timeZone, schema.week) : undefined
   return task && thisWeek && plansThisWeek(schema, taskBrick, task, entry.brick, entry.data as Record<string, Json>, thisWeek) ? taskBrick : entry.brick
 }
 
