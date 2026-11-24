@@ -1,13 +1,6 @@
 import { defineSite } from '@lupinum/ginko'
 import { expect, it } from 'vitest'
-import { blogCollections, changelogCollection, changelogPages, docsCollection, docsHome, homePages } from '../src/config.ts'
-
-// Wrong behaviour caught: the start page of another locale at `/de/`, an address ginko-i18n redirects, so `$page.home`,
-// the sitemap and hreflang pointed at a redirect.
-it('gives each locale its start page at its canonical address', () => {
-  expect(homePages({ locales: ['en', 'de'] })).toEqual({ en: '/', de: '/de' })
-  expect(changelogPages({ locales: ['de', 'en'] })).toEqual({ de: '/changelog', en: '/en/changelog' })
-})
+import { blogCollections, changelogCollection, docsCollection, docsHome } from '../src/config.ts'
 
 // Wrong behaviour caught: a docs site in the site file's form gets other page addresses than `docsCollection({ locales })`
 // gave (`/de/docs/…` for a second language), or the blog loses the English labels docs sites store.

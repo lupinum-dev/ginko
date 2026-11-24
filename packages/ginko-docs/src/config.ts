@@ -3,27 +3,10 @@
 // (`entries: { docs: '/docs/[slug]' }`); the layer serves its page there. Where a brick lives is `studio.bricks`. The
 // start page, the blog and the changelog are optional. Each brick is made from a private builder of the stored form
 // and turned into the written form by `defOf`, so its stored model is exactly what it was.
-import { authorsBrick, changelogBrick, collection, defOf, f, labelsIn, postsBrick, single, type Locale } from '@lupinum/ginko/internal'
-import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
+import { authorsBrick, changelogBrick, collection, defOf, f, labelsIn, postsBrick, single } from '@lupinum/ginko/internal'
 
 /** The registry of the Markdown components the layer renders, for `components` in `defineSite`. */
 export { components } from '@lupinum/ginko-components/registry'
-
-/** The site's locales, main locale first. The same list as `locales` in `defineSite`, as a plain array or a tuple. */
-type Locales = readonly Locale[]
-
-/**
- * `path` in every locale: `{ en: '/blog', de: '/de/blog' }` when `en` is the main locale. The main locale has no
- * prefix; every other locale gets `/<locale>` in front (ginko-i18n's rule).
- */
-function localized<P extends `/${string}`>(locales: Locales, path: P): Record<Locale, P> {
-  const [main] = locales
-  if (main === undefined) throw new Error('[ginko-docs] `locales` is empty. Fix: pass the same list as `locales` in defineSite.')
-  // `/<locale>` + a path still matches the path's pattern, e.g. `/${string}/[slug]`. The root of another locale is
-  // `/<locale>` without a trailing slash, its canonical address (ginko-i18n redirects `/de/` to `/de`).
-  const address: string = path
-  return Object.fromEntries(locales.map((l) => [l, l === main ? path : address === '/' ? `/${l}` : `/${l}${path}`])) as Record<Locale, P>
-}
 
 /** A label in the languages of the Studio, so editors read the fields in their language (de, en, es, fr). */
 const l = (de: string, en: string, es: string, fr: string) => ({ de, en, es, fr })
@@ -145,10 +128,3 @@ export function blogCollections(opts: { max?: number } = {}) {
 export function changelogCollection(opts: { max?: number } = {}) {
   return defOf(labelsIn(changelogBrick({ max: opts.max }), 'en'), { item: 'a release' })
 }
-
-/** The start page by locale, for `pages` in ginko.config.ts: the main locale at `/`, the others at `/<locale>`. */
-export const homePages = (opts: { locales: Locales }) => localized(opts.locales, '/')
-
-/** The list pages by locale, for `pages` in ginko.config.ts: the sitemap and the static build know them from there. */
-export const blogPages = (opts: { locales: Locales }) => localized(opts.locales, BLOG_PATH)
-export const changelogPages = (opts: { locales: Locales }) => localized(opts.locales, CHANGELOG_PATH)
