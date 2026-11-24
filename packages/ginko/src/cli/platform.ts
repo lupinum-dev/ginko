@@ -47,6 +47,62 @@ const READ_TIMEOUT_MS = 30_000
 const WRITE_TIMEOUT_MS = 60_000
 const UNKNOWN_OUTCOME = 'It is unknown whether the release arrived. The same commit can run again without risk.'
 
+/**
+ * The discovery document of a Studio (GET, public, no key): `{ backend, version }`. The CLI sends releases to the
+ * backend's HTTP address; a person only knows the Studio's. An address without the document (a `.convex.site` address,
+ * an older Studio) is the backend itself.
+ */
+export const DISCOVERY_PATH = '/.well-known/ginko-platform'
+const DISCOVERY_TIMEOUT_MS = 10_000
+
+export interface Discovery {
+  /** Where the release routes answer. */
+  backend: string
+  /** The platform's Ginko version, when the document gives one. */
+  version?: string
+}
+
+/** Resolves GINKO_PLATFORM once. The push key is not sent: the document is public. */
+export async function discoverPlatform(url: string, fetch: PlatformOptions['fetch']): Promise<Discovery> {
+  const base = url.replace(/\/+$/, '')
+  let body: unknown
+  try {
+    const response = await fetch(`${base}${DISCOVERY_PATH}`, { headers: { accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS) })
+    if (!response.ok) return { backend: base }
+    body = JSON.parse(await response.text())
+  } catch {
+    // Unreachable, slow or not JSON: the address is the backend; the release call then says what is wrong.
+    return { backend: base }
+  }
+  if (!isObject(body) || typeof body.backend !== 'string') return { backend: base }
+  try {
+    checkPlatformUrl(body.backend)
+  } catch {
+    throw new CliError(`The Studio at GINKO_PLATFORM names a backend address that is not https:// (${DISCOVERY_PATH}).`, 'USAGE')
+  }
+  return { backend: body.backend.replace(/\/+$/, ''), ...(typeof body.version === 'string' ? { version: body.version } : {}) }
+}
+
+/** major.minor of a version, or undefined when it is missing, not semver, or 0.0.0 (a monorepo build: unknown). */
+function minorOf(version: string | undefined): [number, number] | undefined {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version ?? '')
+  if (!match || (match[1] === '0' && match[2] === '0' && match[3] === '0')) return undefined
+  return [Number(match[1]), Number(match[2])]
+}
+
+/**
+ * One sentence when the platform runs an older minor than the site's Ginko: the platform must be the same or newer, and
+ * a release that uses something new is rejected by an older platform. A warning, never a refusal (a client site's
+ * deploy must not stop because its CMS is one release behind). Undefined when either version is unknown.
+ */
+export function versionNote(platformVersion: string | undefined, siteVersion: string): string | undefined {
+  const platform = minorOf(platformVersion)
+  const site = minorOf(siteVersion)
+  if (!platform || !site) return undefined
+  const older = platform[0] < site[0] || (platform[0] === site[0] && platform[1] < site[1])
+  return older ? `This platform runs Ginko ${platformVersion}; the site uses ${siteVersion}. Update the platform first if the release is rejected.` : undefined
+}
+
 /** Plain http only for the machine itself; the push key must not travel unencrypted. */
 function checkPlatformUrl(url: string): void {
   let parsed: URL

@@ -70,16 +70,18 @@ describe('prepareLocalBackend', () => {
     return { dir, calls, run }
   }
 
-  // Wrong behaviour caught: local:dev starts a Studio where nobody can sign in (no mail way, no admin, no proxy secret).
+  // Wrong behaviour caught: local:dev starts a Studio where nobody can sign in (no mail way, no admin, no proxy secret);
+  // or it refuses, or drops, the lines `vercel link` writes into .env.local of a platform project after setup.
   it('a fresh backend gets the sign-in variables and names the admin', async () => {
-    const { dir, calls, run } = backend('CONVEX_DEPLOYMENT=anonymous-agent\n')
+    const vercel = '# Created by Vercel CLI\nVERCEL_OIDC_TOKEN="eyJhbGciOiJSUzI1NiJ9.e30.c2lnbmF0dXJl"\n'
+    const { dir, calls, run } = backend(`${vercel}CONVEX_DEPLOYMENT=anonymous-agent\n`)
     const admin = await prepareLocalBackend(dir, 'local:dev', () => undefined, run)
     const sets = calls.filter((c) => c[0] === 'env' && c[1] === 'set')
     expect(sets.map((c) => c[2])).toEqual(['GINKO_MAIL', 'SITE_URL', 'GINKO_ADMIN_EMAILS', 'BETTER_AUTH_SECRETS', 'BCN_AUTH_PROXY_IP_SECRET'])
     expect(calls.some((c) => c.join(' ') === 'run auth:ensureSigningKey')).toBe(true)
     // The Nuxt side gets the very secret the backend got.
     const proxySecret = sets.find((c) => c[2] === 'BCN_AUTH_PROXY_IP_SECRET')![3]
-    expect(readFileSync(join(dir, '.env.local'), 'utf8')).toBe(`CONVEX_DEPLOYMENT=anonymous-agent\nBCN_AUTH_PROXY_IP_SECRET=${proxySecret}\nSITE_URL=http://localhost:3100\n`)
+    expect(readFileSync(join(dir, '.env.local'), 'utf8')).toBe(`${vercel}CONVEX_DEPLOYMENT=anonymous-agent\nBCN_AUTH_PROXY_IP_SECRET=${proxySecret}\nSITE_URL=http://localhost:3100\n`)
     expect(admin).toBe('admin@example.test')
   })
 

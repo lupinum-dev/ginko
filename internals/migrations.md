@@ -50,6 +50,18 @@ Rules for a new migration:
    it first and wait until `ops:status` shows no pending migration"; contract steps ship with that major.
 7. An entry in this file, and a test that runs it through `migrations:runPending`.
 
+## Two copies of the platform build: `vercel-build.sh` and `ginko-platform build`
+
+Since 2026-11-23. `apps/platform/scripts/vercel-build.sh` (the hosted platform's Vercel build) and
+`packages/ginko/src/cli/platform-build.ts` (`ginko-platform build`, the build of a platform project made by
+`create-ginko --platform`) hold the same rules: deploy the backend only in production and only with a `prod:` deploy
+key, then `convex run --prod migrations:runPending` (warn on failure), then `nuxt build`. A change to one must reach
+the other until the script is gone. Depends on it: the hosted platform's Vercel project (`buildCommand` in
+`apps/platform/vercel.json`). Remove the script and this entry when `apps/platform` builds with
+`ginko-platform build --convex ../../packages/ginko-server` (piece K of the self-hosting plan, with Matthias's OK,
+since it changes the production build). `convex run --prod` with only `CONVEX_DEPLOY_KEY` set works: confirmed by a
+real build on 2026-11-23 (`RUN_ON_PRODUCTION` in `platform-build.ts`).
+
 ## Entry storage: trees in `entryTrees`, text-only budget, separate trash (`2026-10-14-entry-storage`)
 
 - **Why:** Markdown trees moved from the entry row (`entries.trees`) to the `entryTrees` table, the budget counts only

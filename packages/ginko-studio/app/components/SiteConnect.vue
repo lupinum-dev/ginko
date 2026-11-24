@@ -6,11 +6,11 @@ import { Button } from '@studio/components/ui/button'
 
 const props = defineProps<{ slug: string }>()
 const { t } = useI18n()
-// The CLI sends a release to the backend's own address (Convex HTTP actions), not to the address of this Studio: the
-// Studio forwards only what websites read (/bundle, /file). Nobody knows that address by heart, so the command names it.
-const { siteUrl } = useConvexConfig()
+// The command names this Studio's own address: the CLI reads its discovery document (/.well-known/ginko-platform) and
+// sends the release to the backend address it finds there, so a website needs only the address people know.
+const studio = useRequestURL().origin
 const config = computed(() => `site: '${props.slug}',`)
-const release = computed(() => `GINKO_PLATFORM=${siteUrl ?? '…'} GINKO_KEY=… GINKO_COMMIT=$(git rev-parse HEAD) npx ginko release`)
+const release = computed(() => `GINKO_PLATFORM=${studio} GINKO_KEY=… GINKO_COMMIT=$(git rev-parse HEAD) npx ginko release`)
 const CODE = 'm-0 select-all whitespace-pre-wrap rounded-md bg-muted px-3 py-2 font-mono text-[13px] [overflow-wrap:anywhere]'
 </script>
 

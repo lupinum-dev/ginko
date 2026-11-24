@@ -225,10 +225,12 @@ describe('create-ginko --platform', () => {
     const result = run('my-cms', '--platform')
     expect(result.status).toBe(0)
     // Wrong behaviour caught: site files (ginko.config.ts, content/, a .env secret) in a project that only runs the Studio.
-    expect(readdirSync(join(work, 'my-cms')).sort()).toEqual(['.gitignore', 'README.md', 'convex.json', 'nuxt.config.ts', 'package.json', 'pnpm-workspace.yaml'])
+    expect(readdirSync(join(work, 'my-cms')).sort()).toEqual(['.gitignore', '.vercelignore', 'README.md', 'convex.json', 'nuxt.config.ts', 'package.json', 'pnpm-workspace.yaml', 'vercel.json'])
     const pkg = JSON.parse(read('my-cms', 'package.json'))
     expect(pkg.name).toBe('my-cms')
-    expect(pkg.scripts).toEqual({ dev: 'ginko-platform dev' })
+    expect(pkg.scripts).toEqual({ dev: 'ginko-platform dev', build: 'ginko-platform build' })
+    // Wrong behaviour caught: Vercel runs its own `nuxt build`, which deploys no backend and starts no migration.
+    expect(JSON.parse(read('my-cms', 'vercel.json'))).toMatchObject({ framework: 'nuxtjs', buildCommand: 'npm run build' })
     // Wrong behaviour caught: the Studio of one release against the backend of another.
     for (const name of ['@lupinum/ginko', '@lupinum/ginko-server', '@lupinum/ginko-studio']) expect(pkg.dependencies[name]).toBe(version)
     // Wrong behaviour caught: a project that installs another Convex, Nuxt, Vue or sharp than the platform is built and tested with.

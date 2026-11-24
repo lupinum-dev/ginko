@@ -29,8 +29,45 @@ yarn and bun are not tested.
 - `convex.json`: the backend functions come from `node_modules/@lupinum/ginko-server/convex/`.
 - `nuxt.config.ts`: the Studio, as a Nuxt layer.
 - `.env.local`: written by the local backend (its address and the sign-in secret). Do not commit it.
+- `vercel.json`: Vercel builds the project with `npm run build` (`ginko-platform build`). A production build deploys
+  the backend first, then starts its data migrations, then builds the Studio.
+- `ginko-platform.json`: written by `ginko-platform setup`: the production deployment and the Studio address. It
+  holds no secret.
 
-## Not covered yet
+## Put it online
 
-This version runs the platform on your computer only. Putting it online (a Convex deployment and a host for the
-Studio) comes with the next version of `ginko-platform`.
+The backend runs on Convex, the Studio on Vercel, and sign-in mail goes through [Resend](https://resend.com). You
+need an account at each. Log in to both command-line tools once:
+
+```bash
+npx convex login
+npm install --global vercel
+vercel login
+```
+
+Then, in this folder:
+
+```bash
+npx ginko-platform setup
+```
+
+It asks for four things: the Studio address (press Enter to use the address Vercel gives the project), the admin
+email (this address may sign in first), the Resend API key (the input is hidden) and the sender address for sign-in
+mail, for example `Studio <login@example.com>`. Then it creates a Convex project with a production deployment and a
+Vercel project, sets their values (secrets never appear on screen), deploys, and prints the address. Your local
+backend for `npm run dev` stays as it is.
+
+`npx ginko-platform setup --dry-run` prints every step and its command first, and changes nothing. Setup is safe to
+run again: it reuses what exists, sets only what is missing and never replaces a secret.
+`--team <slug>` is the Convex team; on Vercel, setup uses the scope the Vercel CLI has selected (`vercel switch`).
+Convex puts the deployment in the team's default region (team settings in the Convex dashboard); `--region <name>`
+chooses another, for example `--region eu`, and an unknown name makes Convex list the names the team can use.
+
+Two steps stay by hand:
+
+- **The Resend domain.** Resend sends only from a domain you verified there. Until then, sign-in mail does not arrive.
+- **Your own domain.** Add it to the Vercel project, then run `npx ginko-platform setup --site-url https://<your domain>`.
+  Setup changes the address on both sides and deploys again.
+
+Updates: raise the three `@lupinum/*` versions in `package.json` (always the same version), then run
+`vercel deploy --prod`, or push when the Vercel project is connected to Git.
