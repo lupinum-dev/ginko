@@ -36,6 +36,15 @@ export function isEntryName(value: unknown): value is string {
 /** The rule of `isEntryName` as one sentence, for the messages that refuse a name. */
 export const ENTRY_NAME_RULE = 'An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-menu”.'
 
+/**
+ * `base` with the number `n` as an end `-n` (none for 1), cut so that the whole is at most `ENTRY_NAME_MAX` characters
+ * and still an entry name: a main slug set by hand may be 100 characters long, and its double then needs room for `-2`.
+ */
+export function numberedName(base: string, n: number): string {
+  const end = n === 1 ? '' : `-${n}`
+  return base.slice(0, ENTRY_NAME_MAX - end.length).replace(/-+$/, '') + end
+}
+
 const textIn = (value: Json | undefined, main: string): string => {
   if (typeof value === 'string') return value
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -71,7 +80,10 @@ export function namesOf(brickKey: string, brick: CollectionBrick, main: string, 
   const given = new Set<string>()
   return rows.map((data) => {
     const slug = slugKey ? textIn(data[slugKey], main) : ''
-    const name = uniqueSlug(isEntryName(slug) ? slug : nameBase(brickKey, brick, data, main), (n) => given.has(n) || taken(n))
+    const base = isEntryName(slug) ? slug : nameBase(brickKey, brick, data, main)
+    let n = 1
+    while (given.has(numberedName(base, n)) || taken(numberedName(base, n))) n++
+    const name = numberedName(base, n)
     given.add(name)
     return name
   })

@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, nameBase, nameSource, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -814,7 +814,7 @@ async function freeName(ctx: MutationCtx, actor: Actor, brickKey: string, brick:
   const main = (actor.site.schema as Schema).locales[0]!
   const slugs = slugKeyOf(brick) ? await slugsTaken(ctx, actor, brickKey, main, own) : new Set<string>()
   for (let n = 1; ; n++) {
-    const name = n === 1 ? base : `${base}-${n}`
+    const name = numberedName(base, n)
     if (slugs.has(name)) continue
     const holder = await ctx.db.query('entries').withIndex('by_site_brick_name', (q) => q.eq('site', actor.site._id).eq('brick', brickKey).eq('name', name)).first()
     if (!holder || holder._id === own) return name
