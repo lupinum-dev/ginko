@@ -1,6 +1,6 @@
 // Eine Doku-Seite: Layout, Seitennavigation und Suche kommen aus @lupinum/ginko-docs.
 // Jede Seite ist eine Markdown-Datei in content/docs/.
-import { defineSite } from '@lupinum/ginko'
+import { defineSite } from '@lupinum/ginko/v1'
 import { components, docsCollection } from '@lupinum/ginko-docs/config'
 
 const locales = ['de'] as const

@@ -1,6 +1,6 @@
 // The translation state of one field in the English view of the Studio form: what the hint under the German text says.
 import { describe, expect, it } from 'vitest'
-import { collection, defineSite, f, type CollectionBrick } from '@lupinum/ginko'
+import { collection, defineSite, f, type CollectionBrick } from '@lupinum/ginko/internal'
 import { printOf, serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import { hidesUntranslated, languageLabel, leafTranslation, missingNote, pageOf, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'

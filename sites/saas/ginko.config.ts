@@ -1,5 +1,5 @@
 // Taktwerk (Zeiterfassung für Handwerksbetriebe, Berlin/Zürich): demo 2 in DEMOS.md. All content is invented.
-import { collection, defineSite, f, single } from '@lupinum/ginko'
+import { collection, defineSite, f, single } from '@lupinum/ginko/v1'
 
 
 export default defineSite({

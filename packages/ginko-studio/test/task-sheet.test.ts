@@ -5,7 +5,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { collection, defineSite, f, single } from '@lupinum/ginko'
+import { collection, defineSite, f, single } from '@lupinum/ginko/internal'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import { Popover, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'

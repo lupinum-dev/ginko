@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildFileBundles, publicBundle } from '@lupinum/ginko-content'
-import { collection, defineSite, f, type Brick, type Field, type Label } from '@lupinum/ginko'
+import { collection, defineSite, f, type Brick, type Field, type Label } from '@lupinum/ginko/internal'
 import { authors, changelog, downloads, faq, faqJsonLd, jobJsonLd, jobs, legal, offerJsonLd, people, personJsonLd, postJsonLd, posts, releaseAnchor, site, siteJsonLd, withoutFiles } from '@lupinum/ginko/basics'
 import { checkSite, siteForContent, serializeSchema } from '@lupinum/ginko/internal'
 

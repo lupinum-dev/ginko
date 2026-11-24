@@ -9,7 +9,7 @@ import RemovedList from '../app/components/RemovedList.vue'
 import StorageNotice from '../app/components/StorageNotice.vue'
 import { ConvexError } from 'convex/values'
 import { normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
-import { collection, defineSite, f } from '@lupinum/ginko'
+import { collection, defineSite, f } from '@lupinum/ginko/internal'
 import { serializeSchema } from '@lupinum/ginko/internal'
 
 const text = () => document.body.textContent ?? ''

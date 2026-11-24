@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collection, defineSite, f, single, type DataOf, type Money, type Query } from '../../src/index.ts'
+import { collection, defineSite, f, single, type DataOf, type Money, type Query } from '../../src/v1.ts'
 
 // The authoring types reject input the validator would only reject at `ginko release`. `pnpm typecheck`
 // runs this file: each `@ts-expect-error` fails the check when a type is widened again.

@@ -1,5 +1,5 @@
 // Synced from templates/_features/pricing/app/bricks/pricing.ts by `pnpm templates sync`. Edit the source, not this copy.
-import { collection, f, type BrickSource } from '@lupinum/ginko'
+import { collection, f, type BrickSource } from '@lupinum/ginko/v1'
 
 // The plans of a product with a subscription, one Markdown file each in content/pricing/ (`1.small.md`, translations
 // `1.small.de.md`); the number sets the order on the pricing page. Every plan says how it is priced, as an explicit

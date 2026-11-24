@@ -5,7 +5,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { expect, test, vi } from 'vitest'
-import { collection, defineSite, f, single } from '@lupinum/ginko'
+import { collection, defineSite, f, single } from '@lupinum/ginko/internal'
 import { serializeSchema, type HoursToday, type StatusLine } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import QuickPage from '../app/pages/s/[site]/index.vue'

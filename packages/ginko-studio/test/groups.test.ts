@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { f } from '@lupinum/ginko'
+import { f } from '@lupinum/ginko/internal'
 import { groupFields } from '../app/utils/groups.ts'
 
 describe('groupFields', () => {

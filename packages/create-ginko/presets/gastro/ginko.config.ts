@@ -1,6 +1,6 @@
 // Opening hours and a menu from the gastro preset, both read from Markdown files in content/.
 // The preset's other bricks (notices, lunch, events, gallery) and the owner's quick tasks need the Ginko platform.
-import { defineSite } from '@lupinum/ginko'
+import { defineSite } from '@lupinum/ginko/v1'
 import { hours, menu } from '@lupinum/ginko-preset-gastro'
 
 export default defineSite({

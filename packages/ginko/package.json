@@ -22,7 +22,7 @@
     "./internal/search": "./src/internal/search.ts",
     "./search": "./src/search.ts",
     "./basics": "./src/basics/index.ts",
-    "./v2": "./src/v2/index.ts",
+    "./v1": "./src/v1.ts",
     "./nuxt": "./src/nuxt/module.ts"
   },
   "bin": {
@@ -63,6 +63,10 @@
       "./basics": {
         "types": "./dist/basics.d.mts",
         "import": "./dist/basics.mjs"
+      },
+      "./v1": {
+        "types": "./dist/v1.d.mts",
+        "import": "./dist/v1.mjs"
       },
       "./nuxt": {
         "types": "./dist/nuxt/module.d.mts",

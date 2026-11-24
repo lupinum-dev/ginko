@@ -4,7 +4,7 @@
 // brick reads Markdown from content/ (source: 'files'), so the site runs without an account and can be built as static
 // files. To let the team change a brick in Ginko Studio later, remove `source: 'files'` from it (README, "Move to
 // the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
+import { defineSite, f, single } from '@lupinum/ginko/v1'
 import { changelog, faq, legal, notices, people, posts, site } from '@lupinum/ginko/basics'
 import { components, docsCollection } from '@lupinum/ginko-docs/config'
 import { logos, quotes } from './app/bricks/logos-quotes.ts'

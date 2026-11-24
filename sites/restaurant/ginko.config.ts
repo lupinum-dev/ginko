@@ -1,6 +1,6 @@
 // Gasthaus zur Linde: the v1 acceptance target (SPEC 13, DEMOS.md demo 3).
 // Hours, notices, lunch, menu, events and gallery come from the gastro preset; the rest is this house's own.
-import { defineSite, f, single } from '@lupinum/ginko'
+import { defineSite, f, single } from '@lupinum/ginko/v1'
 import { events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '@lupinum/ginko-preset-gastro'
 
 const lunchBrick = lunch({ weekOf: '2026-10-05' })

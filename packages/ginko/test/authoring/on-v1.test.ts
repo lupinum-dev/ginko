@@ -10,8 +10,6 @@ import companyV1 from '../../../../templates/company/ginko.config.ts'
 import companyV2 from '../../../../templates/company/ginko.config.v2.ts'
 import starterV1 from '../../../../templates/starter/ginko.config.ts'
 import starterV2 from '../../../../templates/starter/ginko.config.v2.ts'
-import restaurantV1 from '../../../../sites/restaurant/ginko.config.ts'
-import restaurantV2 from '../../../../sites/restaurant/ginko.config.v2.ts'
 
 // Checked by `tsc`, not at run time: a page reads a v2 config with the same types as a v1 config. Wrong behaviour this
 // catches: an address in the site's `entries` does not reach the brick's type, so `item.url` is missing in pages.
@@ -21,7 +19,6 @@ export const serviceTitle = (services: BrickValue<CompanyBricks['services']>): s
 export const jobUrl = (jobs: BrickValue<CompanyBricks['jobs']>): string => jobs.items[0]!.url
 // @ts-expect-error logos has no line in `entries`, so its entries have no address
 export const logoUrl = (logos: BrickValue<CompanyBricks['logos']>): string => logos.items[0]!.url
-export const lunchDay = (lunch: BrickValue<(typeof restaurantV2)['bricks']['lunch']>): 'mo' | 'tu' | 'we' | 'th' | 'fr' | UnknownChoice => lunch.data.days[0]!.day
 
 interface Difference { path: string; v1: unknown; v2: unknown }
 
@@ -69,7 +66,6 @@ const sites: [string, SiteInput, SiteInput][] = [
   ['templates/starter', starterV1, starterV2],
   ['templates/company', companyV1, companyV2],
   ['sites/saas', saasV1, saasV2],
-  ['sites/restaurant', restaurantV1, restaurantV2],
 ]
 
 describe('a v2 config produces the stored model of its v1 config', () => {

@@ -1,5 +1,5 @@
 // navigation.tree, move and heading: the docs tree of a manually ordered collection with `parent`, `section` and `tab`.
-import { collection, defineSite, f } from '@lupinum/ginko'
+import { collection, defineSite, f } from '@lupinum/ginko/internal'
 import { outline, serializeSchema, type Schema } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
 import { api } from '../convex/_generated/api'

@@ -1,5 +1,5 @@
 // Synced from templates/_features/services/app/bricks/services.ts by `pnpm templates sync`. Edit the source, not this copy.
-import { collection, f, type BrickSource, type RouteTemplate } from '@lupinum/ginko'
+import { collection, f, type BrickSource, type RouteTemplate } from '@lupinum/ginko/v1'
 
 // Services or products: what a business offers, one Markdown file each in content/services/ (`1.my-service.md`,
 // translations `1.my-service.de.md`). The number sets the order. Every entry says how it is priced, as an explicit

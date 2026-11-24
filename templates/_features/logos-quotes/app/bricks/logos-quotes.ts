@@ -1,4 +1,4 @@
-import { collection, f, type BrickSource } from '@lupinum/ginko'
+import { collection, f, type BrickSource } from '@lupinum/ginko/v1'
 
 // Partner logos and short quotes for strips on the home page. Logos: one file each in content/logos/ with the image in
 // public/logos/ (an SVG or a PNG on a transparent background); the number sets the order.

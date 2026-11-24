@@ -1,5 +1,5 @@
 // Brunner Präzisionstechnik GmbH (Steyr, AT): demo 1 in DEMOS.md. All content is invented.
-import { collection, defineSite, f, single } from '@lupinum/ginko'
+import { collection, defineSite, f, single } from '@lupinum/ginko/v1'
 
 const weekdays = [
   { value: 'mo', label: 'Montag' }, { value: 'tu', label: 'Dienstag' }, { value: 'we', label: 'Mittwoch' },

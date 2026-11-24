@@ -1,7 +1,7 @@
 // Docs template: the documentation of "Orbit SDK", a fictional TypeScript client for the fictional Orbit API, in
 // English and German. The bricks of the docs layer read Markdown from content/, so the site runs without an account.
 // Moving to Ginko Studio later is done together with Lupinum (README, "Move to the Studio").
-import { defineSite } from '@lupinum/ginko'
+import { defineSite } from '@lupinum/ginko/v1'
 import { changelogCollection, changelogPages, components, docsCollection, docsHome, homePages } from '@lupinum/ginko-docs/config'
 import { siteUrl } from './site-url.ts'
 

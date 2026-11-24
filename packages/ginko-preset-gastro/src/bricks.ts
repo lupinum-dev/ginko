@@ -1,7 +1,7 @@
 // Restaurant bricks with the owner's quick tasks. Labels and prefilled texts come in German and English. The site keeps
 // the texts of its own locales when its main locale is `de` or `en` (exactly: `de-CH` does not count); otherwise it
 // starts without the prefilled texts (`serializeSchema`).
-import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate, type Task } from '@lupinum/ginko'
+import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate, type Task } from '@lupinum/ginko/internal'
 import { gallery, type HoursOptions } from '@lupinum/ginko/basics'
 import { eventsBrick, hourPlansBrick, hoursBrick, noticesBrick, weekdays, type ChoicesField, type DateField, type HoursTexts, type ListField, type WeekRow } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'

@@ -1,6 +1,6 @@
 // A documentation site: the layout, side navigation and search come from @lupinum/ginko-docs.
 // Every page is a Markdown file in content/docs/.
-import { defineSite } from '@lupinum/ginko'
+import { defineSite } from '@lupinum/ginko/v1'
 import { components, docsCollection } from '@lupinum/ginko-docs/config'
 
 const locales = ['en'] as const

@@ -1,4 +1,4 @@
-import { collection, f, type BrickSource, type RouteTemplate } from '@lupinum/ginko'
+import { collection, f, type BrickSource, type RouteTemplate } from '@lupinum/ginko/v1'
 
 // Free pages such as About and Contact: one Markdown file each in content/pages/ (`1.about.md`, translations
 // `1.about.de.md`). The number sets the order; the summary is the page's lead and its search description. A page may

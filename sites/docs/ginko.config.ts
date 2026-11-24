@@ -1,6 +1,6 @@
 // The Ginko docs. Every page comes from Markdown in content/docs; the layout,
 // search and components come from @lupinum/ginko-docs. This site never asks the platform.
-import { defineSite } from '@lupinum/ginko'
+import { defineSite } from '@lupinum/ginko/v1'
 import { blogCollections, blogPages, changelogCollection, changelogPages, components, docsCollection, docsHome, homePages } from '@lupinum/ginko-docs/config'
 
 // The docs are in English only.

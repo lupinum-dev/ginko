@@ -1,6 +1,6 @@
 // The bricks for ginko.config.ts. Docs pages live at <base>/<slug> in every locale (main locale
 // unprefixed); the layer serves its page at that address. The start page, the blog and the changelog are optional.
-import { collection, f, single, type BrickSource, type Locale } from '@lupinum/ginko'
+import { collection, f, single, type BrickSource, type Locale } from '@lupinum/ginko/internal'
 import { authors, changelog, posts } from '@lupinum/ginko/basics'
 import { labelsIn } from '@lupinum/ginko/internal'
 import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'

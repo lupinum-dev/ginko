@@ -1,4 +1,4 @@
-import { collection, f, type BrickSource, type RouteTemplate } from '@lupinum/ginko'
+import { collection, f, type BrickSource, type RouteTemplate } from '@lupinum/ginko/v1'
 
 // Projects: what an organisation works on, one Markdown file each in content/projects/ (`1.my-project.md`,
 // translations `1.my-project.de.md`). The number sets the order. A campaign has an end date (`ends`): it leaves the

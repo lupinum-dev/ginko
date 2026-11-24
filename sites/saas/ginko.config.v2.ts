@@ -1,6 +1,6 @@
 // POC T2: the saas demo written in v2, beside ginko.config.ts. Both must produce the same stored model
 // (packages/ginko/test/v2/on-v1.test.ts). All content is invented.
-import { collection, defineSite, f, single } from '@lupinum/ginko/v2'
+import { collection, defineSite, f, single } from '@lupinum/ginko'
 
 export default defineSite({
   name: 'Taktwerk',

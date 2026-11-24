@@ -3,7 +3,7 @@
 // how to book and find it, in English (main) and German. Every brick reads Markdown from content/ (source: 'files'),
 // so the site runs without an account. To let the practice change a brick in Ginko Studio later, remove
 // `source: 'files'` from it (README, "Move to the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
+import { defineSite, f, single } from '@lupinum/ginko/v1'
 import { faq, gallery, hourPlans, hours, legal, notices, people, site } from '@lupinum/ginko/basics'
 import { pages } from './app/bricks/pages.ts'
 import { services } from './app/bricks/services.ts'

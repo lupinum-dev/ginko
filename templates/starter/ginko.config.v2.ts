@@ -1,6 +1,6 @@
 // POC T2: the starter template written in v2, beside ginko.config.ts. Both must produce the same stored model
 // (packages/ginko/test/v2/on-v1.test.ts). The ready-made bricks still come from the v1 functions (POC T3).
-import { defineSite } from '@lupinum/ginko/v2'
+import { defineSite } from '@lupinum/ginko'
 import { legal, notices, site } from '@lupinum/ginko/basics'
 import { home, pages } from './app/bricks/v2.ts'
 import de from './i18n/studio/de.json' with { type: 'json' }

@@ -2,7 +2,7 @@
 // and the authors' pages, in English (main) and German. Every brick reads Markdown from content/ (source: 'files'),
 // so the site runs without an account. To write in Ginko Studio later, remove `source: 'files'` from a brick (README,
 // "Move to the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
+import { defineSite, f, single } from '@lupinum/ginko/v1'
 import { legal, notices, people, posts, site } from '@lupinum/ginko/basics'
 import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'

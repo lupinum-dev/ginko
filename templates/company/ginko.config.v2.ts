@@ -4,7 +4,7 @@
 // The site file says which bricks exist, where their pages are and who edits them. The site's own bricks are plain
 // objects in app/bricks/v2.ts. The ready-made bricks still come from the v1 functions, called without `source` and
 // `route`; making them plain objects that bring their Today line is POC T3.
-import { defineSite } from '@lupinum/ginko/v2'
+import { defineSite } from '@lupinum/ginko'
 import { downloads, events, jobs, legal, notices, people, posts, site } from '@lupinum/ginko/basics'
 import { home, logos, pages, quotes, serviceLine, services } from './app/bricks/v2.ts'
 import de from './i18n/studio/de.json' with { type: 'json' }

@@ -4,7 +4,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { afterEach, expect, test, vi } from 'vitest'
-import { collection, defineSite, f } from '@lupinum/ginko'
+import { collection, defineSite, f } from '@lupinum/ginko/internal'
 import { serializeSchema, type CollectionBrick } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import NavTree from '../app/components/NavTree.vue'

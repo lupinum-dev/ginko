@@ -2,7 +2,7 @@
 // a gallery and a few free pages, in English (main), German and Italian.
 // Every brick reads Markdown from content/ (source: 'files'), so the site runs without an account.
 // To let the owner change a brick in Ginko Studio instead, remove `source: 'files'` from it (README, "Move to the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
+import { defineSite, f, single } from '@lupinum/ginko/v1'
 import { events, legal, site } from '@lupinum/ginko/basics'
 import { gallery, hourPlans, hours, lunch, menu, notices } from '@lupinum/ginko-preset-gastro'
 import { pages } from './app/bricks/pages.ts'

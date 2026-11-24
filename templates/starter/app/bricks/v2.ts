@@ -1,6 +1,6 @@
 // POC T2: the starter template's own bricks written in v2, as plain objects. The v1 forms are in ginko.config.ts
 // (home) and in pages.ts (a function with options). German and French labels are in i18n/studio/.
-import { collection, f, single } from '@lupinum/ginko/v2'
+import { collection, f, single } from '@lupinum/ginko'
 
 // The home page: title, lead and a short text (content/home.md).
 export const home = single({

@@ -2,7 +2,7 @@
 // the board and team, reports to download and a few free pages, in English (main), German, French and Arabic (right to
 // left). Every brick reads Markdown from content/ (source: 'files'), so the site runs without an account.
 // To let the team change a brick in Ginko Studio later, remove `source: 'files'` from it (README, "Move to the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
+import { defineSite, f, single } from '@lupinum/ginko/v1'
 import { downloads, events, legal, notices, people, posts, site } from '@lupinum/ginko/basics'
 import { logos, quotes } from './app/bricks/logos-quotes.ts'
 import { pages } from './app/bricks/pages.ts'

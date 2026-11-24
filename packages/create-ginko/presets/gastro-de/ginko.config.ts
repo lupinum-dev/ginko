@@ -1,7 +1,7 @@
 // Öffnungszeiten und Speisekarte aus dem Gastro-Preset, beide aus Markdown-Dateien in content/.
 // Die anderen Bausteine des Presets (Hinweise, Mittagsmenü, Veranstaltungen, Galerie) und die Schnellaufgaben
 // für Inhaber brauchen die Ginko-Plattform.
-import { defineSite } from '@lupinum/ginko'
+import { defineSite } from '@lupinum/ginko/v1'
 import { hours, menu } from '@lupinum/ginko-preset-gastro'
 
 export default defineSite({
