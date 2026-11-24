@@ -116,8 +116,8 @@ export interface CollectionInput<F extends Fields> extends Common<F> {
   order?: 'manual' | { field: keyof F & string; dir?: 'asc' | 'desc' }
   showUntil?: ShowUntil<DateKey<F>>
   /**
-   * A required translatable field is missing in a language: `'hide'` (default for a brick with a line in the site's
-   * `entries`) leaves the entry out there; `'fallback'` (default without) shows the main language.
+   * A required translatable field is missing in a language: `'hide'` leaves the entry out there; `'fallback'` shows the
+   * main language. Required when the site has more than one language.
    */
   untranslated?: 'fallback' | 'hide'
   /** Entries plan weeks of the single brick `brick`; `field` (a date field) holds the first day of the week. */

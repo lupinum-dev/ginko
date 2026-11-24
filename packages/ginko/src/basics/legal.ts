@@ -24,6 +24,7 @@ export function legal<const R extends Record<Locale, RouteTemplate> | undefined 
   return collection({
     label: o.label ?? t('Rechtliches', 'Legal', 'Textos legales', 'Informations légales'),
     listing: { title: 'title', detail: 'updatedAt' },
+    untranslated: 'hide',
     ...sourceOf(o),
     max: 20,
     order: 'manual',

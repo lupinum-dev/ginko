@@ -89,7 +89,7 @@ describe('the address line of a translation', () => {
     site: 'wirt', name: 'Wirt', url: 'https://wirt.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
     pages: { home: { de: '/', en: '/en' } },
     bricks: {
-      events: collection({
+      events: collection({ untranslated: 'hide',
         listing: { title: 'title' },
         label: 'Veranstaltungen', max: 30, order: { field: 'when', dir: 'asc' }, visible: { mode: 'until', field: 'when' },
         route: { de: '/veranstaltungen/[slug]', en: '/en/events/[slug]' },
@@ -128,8 +128,8 @@ describe('hidesUntranslated', () => {
     site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
     pages: { home: { de: '/', en: '/en' } },
     bricks: {
-      events: collection({ label: 'Veranstaltungen', listing: { title: 'title' }, max: 30, order: 'manual', fields, route: { de: '/termine/[slug]', en: '/en/events/[slug]' } }),
-      notices: collection({ listing: { title: 'title' }, label: 'Hinweise', max: 30, order: 'manual', fields: { title: f.text('Text') } }),
+      events: collection({ untranslated: 'hide', label: 'Veranstaltungen', listing: { title: 'title' }, max: 30, order: 'manual', fields, route: { de: '/termine/[slug]', en: '/en/events/[slug]' } }),
+      notices: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Hinweise', max: 30, order: 'manual', fields: { title: f.text('Text') } }),
     },
   }))
   // Wrong behaviour caught (WS-8): the hint under an English event title said the website shows the German text, while

@@ -29,6 +29,7 @@ export function jobs<const R extends Record<Locale, RouteTemplate> | undefined =
   return collection({
     label: o.label ?? t('Stellen', 'Jobs', 'Empleos', 'Offres d’emploi'),
     listing: { title: 'title', detail: 'validUntil' },
+    untranslated: 'hide',
     ...sourceOf(o),
     max: 30,
     order: { field: 'title', dir: 'asc' },

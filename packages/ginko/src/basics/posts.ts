@@ -28,6 +28,7 @@ export function posts<const R extends Record<Locale, RouteTemplate> | undefined 
   return collection({
     label: o.label ?? t('Beiträge', 'Posts', 'Artículos', 'Articles'),
     listing: { title: 'title', detail: 'date', image: 'image' },
+    untranslated: 'hide', // a post without a text in a language has no page there
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
@@ -50,6 +51,7 @@ export function authors(o: BasicsOptions = {}) {
   return collection({
     label: o.label ?? t('Autorinnen und Autoren', 'Authors', 'Autores', 'Auteurs'),
     listing: { title: 'name', image: 'avatar' },
+    untranslated: 'fallback',
     ...sourceOf(o),
     max: 100,
     order: 'manual',
@@ -76,6 +78,7 @@ export function changelog(o: ChangelogOptions = {}) {
   return collection({
     label: o.label ?? t('Änderungen', 'Changelog', 'Registro de cambios', 'Journal des modifications'),
     listing: { title: 'version', detail: 'date' },
+    untranslated: 'fallback',
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },

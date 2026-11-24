@@ -8,7 +8,7 @@ import * as stored from '../../src/internal.ts'
 
 const base = { name: 'Halden Pumps', url: 'https://halden.example', timeZone: 'Europe/Vienna', currency: 'EUR' } as const
 
-const services = collection({
+const services = collection({ untranslated: 'fallback',
   listing: { title: 'title' },
   label: 'Leistungen',
   item: 'Leistung',
@@ -86,7 +86,7 @@ describe('defineSite writes the stored form', () => {
 
 describe('the labels of the standard tasks', () => {
   const labelsOf = (locales: readonly [string, ...string[]], item: Parameters<typeof collection>[0]['item'], texts = {}) =>
-    defineSite({ ...base, locales, texts, bricks: { faq: collection({ listing: { title: 'question' }, label: 'FAQ', item, fields: { question: f.text('Frage') }, tasks: ['add', 'edit', 'remove'] }) } })
+    defineSite({ ...base, locales, texts, bricks: { faq: collection({ untranslated: 'fallback', listing: { title: 'question' }, label: 'FAQ', item, fields: { question: f.text('Frage') }, tasks: ['add', 'edit', 'remove'] }) } })
       .bricks.faq.tasks!.map((task) => task.label)
 
   // Wrong: Ginko changes the words the developer wrote (an added article, a lowered letter), so a label reads
@@ -171,7 +171,7 @@ describe('a config or a brick in the form of 0.18', () => {
   })
 
   it('names the new place of a moved key', () => {
-    const brick = collection({ listing: { title: 'title' }, label: 'News', fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) }, ...({ source: 'files', route: { de: '/news/[slug]' }, status: { age: 'date' }, tasks: [{ id: 'write', label: 'Schreiben', kind: 'create' }] } as object) })
+    const brick = collection({ untranslated: 'hide', listing: { title: 'title' }, label: 'News', fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) }, ...({ source: 'files', route: { de: '/news/[slug]' }, status: { age: 'date' }, tasks: [{ id: 'write', label: 'Schreiben', kind: 'create' }] } as object) })
     expect(() => defineSite({ ...base, locales: ['de', 'en'], bricks: { news: brick }, entries: { news: '/news/[slug]' }, pages: { news: { de: '/news', en: '/en/news' } } })).toThrow([
       'ginko.config.ts:',
       '- news.source: where a brick lives is `studio.bricks` in the site file.',
@@ -184,7 +184,7 @@ describe('a config or a brick in the form of 0.18', () => {
 
   // Wrong: a preset or the docs theme, which still build stored-form bricks, cannot be used in a site file.
   it('takes a brick made with the stored-form builders and sets where it lives and its address', () => {
-    const news = stored.collection({ label: 'News', listing: { title: 'title' }, max: 20, order: 'manual', fields: { title: stored.f.text('Titel'), slug: stored.f.slug('Adresse', { from: 'title' }) } })
+    const news = stored.collection({ untranslated: 'fallback', label: 'News', listing: { title: 'title' }, max: 20, order: 'manual', fields: { title: stored.f.text('Titel'), slug: stored.f.slug('Adresse', { from: 'title' }) } })
     const site = defineSite({ ...base, locales: ['de', 'en'], bricks: { news }, entries: { news: '/news/[slug]' } })
     expect(site.bricks.news).toMatchObject({ source: 'files', route: { de: '/news/[slug]', en: '/en/news/[slug]' }, max: 20 })
     expect(site.site).toBe('halden-pumps')
@@ -192,7 +192,7 @@ describe('a config or a brick in the form of 0.18', () => {
 })
 
 describe('what the site file must say', () => {
-  const news = collection({ listing: { title: 'title' }, label: 'News', fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) }, tasks: [{ id: 'write', label: 'Schreiben', kind: 'add' }] })
+  const news = collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'News', fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) }, tasks: [{ id: 'write', label: 'Schreiben', kind: 'add' }] })
 
   // Wrong: a forgotten line in `entries` gives a site without the pages of its entries, and no message.
   it('asks for the page of a brick with an address field, or `null` for none', () => {
@@ -211,7 +211,7 @@ describe('what the site file must say', () => {
 })
 
 describe('extend', () => {
-  const jobs = collection({
+  const jobs = collection({ untranslated: 'fallback',
     listing: { title: 'title' },
     label: 'Stellen', item: 'Stelle',
     fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), until: f.date('Bewerbung bis', { optional: true }) },

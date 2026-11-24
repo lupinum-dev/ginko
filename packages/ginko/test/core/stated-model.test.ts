@@ -2,7 +2,7 @@
 // the wrong behaviour it catches: the behaviour coming back from the shape instead of its key.
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
-import { checkSchema, diffSchema, entryTitle, navTree, serializeSchema, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
+import { checkSchema, diffSchema, entryTitle, navTree, resolveEntry, serializeSchema, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
 
 const stored = (): Schema => structuredClone(serializeSchema(restaurant))
 
@@ -131,5 +131,29 @@ describe('task ids', () => {
     ['fields that exist', [edit('fix', ['title', 'subtitle'])], 'events.fix.fields: “subtitle” is not a field of this brick.'],
   ])('are checked: %s', (_rule, tasks, problem) => {
     expect(withTasks(tasks)).toEqual([problem])
+  })
+})
+
+describe('untranslated: what an entry does in a language it has no text in', () => {
+  const event = { id: 'events/fest', data: { title: { de: 'Fest' }, slug: { de: 'fest' }, when: { from: '2026-12-01', to: '2026-12-01' } } }
+  const resolveIn = (untranslated: 'hide' | 'fallback') => {
+    const schema = stored()
+    ;(schema.bricks.events as CollectionBrick).untranslated = untranslated
+    return resolveEntry(schema, 'events', event, { locale: 'en', files: () => undefined })
+  }
+
+  // Wrong (guess 14): a collection with a route hides an untranslated entry and one without falls back, whatever it says.
+  it('follows the key, not whether the collection has a route', () => {
+    expect(resolveIn('fallback').hidden).toBe(false)
+    expect(resolveIn('hide').hidden).toBe(true)
+  })
+
+  // Wrong: a site with two languages leaves the choice out and gets the route-based default again.
+  it('is required when the site has more than one language', () => {
+    const schema = stored()
+    delete (schema.bricks.menu as CollectionBrick).untranslated
+    expect(checkSchema(schema)).toEqual(['menu: untranslated is missing. The site has more than one language, so say what an entry does in a language it has no text in: \'hide\' leaves it out there, \'fallback\' shows the main language.'])
+    // With one language no entry is ever untranslated, so the key may stay out.
+    expect(checkSchema({ ...schema, locales: ['de'] }).filter((p) => p.includes('untranslated'))).toEqual([])
   })
 })

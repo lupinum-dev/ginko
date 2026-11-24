@@ -242,6 +242,7 @@
       "listing": {
         "title": "name"
       },
+      "untranslated": "fallback",
       "pos": 2
     },
     "changelog": {
@@ -321,6 +322,7 @@
         "title": "version",
         "detail": "date"
       },
+      "untranslated": "fallback",
       "pos": 3
     },
     "blog": {
@@ -407,6 +409,7 @@
         "title": "title",
         "detail": "date"
       },
+      "untranslated": "hide",
       "route": {
         "de": "/blog/[slug]",
         "en": "/en/blog/[slug]",
@@ -474,6 +477,7 @@
       "listing": {
         "title": "quote"
       },
+      "untranslated": "fallback",
       "pos": 5
     },
     "faq": {
@@ -521,6 +525,7 @@
       "listing": {
         "title": "question"
       },
+      "untranslated": "fallback",
       "pos": 6
     },
     "notices": {
@@ -570,6 +575,7 @@
         "field": "until",
         "deleteExpired": true
       },
+      "untranslated": "fallback",
       "pos": 7
     },
     "company": {

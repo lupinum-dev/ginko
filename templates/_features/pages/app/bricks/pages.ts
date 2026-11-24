@@ -30,5 +30,6 @@ export const pages = collection({
   },
   // 'edit' is every field but the address: a changed address breaks links.
   listing: { title: 'title', image: 'image' },
+  untranslated: 'hide',
   tasks: ['edit', 'add'],
 })

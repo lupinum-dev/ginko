@@ -55,6 +55,7 @@ const common = {
   item: { de: 'Leistung', en: 'a service', fr: 'une prestation' },
   max: 50,
   listing: { title: 'title', image: 'image' },
+  untranslated: 'hide',
   tasks: [
     { id: 'price', label: { de: 'Preis ändern', en: 'Change a price', fr: 'Modifier un prix' }, fields: ['pricing', 'price'] },
     'edit',

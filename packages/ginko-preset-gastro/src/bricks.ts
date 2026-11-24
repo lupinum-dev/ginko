@@ -163,6 +163,7 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptio
   return collection({
     label: both('Mittagsmenü vorausplanen', 'Plan the lunch menu ahead'),
     listing: { title: 'weekOf' },
+    untranslated: 'fallback',
     ...sourceOf(opts),
     fields: {
       weekOf: f.date(both('Woche ab', 'Week starting')),
@@ -233,6 +234,7 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
   return collection({
     label: both('Speisekarte', 'Menu'),
     listing: { title: 'name', detail: 'price', group: 'category' },
+    untranslated: 'fallback', // a dish without an English name is shown in German
     ...sourceOf(opts),
     fields,
     // The platform checks that a plan has both its price and its date, and opens "Preis ändern" on the price in effect.

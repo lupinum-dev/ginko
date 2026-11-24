@@ -155,6 +155,7 @@ export function hourPlansBrick(t: HoursTexts, week: readonly WeekRow[], opts: Ba
   return collection({
     label: opts.label ?? t.plans,
     listing: { title: 'label', detail: 'from' },
+    untranslated: 'fallback',
     ...sourceOf(opts),
     fields: {
       label: f.text(t.planName, { max: 80 }),

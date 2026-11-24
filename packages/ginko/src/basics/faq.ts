@@ -8,6 +8,7 @@ export function faq(o: BasicsOptions = {}) {
   return collection({
     label: o.label ?? t('Häufige Fragen', 'FAQ', 'Preguntas frecuentes', 'Questions fréquentes'),
     listing: { title: 'question' },
+    untranslated: 'fallback',
     ...sourceOf(o),
     max: 100,
     order: 'manual',

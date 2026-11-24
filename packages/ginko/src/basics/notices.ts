@@ -20,6 +20,7 @@ export function noticesBrick(opts: BasicsOptions, first: readonly NoticeTask[]) 
   return collection({
     label: opts.label ?? both('Hinweise', 'Notices'),
     listing: { title: 'text', detail: 'until' },
+    untranslated: 'fallback',
     ...sourceOf(opts),
     fields: noticeFields(),
     max: 5,

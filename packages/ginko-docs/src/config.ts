@@ -50,6 +50,7 @@ export function docsCollection(opts: { locales: Locales; label?: string; max?: n
   return collection({
     label: opts.label ?? 'Docs',
     listing: { title: 'title' },
+    untranslated: 'hide',
     // The side navigation: pages nest by `parent`, `section` starts a heading, `tab` a tab (left out with `navExtras: false`).
     tree: { parent: 'parent', section: 'section', ...(opts.navExtras !== false ? { tab: 'tab' } : {}) },
     ...sourceOf(opts.source),

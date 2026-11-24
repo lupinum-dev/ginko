@@ -49,6 +49,7 @@ export default defineSite({
     }),
     pricing: collection({
       listing: { title: 'name' },
+      untranslated: 'fallback',
       label: 'Preise',
       item: 'Plan',
       max: 6,
@@ -66,6 +67,7 @@ export default defineSite({
     }),
     changelog: collection({
       listing: { title: 'version', detail: 'date' },
+      untranslated: 'fallback',
       label: 'Changelog',
       max: 300,
       fields: {
@@ -84,6 +86,7 @@ export default defineSite({
     }),
     blog: collection({
       listing: { title: 'title', detail: 'date' },
+      untranslated: 'hide',
       label: 'Blog',
       item: 'Artikel',
       max: 200,
@@ -106,6 +109,7 @@ export default defineSite({
     }),
     testimonials: collection({
       listing: { title: 'quote' },
+      untranslated: 'fallback',
       label: 'Kundenstimmen',
       item: 'Stimme',
       max: 30,
@@ -119,6 +123,7 @@ export default defineSite({
     }),
     faq: collection({
       listing: { title: 'question' },
+      untranslated: 'fallback',
       label: 'Fragen und Antworten',
       item: 'Frage',
       max: 60,
@@ -130,6 +135,7 @@ export default defineSite({
     }),
     notices: collection({
       listing: { title: 'text', detail: 'until' },
+      untranslated: 'fallback',
       label: 'Ankündigungen',
       item: 'Ankündigung',
       max: 5,

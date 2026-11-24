@@ -32,7 +32,7 @@ vi.stubGlobal('useOps', () => ({}))
 const schema = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
   pages: { home: { de: '/' } },
-  bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }), story: f.markdown('Geschichte', { optional: true }) } }) },
+  bricks: { blog: collection({ untranslated: 'fallback', label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }), story: f.markdown('Geschichte', { optional: true }) } }) },
 }))
 
 // Wrong behaviour caught: a new draft is asked about by a generic name (the old "Neuer Eintrag" heading), or by its brick label "Blog" while empty.
@@ -140,7 +140,7 @@ test('a new entry starts like its create task: the task title and the prefill th
   const blog = (tasks: NonNullable<Parameters<typeof collection>[0]['tasks']>) => serializeSchema(defineSite({
     site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
     pages: { home: { de: '/' } },
-    bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, tasks, fields: { title: f.text('Titel'), date: f.date('Datum') } }) },
+    bricks: { blog: collection({ untranslated: 'fallback', label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, tasks, fields: { title: f.text('Titel'), date: f.date('Datum') } }) },
   }))
   const posts = blog([{ id: 'write', label: 'Beitrag schreiben', kind: 'create', prefill: { date: '@today' } }])
   const open = (schema: ReturnType<typeof blog>) => mount(EntryEditor, {
@@ -355,7 +355,7 @@ test('the preview of a new entry shows its own page once the title is typed, and
     const routed = serializeSchema(defineSite({
       site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
       pages: { about: { de: '/ueber-uns' } },
-      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/blog/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+      bricks: { blog: collection({ untranslated: 'hide', label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/blog/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
     vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
     const wrapper = mount(EntryEditor, {
@@ -416,7 +416,7 @@ test.each([
 // Wrong behaviour caught: the preview of an entry not translated into the language shown fell back to the site's first
 // page (/en/about-us) without a word, so the person saw an unrelated page (romi-10, J7 in another language).
 test.each([
-  ['hidden', undefined, 'Noch nicht auf Englisch übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.'],
+  ['hidden', 'hide' as const, 'Noch nicht auf Englisch übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.'],
   ['listed in the main language', 'fallback' as const, 'Noch nicht auf Englisch übersetzt. Bis dahin hat der Eintrag in dieser Sprache keine eigene Seite. Listen zeigen ihn auf Deutsch.'],
 ])('the English preview of an untranslated new entry says it is %s there, and shows its page once translated', async (_name, untranslated, text) => {
   vi.useFakeTimers()
@@ -425,7 +425,7 @@ test.each([
     const routed = serializeSchema(defineSite({
       site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
       pages: { about: { de: '/ueber-uns', en: '/en/about-us' } },
-      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/blog/[slug]', en: '/en/blog/[slug]' }, ...(untranslated ? { untranslated } : {}), fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/blog/[slug]', en: '/en/blog/[slug]' }, untranslated, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
     vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
     const wrapper = mount(EntryEditor, {
@@ -541,7 +541,7 @@ test('Alles bearbeiten on the English tab says a cleared title takes the entry o
     const routed = serializeSchema(defineSite({
       site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
       pages: { home: { de: '/', en: '/en' } },
-      bricks: { events: collection({ label: 'Events', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/events/[slug]', en: '/en/events/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+      bricks: { events: collection({ untranslated: 'hide', label: 'Events', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/events/[slug]', en: '/en/events/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
     const entry = { _id: 'e1', brick: 'events', kind: 'item', order: 0, data: { title: { de: 'Kürbisabend', en: 'Pumpkin night' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live', translation: { en: { page: 'shown', blocking: [], missing: [], outdated: [] } } } as const
     // The fields: the note under the title, as GinkoField reads it from the translation view.

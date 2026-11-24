@@ -203,6 +203,7 @@
           "title": "title",
           "image": "image"
         },
+        "untranslated": "hide",
         "route": {
           "en": "/[slug]",
           "de": "/de/[slug]"
@@ -268,6 +269,7 @@
           "field": "until",
           "deleteExpired": true
         },
+        "untranslated": "fallback",
         "pos": 2
       },
       "site": {
@@ -587,6 +589,7 @@
           "title": "title",
           "detail": "updatedAt"
         },
+        "untranslated": "hide",
         "route": {
           "en": "/legal/[slug]",
           "de": "/de/legal/[slug]"

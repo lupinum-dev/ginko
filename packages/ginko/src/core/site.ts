@@ -190,8 +190,8 @@ export function collection<const F extends Fields, const R extends Record<Locale
   route?: R
   visible?: Visibility<FieldsOfType<F, 'date' | 'daterange'>>
   /**
-   * A required translatable field is missing in a language: `'hide'` (default with a `route`) leaves the entry out
-   * there; `'fallback'` (default without) shows the main language and links to the main-language page.
+   * A required translatable field is missing in a language: `'hide'` leaves the entry out there; `'fallback'` shows the
+   * main language and links to the main-language page. Required when the site has more than one language.
    */
   untranslated?: 'fallback' | 'hide'
   /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`firstDayOfWeek`). */

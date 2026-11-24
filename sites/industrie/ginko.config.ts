@@ -75,6 +75,7 @@ export default defineSite({
     }),
     notices: collection({
       listing: { title: 'text', detail: 'until' },
+      untranslated: 'fallback',
       label: 'Hinweise',
       item: 'Hinweis',
       fields: {
@@ -90,6 +91,7 @@ export default defineSite({
     }),
     news: collection({
       listing: { title: 'title', detail: 'date' },
+      untranslated: 'hide',
       label: 'Aktuelles und Presse',
       item: 'Beitrag',
       fields: {
@@ -110,6 +112,7 @@ export default defineSite({
     }),
     jobs: collection({
       listing: { title: 'title', detail: 'until' },
+      untranslated: 'fallback',
       label: 'Stellen',
       item: 'Stelle',
       fields: {
@@ -138,6 +141,7 @@ export default defineSite({
     }),
     events: collection({
       listing: { title: 'title', detail: 'when' },
+      untranslated: 'fallback',
       label: 'Messen und Termine',
       item: 'Messe',
       fields: {
@@ -157,6 +161,7 @@ export default defineSite({
     }),
     products: collection({
       listing: { title: 'name' },
+      untranslated: 'hide',
       label: 'Produkte',
       item: 'Produkt',
       fields: {
@@ -184,6 +189,7 @@ export default defineSite({
     }),
     contacts: collection({
       listing: { title: 'name' },
+      untranslated: 'fallback',
       label: 'Ansprechpartner',
       item: 'Ansprechpartner',
       fields: {
@@ -202,6 +208,7 @@ export default defineSite({
     }),
     certificates: collection({
       listing: { title: 'title', detail: 'validUntil' },
+      untranslated: 'fallback',
       label: 'Zertifikate',
       item: 'Zertifikat',
       fields: {

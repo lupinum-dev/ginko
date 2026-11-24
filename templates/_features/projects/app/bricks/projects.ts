@@ -24,6 +24,7 @@ const campaigns = () => collection({
   ...common,
   fields: { ...fields(), ...campaign(), body: body() },
   listing: { title: 'title', detail: 'ends', image: 'image' },
+  untranslated: 'hide',
   showUntil: 'ends',
   status: { show: 'ending' },
   tasks: ['edit', 'add'],
@@ -34,6 +35,7 @@ const detailed = () => collection({
   ...common,
   fields: { ...fields(), ...details(), body: body() },
   listing: { title: 'title', image: 'image' },
+  untranslated: 'hide',
   tasks: [
     { id: 'edit', fields: ['title', 'summary', 'client', 'year', 'place', 'scope', 'image', 'photos', 'body'] },
     { id: 'photos', label: { de: 'Fotos hinzufügen', en: 'Add photos', fr: 'Ajouter des photos' }, fields: ['image', 'photos'] },

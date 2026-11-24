@@ -12,14 +12,14 @@ const before = defineSite({
   site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Vienna',
   locales: ['de', 'en'], currency: 'EUR', pages: {},
   bricks: {
-    menu: collection({ listing: { title: 'headline' }, label: 'Karte', fields: { headline: f.text('Überschrift', { max: 120 }), price: f.money('Preis') }, max: 20, order: 'manual' }),
+    menu: collection({ untranslated: 'fallback', listing: { title: 'headline' }, label: 'Karte', fields: { headline: f.text('Überschrift', { max: 120 }), price: f.money('Preis') }, max: 20, order: 'manual' }),
   },
 })
 
 const after = defineSite({
   ...before,
   bricks: {
-    menu: collection({
+    menu: collection({ untranslated: 'fallback',
       listing: { title: 'title' },
       label: 'Karte',
       fields: {
@@ -80,7 +80,7 @@ describe('buildCandidate: the entry budget (SPEC 3)', () => {
   // Wrong behaviour caught: one large entry blocks every release, also one that does not touch it or that only touches
   // it in the trash, which counts apart.
   it('counts only the live entries the release writes, and only when they grow', async () => {
-    const notes = (fields: Fields) => defineSite({ ...before, bricks: { notes: collection({ label: 'Notizen', listing: { title: 'title' }, fields: { title: f.text('Titel', { optional: true }), ...fields }, max: 20, order: 'manual' }) } })
+    const notes = (fields: Fields) => defineSite({ ...before, bricks: { notes: collection({ untranslated: 'fallback', label: 'Notizen', listing: { title: 'title' }, fields: { title: f.text('Titel', { optional: true }), ...fields }, max: 20, order: 'manual' }) } })
     const text = f.markdown('Text', { max: 500_000, translate: false })
     const stored = notes({ text })
     const big = (id: string, deletedAt: number | null) => ({ id, brick: 'notes', data: { text: 'x'.repeat(495_000) }, deletedAt })

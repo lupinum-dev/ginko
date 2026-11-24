@@ -500,6 +500,7 @@
         "title": "label",
         "detail": "from"
       },
+      "untranslated": "fallback",
       "fields": {
         "label": {
           "type": "text",
@@ -789,6 +790,7 @@
         "title": "text",
         "detail": "until"
       },
+      "untranslated": "fallback",
       "fields": {
         "text": {
           "type": "text",
@@ -1161,6 +1163,7 @@
       "listing": {
         "title": "weekOf"
       },
+      "untranslated": "fallback",
       "fields": {
         "weekOf": {
           "type": "date",
@@ -1480,6 +1483,7 @@
         "detail": "price",
         "group": "category"
       },
+      "untranslated": "fallback",
       "fields": {
         "category": {
           "type": "choice",
@@ -1838,6 +1842,7 @@
         "detail": "when",
         "image": "image"
       },
+      "untranslated": "hide",
       "fields": {
         "title": {
           "type": "text",

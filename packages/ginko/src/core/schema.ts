@@ -396,6 +396,10 @@ function schemaProblems(schema: Schema): string[] {
       if (!(brick.max >= 1 && brick.max <= 500)) problems.push(`${key}: max must be between 1 and 500.`)
       problems.push(...listingProblems(key, brick))
       if (brick.tree !== undefined) problems.push(...treeProblems(key, brick))
+      if (brick.untranslated !== undefined && brick.untranslated !== 'hide' && brick.untranslated !== 'fallback') problems.push(`${key}: untranslated must be “hide” or “fallback”.`)
+      else if (brick.untranslated === undefined && Array.isArray(schema.locales) && schema.locales.length > 1) {
+        problems.push(`${key}: untranslated is missing. The site has more than one language, so say what an entry does in a language it has no text in: 'hide' leaves it out there, 'fallback' shows the main language.`)
+      }
       if (brick.plans !== undefined) problems.push(...plansProblems(key, brick.plans, brick.fields, schema))
       if (brick.order !== 'manual' && !brick.fields[brick.order.field]) problems.push(`${key}: the sort field is missing.`)
       if (brick.order !== 'manual' && brick.order.dir !== undefined && brick.order.dir !== 'asc' && brick.order.dir !== 'desc') problems.push(`${key}: order.dir must be “asc” or “desc”.`)

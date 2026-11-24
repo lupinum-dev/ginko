@@ -13,6 +13,7 @@ export const logos = collection({
     url: f.text({ de: 'Website', en: 'Website', fr: 'Site web' }, { format: 'url', optional: true }),
   },
   listing: { title: 'name', image: 'image' },
+  untranslated: 'fallback',
   tasks: ['add', 'remove'],
 })
 
@@ -32,5 +33,6 @@ export const quotes = collection({
     }),
   },
   listing: { title: 'text' },
+  untranslated: 'fallback',
   tasks: ['add', 'edit'],
 })

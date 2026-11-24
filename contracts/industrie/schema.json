@@ -300,6 +300,7 @@
         "field": "until",
         "deleteExpired": true
       },
+      "untranslated": "fallback",
       "pos": 1
     },
     "news": {
@@ -382,6 +383,7 @@
         "title": "title",
         "detail": "date"
       },
+      "untranslated": "hide",
       "route": {
         "de": "/aktuelles/[slug]",
         "en": "/en/news/[slug]"
@@ -518,6 +520,7 @@
         "mode": "until",
         "field": "until"
       },
+      "untranslated": "fallback",
       "pos": 3
     },
     "events": {
@@ -588,6 +591,7 @@
         "mode": "until",
         "field": "when"
       },
+      "untranslated": "fallback",
       "pos": 4
     },
     "products": {
@@ -696,6 +700,7 @@
       "listing": {
         "title": "name"
       },
+      "untranslated": "hide",
       "route": {
         "de": "/produkte/[slug]",
         "en": "/en/products/[slug]"
@@ -768,6 +773,7 @@
       "listing": {
         "title": "name"
       },
+      "untranslated": "fallback",
       "pos": 6
     },
     "certificates": {
@@ -827,6 +833,7 @@
         "title": "title",
         "detail": "validUntil"
       },
+      "untranslated": "fallback",
       "pos": 7
     },
     "company": {

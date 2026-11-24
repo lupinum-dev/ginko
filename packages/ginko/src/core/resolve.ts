@@ -62,9 +62,12 @@ export interface ResolvedEntry {
   hidden: boolean
 }
 
-/** Pages (collections with a route) leave an untranslated entry out of that language; parts of pages fall back to the main language. */
+/**
+ * What an untranslated entry does, as the collection states it (`untranslated`). A site with one language need not
+ * state it: no entry is untranslated there, so `'fallback'` changes nothing.
+ */
 export function untranslatedMode(brick: CollectionBrick): 'hide' | 'fallback' {
-  return brick.untranslated ?? (brick.route ? 'hide' : 'fallback')
+  return brick.untranslated ?? 'fallback'
 }
 
 /** The print that marks a translation as fresh for the current main-language value. */
