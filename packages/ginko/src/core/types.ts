@@ -281,12 +281,15 @@ export type CollectionListing<T extends string = string, D extends string = stri
 /**
  * A collection whose entries are pages of a navigation tree, such as documentation: `parent` is a ref field to the
  * same collection that nests a page under another, `section` and `tab` are text fields that start a heading or a tab
- * at a top-level page. The order is the owner's (`order: 'manual'`). Field names only; any name works.
+ * at a top-level page, `label` is a text field with the short name the tree shows in place of the title, `badge` a
+ * text field shown as a badge beside it. The order is the owner's (`order: 'manual'`). Field names only; any name works.
  */
-export type CollectionTree<P extends string = string, S extends string = string, T extends string = string> = {
+export type CollectionTree<P extends string = string, S extends string = string, T extends string = string, L extends string = string, B extends string = string> = {
   parent: P
   section?: S
   tab?: T
+  label?: L
+  badge?: B
 }
 
 /**

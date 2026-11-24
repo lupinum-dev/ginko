@@ -36,7 +36,7 @@ const crumbs = computed(() => {
   return [
     ...(showTabs && root?.tab ? [label('tab', root.tab)!] : []),
     ...(root?.section ? [label('section', root.section)!] : []),
-    ...chain.map((at) => (at === NEW ? t('site.tree.thisPage') : byId.get(at)!.navTitle || byId.get(at)!.title || '')),
+    ...chain.map((at) => (at === NEW ? t('site.tree.thisPage') : byId.get(at)!.label || byId.get(at)!.title || '')),
   ]
 })
 </script>

@@ -546,17 +546,19 @@ function listingProblems(key: string, brick: CollectionBrick): string[] {
   return problems
 }
 
+const TREE_KEYS = ['parent', 'section', 'tab', 'label', 'badge'] as const
+
 /**
- * `tree` of a collection: `parent` names a live ref field to the same collection (one entry, not several); `section`
- * and `tab` name live text fields. The tree is the owner's order, so the collection is sorted by hand.
+ * `tree` of a collection: `parent` names a live ref field to the same collection (one entry, not several); `section`,
+ * `tab`, `label` and `badge` name live text fields. The tree is the owner's order, so the collection is sorted by hand.
  */
 function treeProblems(key: string, brick: CollectionBrick): string[] {
   const tree: unknown = brick.tree
   if (typeof tree !== 'object' || tree === null || Array.isArray(tree)) return [`${key}: tree must be an object such as { parent: 'parent' }.`]
   const problems: string[] = []
-  for (const k of Object.keys(tree)) if (!['parent', 'section', 'tab'].includes(k)) problems.push(`${key}.tree: unknown property “${k}” (known: parent, section, tab).`)
+  for (const k of Object.keys(tree)) if (!TREE_KEYS.includes(k as (typeof TREE_KEYS)[number])) problems.push(`${key}.tree: unknown property “${k}” (known: ${TREE_KEYS.join(', ')}).`)
   const values = tree as Record<string, unknown>
-  for (const name of ['parent', 'section', 'tab'] as const) {
+  for (const name of TREE_KEYS) {
     const value = values[name]
     if (value === undefined && name !== 'parent') continue
     const what = name === 'parent' ? `a ref field to ${key} itself (one entry)` : 'a text field'

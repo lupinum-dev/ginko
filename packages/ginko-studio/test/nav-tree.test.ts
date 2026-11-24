@@ -22,7 +22,7 @@ const data = ref<unknown>()
 const pages = (rows: Row[]) => {
   data.value = rows.map((r) => ({
     id: r._id, ...(r.parent ? { parent: r.parent } : {}), ...(r.section ? { section: r.section } : {}), ...(r.state === 'draft' ? { draft: true } : {}),
-    rev: r.rev ?? 3, state: r.state ?? 'live', publishAt: null, title: r._id, navTitle: null, badge: null, sectionLabel: r.section ?? null, tabLabel: null,
+    rev: r.rev ?? 3, state: r.state ?? 'live', publishAt: null, title: r._id, label: null, badge: null, sectionLabel: r.section ?? null, tabLabel: null,
   }))
 }
 const placeEntry = vi.fn(async () => true)

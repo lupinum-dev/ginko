@@ -28,10 +28,13 @@ export type ListingInput<F> = CollectionListing<
 
 /**
  * The entries are pages of a navigation tree: `parent` is a ref field to the collection itself, `section` and `tab`
- * are text fields that start a heading or a tab at a top-level page.
+ * are text fields that start a heading or a tab at a top-level page, `label` a text field with the short name the tree
+ * shows in place of the title, `badge` a text field shown as a badge.
  */
 export type TreeInput<F> = CollectionTree<
   Need<FieldsOfType<F, 'ref'>, 'This brick has no ref field'>,
+  FieldsOfType<F, 'text'>,
+  FieldsOfType<F, 'text'>,
   FieldsOfType<F, 'text'>,
   FieldsOfType<F, 'text'>
 >

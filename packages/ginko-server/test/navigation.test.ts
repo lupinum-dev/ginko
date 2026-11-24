@@ -228,6 +228,28 @@ describe('tree: the brick states its navigation tree (design V2 guess 6)', () =>
     expect((await s.t.run((ctx) => ctx.db.get(s.ids.paging!)))!.data).not.toHaveProperty('parent')
   })
 
+  // Wrong (design V2 guess 4): the tree shows a field called `navTitle` as the short name and one called `badge` as the
+  // badge, so a site that names them otherwise shows neither, and a site with such fields shows them unasked.
+  it('shows the short name and the badge of the fields `tree.label` and `tree.badge` name', async () => {
+    const s = await docsSite([{ key: 'intro' }, { key: 'setup' }])
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      const docs = schema.bricks.docs as CollectionBrick
+      docs.fields = { ...docs.fields, kurz: { type: 'text', label: 'Kurztitel', optional: true }, neu: { type: 'text', label: 'Hinweis', optional: true }, navTitle: { type: 'text', label: 'Alt', optional: true }, badge: { type: 'text', label: 'Alt', optional: true } }
+      await ctx.db.patch(s.site, { schema })
+      const data = (await ctx.db.get(s.ids.intro!))!.data as Record<string, Json>
+      await ctx.db.patch(s.ids.intro!, { data: { ...data, kurz: { de: 'Start' }, neu: { de: 'Neu' }, navTitle: { de: 'Nicht' }, badge: { de: 'Nicht' } } })
+    })
+    const rows = async () => (await s.as.owner.query(api.navigation.tree, { site: 'restaurant', brick: 'docs' })).map((r) => [r.label, r.badge])
+    expect(await rows()).toEqual([[null, null], [null, null]])
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.docs as CollectionBrick).tree = { parent: 'parent', section: 'section', tab: 'tab', label: 'kurz', badge: 'neu' }
+      await ctx.db.patch(s.site, { schema })
+    })
+    expect(await rows()).toEqual([['Start', 'Neu'], [null, null]])
+  })
+
   // Wrong: a manually ordered collection with a `parent` ref to itself becomes a tree by its shape.
   it('is no tree without `tree`, whatever its fields', async () => {
     const s = await docsSite(PAGES)

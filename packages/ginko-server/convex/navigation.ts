@@ -75,10 +75,12 @@ export const tree = query({
     const rows = rowsOf(schema, brick, pages)
     return pages.map((p, i) => {
       const data = p.data as Data
-      const text = (key: string) => textIn(brick.fields[key], data[key], language, main) ?? null
       return {
         ...rows[i]!, rev: p.rev, state: p.state ?? 'live', publishAt: p.publishAt ?? null,
-        title: titleOf(schema, brick, data, language), navTitle: text('navTitle'), badge: text('badge'),
+        title: titleOf(schema, brick, data, language),
+        // The short name and the badge the tree states (`tree.label`, `tree.badge`), in the language shown.
+        label: treeText(brick, brick.tree.label, data, language, main) ?? null,
+        badge: treeText(brick, brick.tree.badge, data, language, main) ?? null,
         // Labels in the language shown, for the headings (the rules run on the main language).
         sectionLabel: treeText(brick, brick.tree.section, data, language, main) ?? null,
         tabLabel: treeText(brick, brick.tree.tab, data, language, main) ?? null,

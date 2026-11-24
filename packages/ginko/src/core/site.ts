@@ -193,7 +193,7 @@ export function collection<const F extends Fields, const R extends Record<Locale
    */
   listing: CollectionListing<keyof F & string, keyof F & string, keyof F & string, keyof F & string>
   /** The entries are pages of a navigation tree: `parent` (a ref to this collection), `section` and `tab` (text fields). */
-  tree?: CollectionTree<keyof F & string, keyof F & string, keyof F & string>
+  tree?: CollectionTree<keyof F & string, keyof F & string, keyof F & string, keyof F & string, keyof F & string>
   route?: R
   visible?: Visibility<FieldsOfType<F, 'date' | 'daterange'>>
   /**
