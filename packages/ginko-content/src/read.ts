@@ -35,7 +35,7 @@ export function errorLine(e: ContentError): string {
 
 export interface ReadOptions {
   /**
-   * `false` leaves out entries marked `draft: true`, and scheduled entries: in a collection that lists its entries
+   * `false` leaves out entries marked `$draft: true`, and scheduled entries: in a collection that lists its entries
    * newest first by a date (`order: { field, dir: 'desc' }`), an entry dated after `today`.
    * Default `true` (dev shows both).
    */
@@ -100,15 +100,44 @@ function fail(cx: FileCx, path: string, message: string) {
   cx.errors.push({ file: cx.file, path, ...(display !== undefined && display !== path ? { display } : {}), message, ...(cx.line !== undefined ? { line: cx.line } : {}) })
 }
 
-/** The reserved key `redirectFrom`: one old path or a list of them, each starting with `/`. Only the main-language file may set it. */
+/**
+ * The keys of a content file that are no fields: they start with `$`, and a field name never does (V2 5.6). A key
+ * that starts with `$` and is not one of these is a problem.
+ */
+const DOLLAR_KEYS = ['$draft', '$redirectFrom'] as const
+/** Keys that were reserved before the `$` keys, with the key that replaced each. */
+const RENAMED: Record<string, string> = {
+  draft: '`$draft: true`',
+  redirectFrom: '`$redirectFrom: /old-path`',
+}
+
+/**
+ * Splits a file's data into the fields of the brick and the `$` keys. A `$` key Ginko does not know, and a key that
+ * was reserved before (`draft`, `redirectFrom`) on a brick without a field of that name, are problems, and so is a
+ * `$` key in a translation file; the key is then left out.
+ */
+function splitKeys(cx: FileCx, fields: Fields, data: Record<string, unknown>): { fields: Record<string, unknown>; dollar: Partial<Record<(typeof DOLLAR_KEYS)[number], unknown>> } {
+  const own: Record<string, unknown> = {}
+  const dollar: Partial<Record<(typeof DOLLAR_KEYS)[number], unknown>> = {}
+  for (const [key, value] of Object.entries(data)) {
+    if (key.startsWith('$')) {
+      const known = DOLLAR_KEYS.find((k) => k === key)
+      // They hold one state for all languages, so only the main-language file states them.
+      if (known && !cx.isMain) fail(cx, key, `“${key}” belongs in the main-language file.`)
+      else if (known) dollar[known] = value
+      else fail(cx, key, `“${key}” is not a key Ginko knows. Keys that start with $ are ${DOLLAR_KEYS.join(', ')}; every other key is a field of the brick.`)
+    } else if (Object.hasOwn(RENAMED, key) && !Object.hasOwn(fields, key)) {
+      fail(cx, key, `“${key}” is no field of this brick. Write ${RENAMED[key]}: keys that are no fields start with $.`)
+    } else own[key] = value
+  }
+  return { fields: own, dollar }
+}
+
+/** `$redirectFrom`: one old path or a list of them, each starting with `/`. */
 function redirectPaths(cx: FileCx, value: unknown): string[] | undefined {
   const list = Array.isArray(value) ? value : [value]
   if (!list.every((p): p is string => typeof p === 'string' && p.startsWith('/') && !p.startsWith('//'))) {
-    fail(cx, 'redirectFrom', '“redirectFrom” must be a path or a list of paths, each starting with “/”.')
-    return undefined
-  }
-  if (!cx.isMain) {
-    fail(cx, 'redirectFrom', '“redirectFrom” belongs in the main-language file.')
+    fail(cx, '$redirectFrom', '“$redirectFrom” must be a path or a list of paths, each starting with “/”.')
     return undefined
   }
   return list
@@ -572,10 +601,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
 
       // Values are validated above; they come from JSON-like YAML and parsed Markdown.
       const entry: StoredEntry = { id, data: data as Record<string, Json> }
-      // Old paths of the entry (main-language file only): stored beside the fields so the bundle carries them for `entryRedirects`.
-      if (mainView.redirectFrom?.length) entry.data.redirectFrom = mainView.redirectFrom
-      // Only reachable when drafts are on (dev): the site can mark the entry as a draft.
-      if (mainView.draft) entry.data.draft = true
+      // Old paths of the entry (main-language file only), beside the fields: the bundle forwards them (`oldUrls`).
+      if (mainView.redirectFrom?.length) entry.redirectFrom = mainView.redirectFrom
 
       // A locale without its own slug takes the main one (`routeUrls`), so the URL can clash although the written slugs differ.
       // Every locale counts, translated or not: the entry gets that page as soon as it is translated.
@@ -599,9 +626,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     /**
      * Reads one source: its data converted (Markdown: frontmatter, body text into the brick's markdown field, plus
      * the parsed body; YAML, JSON and CSV: the whole file or row is data and there is no body).
-     * `'draft'` when the entry is marked `draft: true` and drafts are off.
+     * `'draft'` when the entry is marked `$draft: true` and drafts are off.
      */
-    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; draft?: true; scheduled?: true } | 'draft' | undefined> {
+    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; scheduled?: true } | 'draft' | undefined> {
       const { rel } = src
       const ext = extOf(rel)
       const markdownKey = markdownKeyOf(brick)
@@ -616,7 +643,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         columns.forEach((column, i) => {
           const cell = (row.cells[i] ?? '').trim()
           if (column === '' || column === 'slug' || column === 'locale' || cell === '') return
-          const result = column === 'draft' ? cellValue({ draft: { type: 'boolean', label: 'draft' } }, column, cell) : cellValue(brick.fields, column, cell)
+          // A `$` column is not a field: its cell is kept as written for splitKeys (`$draft` takes `true`).
+          if (column.startsWith('$')) { data[column] = column === '$draft' && cell === 'true' ? true : cell; return }
+          const result = cellValue(brick.fields, column, cell)
           if ('error' in result) fail(cx, column, result.error)
           else data[column] = result.value
         })
@@ -646,11 +675,11 @@ export async function readContent(contentDir: string, publicDir: string, schema:
           data = raw
         }
       }
-      // `draft` and `redirectFrom` are reserved: they are no fields of the brick.
-      const { draft, redirectFrom, ...fields } = data
-      const redirects = redirectFrom === undefined ? undefined : redirectPaths(cx, redirectFrom)
-      if (draft !== undefined && typeof draft !== 'boolean') fail(cx, 'draft', '“draft” must be true or false.')
-      if (draft === true && !drafts && fileErrors.length === 0) return 'draft'
+      const { fields, dollar } = splitKeys(cx, brick.fields, data)
+      const redirects = dollar.$redirectFrom === undefined ? undefined : redirectPaths(cx, dollar.$redirectFrom)
+      if (dollar.$draft !== undefined && dollar.$draft !== true) fail(cx, '$draft', '“$draft” takes only true. Leave it out for an entry that is online.')
+      const draft = dollar.$draft === true
+      if (draft && !drafts && fileErrors.length === 0) return 'draft'
       // A scheduled entry (dated after the build day) is left out like a draft; the first build on or after its date
       // publishes it. Only the main file holds the date.
       // Only a real ISO date schedules: any other text is left to validate(), which reports it. The entry is checked
@@ -667,7 +696,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
-      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, draft: draft === true ? true : undefined, scheduled: scheduled ? true : undefined }
+      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, scheduled: scheduled ? true : undefined }
     }
   }
 

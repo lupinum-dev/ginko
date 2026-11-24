@@ -47,7 +47,7 @@ export default defineSite({
         lead: f.longtext({ en: 'Lead', de: 'Einleitung', fr: 'Introduction' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
       },
     }),
-    // The posts, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
+    // The posts, newest first (content/posts/). `authors` names entries of `people`. A file with `$draft: true` never
     // goes online, and a post dated after the day of the build waits for the first build on or after its date.
     // In the Studio, Today lists the drafts and the scheduled posts.
     posts: extend(posts({ authors: 'people' }), {

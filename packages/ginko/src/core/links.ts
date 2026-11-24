@@ -29,7 +29,7 @@ export interface CheckLinksOptions {
   files?: (path: string) => boolean
   /** Severities; default: broken `error`, anchors and redirected `warn`. Callers pass the site's `linkCheck`. */
   linkCheck?: LinkConfig
-  /** The site's redirect rules (config); entry rules (`redirectFrom`) are read from the bundles. */
+  /** The site's redirect rules (config); entry rules (`oldUrls`) are read from the bundles. */
   redirects?: Redirect[]
 }
 

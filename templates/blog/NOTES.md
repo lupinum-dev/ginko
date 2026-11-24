@@ -7,7 +7,7 @@
 - **Photos.** The three photos are stock photos (MEDIA.md); four of the seven posts have none on purpose, to show the
   no-image state.
 - **Scheduled post and draft.** `owls-in-the-old-cemetery` is dated 2027-01-17 and `lichen-on-the-old-bridge` has
-  `draft: true`; both must stay off the site (gate 3, `templates/_features/blog/e2e/blog.spec.ts`). create-ginko does
+  `$draft: true`; both must stay off the site (gate 3, `templates/_features/blog/e2e/blog.spec.ts`). create-ginko does
   not move post dates (posts have no `visible` rule), so in a copy made after 17 January 2027 the owls post is an
   ordinary published post. Move its date with the monthly re-anchor if the sample should keep a scheduled post.
 - **German** says "du" on every page (a personal blog), also in the placeholders of `content/legal/`.

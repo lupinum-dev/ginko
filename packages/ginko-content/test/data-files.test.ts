@@ -112,10 +112,10 @@ describe('CSV entries', () => {
 describe('drafts', () => {
   const files = {
     'content/angebote/1.fertig.yml': 'title: Fertig',
-    'content/angebote/2.yaml-entwurf.yaml': 'title: Entwurf\ndraft: true',
-    'content/angebote/3.json-entwurf.json': '{ "title": "Entwurf", "draft": true }',
-    'content/angebote/liste.csv': 'slug,title,draft\ncsv-fertig,Csv,false\ncsv-entwurf,Csv Entwurf,true',
-    'content/docs/a.md': '---\ntitle: A\ndraft: true\n---\n\nText.\n',
+    'content/angebote/2.yaml-entwurf.yaml': 'title: Entwurf\n$draft: true',
+    'content/angebote/3.json-entwurf.json': '{ "title": "Entwurf", "$draft": true }',
+    'content/angebote/liste.csv': 'slug,title,$draft\ncsv-fertig,Csv,\ncsv-entwurf,Csv Entwurf,true',
+    'content/docs/a.md': '---\ntitle: A\n$draft: true\n---\n\nText.\n',
   }
 
   it.each([
@@ -139,10 +139,44 @@ describe('drafts', () => {
     expect(r.entries.termine!.map((e) => e.id)).toEqual(dates)
   })
 
-  // Wrong behaviour caught: a shown draft loses its flag, so the site cannot mark it, or a finished entry gets one.
-  it('keeps the flag on shown drafts only', async () => {
+  // Wrong behaviour caught: the old reserved name still hides an entry (or passes in silence), so a file written for
+  // the old rule stays online or offline without a word.
+  it.each([
+    ['draft: true', 'draft', '`$draft: true`'],
+    ['redirectFrom: /alt', 'redirectFrom', '`$redirectFrom: /old-path`'],
+  ])('refuses %s on a brick without such a field, naming the $ key', async (line, path, key) => {
+    const r = await read({ 'content/docs/a.md': `---\ntitle: A\n${line}\n---\n\nText.\n` }, { drafts: false })
+    expect(r.errors).toEqual([{ file: 'docs/a.md', path, message: `“${path}” is no field of this brick. Write ${key}: keys that are no fields start with $.` }])
+  })
+
+  // Wrong behaviour caught: `draft` stays a reserved name, so a brick cannot have a field of that name.
+  it('reads a field called draft as a field', async () => {
+    const own = serializeSchema(defineSite({
+      site: 'notes', name: 'Notes', url: 'https://notes.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/' } },
+      bricks: { notes: collection({ listing: { title: 'title' }, label: 'Notes', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Title'), draft: f.boolean('Draft') } }) },
+    }))
+    const root = mkdtempSync(join(tmpdir(), 'ginko-draft-field-'))
+    mkdirSync(join(root, 'content/notes'), { recursive: true })
+    writeFileSync(join(root, 'content/notes/a.yml'), 'title: A\ndraft: true')
+    const r = await readContent(join(root, 'content'), join(root, 'public'), own, { drafts: false })
+    expect(r.errors).toEqual([])
+    expect(r.entries.notes!.map((e) => [e.id, e.data.draft])).toEqual([['notes/a', true]])
+  })
+
+  // Wrong behaviour caught: a misspelt or future `$` key ($changes) is dropped in silence, or read as a field.
+  it('refuses a $ key Ginko does not know', async () => {
+    const r = await read({ 'content/angebote/a.yml': 'title: A\n$changes: ja' })
+    expect(r.errors).toEqual([{ file: 'angebote/a.yml', path: '$changes', message: '“$changes” is not a key Ginko knows. Keys that start with $ are $draft, $redirectFrom; every other key is a field of the brick.' }])
+  })
+
+  // Wrong behaviour caught: `$draft: false` or `$draft: yes` is taken as a second written form, or a translation
+  // marks one language a draft although the entry has one state.
+  it.each([
+    [{ 'content/angebote/a.yml': 'title: A\n$draft: false' }, 'angebote/a.yml', '“$draft” takes only true. Leave it out for an entry that is online.'],
+    [{ 'content/angebote/a.yml': 'title: A', 'content/angebote/a.en.yml': 'title: A\n$draft: true' }, 'angebote/a.en.yml', '“$draft” belongs in the main-language file.'],
+  ])('refuses a $draft that is not true in the main file (%#)', async (files, file, message) => {
     const r = await read(files)
-    expect(r.entries.angebote!.map((e) => e.data.draft ?? false)).toEqual([false, true, true, false, true])
+    expect(r.errors).toEqual([{ file, path: '$draft', message }])
   })
 })
 
@@ -179,29 +213,40 @@ describe('scheduled entries', () => {
   })
 })
 
-describe('redirectFrom', () => {
-  // Wrong behaviour caught: the reserved key is read as a field (error), lost on the way to the entry, or a bad value passes.
-  it('is read from the main file (string or list) and kept on the entry', async () => {
+describe('$redirectFrom', () => {
+  // Wrong behaviour caught: the old paths are lost on the way to the entry, or land in `data` as if they were a field.
+  it('is read from the main file (string or list) and kept beside the fields', async () => {
     const r = await read({
-      'content/docs/a.md': '---\ntitle: A\nredirectFrom: /alt-a\n---\n\nText.\n',
-      'content/angebote/kaffee.yml': 'title: Kaffee\nredirectFrom: [/k1, /k2]',
+      'content/docs/a.md': '---\ntitle: A\n$redirectFrom: /alt-a\n---\n\nText.\n',
+      'content/angebote/kaffee.yml': 'title: Kaffee\n$redirectFrom: [/k1, /k2]',
     })
     expect(r.errors).toEqual([])
-    expect(r.entries.docs![0]!.data.redirectFrom).toEqual(['/alt-a'])
-    expect(r.entries.angebote![0]!.data.redirectFrom).toEqual(['/k1', '/k2'])
+    expect(r.entries.docs![0]!.redirectFrom).toEqual(['/alt-a'])
+    expect(r.entries.angebote![0]!.redirectFrom).toEqual(['/k1', '/k2'])
   })
 
   it.each([
-    ['no slash', 'redirectFrom: alt', 'docs/a.md'],
-    ['not text', 'redirectFrom: [1]', 'docs/a.md'],
-    ['protocol-relative', 'redirectFrom: //evil.example', 'docs/a.md'],
+    ['no slash', '$redirectFrom: alt', 'docs/a.md'],
+    ['not text', '$redirectFrom: [1]', 'docs/a.md'],
+    ['protocol-relative', '$redirectFrom: //evil.example', 'docs/a.md'],
   ])('reports a bad value (%s) with the file', async (_name, line, file) => {
     const r = await read({ 'content/docs/a.md': `---\ntitle: A\n${line}\n---\n\nText.\n` })
-    expect(r.errors).toEqual([{ file, path: 'redirectFrom', message: expect.stringContaining('redirectFrom') }])
+    expect(r.errors).toEqual([{ file, path: '$redirectFrom', message: '“$redirectFrom” must be a path or a list of paths, each starting with “/”.' }])
   })
 
   it('is rejected in a translation file', async () => {
-    const r = await read({ 'content/docs/a.md': '---\ntitle: A\n---\n\nText.\n', 'content/docs/a.en.md': '---\ntitle: A\nredirectFrom: /x\n---\n\nText.\n' })
+    const r = await read({ 'content/docs/a.md': '---\ntitle: A\n---\n\nText.\n', 'content/docs/a.en.md': '---\ntitle: A\n$redirectFrom: /x\n---\n\nText.\n' })
     expect(r.errors.map((e) => e.file)).toEqual(['docs/a.en.md'])
   })
+})
+
+// Wrong behaviour caught: `data` carries `draft` or `redirectFrom` again (guess 16), so site code reads a key that is
+// no field and a brick's own field of that name is shadowed.
+it('data holds the fields only', async () => {
+  const r = await read({
+    'content/angebote/a.yml': 'title: A\n$draft: true\n$redirectFrom: /alt',
+    'content/docs/a.md': '---\ntitle: A\n$redirectFrom: /alt-doc\n---\n\nText.\n',
+  })
+  expect(r.errors).toEqual([])
+  expect([...r.entries.angebote!, ...r.entries.docs!].map((e) => Object.keys(e.data).filter((k) => !['title', 'slug', 'steps', 'body'].includes(k)))).toEqual([[], []])
 })

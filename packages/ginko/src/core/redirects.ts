@@ -71,7 +71,7 @@ export function matchRedirect(rules: readonly Redirect[], path: string): { to: s
   return undefined
 }
 
-/** The redirect for `path`: the site's config rules first, then the entries' `redirectFrom` in the given bundle (the one of the path's locale). */
+/** The redirect for `path`: the site's config rules first, then the entries' `oldUrls` in the given bundle (the one of the path's locale). */
 export function findRedirect(rules: readonly Redirect[], bundle: Bundle | undefined, path: string): { to: string; status: 301 | 302 | 307 | 308 } | undefined {
   if (!bundle) return matchRedirect(rules, path)
   let fromEntries = entryRules.get(bundle)
@@ -80,21 +80,18 @@ export function findRedirect(rules: readonly Redirect[], bundle: Bundle | undefi
 }
 
 /**
- * Rules from entries: every collection item whose data has `redirectFrom` (a string or string[] of old paths) gets a 301 rule from each old path to its URL in the bundle's locale. Items without a URL are skipped.
- * The platform's `oldUrls` (addresses before a slug change, entries.changeSlug) become such rules too.
+ * Rules from entries: every collection item's `oldUrls` in the bundle's locale get a 301 rule to its URL there. They
+ * are a file entry's `$redirectFrom` and, on the platform, the addresses before a slug change (entries.changeSlug).
+ * Items without a URL are skipped.
  */
 export function entryRedirects(bundle: Bundle): Redirect[] {
   const rules: Redirect[] = []
   for (const brick of Object.values(bundle.bricks)) {
     if (brick.kind !== 'collection') continue
     for (const item of brick.items) {
-      const value = item.data.redirectFrom
-      const oldPaths = Array.isArray(value)
-        ? value.filter((path): path is string => typeof path === 'string')
-        : typeof value === 'string' ? [value] : []
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      for (const from of [...oldPaths, ...(item.oldUrls?.[bundle.locale] ?? [])]) rules.push({ from, to: url, status: 301 })
+      for (const from of item.oldUrls?.[bundle.locale] ?? []) rules.push({ from, to: url, status: 301 })
     }
   }
   return rules

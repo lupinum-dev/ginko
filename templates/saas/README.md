@@ -56,7 +56,7 @@ links. Other builds (CI, your computer) only print a warning.
 **Static files.** This site can also be built as static files for any web host (`npm run generate`, output in
 `.output/public/`). Nothing on it depends on today's date except the notices and the releases: with static files, a
 notice leaves the site with the next build after its last day, not at midnight, and a release dated after the build day
-appears with the first build on or after that date. `draft: true` in a release file holds that release back. Rebuild
+appears with the first build on or after that date. `$draft: true` in a release file holds that release back. Rebuild
 when you change a notice or a release, and add a daily rebuild (for example a Vercel cron job or a scheduled GitHub
 Action).
 
@@ -99,7 +99,7 @@ a translation with a different number of rows.
 | Changelog | `content/changelog/v<version>.md` (`v4-6-0.md`: a dot in a file name reads as a language): `version`, `date`, then the text: one sentence (the summary on the home page and in the feed), a line `<!-- more -->`, and the changes under `### New`, `### Improved` and `### Fixed` |
 | FAQ | `content/faq/<n>.<name>.md`: `question`, `answer`; the pricing page shows the first three, so keep billing, cancellation and data export at the top |
 | Help center (`/help`) | `content/docs/<n>.<name>.md`: `title`, `description` (the line on the start page's card), `section` (a heading in the navigation; the pages after it belong to it), then the text; each translation sets its own address with `slug:`. Steps, notes and tables are Markdown components (`::steps`, `::callout`). The box under every help page is `app/components/DocsPageEnd.vue`, the start page `app/pages/help/index.vue` |
-| Blog | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/lena-hartmann]`), `tags`, `image` (the cover, 3:2); `draft: true` keeps a post off the site |
+| Blog | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/lena-hartmann]`), `tags`, `image` (the cover, 3:2); `$draft: true` keeps a post off the site |
 | Authors of the blog | `content/people/<n>.<name>.md`: `name`, `role`, `bio`; no photo needed, the site shows initials |
 | Customer logos | `content/logos/<n>.<name>.md`: `name`, `image` (an SVG or PNG in `public/logos/`), `url` |
 | Quote on the home page | `content/quotes/<n>.<name>.md`: `text`, `name`, `role`; the home page shows the first |

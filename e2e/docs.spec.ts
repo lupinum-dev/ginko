@@ -37,7 +37,7 @@ test('a missing page is a 404 inside the site frame, with the header and a way b
   await expect(page).toHaveURL(`${origin}/docs/what-ginko-is`)
 })
 
-test('a post marked draft: true is not in the production build', async ({ page }) => {
+test('a post marked $draft: true is not in the production build', async ({ page }) => {
   expect((await page.goto(`${origin}/blog/draft`))!.status()).toBe(404)
   await page.goto(`${origin}/blog`)
   await expect(page.getByRole('link', { name: 'One file per language' })).toBeVisible()

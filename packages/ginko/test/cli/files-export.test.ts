@@ -78,9 +78,9 @@ describe('local:files-export', () => {
     expect(preis).toMatchObject({ id: 'faq/preis', order: 0, data: { question: { de: 'Was kostet es?' }, answer: { de: 'Das kommt darauf an.' } } })
   })
 
-  it('leaves out a file marked draft: true, as the build does', async () => {
-    // Wrong behaviour caught: the draft goes into the export with `draft` as a field, and the import refuses all of it.
-    const s = site({ 'content/blog/3.entwurf.md': '---\ntitle: Entwurf\ndraft: true\n---\n\nNoch nicht fertig.\n' })
+  it('leaves out a file marked $draft: true, as the build does', async () => {
+    // Wrong behaviour caught: the draft goes into the export as an online entry.
+    const s = site({ 'content/blog/3.entwurf.md': '---\ntitle: Entwurf\n$draft: true\n---\n\nNoch nicht fertig.\n' })
     const logs: string[] = []
     const { code, json } = await run(['files-export', '--config', s.config, s.out], logs)
     expect(code).toBe(0)

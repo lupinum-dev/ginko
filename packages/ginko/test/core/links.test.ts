@@ -123,14 +123,14 @@ describe('checkLinks', () => {
     expect(checkLinks([b], mixed)).toEqual([])
     expect(checkLinks([resolveRouteLinks(withText(link('$nope.x')), mixed)], mixed)).toHaveLength(1)
   })
-  // Wrong behaviour caught: a link to an old URL goes unnoticed, the level is ignored, or an entry's redirectFrom is not considered.
+  // Wrong behaviour caught: a link to an old URL goes unnoticed, the level is ignored, or an entry's old addresses (oldUrls) are not considered.
   it.each([
     ['config rule', [{ from: '/alt', to: '/blog/hallo' }], undefined, 'warn'],
-    ['entry redirectFrom', [], undefined, 'warn'],
+    ['entry oldUrls', [], undefined, 'warn'],
     ['level error', [{ from: '/alt', to: '/blog/hallo' }], { redirected: 'error' as const }, 'error'],
     ['level off', [{ from: '/alt', to: '/blog/hallo' }], { redirected: 'off' as const }, undefined],
   ])('link to a redirected path: %s', (name, redirects, links, severity) => {
-    const target = name === 'entry redirectFrom' ? item('blog/hallo', { slug: 'hallo', redirectFrom: ['/alt'] }, '/blog/hallo') : post
+    const target = name === 'entry oldUrls' ? { ...item('blog/hallo', { slug: 'hallo' }, '/blog/hallo'), oldUrls: { de: ['/alt'] } } : post
     const b = bundle([target, item('blog/other', { slug: 'other', body: tree(link('/alt?x=1')) }, '/blog/other')])
     const issues = checkLinks([b], schema, { redirects, linkCheck: links })
     expect(issues.map((i) => [i.severity, i.message])).toEqual(severity ? [[severity, 'Link /alt?x=1 führt über eine Weiterleitung zu /blog/hallo.']] : [])

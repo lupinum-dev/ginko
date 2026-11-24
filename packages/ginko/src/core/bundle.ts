@@ -12,7 +12,7 @@ export interface BundleItem {
   fallback: string[]
   /** Only for collections with `route`, only visible entries, only locales where the entry exists. */
   urls?: Partial<Record<Locale, string>>
-  /** Platform only: addresses the entry had before its slug was changed, per locale where it has a page; the site forwards them to `urls` (301). */
+  /** Old addresses per locale, which the site forwards to `urls` (301): a file entry's `$redirectFrom`, a platform entry's addresses before its slug was changed. */
   oldUrls?: Partial<Record<Locale, string[]>>
   /** When the entry last changed (ISO 8601, UTC). Files: last commit of its files, else file time. Platform: last published change. */
   updatedAt?: string

@@ -20,6 +20,8 @@ export interface StoredEntry {
   updatedAt?: string
   /** Repo-relative path of the file per locale (a translation's own file); file entries only. */
   sources?: Partial<Record<Locale, string>>
+  /** Old paths of a file entry (`$redirectFrom`); the bundle forwards them to the entry's page in every language (`oldUrls`). */
+  redirectFrom?: string[]
 }
 
 export interface FileInfo {
@@ -342,9 +344,8 @@ export function buildBundle(input: BuildBundleInput): Bundle {
       const r = resolveEntry(schema, key, entry, ctx)
       if (r.hidden) continue
       const item: BundleItem = { id: entry.id, data: r.data, fallback: r.fallback }
-      // resolveEntry keeps only schema fields; `redirectFrom` and `draft` (reserved keys of content files) are no fields, and the bundle carries them.
-      if (entry.data.redirectFrom !== undefined) item.data.redirectFrom = entry.data.redirectFrom
-      if (entry.data.draft === true) item.data.draft = true
+      // `data` holds the fields only; a file entry's old paths forward to its page in this language.
+      if (entry.redirectFrom?.length) item.oldUrls = { [locale]: [...entry.redirectFrom] }
       if (entry.updatedAt !== undefined) item.updatedAt = entry.updatedAt
       // The file of this locale ("edit this page" opens the translation), else the main-language file.
       const source = entry.sources?.[locale] ?? entry.sources?.[main]

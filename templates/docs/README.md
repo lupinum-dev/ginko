@@ -66,7 +66,7 @@ cards are written to `.output/public/`; upload that folder. A static site needs 
   Pages do this by default).
 - A release dated after the build day appears with the first build on or after that date, so a site with scheduled
   releases needs a daily rebuild (for example a Vercel cron job or a scheduled GitHub Action that triggers the build).
-  `draft: true` in a release file holds that release back until you remove it. Nothing else goes stale between
+  `$draft: true` in a release file holds that release back until you remove it. Nothing else goes stale between
   builds. If you add a banner (`docs.banner` in `app/app.config.ts`), it changes with the next build as well.
 - The MCP endpoint for AI agents (`POST /__ginko/docs-mcp`) needs the server; a static site has none. Agents can
   still read `llms.txt` and the `.md` version of every page.
@@ -203,7 +203,7 @@ prefix.
   `x.de.md` becomes `x.md` (it keeps its German `slug`) and the old `x.md` becomes `x.en.md` with
   `slug: <its old name>` (for example `slug: introduction`). A page with only an English file, such as
   `7.upgrading-to-v2.md`, needs a German `x.md` first; then rename the English one to `x.en.md`. Each page now has new
-  addresses, so list the old ones under `redirectFrom` in the German file. A new site: `npm create ginko@latest
+  addresses, so list the old ones under `$redirectFrom` in the German file. A new site: `npm create ginko@latest
   my-docs -- --template docs --locales de,en`.
 - **Add one** (for example French): add `'fr'` to `locales` (`pages.home` follows the list), add
   `content/**/*.fr.md` translations (pages without one stay in English, see "A page without a translation") and

@@ -84,7 +84,7 @@ export default defineSite({
     // Open jobs (content/jobs/). Each needs `validUntil`: the day after it the job leaves the list, its page, the
     // sitemap and search engines by itself. In the Studio, Today lists jobs that end within 7 days.
     jobs: jobs(),
-    // News, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never goes
+    // News, newest first (content/posts/). `authors` names entries of `people`. A file with `$draft: true` never goes
     // online; in the Studio, Today shows how old the newest post is and has a button to write one.
     posts: extend(posts({ authors: 'people' }), {
       status: { show: 'newest', field: 'date' },

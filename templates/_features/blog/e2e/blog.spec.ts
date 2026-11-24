@@ -15,8 +15,8 @@ const files = existsSync(dir)
     })
   : []
 const today = site.now.slice(0, 10)
-/** Drafts (`draft: true`) and scheduled posts (dated after the test day): neither may be online. */
-const hidden = files.filter(({ text }) => /^draft:\s*true\s*$/m.test(text) || (/^date:\s*(\S+)/m.exec(text)?.[1] ?? '') > today)
+/** Drafts (`$draft: true`) and scheduled posts (dated after the test day): neither may be online. */
+const hidden = files.filter(({ text }) => /^\$draft:\s*true\s*$/m.test(text) || (/^date:\s*(\S+)/m.exec(text)?.[1] ?? '') > today)
 
 /** The news page of the main language: the first link of the header or footer that leads to a page with a feed and
  *  posts on their own pages. A changelog has a feed too, but its entries are anchors on its own page. */

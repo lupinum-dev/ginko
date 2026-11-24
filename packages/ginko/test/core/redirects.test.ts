@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entryRedirects, findRedirect, matchRedirect, redirectProblems, type Bundle, type Redirect } from '../../src/core/index.ts'
+import { buildBundle, collection, defineSite, entryRedirects, f, findRedirect, matchRedirect, redirectProblems, serializeSchema, type Bundle, type Redirect } from '../../src/core/index.ts'
 
 describe('matchRedirect', () => {
   const rules: Redirect[] = [
@@ -64,7 +64,7 @@ describe('compiled rules are reused', () => {
     expect(reads).toBe(afterFirst)
 
     let entryReads = 0
-    const bundle = { bricks: { news: { kind: 'collection', get items() { entryReads++; return [{ id: 'n/a', data: { redirectFrom: '/alt' }, fallback: [], urls: { de: '/neu' } }] } } }, locale: 'de' } as unknown as Bundle
+    const bundle = { bricks: { news: { kind: 'collection', get items() { entryReads++; return [{ id: 'n/a', data: {}, fallback: [], urls: { de: '/neu' }, oldUrls: { de: ['/alt'] } }] } } }, locale: 'de' } as unknown as Bundle
     expect(findRedirect([], bundle, '/alt')).toEqual({ to: '/neu', status: 301 })
     expect(findRedirect([], bundle, '/alt')).toEqual({ to: '/neu', status: 301 })
     expect(entryReads).toBe(1)
@@ -86,25 +86,35 @@ describe('entryRedirects', () => {
       news: {
         kind: 'collection',
         items: [
-          { id: 'a', data: { redirectFrom: '/alt-a' }, fallback: [], urls: { de: '/aktuell/a', en: '/news/a' } },
-          { id: 'b', data: { redirectFrom: ['/alt-b', '/alt-b2'] }, fallback: [], urls: { de: '/aktuell/b' } },
-          { id: 'c', data: { redirectFrom: '/alt-c' }, fallback: [], urls: { en: '/news/c' } },
+          { id: 'b', data: {}, fallback: [], urls: { de: '/aktuell/b' }, oldUrls: { de: ['/alt-b', '/alt-b2'] } },
+          { id: 'c', data: {}, fallback: [], urls: { en: '/news/c' }, oldUrls: { de: ['/alt-c'] } },
           { id: 'd', data: {}, fallback: [], urls: { de: '/aktuell/d-neu' }, oldUrls: { de: ['/aktuell/d'], en: ['/news/d'] } },
         ],
       },
-      hero: { kind: 'single', data: { redirectFrom: '/nicht-relevant' }, fallback: [] },
     },
   }
 
-  // Wrong behaviour caught: string and array `redirectFrom` are not both turned into rules, a renamed platform page's
-  // old address (`oldUrls`) gives a 404, items without a URL in the bundle locale produce a rule to nowhere, or single bricks produce rules.
-  it('creates 301 rules from redirectFrom and the locale\'s oldUrls to the locale URL and skips items without one', () => {
+  // Wrong behaviour caught: a renamed page's old addresses (`oldUrls`) give a 404, another locale's old address
+  // redirects in this one, or an item without a URL in the bundle locale produces a rule to nowhere.
+  it('creates 301 rules from the locale\'s oldUrls to the locale URL and skips items without one', () => {
     expect(entryRedirects(bundle)).toEqual([
-      { from: '/alt-a', to: '/aktuell/a', status: 301 },
       { from: '/alt-b', to: '/aktuell/b', status: 301 },
       { from: '/alt-b2', to: '/aktuell/b', status: 301 },
       { from: '/aktuell/d', to: '/aktuell/d-neu', status: 301 },
     ])
+  })
+
+  // Wrong behaviour caught: a file entry's `$redirectFrom` is lost between the read result and the bundle, or forwards
+  // only in the main language, so the old path answers 404 on the English site.
+  it('forwards a file entry\'s $redirectFrom to its page in every language', () => {
+    const schema = serializeSchema(defineSite({
+      site: 'news', name: 'News', url: 'https://news.example', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
+      bricks: { news: collection({ listing: { title: 'title' }, label: 'News', source: 'files', max: 50, order: 'manual', route: { de: '/aktuell/[slug]', en: '/en/news/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+    }))
+    const entries = { news: [{ id: 'news/a', data: { title: { de: 'A', en: 'A' }, slug: { de: 'a', en: 'a' } }, redirectFrom: ['/alt-a'] }] }
+    const rules = (locale: string) => entryRedirects(buildBundle({ schema, requestedLocale: locale, entries, files: () => undefined, schemaRev: 1, contentRev: 1, generatedAt: '2026-10-11T00:00:00Z', today: '2026-10-11' }))
+    expect([rules('de'), rules('en')]).toEqual([[{ from: '/alt-a', to: '/aktuell/a', status: 301 }], [{ from: '/alt-a', to: '/en/news/a', status: 301 }]])
   })
 })
 
@@ -122,7 +132,7 @@ describe('redirectProblems', () => {
 })
 
 describe('findRedirect', () => {
-  const entries = { bricks: { news: { kind: 'collection', items: [{ id: 'news/a', data: { redirectFrom: '/alt' }, fallback: [], urls: { de: '/aktuell/a' } }] } }, locale: 'de' } as unknown as Bundle
+  const entries = { bricks: { news: { kind: 'collection', items: [{ id: 'news/a', data: {}, fallback: [], urls: { de: '/aktuell/a' }, oldUrls: { de: ['/alt'] } }] } }, locale: 'de' } as unknown as Bundle
   // Wrong behaviour caught: an entry rule overrides the site config, or the entry rules are not consulted.
   it('prefers a config rule over an entry rule and falls back to the entry rule', () => {
     expect(findRedirect([{ from: '/alt', to: '/config' }], entries, '/alt')).toEqual({ to: '/config', status: 301 })

@@ -66,7 +66,7 @@ export interface SiteInput {
   bricks: Record<string, Brick>
   /** How the link check (`checkLinks`) rates findings; default: broken `error`, anchors and redirected `warn`; external links are checked only when `external` is set. */
   linkCheck?: LinkConfig
-  /** Old URLs that answer with a redirect (patterns: `:name`, trailing `*`). Not part of the schema contract; entries add theirs with `redirectFrom`. */
+  /** Old URLs that answer with a redirect (patterns: `:name`, trailing `*`). Not part of the schema contract; file entries add theirs with `$redirectFrom`. */
   redirects?: Redirect[]
   /** Site-wide SEO defaults for `useGinkoSeo`. Not part of the schema contract. */
   seo?: {

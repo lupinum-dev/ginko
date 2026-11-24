@@ -115,7 +115,7 @@ image:
 The text, in Markdown. Headings start at `##`.
 ```
 
-- **Draft:** add `draft: true`. The post is on no page, in no list, feed, sitemap or search, until you remove the
+- **Draft:** add `$draft: true`. The post is on no page, in no list, feed, sitemap or search, until you remove the
   line. `npm run dev` shows it, so you can read it first.
 - **Schedule:** give it a `date` in the future. It stays off the site like a draft until the first build on or after
   that day (see "A daily rebuild"). `npm run dev` shows it.
