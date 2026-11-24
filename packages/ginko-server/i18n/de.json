@@ -255,6 +255,8 @@
     "removeProposal": "„{title}“ entfernen",
     "removed": "„{title}“ entfernt",
     "restored": "„{title}“ wiederhergestellt",
+    "restoredAsDraftInvalid": "„{title}“ als Entwurf wiederhergestellt: {count, plural, one {Das Feld {fields} fehlt oder ist ungültig} other {Die Felder {fields} fehlen oder sind ungültig}}.",
+    "restoredAsDraftBrokenLink": "„{title}“ als Entwurf wiederhergestellt: Der Link „{link}“ führt ins Leere.",
     "purged": "„{title}“ endgültig gelöscht",
     "publishProposal": "„{title}“ veröffentlichen",
     "publishProposalScheduled": "„{title}“ veröffentlichen, online ab {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",

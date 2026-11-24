@@ -1182,21 +1182,33 @@ export const restore = mutation({
 
       const order = newOrder(brick, rows.map((r) => r.order))
       const now = Date.now()
-      await ctx.db.patch(entry._id, {
-        deletedAt: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, order, treeBytes: trees.bytes,
-        // A live entry is online again: its name no longer follows the title (D96), also for one removed before names were fixed.
-        ...(entry.state === 'draft' ? {} : { contentAt: now, ...nameFixedFor(entry) }),
-      })
+      await ctx.db.patch(entry._id, { deletedAt: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, order, treeBytes: trees.bytes })
       await putTrees(ctx, actor.site._id, entry._id, trees.json)
+      const label = labelOf(schema, entry.brick, entry.data as Data)
+      // An entry that was online comes back online only when it passes the full check and its links lead somewhere
+      // (D109): a field may have become required, or a target removed, while it was in the trash. Else it comes back
+      // as a draft and the history says why. Checked after `deletedAt` is cleared, so its own address counts.
+      let history = msg('history.restored', { title: label })
+      let online = entry.state !== 'draft'
+      if (online) {
+        const invalid = await onlineErrors(ctx, actor.site._id, schema, entry)
+        const broken = invalid.length ? undefined : await brokenNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before: {}, after: entry.data as Data }])
+        if (invalid.length) history = msg('history.restoredAsDraftInvalid', { title: label, ...failedFields(schema, entry.brick, invalid) })
+        else if (broken) history = msg('history.restoredAsDraftBrokenLink', { title: label, link: broken.href })
+        online = !invalid.length && !broken
+      }
+      // A live entry is online again: its name no longer follows the title (D96), also for one removed before names were fixed.
+      if (online) await ctx.db.patch(entry._id, { contentAt: now, ...nameFixedFor(entry) })
+      else if (entry.state !== 'draft') await ctx.db.patch(entry._id, { state: 'draft' })
       c.entryCount += 1
       c.bytes += entry.bytes
       c.trashBytes -= entry.bytes
       c.treeBytes += trees.bytes
       // A restored draft stays out of the bundle (its schedule went with the removal).
-      if (entry.state !== 'draft') c.contentRev += 1
+      if (online) c.contentRev += 1
       await ctx.db.insert('changes', {
         site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'restore',
-        ...recorded(msg('history.restored', { title: labelOf(schema, entry.brick, entry.data as Data) }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: now,
+        ...recorded(history, schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: now,
       })
       await writeCounters(ctx, actor.site._id, c)
       // The new lifeRev lets the UI undo this at once (restore after remove, remove after restore).

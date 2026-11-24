@@ -169,3 +169,34 @@ describe('links of a plan (D106)', () => {
     expect(b).toMatchObject({ state: 'draft', stopped: { reason: { code: 'invalid' } } })
   })
 })
+
+describe('restore from the trash (D109)', () => {
+  // Wrong behaviour caught: an entry that was online came back online from the trash with a link to an entry removed
+  // meanwhile, or without a field that became required, unchecked; or a draft came back online.
+  it.each([
+    { name: 'passes both checks', breakIt: 'nothing', state: undefined, history: 'history.restored', params: {} },
+    { name: 'links to an entry removed meanwhile', breakIt: 'target', state: 'draft', history: 'history.restoredAsDraftBrokenLink', params: { link: expect.stringMatching(/^\$events\./) } },
+    { name: 'misses a required field', breakIt: 'field', state: 'draft', history: 'history.restoredAsDraftInvalid', params: { count: 1 } },
+  ] as const)('an entry that was online and $name', async ({ breakIt, state, history, params }) => {
+    const s = await linkSetup()
+    const b = (await s.create(OK, {})) as { entry: Id<'entries'> }
+    const slug = (await s.t.run((ctx) => ctx.db.get(b.entry)))!.data.slug as Record<string, string>
+    const a = (await s.create(`[Ziel]($events.${slug.de})`, {})) as { entry: Id<'entries'> }
+    const remove = (entry: Id<'entries'>) => s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })
+    await remove(a.entry)
+    if (breakIt === 'target') await remove(b.entry)
+    if (breakIt === 'field') {
+      await s.t.run(async (ctx) => {
+        const { description: _, ...data } = (await ctx.db.get(a.entry))!.data as Record<string, unknown>
+        await ctx.db.patch(a.entry, { data })
+      })
+    }
+    const before = (await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev
+    await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: a.entry, lifeRev: 2 })
+    const row = (await s.t.run((ctx) => ctx.db.get(a.entry)))!
+    const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', a.entry)).collect())
+    const site = (await s.t.run((ctx) => ctx.db.get(s.site)))!
+    expect({ deleted: row.deletedAt !== undefined, state: row.state, contentRev: site.contentRev - before, change: changes.at(-1)!.msg })
+      .toEqual({ deleted: false, state, contentRev: state ? 0 : 1, change: { key: history, params: expect.objectContaining(params) } })
+  })
+})

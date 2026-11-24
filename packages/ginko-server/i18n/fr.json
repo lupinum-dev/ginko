@@ -255,6 +255,8 @@
     "removeProposal": "Supprimer « {title} »",
     "removed": "« {title} » supprimé",
     "restored": "« {title} » restauré",
+    "restoredAsDraftInvalid": "« {title} » restauré comme brouillon : {count, plural, one {le champ {fields} manque ou n’est pas valide} other {les champs {fields} manquent ou ne sont pas valides}}.",
+    "restoredAsDraftBrokenLink": "« {title} » restauré comme brouillon : le lien « {link} » ne mène nulle part.",
     "purged": "« {title} » supprimé définitivement",
     "publishProposal": "Publier « {title} »",
     "publishProposalScheduled": "Publier « {title} », en ligne à partir du {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",

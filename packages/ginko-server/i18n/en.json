@@ -255,6 +255,8 @@
     "removeProposal": "Remove “{title}”",
     "removed": "“{title}” removed",
     "restored": "“{title}” restored",
+    "restoredAsDraftInvalid": "“{title}” restored as a draft: {count, plural, one {the field {fields} is} other {the fields {fields} are}} missing or not valid.",
+    "restoredAsDraftBrokenLink": "“{title}” restored as a draft: the link “{link}” leads nowhere.",
     "purged": "“{title}” deleted for good",
     "publishProposal": "Publish “{title}”",
     "publishProposalScheduled": "Publish “{title}”, online from {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
