@@ -264,6 +264,28 @@ describe('entry names (D96)', () => {
     expect(await slugRows(s, draft.entry)).toEqual([{ slug: 'herbstball', old: undefined }])
   })
 
+  /** The name, the slug in `data` and the current slug rows, per language: the two must agree after every write. */
+  const addressOf = async (s: Awaited<ReturnType<typeof draftSetup>>, id: string) => {
+    const row = (await s.row(id))!
+    const rows = await s.t.run(async (ctx) => (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', id as Id<'entries'>)).collect()).filter((r) => !r.old))
+    return { name: row.name, data: (row.data as { slug?: Record<string, string> }).slug, rows: Object.fromEntries(rows.map((r) => [r.locale, r.slug])) }
+  }
+
+  // Wrong behaviour caught: the English address keeps the first rough title after the draft's title changed, and goes
+  // online with it; or an English address made from the English title is thrown away.
+  it.each([
+    { case: 'copied from the main slug follows it', english: undefined, en: 'herbstball' },
+    { case: 'made from its own text stays', english: 'Autumn ball', en: 'autumn-ball' },
+  ])('a foreign slug $case', async ({ english, en }) => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    let rev = 1
+    if (english) rev = (await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: rev, locale: 'en', fields: { title: { en: english } }, sentence: 'Titel' })).rev
+    await retitle(s, draft.entry, rev, 'Herbstball')
+    const slugs = { de: 'herbstball', en }
+    expect(await addressOf(s, draft.entry)).toEqual({ name: 'herbstball', data: slugs, rows: slugs })
+  })
+
   // Wrong behaviour caught: a name that links and the export already use changes once the entry was planned or online.
   it.each([
     { case: 'published', publish: {} },

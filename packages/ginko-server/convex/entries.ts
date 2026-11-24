@@ -792,29 +792,44 @@ async function freeName(ctx: MutationCtx, actor: Actor, brickKey: string, brick:
 /**
  * A draft's name follows its title until it is fixed (D96): when a save changes the text the name is made from, the
  * name is made again, and the main-language slug with it while that slug is still the name (one set by hand stays).
- * Writes the slug into `data`; returns what the caller writes once the save is committed (`writeFollowedName`).
+ * A foreign slug that is still the old main slug was copied from it (`namedFor`), not made from its own text: it
+ * follows the main slug too, free in its language. One made from its own text, or set by hand, stays.
+ * Writes the slugs into `data`; returns what the caller writes once the save is committed (`writeFollowedName`).
  */
 async function followName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, brick: Brick, before: Data, data: Data) {
   if (entry.kind !== 'item' || entry.nameFixed || stateOf(entry) !== 'draft' || entry.publishAt !== undefined || brick.kind !== 'collection') return undefined
-  const main = (actor.site.schema as Schema).locales[0]!
+  const schema = actor.site.schema as Schema
+  const main = schema.locales[0]!
   if (entry.name !== undefined && nameSource(brick, data, main) === nameSource(brick, before, main)) return undefined
   const name = await freeName(ctx, actor, entry.brick, brick, nameBase(entry.brick, brick, data, main), entry._id)
   const slugKey = slugKeyOf(brick)
-  const slug = slugKey ? textOf(plainObject(data[slugKey])[main]) : ''
-  const followsSlug = slugKey !== undefined && slug === entry.name && slug !== name
-  if (name === entry.name && !followsSlug) return undefined
-  if (followsSlug) data[slugKey] = { ...plainObject(data[slugKey]), [main]: name }
-  return { name, slug: followsSlug ? name : undefined }
+  const slugs: Record<string, string> = {}
+  if (slugKey !== undefined) {
+    const own = plainObject(data[slugKey])
+    const was = textOf(own[main])
+    if (was === entry.name && was !== name) {
+      slugs[main] = name
+      const from = plainObject(data[(brick.fields[slugKey] as { from: string }).from])
+      for (const locale of schema.locales) {
+        if (locale === main || textOf(own[locale]) !== was || slugify(textOf(from[locale])) === was) continue
+        slugs[locale] = await freeSlug(ctx, actor, entry.brick, locale, name, entry._id)
+      }
+      data[slugKey] = { ...own, ...slugs }
+    }
+  }
+  if (name === entry.name && !Object.keys(slugs).length) return undefined
+  return { name, slugs }
 }
 
-/** Writes what `followName` made: the name, and the main slug row in place (a draft has no address online, so no old row stays). */
-async function writeFollowedName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, followed: { name: string; slug?: string }) {
+/** Writes what `followName` made: the name, and each followed slug row in place (a draft has no address online, so no old row stays). */
+async function writeFollowedName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, followed: { name: string; slugs: Record<string, string> }) {
   await ctx.db.patch(entry._id, { name: followed.name })
-  if (followed.slug === undefined) return
-  const main = (actor.site.schema as Schema).locales[0]!
-  const row = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).find((r) => r.locale === main && !r.old)
-  if (row) await ctx.db.patch(row._id, { slug: followed.slug })
-  else await ctx.db.insert('slugs', { site: actor.site._id, brick: entry.brick, locale: main, slug: followed.slug, entry: entry._id })
+  const rows = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).filter((r) => !r.old)
+  for (const [locale, slug] of Object.entries(followed.slugs)) {
+    const row = rows.find((r) => r.locale === locale)
+    if (row) await ctx.db.patch(row._id, { slug })
+    else await ctx.db.insert('slugs', { site: actor.site._id, brick: entry.brick, locale, slug, entry: entry._id })
+  }
 }
 
 /**
