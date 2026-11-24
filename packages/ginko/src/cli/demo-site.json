@@ -1,0 +1,862 @@
+{
+  "format": 1,
+  "site": "demo",
+  "name": "Demo",
+  "schema": {
+    "site": "demo",
+    "name": "Demo",
+    "url": "https://example.com",
+    "timeZone": "Europe/Berlin",
+    "locales": [
+      "en",
+      "de"
+    ],
+    "currency": "EUR",
+    "week": {
+      "firstDay": 7,
+      "weekend": [
+        6,
+        7
+      ]
+    },
+    "pages": {
+      "home": {
+        "en": "/",
+        "de": "/de"
+      }
+    },
+    "bricks": {
+      "home": {
+        "kind": "single",
+        "label": {
+          "de": "Startseite",
+          "en": "Home page",
+          "fr": "Page d’accueil"
+        },
+        "fields": {
+          "title": {
+            "type": "text",
+            "label": {
+              "de": "Titel",
+              "en": "Title",
+              "fr": "Titre"
+            },
+            "max": 80,
+            "default": {
+              "en": "Welcome"
+            },
+            "pos": 0
+          },
+          "lead": {
+            "type": "longtext",
+            "label": {
+              "de": "Einleitung",
+              "en": "Lead",
+              "fr": "Introduction"
+            },
+            "max": 300,
+            "default": {
+              "en": "A short introduction: who you are and what you offer."
+            },
+            "pos": 1
+          },
+          "body": {
+            "type": "markdown",
+            "label": {
+              "de": "Text",
+              "en": "Text",
+              "fr": "Texte"
+            },
+            "profile": "page",
+            "optional": true,
+            "pos": 2
+          }
+        },
+        "pos": 0
+      },
+      "pages": {
+        "kind": "collection",
+        "label": {
+          "de": "Seiten",
+          "en": "Pages",
+          "fr": "Pages"
+        },
+        "max": 50,
+        "order": "manual",
+        "route": {
+          "en": "/[slug]",
+          "de": "/de/[slug]"
+        },
+        "fields": {
+          "title": {
+            "type": "text",
+            "label": {
+              "de": "Titel",
+              "en": "Title",
+              "fr": "Titre"
+            },
+            "max": 80,
+            "pos": 0
+          },
+          "slug": {
+            "type": "slug",
+            "label": {
+              "de": "Adresse",
+              "en": "Address",
+              "fr": "Adresse"
+            },
+            "from": "title",
+            "pos": 1
+          },
+          "summary": {
+            "type": "longtext",
+            "label": {
+              "de": "Kurzbeschreibung",
+              "en": "Summary",
+              "fr": "Résumé"
+            },
+            "max": 300,
+            "optional": true,
+            "hint": {
+              "de": "Steht unter dem Titel und in Suchergebnissen.",
+              "en": "Shown below the title and in search results.",
+              "fr": "Affiché sous le titre et dans les résultats de recherche."
+            },
+            "pos": 2
+          },
+          "image": {
+            "type": "image",
+            "label": {
+              "de": "Bild",
+              "en": "Image",
+              "fr": "Image"
+            },
+            "optional": true,
+            "pos": 3
+          },
+          "actionLabel": {
+            "type": "text",
+            "label": {
+              "de": "Button-Text",
+              "en": "Button text",
+              "fr": "Texte du bouton"
+            },
+            "max": 40,
+            "optional": true,
+            "hint": {
+              "de": "Ein Button unter dem Titel, zum Beispiel „Online spenden“. Braucht auch die Adresse.",
+              "en": "One button below the title, for example “Donate online”. Needs the address too.",
+              "fr": "Un bouton sous le titre, par exemple « Faire un don en ligne ». Il faut aussi l’adresse."
+            },
+            "pos": 4
+          },
+          "actionUrl": {
+            "type": "text",
+            "label": {
+              "de": "Button-Adresse",
+              "en": "Button address",
+              "fr": "Adresse du bouton"
+            },
+            "format": "url",
+            "optional": true,
+            "translate": false,
+            "pos": 5
+          },
+          "body": {
+            "type": "markdown",
+            "label": {
+              "de": "Text",
+              "en": "Text",
+              "fr": "Texte"
+            },
+            "profile": "page",
+            "pos": 6
+          }
+        },
+        "tasks": [
+          {
+            "id": "edit",
+            "kind": "edit",
+            "pick": true,
+            "fields": [
+              "title",
+              "summary",
+              "image",
+              "actionLabel",
+              "actionUrl",
+              "body"
+            ],
+            "label": {
+              "de": "Seite bearbeiten",
+              "en": "Edit a page",
+              "fr": "Modifier une page"
+            }
+          },
+          {
+            "id": "add",
+            "kind": "create",
+            "label": {
+              "de": "Seite hinzufügen",
+              "en": "Add a page",
+              "fr": "Ajouter une page"
+            }
+          }
+        ],
+        "pos": 1
+      },
+      "notices": {
+        "kind": "collection",
+        "label": {
+          "de": "Hinweise",
+          "en": "Notices"
+        },
+        "fields": {
+          "text": {
+            "type": "text",
+            "label": {
+              "de": "Text",
+              "en": "Text"
+            },
+            "max": 140,
+            "pos": 0
+          },
+          "until": {
+            "type": "date",
+            "label": {
+              "de": "Gilt bis",
+              "en": "Shown until"
+            },
+            "optional": true,
+            "hint": {
+              "de": "Leer lassen, wenn der Hinweis bleiben soll, bis du ihn entfernst.",
+              "en": "Leave empty to keep the notice until you remove it."
+            },
+            "pos": 1
+          }
+        },
+        "max": 5,
+        "order": "manual",
+        "visible": {
+          "mode": "until",
+          "field": "until",
+          "deleteExpired": true
+        },
+        "tasks": [
+          {
+            "id": "add",
+            "label": {
+              "de": "Hinweis hinzufügen",
+              "en": "Add a notice"
+            },
+            "kind": "create"
+          },
+          {
+            "id": "remove",
+            "label": {
+              "de": "Hinweis entfernen",
+              "en": "Remove a notice"
+            },
+            "kind": "remove"
+          }
+        ],
+        "pos": 2
+      },
+      "site": {
+        "kind": "single",
+        "label": {
+          "de": "Kontakt und Anschrift",
+          "en": "Contact and address",
+          "es": "Contacto y dirección",
+          "fr": "Contact et adresse"
+        },
+        "describe": {
+          "de": "Name, Anschrift und Kontakt, zum Beispiel für das Impressum und die Fußzeile.",
+          "en": "Name, address and contact details, for example for the imprint and the footer.",
+          "es": "Nombre, dirección y datos de contacto, por ejemplo para el aviso legal y el pie de página.",
+          "fr": "Nom, adresse et coordonnées, par exemple pour les mentions légales et le pied de page."
+        },
+        "fields": {
+          "legalName": {
+            "type": "text",
+            "label": {
+              "de": "Offizieller Name",
+              "en": "Legal name",
+              "es": "Nombre legal",
+              "fr": "Raison sociale"
+            },
+            "optional": true,
+            "translate": false,
+            "hint": {
+              "de": "Wie im Register eingetragen.",
+              "en": "As registered.",
+              "es": "Tal como figura en el registro.",
+              "fr": "Tel qu’enregistré."
+            },
+            "pos": 0
+          },
+          "street": {
+            "type": "text",
+            "label": {
+              "de": "Straße und Hausnummer",
+              "en": "Street and number",
+              "es": "Calle y número",
+              "fr": "Rue et numéro"
+            },
+            "optional": true,
+            "translate": false,
+            "pos": 1
+          },
+          "postalCode": {
+            "type": "text",
+            "label": {
+              "de": "Postleitzahl",
+              "en": "Postcode",
+              "es": "Código postal",
+              "fr": "Code postal"
+            },
+            "optional": true,
+            "translate": false,
+            "max": 10,
+            "pos": 2
+          },
+          "city": {
+            "type": "text",
+            "label": {
+              "de": "Ort",
+              "en": "Town or city",
+              "es": "Localidad",
+              "fr": "Ville"
+            },
+            "optional": true,
+            "translate": false,
+            "pos": 3
+          },
+          "email": {
+            "type": "text",
+            "label": {
+              "de": "E-Mail",
+              "en": "Email",
+              "es": "Correo electrónico",
+              "fr": "E-mail"
+            },
+            "optional": true,
+            "format": "email",
+            "pos": 4
+          },
+          "phone": {
+            "type": "text",
+            "label": {
+              "de": "Telefon",
+              "en": "Phone",
+              "es": "Teléfono",
+              "fr": "Téléphone"
+            },
+            "optional": true,
+            "format": "tel",
+            "hint": {
+              "de": "Mit Ländervorwahl.",
+              "en": "With country code.",
+              "es": "Con prefijo internacional.",
+              "fr": "Avec l’indicatif du pays."
+            },
+            "pos": 5
+          },
+          "registryNumber": {
+            "type": "text",
+            "label": {
+              "de": "Registernummer",
+              "en": "Registration number",
+              "es": "Número de registro",
+              "fr": "Numéro d’immatriculation"
+            },
+            "optional": true,
+            "translate": false,
+            "pos": 6
+          },
+          "registryCourt": {
+            "type": "text",
+            "label": {
+              "de": "Registergericht",
+              "en": "Registry",
+              "es": "Registro",
+              "fr": "Greffe"
+            },
+            "optional": true,
+            "pos": 7
+          },
+          "vatId": {
+            "type": "text",
+            "label": {
+              "de": "Umsatzsteuer-ID",
+              "en": "VAT number",
+              "es": "NIF-IVA",
+              "fr": "Numéro de TVA"
+            },
+            "optional": true,
+            "translate": false,
+            "pos": 8
+          }
+        },
+        "tasks": [
+          {
+            "id": "edit",
+            "kind": "edit",
+            "label": {
+              "de": "Kontaktdaten ändern",
+              "en": "Change contact details",
+              "es": "Cambiar los datos de contacto",
+              "fr": "Modifier les coordonnées"
+            },
+            "fields": [
+              "legalName",
+              "street",
+              "postalCode",
+              "city",
+              "email",
+              "phone",
+              "registryNumber",
+              "registryCourt",
+              "vatId"
+            ]
+          }
+        ],
+        "pos": 3
+      },
+      "legal": {
+        "kind": "collection",
+        "label": {
+          "de": "Rechtliches",
+          "en": "Legal",
+          "es": "Textos legales",
+          "fr": "Informations légales"
+        },
+        "max": 20,
+        "order": "manual",
+        "route": {
+          "en": "/legal/[slug]",
+          "de": "/de/legal/[slug]"
+        },
+        "tasks": [
+          {
+            "id": "update",
+            "kind": "edit",
+            "pick": true,
+            "fields": [
+              "body",
+              "updatedAt"
+            ],
+            "prefill": {
+              "updatedAt": "@today"
+            },
+            "label": {
+              "de": "Rechtstext aktualisieren",
+              "en": "Update a legal text",
+              "es": "Actualizar un texto legal",
+              "fr": "Mettre à jour un texte juridique"
+            }
+          }
+        ],
+        "fields": {
+          "title": {
+            "type": "text",
+            "label": {
+              "de": "Titel",
+              "en": "Title",
+              "es": "Título",
+              "fr": "Titre"
+            },
+            "pos": 0
+          },
+          "description": {
+            "type": "longtext",
+            "label": {
+              "de": "Beschreibung",
+              "en": "Description",
+              "es": "Descripción",
+              "fr": "Description"
+            },
+            "optional": true,
+            "pos": 1
+          },
+          "slug": {
+            "type": "slug",
+            "label": {
+              "de": "Adresse",
+              "en": "Address",
+              "es": "Dirección",
+              "fr": "Adresse"
+            },
+            "from": "title",
+            "pos": 2
+          },
+          "legalType": {
+            "type": "choice",
+            "label": {
+              "de": "Art",
+              "en": "Kind",
+              "es": "Tipo",
+              "fr": "Type"
+            },
+            "options": [
+              {
+                "value": "privacy",
+                "label": {
+                  "de": "Datenschutz",
+                  "en": "Privacy policy",
+                  "es": "Política de privacidad",
+                  "fr": "Politique de confidentialité"
+                }
+              },
+              {
+                "value": "customer-privacy",
+                "label": {
+                  "de": "Datenschutz für Kunden",
+                  "en": "Privacy policy for customers",
+                  "es": "Privacidad para clientes",
+                  "fr": "Confidentialité pour les clients"
+                }
+              },
+              {
+                "value": "imprint",
+                "label": {
+                  "de": "Impressum",
+                  "en": "Imprint",
+                  "es": "Aviso legal",
+                  "fr": "Mentions légales"
+                }
+              },
+              {
+                "value": "terms",
+                "label": {
+                  "de": "AGB",
+                  "en": "Terms and conditions",
+                  "es": "Términos y condiciones",
+                  "fr": "Conditions générales"
+                }
+              },
+              {
+                "value": "cookies",
+                "label": {
+                  "de": "Cookies",
+                  "en": "Cookie policy",
+                  "es": "Política de cookies",
+                  "fr": "Politique relative aux cookies"
+                }
+              },
+              {
+                "value": "accessibility",
+                "label": {
+                  "de": "Barrierefreiheit",
+                  "en": "Accessibility statement",
+                  "es": "Declaración de accesibilidad",
+                  "fr": "Déclaration d’accessibilité"
+                }
+              }
+            ],
+            "pos": 3
+          },
+          "updatedAt": {
+            "type": "date",
+            "label": {
+              "de": "Stand",
+              "en": "Last updated",
+              "es": "Última actualización",
+              "fr": "Dernière mise à jour"
+            },
+            "pos": 4
+          },
+          "body": {
+            "type": "markdown",
+            "label": {
+              "de": "Text",
+              "en": "Text",
+              "es": "Texto",
+              "fr": "Texte"
+            },
+            "translate": "manual",
+            "profile": "page",
+            "pos": 5
+          }
+        },
+        "pos": 4
+      }
+    },
+    "migrations": [],
+    "retired": {}
+  },
+  "schemaRev": 1,
+  "contentRev": 1,
+  "exportedAt": "2026-01-01T00:00:00.000Z",
+  "entries": [
+    {
+      "id": "home",
+      "brick": "home",
+      "kind": "single",
+      "order": 0,
+      "data": {
+        "title": {
+          "en": "Translations that read like the original",
+          "de": "Übersetzungen, die sich lesen wie das Original"
+        },
+        "lead": {
+          "en": "I translate between German and English for museums, research institutes and publishers.",
+          "de": "Ich übersetze zwischen Deutsch und Englisch für Museen, Forschungsinstitute und Verlage."
+        },
+        "body": {
+          "en": "\n## What I translate\n\n- Exhibition and catalogue texts for museums and galleries\n- Research papers, grant applications and project reports\n- Non-fiction books and essays\n\n## How it works\n\nSend me the text and tell me where it will appear. Within two working days you get a fixed price and a delivery\ndate. Every translation is read a second time before it goes to you.\n",
+          "de": "\n## Was ich übersetze\n\n- Ausstellungs- und Katalogtexte für Museen und Galerien\n- Fachartikel, Förderanträge und Projektberichte\n- Sachbücher und Essays\n\n## So läuft es ab\n\nSchicken Sie mir den Text und sagen Sie mir, wo er erscheinen wird. Innerhalb von zwei Werktagen bekommen Sie einen\nFestpreis und einen Liefertermin. Jede Übersetzung lese ich ein zweites Mal, bevor sie zu Ihnen geht.\n"
+        }
+      },
+      "prints": {
+        "title": {
+          "de": "462d9737b8cd1ea4a457e2c493ba3e8a1a7f792db70f68944d56fcdea50bbd76"
+        },
+        "lead": {
+          "de": "e16f49dd86bd59774a9b7f4fcd14f91006b9b9dc56f785f8c3c8b097c7e4c952"
+        },
+        "body": {
+          "de": "aac68adf9d6884ceb9b247ab5d921f6f01cf833d9aca869e3ad462932ceba94b"
+        }
+      },
+      "rev": 1
+    },
+    {
+      "id": "pages/about",
+      "brick": "pages",
+      "kind": "item",
+      "order": 0,
+      "data": {
+        "title": {
+          "en": "About",
+          "de": "Über mich"
+        },
+        "slug": {
+          "en": "about",
+          "de": "ueber-mich"
+        },
+        "summary": {
+          "en": "Klara Brenner, translator for German and English since 2014.",
+          "de": "Klara Brenner, Übersetzerin für Deutsch und Englisch seit 2014."
+        },
+        "body": {
+          "en": "\n## Who I am\n\nI grew up in Freiburg and Edinburgh and have translated between German and English since 2014. Before that I\nworked for six years as an editor at an art book publisher.\n\n## What I work on\n\nMost of my work comes from museums and research institutes: wall texts, catalogues, papers and reports. For every\ntext that goes to print, a native-speaker proofreader reads it after me.\n\n## Working together\n\nWrite to me with the text, the deadline and where it will appear. I answer every request within two working days.\n",
+          "de": "\n## Wer ich bin\n\nIch bin in Freiburg und Edinburgh aufgewachsen und übersetze seit 2014 zwischen Deutsch und Englisch. Davor war ich\nsechs Jahre Lektorin in einem Kunstbuchverlag.\n\n## Woran ich arbeite\n\nDie meisten Aufträge kommen von Museen und Forschungsinstituten: Wandtexte, Kataloge, Fachartikel und Berichte.\nJeden Text, der in Druck geht, liest nach mir ein muttersprachliches Korrektorat.\n\n## Zusammenarbeit\n\nSchreiben Sie mir mit dem Text, dem Termin und dem Ort, an dem er erscheint. Ich antworte auf jede Anfrage\ninnerhalb von zwei Werktagen.\n"
+        }
+      },
+      "prints": {
+        "title": {
+          "de": "0c6c56cf4a50bd5076781efa22fc0c5ea11f1741859e4b80c8c1bb98c5c0245b"
+        },
+        "slug": {
+          "de": "c1b04fc434eab8d031371e7d67584861e7e124a8a1a5fd6ac5c182082aebc8d6"
+        },
+        "summary": {
+          "de": "159ae8f68ef2a4a180d74f8f542b36ebe4cf5fb6b343fbd495738c6fee610d71"
+        },
+        "body": {
+          "de": "36aa9082495de6e4fd1583d8127b955a222ef9c947d94b3883523774da64dc7e"
+        }
+      },
+      "rev": 1
+    },
+    {
+      "id": "pages/contact",
+      "brick": "pages",
+      "kind": "item",
+      "order": 1,
+      "data": {
+        "title": {
+          "en": "Contact",
+          "de": "Kontakt"
+        },
+        "slug": {
+          "en": "contact",
+          "de": "kontakt"
+        },
+        "summary": {
+          "en": "Write or call: I answer within two working days.",
+          "de": "Schreiben oder anrufen: Ich antworte innerhalb von zwei Werktagen."
+        },
+        "body": {
+          "en": "\n## What to send\n\nThe text or a sample page, the deadline, and where the translation will appear. For a book, the number of pages\nis enough for a first price.\n\n## Phone hours\n\nMonday to Thursday, 9:00 to 16:00. Outside these hours I call back on the next working day.\n",
+          "de": "\n## Was Sie mir schicken\n\nDen Text oder eine Probeseite, den Termin und den Ort, an dem die Übersetzung erscheint. Für ein Buch genügt für\neinen ersten Preis die Seitenzahl.\n\n## Telefonzeiten\n\nMontag bis Donnerstag, 9 bis 16 Uhr. Außerhalb dieser Zeiten rufe ich am nächsten Werktag zurück.\n"
+        }
+      },
+      "prints": {
+        "title": {
+          "de": "3d9bbb6461c76edc552c4a3a1adbccea7dd6a760e128088effceec92f11f3295"
+        },
+        "slug": {
+          "de": "6a2283478fcd699f37939b8080bc3d7ac0a7faba3ec09fe18220417c394ce5bc"
+        },
+        "summary": {
+          "de": "80e6a8e9fdbb4dc0eefcd2839bdbfcce2cebab9de4752454c289a5eb98b5e390"
+        },
+        "body": {
+          "de": "85bdc9562acccdc94b3cfccb581e48e50aaa9e8571d3104d972b4ab96e2c9328"
+        }
+      },
+      "rev": 1
+    },
+    {
+      "id": "notices/welcome",
+      "brick": "notices",
+      "kind": "item",
+      "order": 0,
+      "data": {
+        "text": {
+          "en": "New: I now also translate from French.",
+          "de": "Neu: Ich übersetze jetzt auch aus dem Französischen."
+        },
+        "until": "2027-01-29"
+      },
+      "prints": {
+        "text": {
+          "de": "7336a12dcdfc6a7ae9babd4f424cf8d53409b5ec12392e9fd5c978151a59c27a"
+        }
+      },
+      "rev": 1
+    },
+    {
+      "id": "site",
+      "brick": "site",
+      "kind": "single",
+      "order": 0,
+      "data": {
+        "legalName": "Klara Brenner",
+        "street": "Mühlbachhof 4",
+        "postalCode": "79098",
+        "city": "Freiburg im Breisgau",
+        "email": "hallo@klarabrenner.example",
+        "phone": "+49 761 0123 4567"
+      },
+      "prints": {},
+      "rev": 1
+    },
+    {
+      "id": "legal/privacy",
+      "brick": "legal",
+      "kind": "item",
+      "order": 0,
+      "data": {
+        "title": {
+          "en": "Privacy policy",
+          "de": "Datenschutzerklärung"
+        },
+        "description": {
+          "en": "How this website handles personal data.",
+          "de": "Wie diese Website mit personenbezogenen Daten umgeht."
+        },
+        "slug": {
+          "en": "privacy",
+          "de": "datenschutz"
+        },
+        "legalType": "privacy",
+        "updatedAt": "2026-10-15",
+        "body": {
+          "en": "\n> **Placeholder:** template text, not legal advice. Replace it before the site goes live.\n\n## What this website does out of the box\n\nAs it comes from the template, this website:\n\n- sets one cookie only when you switch the language (`ginko_locale`, which keeps your choice for a year), and otherwise stores nothing in your browser except your choice of light or dark mode;\n- runs no analytics and loads nothing from other companies: fonts and images come from this website itself;\n- has no contact form; email links open your own email program.\n\nThe server that hosts the website records each request (address, time, page, browser) in its logs. Name your host\nand how long it keeps these logs.\n\n## Who is responsible\n\nName, address and contact of the person or organisation responsible for this website.\n\n## Your rights\n\nExplain how people can ask what data you hold about them, and have it corrected or deleted.\n",
+          "de": "\n> **Platzhalter:** Text aus der Vorlage, keine Rechtsberatung. Ersetzen Sie ihn, bevor die Website online geht.\n\n## Was diese Website ohne Änderungen tut\n\nSo wie sie aus der Vorlage kommt, gilt für diese Website:\n\n- Sie setzt nur dann ein Cookie, wenn Sie die Sprache wechseln (`ginko_locale`, es merkt sich Ihre Wahl ein Jahr lang), und speichert sonst nichts in Ihrem Browser außer Ihrer Wahl zwischen hellem und dunklem Design.\n- Sie misst keine Besuche und lädt nichts von anderen Unternehmen: Schriften und Bilder kommen von dieser Website selbst.\n- Sie hat kein Kontaktformular; E-Mail-Links öffnen Ihr eigenes E-Mail-Programm.\n\nDer Server, auf dem die Website läuft, speichert jede Anfrage (Adresse, Zeit, Seite, Browser) in seinen Protokollen.\nNennen Sie Ihren Hoster und wie lange er diese Protokolle aufbewahrt.\n\n## Verantwortlich\n\nName, Anschrift und Kontakt der Person oder Organisation, die für diese Website verantwortlich ist.\n\n## Ihre Rechte\n\nErklären Sie, wie man erfährt, welche Daten Sie speichern, und wie man sie berichtigen oder löschen lässt.\n"
+        }
+      },
+      "prints": {
+        "title": {
+          "de": "ff4dc63bcd9a9acc29fb658aaec74ebb37e8b2c6ad144eb26259b5cacb93907f"
+        },
+        "description": {
+          "de": "e06aed0fd5980d41b0415d796db7445cf6b3511cc8c91c596e51d303b4803c25"
+        },
+        "slug": {
+          "de": "b1710b0c36fa907c286a2c8d326ce62d7e60d7cef77b8c811aeeddd76476dd95"
+        },
+        "body": {
+          "de": "20869d0b0912fe5605a3169b5cb95aef6a3d8ee4894d045237f90b6c603c6c61"
+        }
+      },
+      "rev": 1
+    },
+    {
+      "id": "legal/terms",
+      "brick": "legal",
+      "kind": "item",
+      "order": 1,
+      "data": {
+        "title": {
+          "en": "Terms and conditions",
+          "de": "Allgemeine Geschäftsbedingungen"
+        },
+        "description": {
+          "en": "The terms that apply when you use this website or buy from us.",
+          "de": "Die Bedingungen, die gelten, wenn Sie diese Website nutzen oder bei uns kaufen."
+        },
+        "slug": {
+          "en": "terms",
+          "de": "agb"
+        },
+        "legalType": "terms",
+        "updatedAt": "2026-10-15",
+        "body": {
+          "en": "\n> **Placeholder:** template text, not legal advice. Replace it before the site goes live.\n\n## Scope\n\nSay to whom and to what these terms apply.\n\n## Contract and payment\n\nSay how a contract comes about, how and when people pay, and how they can cancel.\n\n## Liability\n\nSay what you are liable for, within the limits of the law in your country.\n",
+          "de": "\n> **Platzhalter:** Text aus der Vorlage, keine Rechtsberatung. Ersetzen Sie ihn, bevor die Website online geht.\n\n## Geltungsbereich\n\nSagen Sie, für wen und wofür diese Bedingungen gelten.\n\n## Vertrag und Zahlung\n\nSagen Sie, wie ein Vertrag zustande kommt, wie und wann man bezahlt und wie man kündigt.\n\n## Haftung\n\nSagen Sie, wofür Sie haften, in den Grenzen des Rechts Ihres Landes.\n"
+        }
+      },
+      "prints": {
+        "title": {
+          "de": "3ef922b63215c310e4d0600187126a7d7b69a49142dab0f03b331bf96b83e896"
+        },
+        "description": {
+          "de": "3347c8a4a58d64f82c9a87f40ad669fdd538562000c0da635d044d803e7f4051"
+        },
+        "slug": {
+          "de": "a301bcb976ae3f71bb78a24ca3e3e468af41c4040f6b011a5359e786688842a3"
+        },
+        "body": {
+          "de": "2a5ac08e8b2447e22f2e8e9b72486f612734ea6c3e02136051e2fa93069a1f76"
+        }
+      },
+      "rev": 1
+    },
+    {
+      "id": "legal/imprint",
+      "brick": "legal",
+      "kind": "item",
+      "order": 2,
+      "data": {
+        "title": {
+          "en": "Imprint",
+          "de": "Impressum"
+        },
+        "description": {
+          "en": "Who runs this website.",
+          "de": "Wer diese Website betreibt."
+        },
+        "slug": {
+          "en": "imprint",
+          "de": "impressum"
+        },
+        "legalType": "imprint",
+        "updatedAt": "2026-10-15",
+        "body": {
+          "en": "\n> **Placeholder:** template text, not legal advice. Replace it before the site goes live.\n\n## More details\n\nOnly what applies to you, for example the supervisory authority or the professional chamber.\n",
+          "de": "\n> **Platzhalter:** Text aus der Vorlage, keine Rechtsberatung. Ersetzen Sie ihn, bevor die Website online geht.\n\n## Weitere Angaben\n\nNur das, was für Sie gilt, zum Beispiel die Aufsichtsbehörde oder die Berufskammer.\n"
+        }
+      },
+      "prints": {
+        "title": {
+          "de": "1d0610cdac8612daa50378ee63f748972f8c528be50600ce3107003c351462ea"
+        },
+        "description": {
+          "de": "d58541f61be089e240a0c16712d8d80eb0314a38ac5fc5b2c1c3c8833ecd040b"
+        },
+        "slug": {
+          "de": "ef99e674e5a4ec9bf3387f239b4379375e0c281e42f0dd1122f7d39d0aa9ad97"
+        },
+        "body": {
+          "de": "d826724accc05cb39f13fa03b535b3dd5fb552407b67f095d42ec5390a30152b"
+        }
+      },
+      "rev": 1
+    }
+  ],
+  "folders": [],
+  "files": []
+}

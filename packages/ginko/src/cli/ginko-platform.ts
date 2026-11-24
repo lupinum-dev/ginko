@@ -2,15 +2,20 @@
 // The `ginko-platform` command: runs the Ginko platform (the Studio and its Convex backend) from a platform project, the
 // folder that `npm create ginko@latest my-cms -- --platform` writes. Its convex.json points `functions` into
 // node_modules/@lupinum/ginko-server/convex/. Unlike `ginko` (one JSON line for CI), this command talks to a person.
-//   ginko-platform dev [--verbose]     a local backend without an account, prepared for sign-in, and the Studio on :3100
+//   ginko-platform dev [--verbose] [--no-demo]  a local backend without an account, prepared for sign-in, a demo site
+//                                      in a backend without sites, and the Studio on :3100
 //   ginko-platform build [--convex D]  the build: backend deploy and data migrations in production, then the Studio
 //   ginko-platform setup [options]     puts the project online on Convex cloud and Vercel, mail through Resend
+//   ginko-platform import <folder> --site <slug> [--prod]  an export folder into a site without content
 import { resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
+import { DEMO_LOADED, loadDemo } from './demo.ts'
 import { startLocalPlatform, StoppedError } from './dev.ts'
 import { backendAt, LOCAL_STUDIO } from './local.ts'
+import { CliError } from './model.ts'
 import { build } from './platform-build.ts'
+import { platformImport } from './platform-import.ts'
 import { realRunner, type CommandRunner } from './platform-run.ts'
 import { setup, type Ask } from './platform-setup.ts'
 import { exitCodeOf, isEntryPoint } from './run.ts'
@@ -23,15 +28,21 @@ const STUDIO_WAIT_MS = 120_000
 const USAGE = `Usage: ginko-platform <command>
 
 Commands:
-  dev      Start a local backend (no Convex account needed) and the Studio on ${LOCAL_STUDIO}.
+  dev      Start a local backend (no Convex account needed) and the Studio on ${LOCAL_STUDIO}. A backend
+           without sites gets a demo site at its first start.
   build    Build the Studio. In production (on Vercel: VERCEL_ENV=production; elsewhere: a production
            CONVEX_DEPLOY_KEY) it first deploys the backend and starts its data migrations.
   setup    Put the platform online: the backend on Convex, the Studio on Vercel, sign-in mail through Resend.
            Log in first with \`npx convex login\` and \`vercel login\`. Safe to run again.
+  import <folder> --site <slug> [--prod]
+           Load an export folder (from \`ginko files-export\` or \`ginko export\`) into the site <slug>, on the local
+           backend of \`dev\`, or with --prod on production. Create the site in the Studio (New site) and run
+           \`ginko release\` for it first: the import does not change the schema. Refuses a site that has content.
 Run them in the folder of the platform project, the one with convex.json.
 
 Options:
   --verbose             dev: show all output of the backend and the Studio from the start
+  --no-demo             dev: do not load the demo site
   --convex <folder>     build: the folder with convex.json, if it is not the current folder
   --site-url <address>  setup: the Studio address (default: the address Vercel gives the project)
   --admin <email>       setup: the address that may sign in first
@@ -40,6 +51,10 @@ Options:
   --team <slug>         setup: the Convex team, when the account has more than one
   --region <region>     setup: the Convex region of the production deployment
   --dry-run             setup: print the steps and their commands, change nothing
+  --site <slug>         import: the site on the platform
+  --prod                import: the production deployment of ginko-platform.json; confirms that production is meant
+  --no-wait             import: return without waiting for the images to be processed
+  --wait-timeout <s>    import: longest wait for the images in seconds (default 600)
   -h, --help            Show this help
 setup reads the Resend API key from RESEND_API_KEY or asks for it; it never takes it as an option.
 --team is the Convex team; on Vercel, setup uses the scope the Vercel CLI has selected (vercel switch).
@@ -49,7 +64,7 @@ another, for example --region eu, and an unknown name makes Convex list the name
 
 /** The options of each command; anything else is refused with the usage. */
 const COMMANDS = {
-  dev: { verbose: { type: 'boolean' } },
+  dev: { verbose: { type: 'boolean' }, 'no-demo': { type: 'boolean' } },
   build: { convex: { type: 'string' } },
   setup: {
     'site-url': { type: 'string' },
@@ -60,8 +75,16 @@ const COMMANDS = {
     region: { type: 'string' },
     'dry-run': { type: 'boolean' },
   },
+  import: {
+    site: { type: 'string' },
+    prod: { type: 'boolean' },
+    'no-wait': { type: 'boolean' },
+    'wait-timeout': { type: 'string' },
+  },
 } as const satisfies Record<string, Record<string, { type: 'boolean' | 'string' }>>
 type Command = keyof typeof COMMANDS
+/** The commands that take one folder as their argument. */
+const WITH_FOLDER: ReadonlySet<Command> = new Set(['import'])
 
 /** The line that better-convex-nuxt's dev outbox writes into the `convex dev` log for each sign-in code. */
 const CODE_LINE = /\[better-convex-nuxt dev outbox\] email-otp to (\S+): code (\d+)/
@@ -80,23 +103,33 @@ export interface PlatformDeps {
   env?: NodeJS.ProcessEnv
   /** Tests replace the questions of setup; undefined in tests means nobody can answer. */
   ask?: Ask
+  /** Tests replace the demo site's load. */
+  loadDemo?: typeof loadDemo
+  /** Tests replace the import. */
+  import?: typeof platformImport
 }
 
 /** The command and its options, or the sentence that says what is wrong with the call. */
-function parseCall(argv: string[]): { command: Command; values: Record<string, string | boolean | undefined> } | { wrong: string } {
+function parseCall(argv: string[]): { command: Command; values: Record<string, string | boolean | undefined>; folder?: string } | { wrong: string } {
   const [command, ...rest] = argv
   if (command === undefined) return { wrong: 'Give a command.' }
   if (!Object.hasOwn(COMMANDS, command)) return { wrong: `Unknown command "${command}".` }
   const options = COMMANDS[command as Command]
   const { values, tokens } = parseArgs({ args: rest, options, strict: false, allowPositionals: true, tokens: true })
+  let folder: string | undefined
   for (const token of tokens) {
-    if (token.kind === 'positional') return { wrong: `Unknown argument "${token.value}".` }
+    if (token.kind === 'positional') {
+      if (!WITH_FOLDER.has(command as Command) || folder !== undefined) return { wrong: `Unknown argument "${token.value}".` }
+      folder = token.value
+      continue
+    }
     if (token.kind !== 'option') continue
     const option = (options as Record<string, { type: string }>)[token.name]
     if (!option) return { wrong: `Unknown argument "${token.rawName}".` }
     if (option.type === 'string' && typeof token.value !== 'string') return { wrong: `${token.rawName} needs a value.` }
   }
-  return { command: command as Command, values: values as Record<string, string | boolean | undefined> }
+  if (WITH_FOLDER.has(command as Command) && folder === undefined) return { wrong: `${command} needs a folder.` }
+  return { command: command as Command, values: values as Record<string, string | boolean | undefined>, ...(folder === undefined ? {} : { folder }) }
 }
 
 export async function main(argv: string[], deps: PlatformDeps = { cwd: process.cwd(), log: console.log, error: console.error }): Promise<number> {
@@ -113,7 +146,7 @@ export async function main(argv: string[], deps: PlatformDeps = { cwd: process.c
   try {
     switch (call.command) {
       case 'dev':
-        return await dev(deps, call.values.verbose === true)
+        return await dev(deps, call.values.verbose === true, call.values['no-demo'] !== true)
       case 'build': {
         const convexDir = backendAt(resolve(deps.cwd, typeof call.values.convex === 'string' ? call.values.convex : '.'), 'ginko-platform build')
         await build({ cwd: deps.cwd, convexDir, env, run, log: deps.log })
@@ -131,6 +164,19 @@ export async function main(argv: string[], deps: PlatformDeps = { cwd: process.c
         })
         return 0
       }
+      case 'import': {
+        const { site, prod } = call.values
+        if (typeof site !== 'string' || !site) throw new CliError('ginko-platform import needs --site <slug>: the site to load the folder into.', 'USAGE')
+        const timeout = call.values['wait-timeout']
+        const seconds = Number(timeout)
+        if (timeout !== undefined && (typeof timeout !== 'string' || !Number.isFinite(seconds) || seconds < 0)) throw new CliError('--wait-timeout needs a number of seconds.', 'USAGE')
+        await (deps.import ?? platformImport)({
+          cwd: deps.cwd, folder: call.folder!, site, prod: prod === true, log: deps.log,
+          ...(call.values['no-wait'] === true ? { wait: false } : {}),
+          ...(timeout === undefined ? {} : { waitTimeoutMs: seconds * 1000 }),
+        })
+        return 0
+      }
     }
   } catch (error) {
     // Ctrl-C before the Studio was ready: everything is stopped, nothing failed.
@@ -144,7 +190,7 @@ export async function main(argv: string[], deps: PlatformDeps = { cwd: process.c
  * `ginko-platform dev`: resolves with 0 after Ctrl-C, 1 when a process ended by itself. Until the Studio is ready, it
  * prints short progress lines and keeps the children's output back (a failure shows its last lines); `verbose` shows all.
  */
-async function dev({ cwd, log, startPlatform = startLocalPlatform }: PlatformDeps, verbose: boolean): Promise<number> {
+async function dev({ cwd, log, startPlatform = startLocalPlatform, loadDemo: load = loadDemo }: PlatformDeps, verbose: boolean, withDemo: boolean): Promise<number> {
   const backendDir = backendAt(cwd, COMMAND)
   log('Starting the local backend. The first start downloads it, which can take a minute.')
   const platform = await startPlatform({
@@ -160,6 +206,13 @@ async function dev({ cwd, log, startPlatform = startLocalPlatform }: PlatformDep
     },
   })
   log('The backend is ready.')
+  // Loads while the Studio starts; its sentence comes after the ready block. A failure stops nothing.
+  const demo: Promise<string | undefined> = withDemo
+    ? load({ backendDir, command: COMMAND, log: verbose ? log : () => undefined }).then(
+      (loaded) => (loaded ? DEMO_LOADED : undefined),
+      (error: unknown) => `The demo site could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    : Promise.resolve(undefined)
   log('Starting the Studio.')
   let ready = false
   // Quiet mode: without its ready line the person would see nothing forever. Show the Studio's output, stop nothing.
@@ -184,6 +237,7 @@ async function dev({ cwd, log, startPlatform = startLocalPlatform }: PlatformDep
       ].join('\n'))
       // From now on, runtime errors of the Studio and the backend must be visible.
       platform.showOutput()
+      void demo.then((line) => { if (line && !platform.stopping()) log(line) })
     },
   })
   return platform.exited

@@ -1,10 +1,12 @@
-// `pnpm local:import <dir>` and `pnpm ops:import <dir> --site <slug> --prod` (SPEC 9, 12, monorepo only): load a `ginko export`
-// folder into the LOCAL platform, or (prod) into an EMPTY site of the hosted one. The caller has confirmed the target
-// (connectLocal / connectProd); nothing here chooses it.
-// Local steps: push the schema (devPush), store the files and the entry batches in storage, clear the site's content,
-// import the stored batches, then rewrite the entry references (the entries got new IDs). Prod steps: no schema push and
-// no clear; check that the stored schema has every brick, open the empty site for import, the same steps, close it again.
-// Prod with `reset` (the demo platform only, GINKO_DEMO=1 on the deployment): the site is cleared before it is opened.
+// Loads a `ginko export` folder into a site (SPEC 9, 12). Two procedures:
+// - Replace (`pnpm local:import`, the demo site of `ginko-platform dev`): LOCAL platform only. Push the schema (devPush,
+//   which creates a missing site), store the files and the entry batches in storage, clear the site's content, import the
+//   stored batches, then rewrite the entry references (the entries got new IDs).
+// - Empty site (`empty`: `ginko-platform import`, local or production, and `pnpm ops:import`): no schema push and no
+//   clear; check that the released schema has every brick, open the site for import (the platform refuses a site that
+//   has content), the same steps, close it again. With `reset` (the demo platform only, GINKO_DEMO=1 on the deployment)
+//   the site is cleared before it is opened.
+// The caller has confirmed the target (connectLocal / connectDeployment / connectProd); nothing here chooses it.
 // `convex run` takes its arguments on the command line, whose size the OS limits, so the entries travel through
 // storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
@@ -27,10 +29,13 @@ export interface ImportInput {
   /** Posts the bytes to a local upload URL and returns the storage ID the platform answers with. */
   upload: (url: string, bytes: Uint8Array<ArrayBuffer>, mime: string) => Promise<string>
   log: (line: string) => void
-  /** Hosted platform: the schema must already be released, the site must be empty, nothing is cleared. Default: local. */
-  prod?: boolean
   /**
-   * With `prod`: clear the site first, so the import replaces its content. Only the demo platform allows it (GINKO_DEMO=1);
+   * The empty-site procedure: the schema must already be released, the site must have no content, nothing is cleared.
+   * Default: replace the content of a local site.
+   */
+  empty?: boolean
+  /**
+   * With `empty`: clear the site first, so the import replaces its content. Only the demo platform allows it (GINKO_DEMO=1);
    * the client platform refuses the clear, and nothing is changed.
    */
   reset?: boolean
@@ -238,7 +243,7 @@ export async function importSite(input: ImportInput): Promise<{ entries: number;
   if (problems.length > 0) {
     throw new CliError(['The platform would refuse this export:', ...problems.map((p) => `  ✗ ${p}`), 'Nothing was imported. Fix these entries in export.json, then run the command again.'].join('\n'))
   }
-  if (!input.prod) {
+  if (!input.empty) {
     const sleep = input.sleep ?? ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)))
     for (let attempt = 0; ; attempt++) {
       try {
@@ -253,9 +258,9 @@ export async function importSite(input: ImportInput): Promise<{ entries: number;
     }
   }
 
-  // Hosted: the schema comes from `ginko release`, never from here.
+  // Empty site: the schema comes from `ginko release`, never from here.
   const status = await run('seed:importStatus', { site })
-  if (!isObject(status) || !Array.isArray(status.bricks)) throw new CliError(`The site “${site}” does not exist on the platform. Create it (sites:bootstrap) and run \`ginko release\` first.`)
+  if (!isObject(status) || !Array.isArray(status.bricks)) throw new CliError(`The site “${site}” does not exist on the platform. Create it in the Studio (New site) and run \`ginko release\` for it first.`)
   const missing = Object.keys(data.schema.bricks).filter((brick) => !(status.bricks as unknown[]).includes(brick))
   if (missing.length > 0) throw new CliError(`The released schema of “${site}” has no ${missing.map((b) => `“${b}”`).join(', ')}. Run \`ginko release\` for the site first.`)
   if (input.reset) {
@@ -277,7 +282,7 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   const limit = input.batchBytes ?? BATCH_BYTES
 
   // 1. Schema. Rejected changes go through as warnings, as in `local:dev` (SPEC 5.3).
-  if (!input.prod) {
+  if (!input.empty) {
     const pushed = await run('release:devPush', { site, schema: data.schema })
     const warnings = isObject(pushed) && Array.isArray(pushed.warnings) ? (pushed.warnings as SchemaChange[]) : []
     for (const line of explainRejected(warnings)) log(`Warning: ${line}`)
@@ -289,10 +294,10 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   for (const file of data.files) {
     const bytes = await readFileOf(input.dir, file)
     const url = await run('seed:uploadUrl', { site })
-    if (typeof url !== 'string') throw new CliError('The local platform did not return an upload address.')
+    if (typeof url !== 'string') throw new CliError('The platform did not return an upload address.')
     stored.set(file.id, await input.upload(url, bytes, file.mime))
   }
-  if (data.files.length) log(`${data.files.length} files in local storage.`)
+  if (data.files.length) log(`${data.files.length} files stored.`)
 
   // 3. Entries in batches. A batch carries the files that its entries mention (found by their ID in the
   // entry's JSON, which may name a few too many, never too few); the platform stores each file once.
@@ -329,7 +334,7 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   const storedBatches: { id: string; count: number }[] = []
   for (const batch of batches) {
     const url = await run('seed:uploadUrl', { site })
-    if (typeof url !== 'string') throw new CliError('The local platform did not return an upload address.')
+    if (typeof url !== 'string') throw new CliError('The platform did not return an upload address.')
     const bytes = new TextEncoder().encode(JSON.stringify(batch.args)) as Uint8Array<ArrayBuffer>
     storedBatches.push({ id: await input.upload(url, bytes, 'application/json'), count: batch.count })
   }
@@ -340,7 +345,7 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   try {
     filled = await fill(input, data, site, storedBatches)
   } catch (error) {
-    if (input.prod) throw error
+    if (input.empty) throw error
     const reason = error instanceof Error ? error.message : String(error)
     const again = passing(reason) ? `\nRun the same command again to finish${input.again ? `: ${input.again}` : '.'}` : ''
     throw new CliError(`${reason}\nThe local site is only partly imported.${again}`, error instanceof CliError ? error.code : undefined)
@@ -365,7 +370,7 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
   const { run, log } = input
 
   // 4. Clear. Each call removes a bounded part. Never on the hosted platform: it is empty by rule.
-  if (!input.prod) await clear(run, site)
+  if (!input.empty) await clear(run, site)
 
   // 5. Import the stored batches; each answers with the new ID of every entry, as [exported ID, new ID] pairs.
   let done = 0
@@ -424,16 +429,16 @@ async function clear(run: Runner, site: string): Promise<void> {
   }
 }
 
-/** Posts a file to a local Convex upload URL and returns the storage ID. */
+/** Posts a file to a Convex upload URL and returns the storage ID. */
 export async function postFile(fetchFn: (url: string, init?: RequestInit) => Promise<Response>, url: string, bytes: Uint8Array<ArrayBuffer>, mime: string): Promise<string> {
   let response: Response
   try {
     response = await fetchFn(url, { method: 'POST', headers: { 'content-type': mime }, body: new Blob([bytes], { type: mime }) })
   } catch {
-    throw new CliError('Local storage is not reachable.')
+    throw new CliError('The file storage of the platform is not reachable.')
   }
-  if (!response.ok) throw new CliError(`Local storage rejected the file (HTTP ${response.status}).`)
+  if (!response.ok) throw new CliError(`The file storage of the platform rejected the file (HTTP ${response.status}).`)
   const body: unknown = await response.json()
-  if (!isObject(body) || typeof body.storageId !== 'string') throw new CliError('Local storage did not return a file ID.')
+  if (!isObject(body) || typeof body.storageId !== 'string') throw new CliError('The file storage of the platform did not return a file ID.')
   return body.storageId
 }

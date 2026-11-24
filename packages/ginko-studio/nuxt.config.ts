@@ -45,6 +45,14 @@ export default defineNuxtConfig({
   alias: { '@studio': here('./app') },
   // Absolute paths: the same reason. Tokens and Tailwind first, then the old CSS (it sits in a lower-priority layer).
   css: [here('./app/assets/css/tailwind.css'), here('./app/assets/ui.css')],
+  // Nuxt DevTools adds a client plugin in dev whose `@vue/devtools-core` import Vite finds only when the browser loads it,
+  // after the scan below: it optimizes again and reloads the page, which loses a form a person (or the install walk)
+  // is filling in on the first start. The Studio is a finished app for its host; a host can turn DevTools on again.
+  devtools: { enabled: false },
+  // A platform project has no app/ folder, so `nuxt dev` watches the project root, and with it the local backend's data
+  // in .convex/. SQLite adds and removes its journal file there on writes; Nuxt takes each added or removed file as a
+  // change of the app structure and reloads the page, which loses a form a person is filling in (sign-in, New site).
+  ignore: ['**/.convex'],
   vite: {
     plugins: [tailwindcss()],
     // Dev: scan every Studio file for dependencies at start. Without it Vite finds a dependency only when a page first
