@@ -9,8 +9,8 @@ up to 0.3.x on npm, so the packages start at 0.3.0 and the first minor changeset
 names each one with how to update; a patch never breaks anything. The quality bar is a 1.0 all the same:
 no public name we expect to change, docs that work as written.
 
-`@lupinum/ginko-server`, `@lupinum/ginko-studio` and `@lupinum/ginko-editor` stay `private`: they run only on the platform that Lupinum hosts.
-No published package may depend on them.
+`@lupinum/ginko-server`, `@lupinum/ginko-studio` and `@lupinum/ginko-editor` release in the same group: people who host the
+platform themselves install them (`create-ginko --platform`).
 
 ## Every change
 
@@ -36,22 +36,25 @@ Handbook: [lupinum-oss, Releasing](https://github.com/lupinum-dev/lupinum-oss). 
    tag `v<version>` and the GitHub release.
 
 The client platform lupinum-ginko-cms deploys release tags only (`.github/workflows/cms.yml`, D55). A fix that touches
-only private packages (`ginko-server`, `ginko-studio`, …) reaches it only with a release: give it a `@lupinum/ginko`
-patch changeset.
+only the platform packages (`ginko-server`, `ginko-studio`, …) reaches it only with a release: give it a patch changeset
+for the package it changes.
 
 There is no npm token. The pack job needs `pnpm build` to work and `scripts/release.mjs` to find no dependency
 cycle between the published packages (a peer dependency counts).
 
 ### First publication of the new packages
 
-npm attaches a trusted publisher only to a package that exists. These packages are not on npm yet:
-`@lupinum/ginko`, `@lupinum/ginko-i18n`, `@lupinum/ginko-components`, `@lupinum/ginko-preset-gastro`, `create-ginko`.
+npm attaches a trusted publisher only to a package that exists. These packages of the group are not on npm yet:
+`@lupinum/ginko-server`, `@lupinum/ginko-studio`. `@lupinum/ginko-editor` is on npm as `0.1.0`, published from the
+earlier repository `lupinum-dev/ginko-editor`, so it has no trusted publisher for this repository. The first
+publication of these three from this repository is by hand, by Matthias with his 2FA code; the other packages of the
+group publish by the workflow afterwards.
 Follow "First publication of a new package" in the handbook: reject the `npm` deployment of the first run, download its
 `release` artifact, publish only those tarballs by hand with
 `npm publish ./release/<file>.tgz --access public --ignore-scripts --tag latest` (`--tag next` for a prerelease) and your 2FA code,
 then set on every package the trusted publisher (workflow `release.yml`, environment `npm`) and "Require two-factor
 authentication and disallow tokens". Then run `release.yml` by hand on `main`: it publishes the packages that already
-exist (`@lupinum/ginko-content`, `@lupinum/ginko-docs`) with provenance and creates the tag and GitHub release.
+exist (the seven of the first release) with provenance and creates the tag and GitHub release.
 
 ## Repository
 

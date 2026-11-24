@@ -15,7 +15,10 @@
       "@lupinum/ginko-components",
       "@lupinum/ginko-docs",
       "create-ginko",
-      "@lupinum/ginko-preset-gastro"
+      "@lupinum/ginko-preset-gastro",
+      "@lupinum/ginko-server",
+      "@lupinum/ginko-studio",
+      "@lupinum/ginko-editor"
     ]
   ],
   "linked": [],

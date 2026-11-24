@@ -1,7 +1,6 @@
 {
   "name": "@lupinum/ginko-editor",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.17.1",
   "type": "module",
   "description": "Editing logic for Ginko bricks: the headless Markdown editor, uploads, issues and value helpers.",
   "license": "MIT",
