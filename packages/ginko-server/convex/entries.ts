@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -293,7 +293,7 @@ export const changeSlug = mutation({
       const brick = brickOf(schema, entry)
       const locale = args.locale as Locale
       if (!schema.locales.includes(locale)) fail('INVALID', 'errors.languageNotSetUp', { locale })
-      const key = Object.keys(brick.fields).find((k) => brick.fields[k]!.type === 'slug' && !brick.fields[k]!.retired)
+      const key = slugKeyOf(brick)
       if (brick.kind !== 'collection' || !brick.route?.[locale] || !key) fail('INVALID', 'errors.addressFixed')
       const slug = args.slug.trim()
       if (!SLUG_PATTERN.test(slug)) fail('INVALID', 'errors.addressFormat')

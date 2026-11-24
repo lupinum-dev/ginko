@@ -71,6 +71,19 @@ describe('readContent', () => {
     expect((r.entries.docs![0]!.data.body as { de: { nodes: unknown[] } }).de.nodes.length).toBeGreaterThan(0)
   })
 
+  // Wrong (design V2 guess 8): the address field is found by its name `slug`, so a collection whose address field has
+  // another name gets no address from its file names and no URL.
+  it('takes the address from the file name into the slug field, whatever it is called', async () => {
+    const adresse = serializeSchema(defineSite({
+      site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: {},
+      bricks: { pages: collection({ listing: { title: 'title' }, label: 'Seiten', source: 'files', max: 5, order: 'manual', route: { de: '/seite/[slug]' }, fields: { title: f.text('Titel'), adresse: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') } }) },
+    }))
+    const s = site({ 'content/pages/1.ueber-uns.md': md('title: Über uns') })
+    const r = await readContent(s.content, s.public, adresse)
+    expect(r.errors).toEqual([])
+    expect(r.entries.pages!.map((e) => e.data.adresse)).toEqual([{ de: 'ueber-uns' }])
+  })
+
   it('reads a single and never touches platform bricks', async () => {
     const r = await read({ 'content/legal.md': md('title: Impressum'), 'content/legal.en.md': md('title: Imprint') })
     expect(r.errors).toEqual([])

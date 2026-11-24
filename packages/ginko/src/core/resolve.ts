@@ -1,4 +1,4 @@
-import { effectiveAlt, isTranslatable } from './fields.ts'
+import { effectiveAlt, isTranslatable, slugKeyOf } from './fields.ts'
 import { addDays } from './time.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { resolveRouteLinks } from './links.ts'
@@ -359,7 +359,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
  * translated or not: for cache refresh and URL clash checks.
  */
 export function routeUrls(schema: Schema, brick: CollectionBrick, entry: StoredEntry): Partial<Record<Locale, string>> {
-  const slugField = Object.entries(brick.fields).find(([, field]) => field.type === 'slug' && !field.retired)?.[0]
+  const slugField = slugKeyOf(brick)
   if (!slugField || !brick.route) return {}
   const slugs = (entry.data[slugField] ?? {}) as Partial<Record<Locale, string>>
   const main = schema.locales[0]!

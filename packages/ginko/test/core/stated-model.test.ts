@@ -99,3 +99,17 @@ describe('tree: a collection states its navigation tree', () => {
     ])
   })
 })
+
+describe('one address field per collection', () => {
+  // Wrong (guess 8): a collection with two slug fields is accepted, and the first one in field order silently becomes
+  // the address of every entry.
+  it('refuses a second live slug field; a retired one may stay', () => {
+    const schema = stored()
+    const events = schema.bricks.events as CollectionBrick
+    events.fields.short = { type: 'slug', label: 'Kurzadresse', from: 'title' }
+    expect(checkSchema(schema)).toEqual(['events: a collection has one address (slug) field, not 2 (slug, short). Keep one and retire the others.'])
+    ;(events.fields.short as { retired?: true }).retired = true
+    schema.retired['events.short'] = { from: 'slug' }
+    expect(checkSchema(schema)).toEqual([])
+  })
+})

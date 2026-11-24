@@ -1,7 +1,7 @@
 import type {
   BooleanField, ChoiceField, ChoicesField, DateField, DateRangeField, Fields, FileField, ImageField,
   ListField, LongTextField, MarkdownField, MoneyField, NumberField, RefField, SlugField, TextField, TimeField,
-  Field, Json, Label, Localized,
+  Brick, Field, Json, Label, Localized,
 } from './types.ts'
 import type { Money } from './infer.ts'
 import { stableJson } from './sha256.ts'
@@ -153,6 +153,11 @@ export function effectiveMin(field: Field): number {
     case 'list': return field.min ?? 0
     default: return -Infinity
   }
+}
+
+/** The address field of a brick: its one live slug field (`checkSchema` allows one per collection), or undefined. */
+export function slugKeyOf(brick: Brick): string | undefined {
+  return Object.keys(brick.fields).find((key) => brick.fields[key]!.type === 'slug' && !brick.fields[key]!.retired)
 }
 
 /** Types whose values are stored as Localized<T> unless `translate: false`. Image stores only its `alt` localized. */

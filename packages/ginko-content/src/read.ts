@@ -5,7 +5,7 @@ import type {
   Brick, Field, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, imageSizeProps, isTranslatable, printOf, sha256, slugify, routeUrls, todayIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, imageSizeProps, isTranslatable, printOf, sha256, slugify, slugKeyOf, routeUrls, todayIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -772,11 +772,6 @@ async function entryNames(dir: string): Promise<string[]> {
 async function dataNames(dir: string): Promise<string[]> {
   const dirents = await readdir(dir, { withFileTypes: true }).catch(() => [])
   return dirents.filter((d) => d.isFile() && extensions.some((e) => d.name.endsWith(`.${e}`))).map((d) => d.name).sort()
-}
-
-/** The brick's slug field, if it has one: the URL of each entry (CONTENT.md "Slug"). */
-function slugKeyOf(brick: Brick): string | undefined {
-  return brick.fields.slug?.type === 'slug' ? 'slug' : undefined
 }
 
 /**

@@ -411,6 +411,8 @@ function schemaProblems(schema: Schema): string[] {
         }
         if (!Object.values(brick.fields).some((fd) => fd.type === 'slug')) problems.push(`${key}: route needs a slug field.`)
       }
+      const slugs = Object.entries(brick.fields).filter(([, fd]) => fd.type === 'slug' && !fd.retired).map(([name]) => name)
+      if (slugs.length > 1) problems.push(`${key}: a collection has one address (slug) field, not ${slugs.length} (${slugs.join(', ')}). Keep one and retire the others.`)
       const vis = brick.visible
       if (vis !== undefined) problems.push(...visibilityProblems(key, vis, brick.fields))
     } else if (brick.fields && Object.values(brick.fields).some((fd) => fd.type === 'slug')) {

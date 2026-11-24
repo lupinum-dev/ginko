@@ -5,7 +5,7 @@
      away and the form and the preview share the panel. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, visibleUntil, type Place, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, slugKeyOf, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, visibleUntil, type Place, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
@@ -635,7 +635,8 @@ const previewFocus = computed(() => focused.value && { ...focused.value, text: f
 /** The label of the field a new entry's address is made from, while it is empty: there is no page to show yet. */
 const previewWaitsFor = computed(() => {
   if (props.entry || props.brick.kind !== 'collection' || !props.brick.route) return undefined
-  const slug = Object.values(props.brick.fields).find((field) => field.type === 'slug' && !field.retired)
+  const key = slugKeyOf(props.brick)
+  const slug = key === undefined ? undefined : props.brick.fields[key]
   if (slug?.type !== 'slug' || textIn(typed.value[slug.from], main.value).trim()) return undefined
   return shown(props.brick.fields[slug.from]!.label)
 })
