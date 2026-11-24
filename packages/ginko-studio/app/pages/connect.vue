@@ -82,7 +82,7 @@ const ROW = 'grid gap-3 px-4 py-4 sm:px-6 sm:py-5 min-[720px]:grid-cols-[minmax(
 <template>
   <main class="grid grid-cols-[minmax(0,1fr)] gap-6">
     <div class="grid gap-1">
-      <h1 class="text-[22px] font-semibold tracking-tight">{{ t('connect.title') }}</h1>
+      <h1>{{ t('connect.title') }}</h1>
       <p class="max-w-[65ch] text-[15px] text-muted-foreground min-[900px]:text-sm">{{ t('connect.lede') }}</p>
     </div>
 

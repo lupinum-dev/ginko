@@ -62,7 +62,7 @@ const hintId = computed(() => `${props.id}-frames-hint`)
             <img :src="file.url" alt="" class="block size-full object-cover" :style="{ objectPosition: focusPosition(focus) }">
           </div>
           <span class="text-xs text-muted-foreground tabular-nums">{{ tile.label }}</span>
-          <span v-if="tile.warning" class="flex max-w-48 gap-1 text-xs leading-snug text-amber-700 dark:text-amber-400"><TriangleAlert class="mt-px size-3.5 shrink-0" aria-hidden="true" />{{ tile.warning }}</span>
+          <span v-if="tile.warning" class="flex max-w-48 gap-1 text-xs leading-snug text-warning"><TriangleAlert class="mt-px size-3.5 shrink-0" aria-hidden="true" />{{ tile.warning }}</span>
         </li>
       </ul>
     </div>

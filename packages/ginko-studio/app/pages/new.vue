@@ -63,7 +63,7 @@ const WRONG = 'text-[13px] font-medium text-destructive'
         <ArrowLeftIcon class="size-4" aria-hidden="true" />{{ t('nav.mySites') }}
       </NuxtLink>
       <div class="grid gap-1">
-        <h1 class="text-[22px] font-semibold tracking-tight">{{ t('sites.new.title') }}</h1>
+        <h1>{{ t('sites.new.title') }}</h1>
         <p class="max-w-[65ch] text-[15px] text-muted-foreground min-[900px]:text-sm">{{ t('sites.new.lede') }}</p>
       </div>
     </div>

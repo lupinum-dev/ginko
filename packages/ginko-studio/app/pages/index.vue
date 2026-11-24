@@ -60,7 +60,7 @@ const groups = computed(() => [
   <main class="grid grid-cols-[minmax(0,1fr)] gap-6">
     <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
       <div class="grid gap-1">
-        <h1 class="text-[22px] font-semibold tracking-tight">{{ t('sites.title') }}</h1>
+        <h1>{{ t('sites.title') }}</h1>
         <p class="text-[15px] text-muted-foreground min-[900px]:text-sm">{{ t('sites.lede') }}</p>
       </div>
       <div v-if="many || (mayCreate && sorted.length)" class="flex w-full flex-wrap items-center gap-3 sm:w-auto">

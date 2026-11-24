@@ -189,7 +189,7 @@ const missingText = computed(() => {
       <template v-else-if="field.type === 'slug' && foreignTab">
         <div v-if="address" class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
           <span :id="id" class="[overflow-wrap:anywhere]">{{ foreignSlug }}</span>
-          <a v-if="address.href" :href="address.href" target="_blank" rel="noopener" class="font-medium text-primary underline underline-offset-2">{{ t('fields.slug.view') }}<span class="sr-only"> {{ t('nav.newTab') }}</span></a>
+          <a v-if="address.href" :href="address.href" target="_blank" rel="noopener" class="font-medium text-link underline underline-offset-2">{{ t('fields.slug.view') }}<span class="sr-only"> {{ t('nav.newTab') }}</span></a>
           <!-- Only an own address in this language can change; one that is the main-language slug follows the title. -->
           <SlugChange v-if="slugAddress" :id="id" :slug="text" :locale="locale" :before="slugAddress.before" :after="slugAddress.after" class="ml-auto" />
         </div>

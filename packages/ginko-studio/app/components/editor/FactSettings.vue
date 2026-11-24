@@ -70,7 +70,7 @@ const groups = computed(() => {
     </div>
     <p class="text-xs text-muted-foreground">{{ t('editor.fact.follows') }}</p>
 
-    <a v-if="link" :href="link" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 justify-self-start text-sm font-medium text-primary underline underline-offset-4">
+    <a v-if="link" :href="link" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 justify-self-start text-sm font-medium text-link underline underline-offset-4">
       {{ t('editor.fact.change', { brick: brickLabel(brick) }) }}
       <SquareArrowOutUpRightIcon class="size-3.5" aria-hidden="true" />
       <span class="sr-only">{{ t('editor.fact.newTab') }}</span>

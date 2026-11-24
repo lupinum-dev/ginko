@@ -155,7 +155,7 @@ const uploaded = computed(() => (info.value ? whenFull(info.value.createdAt, sit
       <ul v-else class="m-0 grid list-none gap-1.5 p-0 text-sm">
         <li v-for="use in used" :key="use.entry" class="[overflow-wrap:anywhere]">
           <span v-if="use.deleted">{{ use.title }} · {{ whereOf(use) }} {{ t('files.deletedEntry') }}</span>
-          <template v-else><NuxtLink :to="`/s/${lib.slug.value}/all/${use.brick}/${use.entry}`" class="font-medium text-primary underline-offset-4 hover:underline">{{ use.title }}</NuxtLink> <span class="text-muted-foreground">· {{ whereOf(use) }}</span></template>
+          <template v-else><NuxtLink :to="`/s/${lib.slug.value}/all/${use.brick}/${use.entry}`" class="font-medium text-link underline-offset-4 hover:underline">{{ use.title }}</NuxtLink> <span class="text-muted-foreground">· {{ whereOf(use) }}</span></template>
         </li>
       </ul>
     </section>

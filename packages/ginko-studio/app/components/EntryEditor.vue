@@ -705,7 +705,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <header class="grid gap-2.5">
           <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <h1 class="text-xl font-semibold tracking-tight min-[900px]:text-[1.375rem]">{{ title }}</h1>
+              <h1 class="text-2xl min-[900px]:text-[1.625rem]">{{ title }}</h1>
               <Badge v-if="bar && !sideMode && statusText" :variant="statusVariant">{{ statusText }}</Badge>
             </div>
             <DropdownMenu v-if="entry && !removed">

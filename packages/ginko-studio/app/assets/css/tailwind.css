@@ -1,13 +1,18 @@
 /* Tailwind v4 and the shadcn tokens of the Studio.
    Token NAMES are the shadcn ones because ginko-components styles the content with them
    (--background, --foreground, --primary, --muted, --border, --radius ...): content then looks right
-   inside the Studio. Token VALUES are PrimeVue Aura's default pairing, emerald on zinc. Stock emerald-500
-   with white text is 2.5:1, so light mode fills controls with emerald-700 (5.5:1); dark mode keeps
-   emerald-400 with dark text. Dark mode switches like ginko-components does: .dark / [data-theme="dark"],
-   or the system preference unless [data-theme="light"] is set.
+   inside the Studio. Token VALUES are the Ginko brand (2026-11-24): ink, paper, green and gold.
+   - --primary is ink with paper text in light mode, paper with ink text in dark mode: the main button.
+   - --ring and --link are the green: focus, links, checked controls. Ink cannot mark a link inside ink text.
+   - --marker is the gold. It only says "you are here" (the current view, area or tab); never a button or a status.
+   - Warnings and errors keep their own colours in every theme.
+   Every pair of text and ground that the Studio uses is checked in test/tokens.test.ts (4.5:1 for text).
+   Dark mode switches like ginko-components does: .dark / [data-theme="dark"], or the system preference unless
+   [data-theme="light"] is set. The dark values stand twice below (CSS has no way to share them); the test compares them.
    Surfaces, lowest to highest: --canvas (behind the rail and the framed panel on wide screens), --sidebar (side
-   columns inside the panel), --card / --background (the page), --popover. Dark mode lifts each step a little and keeps
-   borders one step above the page, so panels read as surfaces instead of outlines (design A, 2026-10-20). */
+   columns inside the panel), --card / --background (the page), --popover. Dark mode keeps the canvas darkest and
+   borders one step above the page, so panels read as surfaces instead of outlines.
+   The light --canvas is still a light surface: it turns to ink together with the rail (text on it must turn light). */
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/preflight.css' layer(base);
@@ -25,109 +30,122 @@
 
 :root {
   --radius: 0.625rem;
-  --canvas: #f4f4f5;
+  --canvas: #f1f3f0;
   --background: #ffffff;
-  --foreground: #27272a;
+  --foreground: #17211c;
   --card: #ffffff;
-  --card-foreground: #27272a;
+  --card-foreground: #17211c;
   --popover: #ffffff;
-  --popover-foreground: #27272a;
-  --primary: #047857;
-  --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #27272a;
-  --muted: #f4f4f5;
-  --muted-foreground: #6b6b74;
-  --accent: #ecfdf5;
-  --accent-foreground: #065f46;
-  --destructive: #b91c1c;
-  --border: #e7e7ea;
-  --input: #d4d4d8;
-  --ring: #047857;
-  --success: #15803d;
-  --warning: #854d0e;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #27272a;
-  --sidebar-primary: #047857;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f4f5;
-  --sidebar-accent-foreground: #27272a;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: #10b981;
+  --popover-foreground: #17211c;
+  --primary: #10231c;
+  --primary-foreground: #f6f3ea;
+  --secondary: #f1f3f0;
+  --secondary-foreground: #17211c;
+  --muted: #f1f3f0;
+  --muted-foreground: #5f6962;
+  --accent: #e8f1eb;
+  --accent-foreground: #17563f;
+  --destructive: #b3261e;
+  --border: #e2e6e1;
+  --input: #cbd1ca;
+  --ring: #1f6f54;
+  --link: #1f6f54;
+  --marker: #f2b82e;
+  --marker-foreground: #10231c;
+  --success: #1f6f54;
+  --warning: #9a4a08;
+  --sidebar: #f7f8f6;
+  --sidebar-foreground: #17211c;
+  --sidebar-primary: #10231c;
+  --sidebar-primary-foreground: #f6f3ea;
+  --sidebar-accent: #f1f3f0;
+  --sidebar-accent-foreground: #17211c;
+  --sidebar-border: #e2e6e1;
+  --sidebar-ring: #1f6f54;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --canvas: #09090b;
-    --background: #131316;
-    --foreground: #fafafa;
-    --card: #131316;
-    --card-foreground: #fafafa;
-    --popover: #1a1a1e;
-    --popover-foreground: #fafafa;
-    --primary: #34d399;
-    --primary-foreground: #09090b;
-    --secondary: #1f1f24;
-    --secondary-foreground: #fafafa;
-    --muted: #1c1c20;
-    --muted-foreground: #a1a1aa;
-    --accent: #10291f;
-    --accent-foreground: #6ee7b7;
-    --destructive: #f87171;
-    --border: #26262c;
-    --input: #52525b;
-    --ring: #34d399;
-    --success: #4ade80;
-    --warning: #fbbf24;
-    --sidebar: #101012;
-    --sidebar-foreground: #fafafa;
-    --sidebar-primary: #34d399;
-    --sidebar-primary-foreground: #09090b;
-    --sidebar-accent: #1f1f24;
-    --sidebar-accent-foreground: #fafafa;
-    --sidebar-border: #26262c;
-    --sidebar-ring: #34d399;
+    --canvas: #0a1410;
+    --background: #121e19;
+    --foreground: #e9ede8;
+    --card: #121e19;
+    --card-foreground: #e9ede8;
+    --popover: #18271f;
+    --popover-foreground: #e9ede8;
+    --primary: #f6f3ea;
+    --primary-foreground: #10231c;
+    --secondary: #1c2b24;
+    --secondary-foreground: #e9ede8;
+    --muted: #1c2b24;
+    --muted-foreground: #9fada4;
+    --accent: #17302a;
+    --accent-foreground: #9fdcc2;
+    --destructive: #f28b82;
+    --border: #25362e;
+    --input: #566d62;
+    --ring: #62c6a0;
+    --link: #62c6a0;
+    --marker: #f2b82e;
+    --marker-foreground: #10231c;
+    --success: #62c6a0;
+    --warning: #f2a65a;
+    --sidebar: #0e1914;
+    --sidebar-foreground: #e9ede8;
+    --sidebar-primary: #f6f3ea;
+    --sidebar-primary-foreground: #10231c;
+    --sidebar-accent: #1c2b24;
+    --sidebar-accent-foreground: #e9ede8;
+    --sidebar-border: #25362e;
+    --sidebar-ring: #62c6a0;
     color-scheme: dark;
   }
 }
 
 .dark,
 [data-theme='dark'] {
-  --canvas: #09090b;
-  --background: #131316;
-  --foreground: #fafafa;
-  --card: #131316;
-  --card-foreground: #fafafa;
-  --popover: #1a1a1e;
-  --popover-foreground: #fafafa;
-  --primary: #34d399;
-  --primary-foreground: #09090b;
-  --secondary: #1f1f24;
-  --secondary-foreground: #fafafa;
-  --muted: #1c1c20;
-  --muted-foreground: #a1a1aa;
-  --accent: #10291f;
-  --accent-foreground: #6ee7b7;
-  --destructive: #f87171;
-  --border: #26262c;
-  --input: #52525b;
-  --ring: #34d399;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --sidebar: #101012;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #34d399;
-  --sidebar-primary-foreground: #09090b;
-  --sidebar-accent: #1f1f24;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: #26262c;
-  --sidebar-ring: #34d399;
+  --canvas: #0a1410;
+  --background: #121e19;
+  --foreground: #e9ede8;
+  --card: #121e19;
+  --card-foreground: #e9ede8;
+  --popover: #18271f;
+  --popover-foreground: #e9ede8;
+  --primary: #f6f3ea;
+  --primary-foreground: #10231c;
+  --secondary: #1c2b24;
+  --secondary-foreground: #e9ede8;
+  --muted: #1c2b24;
+  --muted-foreground: #9fada4;
+  --accent: #17302a;
+  --accent-foreground: #9fdcc2;
+  --destructive: #f28b82;
+  --border: #25362e;
+  --input: #566d62;
+  --ring: #62c6a0;
+  --link: #62c6a0;
+  --marker: #f2b82e;
+  --marker-foreground: #10231c;
+  --success: #62c6a0;
+  --warning: #f2a65a;
+  --sidebar: #0e1914;
+  --sidebar-foreground: #e9ede8;
+  --sidebar-primary: #f6f3ea;
+  --sidebar-primary-foreground: #10231c;
+  --sidebar-accent: #1c2b24;
+  --sidebar-accent-foreground: #e9ede8;
+  --sidebar-border: #25362e;
+  --sidebar-ring: #62c6a0;
   color-scheme: dark;
 }
 
 @theme inline {
   --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Page titles only (the h1 in ui.css). */
+  --font-display: 'Bricolage Grotesque Variable', 'Inter Variable', system-ui, sans-serif;
+  /* Keys, addresses, commands. */
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -151,6 +169,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-link: var(--link);
+  --color-marker: var(--marker);
+  --color-marker-foreground: var(--marker-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-sidebar: var(--sidebar);
