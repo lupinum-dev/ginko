@@ -45,8 +45,10 @@ cycle between the published packages (a peer dependency counts).
 ### First publication of the new packages
 
 npm attaches a trusted publisher only to a package that exists. These packages of the group are not on npm yet:
-`@lupinum/ginko-server`, `@lupinum/ginko-studio`, `@lupinum/ginko-editor`. Their first publication is by hand, by
-Matthias with his 2FA code; the other packages of the group publish by the workflow afterwards.
+`@lupinum/ginko-server`, `@lupinum/ginko-studio`. `@lupinum/ginko-editor` is on npm as `0.1.0`, published from the
+earlier repository `lupinum-dev/ginko-editor`, so it has no trusted publisher for this repository. The first
+publication of these three from this repository is by hand, by Matthias with his 2FA code; the other packages of the
+group publish by the workflow afterwards.
 Follow "First publication of a new package" in the handbook: reject the `npm` deployment of the first run, download its
 `release` artifact, publish only those tarballs by hand with
 `npm publish ./release/<file>.tgz --access public --ignore-scripts --tag latest` (`--tag next` for a prerelease) and your 2FA code,
