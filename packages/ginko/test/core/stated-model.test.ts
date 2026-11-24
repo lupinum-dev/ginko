@@ -177,3 +177,17 @@ describe('week: the site states its week', () => {
     expect(checkSchema(schema)).toEqual([expect.stringMatching(/^week is missing\. The brick “lunch” is planned by the week/)])
   })
 })
+
+describe('body: the field the text of a file fills', () => {
+  // Wrong: the text below the front matter goes into the brick's one markdown field although the brick never said so.
+  it('is stated on a file brick, and refused when it names no markdown field', () => {
+    const schema = stored()
+    const about: Brick = { kind: 'single', label: 'Seite', source: 'files', fields: { title: { type: 'text', label: 'Titel' }, story: { type: 'markdown', label: 'Text' } } }
+    schema.bricks.about = about
+    expect(checkSchema(schema)).toEqual(["about.story: in a file brick, a markdown field is the text of the file. Write `body: 'story'` (one markdown field per file brick)."])
+    schema.bricks.about = { ...about, body: 'story' }
+    expect(checkSchema(schema)).toEqual([])
+    schema.bricks.about = { ...about, body: 'title' }
+    expect(checkSchema(schema)).toContain('about.body: “title” is not a markdown field of this brick.')
+  })
+})

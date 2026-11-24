@@ -362,11 +362,13 @@ describe('9. value rules (F12)', () => {
 // Phase 13 (CONTENT.md): file bricks and their markdown field.
 describe('file bricks', () => {
   const md = { body: f.markdown('Text') }
-  const files = (fields: Fields, source?: 'files') => site({}, { bricks: { docs: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Doku', source, fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }) } })
+  const files = (fields: Fields, source?: 'files', body?: string) => site({}, { bricks: { docs: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Doku', source, body: body as never, fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }) } })
   const list = (cell: Fields[string]) => ({ rows: f.list('Zeilen', { itemLabel: 'Zeile', fields: { cell }, max: 5 }) })
 
   it.each([
-    ['two markdown fields in a file brick', files({ ...md, intro: f.markdown('Intro') }, 'files'), 'docs: at most one markdown field (the text of the file).'],
+    ['two markdown fields in a file brick', files({ ...md, intro: f.markdown('Intro') }, 'files', 'body'), "docs.intro: in a file brick, a markdown field is the text of the file. Write `body: 'intro'` (one markdown field per file brick)."],
+    ['a markdown field of a file brick without body', files(md, 'files'), "docs.body: in a file brick, a markdown field is the text of the file. Write `body: 'body'` (one markdown field per file brick)."],
+    ['body naming a text field', files(md, 'files', 'title'), 'docs.body: “title” is not a markdown field of this brick.'],
     ['markdown in a list of a file brick', files(list(f.markdown('Zelle')), 'files'), 'docs: in file bricks, markdown is only allowed as the text of the file, not in a list.'],
   ])('%s is refused', (_, input, problem) => {
     expect(problemsOf(input)).toContain(problem)
@@ -374,7 +376,7 @@ describe('file bricks', () => {
 
   // Wrong behaviour caught: the old rule "markdown only in file bricks" comes back and blocks editable Markdown in the platform.
   it.each([
-    ['one markdown field in a file brick', files(md, 'files')],
+    ['one markdown field in a file brick, named by body', files(md, 'files', 'body')],
     ['markdown in a platform brick', files(md)],
     ['markdown in a list of a platform brick', files(list(f.markdown('Zelle')))],
   ])('%s is fine', (_, input) => {

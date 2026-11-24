@@ -33,6 +33,7 @@ export function legal<const R extends Record<Locale, RouteTemplate> | undefined 
       id: 'update', kind: 'edit', pick: true, fields: ['body', 'updatedAt'], prefill: { updatedAt: '@today' },
       label: t('Rechtstext aktualisieren', 'Update a legal text', 'Actualizar un texto legal', 'Mettre à jour un texte juridique'),
     }],
+    body: 'body',
     fields: {
       title: f.text(t('Titel', 'Title', 'Título', 'Titre')),
       description: f.longtext(t('Beschreibung', 'Description', 'Descripción', 'Description'), { optional: true }),

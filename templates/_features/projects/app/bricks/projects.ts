@@ -22,6 +22,7 @@ const common = {
 /** Projects and campaigns: a campaign leaves the site after its last day. */
 const campaigns = () => collection({
   ...common,
+  body: 'body',
   fields: { ...fields(), ...campaign(), body: body() },
   listing: { title: 'title', detail: 'ends', image: 'image' },
   untranslated: 'hide',
@@ -33,6 +34,7 @@ const campaigns = () => collection({
 /** Finished work with its facts and photos. */
 const detailed = () => collection({
   ...common,
+  body: 'body',
   fields: { ...fields(), ...details(), body: body() },
   listing: { title: 'title', image: 'image' },
   untranslated: 'hide',

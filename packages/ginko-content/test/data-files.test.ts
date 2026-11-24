@@ -23,7 +23,7 @@ const schema = serializeSchema(defineSite({
         steps: f.list('Schritte', { itemLabel: 'Schritt', fields: { label: f.text('Name') }, max: 10, optional: true }),
       },
     }),
-    docs: collection({
+    docs: collection({ body: 'body',
       listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]', en: '/en/docs/[slug]' },

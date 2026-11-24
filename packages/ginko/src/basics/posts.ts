@@ -33,6 +33,7 @@ export function posts<const R extends Record<Locale, RouteTemplate> | undefined 
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
     ...(o.route ? { route: o.route as R } : {}),
+    body: 'body',
     fields: {
       title: f.text(t('Titel', 'Title', 'Título', 'Titre')),
       description: f.longtext(t('Beschreibung', 'Description', 'Descripción', 'Description'), { optional: true }),
@@ -83,6 +84,7 @@ export function changelog(o: ChangelogOptions = {}) {
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
     // A release written ahead is the normal case: an entry dated after the build day is scheduled, `draft: true` holds it back.
+    body: 'body',
     fields: {
       version: f.text(t('Version', 'Version', 'Versión', 'Version'), { max: 40, translate: false }),
       date: f.date(t('Datum', 'Date', 'Fecha', 'Date')),

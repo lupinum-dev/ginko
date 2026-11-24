@@ -57,6 +57,7 @@ export function docsCollection(opts: { locales: Locales; label?: string; max?: n
     max: opts.max ?? 500,
     order: 'manual',
     route: localized(locales, `${base}/[slug]`),
+    body: 'body',
     fields: withExtras(opts.navExtras !== false, {
       title: f.text(l('Titel', 'Title', 'Título', 'Titre')),
       description: f.longtext(l('Beschreibung', 'Description', 'Descripción', 'Description'), { optional: true }),
@@ -104,6 +105,7 @@ export function docsHome(opts: { source?: DocsSource } = {}) {
   return single({
     label: 'Start page',
     ...sourceOf(opts.source),
+    body: 'body',
     fields: {
       title: f.text('Title', { max: 120, default: 'Documentation' }),
       description: f.longtext('Description', { optional: true, max: 400 }),

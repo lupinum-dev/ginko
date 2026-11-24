@@ -30,6 +30,7 @@ export default defineSite({
     // The home page: title, lead and a short text (content/home.md).
     home: single({
       label: { de: 'Startseite', en: 'Home page', fr: 'Page d’accueil' },
+      body: 'body',
       fields: {
         title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 80, default: 'Welcome' }),
         lead: f.longtext({ de: 'Einleitung', en: 'Lead', fr: 'Introduction' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),

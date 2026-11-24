@@ -14,7 +14,7 @@ const schema = serializeSchema(defineSite({
   site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
   locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
   bricks: {
-    docs: collection({
+    docs: collection({ body: 'body',
       listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]', en: '/en/docs/[slug]' },
@@ -29,13 +29,13 @@ const schema = serializeSchema(defineSite({
         body: f.markdown('Text'),
       },
     }),
-    pages: collection({
+    pages: collection({ body: 'body',
       listing: { title: 'title' },
       label: 'Seiten', source: 'files', max: 5, order: 'manual',
       route: { de: '/seite/[slug]', en: '/en/page/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text', { profile: 'page' }) },
     }),
-    legal: single({ label: 'Rechtliches', source: 'files', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
+    legal: single({ body: 'body', label: 'Rechtliches', source: 'files', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
     notices: collection({ listing: { title: 'text' }, label: 'Hinweise', max: 5, order: 'manual', fields: { text: f.text('Text') } }),
   },
   components: {
@@ -76,7 +76,7 @@ describe('readContent', () => {
   it('takes the address from the file name into the slug field, whatever it is called', async () => {
     const adresse = serializeSchema(defineSite({
       site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: {},
-      bricks: { pages: collection({ listing: { title: 'title' }, label: 'Seiten', source: 'files', max: 5, order: 'manual', route: { de: '/seite/[slug]' }, fields: { title: f.text('Titel'), adresse: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') } }) },
+      bricks: { pages: collection({ body: 'body', listing: { title: 'title' }, label: 'Seiten', source: 'files', max: 5, order: 'manual', route: { de: '/seite/[slug]' }, fields: { title: f.text('Titel'), adresse: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') } }) },
     }))
     const s = site({ 'content/pages/1.ueber-uns.md': md('title: Über uns') })
     const r = await readContent(s.content, s.public, adresse)
@@ -181,7 +181,7 @@ describe('publicBundle', () => {
   const events = serializeSchema(defineSite({
     site: 'ev', name: 'Ev', url: 'https://ev.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
     bricks: {
-      events: collection({
+      events: collection({ body: 'body',
         listing: { title: 'title' },
         label: 'Termine', source: 'files', max: 50, order: 'manual', visible: { mode: 'until', field: 'when' },
         route: { de: '/termine/[slug]' },
@@ -307,7 +307,7 @@ describe('image variants', () => {
   const imageSchema = serializeSchema(defineSite({
     site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
     locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
-    bricks: { docs: collection({ listing: { title: 'title' }, label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), hero: f.image('Bild', { optional: true }), body: f.markdown('Text') } }) },
+    bricks: { docs: collection({ body: 'body', listing: { title: 'title' }, label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), hero: f.image('Bild', { optional: true }), body: f.markdown('Text') } }) },
   }))
   const png = (width: number, height: number) => sharp({ create: { width, height, channels: 3, background: '#c33' } }).png().toBuffer()
 

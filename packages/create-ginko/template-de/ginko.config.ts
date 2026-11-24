@@ -16,6 +16,7 @@ export default defineSite({
   bricks: {
     start: single({
       label: 'Startseite',
+      body: 'body',
       fields: { title: f.text('Titel'), body: f.markdown('Text', { profile: 'basic' }) },
     }),
   },

@@ -339,7 +339,7 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
  *   Id `docs/<name>`, `order` = n (files without a number come after, by name); entries sorted by order. Slug from
  *   frontmatter `slug`, else `<name>`; a translation may set its own `slug`.
  * - Single `legal`: `legal.md` and `legal.<locale>.md`. One entry, id `legal`.
- * - Frontmatter keys are field names in simple form; the body fills the brick's markdown field.
+ * - Frontmatter keys are field names in simple form; the body fills the brick's `body` field.
  *   Translatable fields collect one locale per file into `{ de, en }`. Simple forms: money `12.5` →
  *   `{ amount: 1250 }`; image `{ src: '/img/a.jpg', alt: '…' }` → `{ file: '/img/a.jpg', alt: { de: '…' } }`
  *   (alt per locale file); file `'/docs/a.pdf'` → `{ file: '/docs/a.pdf' }`; choices `none` → `[]` (an empty list on a
@@ -635,7 +635,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         fail(cx, markdownKey, `“${markdownKey}” is a markdown field: it is the text of a .md file, and ${ext === 'csv' ? 'CSV' : ext.toUpperCase()} files have no text.`)
       }
       if (parsed !== undefined && markdownKey !== undefined && hasBody) view[markdownKey] = parsed.body
-      if (markdownKey === undefined && hasBody) fail(cx, 'body', `The text fits no field of “${key}” (it has no markdown field).`)
+      if (markdownKey === undefined && hasBody) fail(cx, 'body', `The text fits no field of “${key}”: the brick states no \`body\` (the markdown field the text of a file fills).`)
       // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
@@ -741,9 +741,9 @@ function filesMessage(
   }
 }
 
-/** The field a file's body fills: the brick's markdown field. */
+/** The field a file's body fills: the brick's `body`. */
 function markdownKeyOf(brick: Brick): string | undefined {
-  return Object.keys(brick.fields).find((k) => brick.fields[k]!.type === 'markdown')
+  return brick.body
 }
 
 /** The names of a collection folder's main-language entries: file names, and the slugs of CSV rows. Unreadable CSV is reported later. */

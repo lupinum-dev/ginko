@@ -167,7 +167,7 @@ type Planned<F> = { field: keyof F & string; next: keyof F & string; from: keyof
 /** A collection's detail page per locale: a path with `[slug]` where the entry's slug goes, e.g. `/blog/[slug]`. */
 export type RouteTemplate = `/${string}[slug]${string}`
 
-export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task<F>[]; planned?: Planned<F>; status?: SingleStatus }): SingleBrick<F> {
+export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; body?: keyof F & string; layout?: 'sections' | 'tabs'; tasks?: readonly Task<F>[]; planned?: Planned<F>; status?: SingleStatus }): SingleBrick<F> {
   // A task's prefill is typed by the brick's fields here and stored as JSON; TypeScript cannot relate the two for a generic `F`.
   return { kind: 'single', ...input, tasks: input.tasks as readonly Task[] | undefined }
 }
@@ -177,6 +177,8 @@ export function collection<const F extends Fields, const R extends Record<Locale
   describe?: Label
   source?: BrickSource
   fields: F
+  /** The markdown field that is the text of the brick's file; other fields are its front matter. */
+  body?: keyof F & string
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task<F>[]
   /** A planned change of one field: from the date in `from` on, `next` replaces `field`. */

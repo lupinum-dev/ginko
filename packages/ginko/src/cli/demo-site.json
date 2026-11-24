@@ -66,6 +66,7 @@
             "pos": 2
           }
         },
+        "body": "body",
         "pos": 0
       },
       "pages": {
@@ -161,6 +162,7 @@
             "pos": 6
           }
         },
+        "body": "body",
         "tasks": [
           {
             "id": "edit",
@@ -556,6 +558,7 @@
             "pos": 5
           }
         },
+        "body": "body",
         "tasks": [
           {
             "id": "update",

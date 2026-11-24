@@ -180,6 +180,8 @@ export interface SingleBrick<F extends Fields = Fields> {
   /** What the brick is for, shown in the Studio; a text or a text per language like `label`. Fields have `hint` instead. */
   describe?: Label
   fields: F
+  /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
+  body?: string
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
@@ -206,6 +208,8 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   /** What the brick is for, shown in the Studio; a text or a text per language like `label`. Fields have `hint` instead. */
   describe?: Label
   fields: F
+  /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
+  body?: string
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]

@@ -26,7 +26,7 @@ export const SCHEMA_KEYS = new Set(['format', 'site', 'name', 'url', 'timeZone',
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
@@ -363,7 +363,16 @@ function schemaProblems(schema: Schema): string[] {
     if (brick.describe !== undefined) pushLabel(`${key}.describe`, brick.describe)
     if (brick.source !== undefined && brick.source !== 'files') problems.push(`${key}: source must be “files” or missing.`)
     if (brick.source === 'files' && Object.values(brick.fields).some((fd) => fd.type === 'list' && Object.values(fd.of).some((c) => c.type === 'markdown'))) problems.push(`${key}: in file bricks, markdown is only allowed as the text of the file, not in a list.`)
-    if (brick.source === 'files' && Object.values(brick.fields).filter((fd) => fd.type === 'markdown').length > 1) problems.push(`${key}: at most one markdown field (the text of the file).`)
+    if (brick.body !== undefined) {
+      const field = typeof brick.body === 'string' && Object.hasOwn(brick.fields, brick.body) ? brick.fields[brick.body] : undefined
+      if (field?.type !== 'markdown' || field.retired) problems.push(`${key}.body: “${String(brick.body)}” is not a markdown field of this brick.`)
+    }
+    // Markdown in the front matter is not read yet: a file brick's markdown field is the text of its file, stated by `body`.
+    if (brick.source === 'files') {
+      for (const [name, field] of Object.entries(brick.fields)) {
+        if (field.type === 'markdown' && !field.retired && name !== brick.body) problems.push(`${key}.${name}: in a file brick, a markdown field is the text of the file. Write \`body: '${name}'\` (one markdown field per file brick).`)
+      }
+    }
     // The platform holds only platform bricks: a reference from one to a file brick finds no entry there ever.
     if (brick.source !== 'files') {
       for (const [path, ref] of refsOf(brick.fields, key)) {

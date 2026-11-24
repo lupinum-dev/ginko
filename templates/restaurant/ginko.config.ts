@@ -52,6 +52,7 @@ export default defineSite({
     // (content/reservations.md).
     reservations: single({
       label: { en: 'Reservations', de: 'Reservierung' },
+      body: 'body',
       fields: {
         title: f.text({ en: 'Title', de: 'Titel' }, { max: 80, default: 'Reservations' }),
         lead: f.longtext({ en: 'Lead', de: 'Einleitung' }, { max: 300, optional: true }),

@@ -43,6 +43,7 @@ export function eventsBrick<const E extends Fields, const B extends Fields = Rec
     listing: { title: 'title', detail: 'when', image: 'image' },
     untranslated: 'hide', // events have pages: an event without a text in a language has none there
     ...sourceOf(opts),
+    body: 'description',
     fields,
     max: 30,
     order: { field: 'when', dir: 'asc' },

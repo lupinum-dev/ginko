@@ -191,6 +191,7 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
     label,
     ...(brick.describe !== undefined ? { describe: brick.describe } : {}),
     fields: brick.fields,
+    ...(brick.body !== undefined ? { body: brick.body } : {}),
     ...(brick.layout ? { layout: brick.layout } : {}),
     ...(tasks ? { tasks } : {}),
     ...(planned ? { planned } : {}),

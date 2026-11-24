@@ -11,7 +11,7 @@ const config = defineSite({
   site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
   locales: ['de'], currency: 'EUR', pages: { home: '/' },
   bricks: {
-    docs: collection({ untranslated: 'hide',
+    docs: collection({ body: 'body', untranslated: 'hide',
       listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]' },
@@ -143,8 +143,8 @@ describe('ginko check and links in content files', () => {
   // Wrong behaviour caught: a schema allows entries larger than the platform accepts, and nobody hears of it until a Save fails.
   // A file brick never reaches the platform, so the same maxima there get no warning.
   it('warns when a platform brick\'s maxima can pass the entry limit', async () => {
-    const legal = single({ label: 'Rechtliches', fields: { body: f.markdown('Text', { max: 300_000 }) } })
-    const docs = collection({ untranslated: 'hide',
+    const legal = single({ body: 'body', label: 'Rechtliches', fields: { body: f.markdown('Text', { max: 300_000 }) } })
+    const docs = collection({ body: 'body', untranslated: 'hide',
       listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]', en: '/docs/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text', { max: 300_000 }) },

@@ -26,6 +26,7 @@ export function defOf(brick: Brick, more: { item?: Label } = {}): BrickDef {
     label: brick.label,
     ...(brick.describe !== undefined ? { describe: brick.describe } : {}),
     fields: brick.fields,
+    ...(brick.body !== undefined ? { body: brick.body } : {}),
     ...(brick.layout ? { layout: brick.layout } : {}),
     ...(brick.tasks ? { tasks: brick.tasks.map((task) => taskOf(task, brick.kind === 'collection')) } : {}),
     ...(brick.planned ? { planned: brick.planned } : {}),

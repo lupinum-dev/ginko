@@ -12,6 +12,7 @@ type FieldsOfType<F, T extends string> = { [K in keyof F]: F[K] extends { type: 
 type Need<K extends string, Missing extends string> = [K] extends [never] ? Missing : K
 type DateKey<F> = Need<FieldsOfType<F, 'date' | 'daterange'>, 'This brick has no date field'>
 type DayKey<F> = Need<FieldsOfType<F, 'date'>, 'This brick has no date field'>
+type MarkdownKey<F> = Need<FieldsOfType<F, 'markdown'>, 'This brick has no markdown field'>
 
 /**
  * How an entry appears in the Studio's lists, pick lists and search: `title` names it (a text, longtext or date field),
@@ -96,6 +97,8 @@ interface Common<F extends Fields> {
    */
   item?: Label
   fields: F
+  /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
+  body?: MarkdownKey<F>
   /** How the form groups its fields. Default `'sections'`. */
   layout?: 'sections' | 'tabs'
   /** The owner's buttons, in order; the first is the main one. A Studio brick with a task is on the Today page. */
@@ -126,7 +129,7 @@ export interface CollectionInput<F extends Fields> extends Common<F> {
 }
 
 /** What `single` and `collection` return. The names in tasks and keys are typed by `F` where they are written and kept as plain names. */
-interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields> }
+interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; body?: string; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields> }
 export interface SingleDef<F extends Fields = Fields> extends Def<F> { kind: 'single'; status?: SingleStatusInput }
 export interface CollectionDef<F extends Fields = Fields> extends Def<F> {
   kind: 'collection'

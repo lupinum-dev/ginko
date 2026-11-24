@@ -14,7 +14,7 @@ const config = defineSite({
   site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
   locales: ['de', 'en'], currency: 'EUR', pages: { home: '/' },
   bricks: {
-    blog: collection({
+    blog: collection({ body: 'body',
       listing: { title: 'title' },
       label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]', en: '/en/blog/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') },
@@ -24,7 +24,7 @@ const config = defineSite({
       label: 'FAQ', source: 'files', max: 50, order: 'manual',
       fields: { question: f.text('Frage'), answer: f.longtext('Antwort') },
     }),
-    authors: collection({
+    authors: collection({ body: 'bio',
       listing: { title: 'name' },
       label: 'Autorinnen', max: 20, order: 'manual',
       fields: { name: f.text('Name'), avatar: f.image('Bild', { optional: true }), bio: f.markdown('Über mich', { profile: 'rich', optional: true }) },

@@ -64,8 +64,8 @@ const common = {
   ],
 } as const
 
-const plain = () => collection({ ...common, fields: { ...head, body } })
-const withSheets = (downloads: string) => collection({ ...common, fields: { ...head, sheet: sheetIn(downloads), body } })
+const plain = () => collection({ ...common, body: 'body', fields: { ...head, body } })
+const withSheets = (downloads: string) => collection({ ...common, body: 'body', fields: { ...head, sheet: sheetIn(downloads), body } })
 
 /**
  * The services brick. `downloads` is the key of the site's downloads brick; with it an entry has a `sheet` field.

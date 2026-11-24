@@ -40,6 +40,7 @@ export function jobs<const R extends Record<Locale, RouteTemplate> | undefined =
       { id: 'extend', kind: 'edit', pick: true, fields: ['validUntil'], label: t('Bewerbungsfrist ändern', 'Change the deadline', 'Cambiar el plazo', 'Modifier la date limite') },
       { id: 'remove', kind: 'remove', label: t('Stelle entfernen', 'Remove a job', 'Eliminar una oferta', 'Retirer une offre') },
     ],
+    body: 'body',
     fields: {
       title: f.text(t('Titel', 'Title', 'Título', 'Titre')),
       description: f.longtext(t('Kurzbeschreibung', 'Short description', 'Descripción breve', 'Description courte')),
