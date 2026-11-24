@@ -216,6 +216,31 @@ describe('$publishAt', () => {
     expect(r.entries.posts!.map((e) => e.id).sort()).toEqual(ids)
   })
 
+  // Wrong behaviour caught: a post that the old date guess kept hidden goes online without a word, or a planned post
+  // shows a day before it goes online, and nobody is told; or a note stops the build.
+  it('notes a publishedOn date after today without $publishAt, and one before the day of $publishAt', async () => {
+    const stated = structuredClone(site)
+    ;(stated.bricks.posts as { publishedOn?: string }).publishedOn = 'date'
+    const root = mkdtempSync(join(tmpdir(), 'ginko-published-'))
+    const notes = {
+      'content/posts/dated.yml': 'title: Dated\ndate: 2027-01-01',
+      'content/posts/early.yml': 'title: Early\ndate: 2026-11-20\n$publishAt: 2026-12-02T10:00',
+      'content/posts/day.yml': 'title: Day\ndate: 2026-12-01\n$publishAt: 2026-12-01',
+      'content/posts/today.yml': 'title: Today\ndate: 2026-12-01',
+    }
+    for (const [path, text] of Object.entries(notes)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true })
+      writeFileSync(join(root, path), text)
+    }
+    const r = await readContent(join(root, 'content'), join(root, 'public'), stated, { drafts: false, now })
+    expect(r.errors).toEqual([])
+    expect(r.entries.posts!.map((e) => e.id).sort()).toEqual(['posts/dated', 'posts/day', 'posts/today'])
+    expect(r.notes).toEqual([
+      { file: 'posts/dated.yml', path: 'date', message: '“date” (publishedOn) is 2027-01-01, after today, and the entry has no $publishAt: it is online now. Add `$publishAt: 2027-01-01` to hold it back until that day.' },
+      { file: 'posts/early.yml', path: 'date', message: '“date” (publishedOn) is 2026-11-20, before the day of $publishAt (2026-12-02): the entry shows a day before it goes online.' },
+    ])
+  })
+
   // Wrong behaviour caught: a file that is both a draft and planned goes online at the time, or never, without a word.
   it('refuses $draft together with $publishAt', async () => {
     const r = await readAt({ 'content/posts/a.yml': 'title: A\ndate: 2026-12-01\n$draft: true\n$publishAt: 2026-12-01T09:00' }, false)

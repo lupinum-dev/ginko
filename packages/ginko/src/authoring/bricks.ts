@@ -128,6 +128,8 @@ export interface CollectionInput<F extends Fields> extends Common<F> {
    * main language. Required when the site has more than one language.
    */
   untranslated?: 'fallback' | 'hide'
+  /** The date field that holds the day an entry was published, such as the date a post shows. It never hides an entry. */
+  publishedOn?: DayKey<F>
   /** Entries plan weeks of the single brick `brick`; `field` (a date field) holds the first day of the week. */
   plans?: { brick: string; field: DayKey<F> }
   status?: CollectionStatusInput<DateKey<F>, keyof F & string>
@@ -144,6 +146,7 @@ export interface CollectionDef<F extends Fields = Fields> extends Def<F> {
   order?: 'manual' | { field: string; dir?: 'asc' | 'desc' }
   showUntil?: ShowUntil
   untranslated?: 'fallback' | 'hide'
+  publishedOn?: string
   plans?: { brick: string; field: string }
   status?: CollectionStatusInput
 }

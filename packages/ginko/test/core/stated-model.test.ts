@@ -284,3 +284,16 @@ describe('preview: the page the Studio opens for an entry', () => {
     expect(checkSchema(schema)).toEqual(['events.preview: the entries of “events” have pages of their own (route), so the preview opens them. Leave preview out.'])
   })
 })
+
+describe('publishedOn: the day an entry was published', () => {
+  // Wrong: publishedOn names a field that is no date (or a date range), so the notes and later the Studio read a
+  // value that is no day.
+  it('names a live date field of the collection', () => {
+    const schema = stored()
+    const events = schema.bricks.events as CollectionBrick
+    schema.bricks.events = { ...events, publishedOn: 'when' }
+    expect(checkSchema(schema)).toEqual(["events.publishedOn: “when” is no date field of the brick. Name the date field that holds the day an entry was published, such as 'date'."])
+    schema.bricks.events = { ...events, fields: { ...events.fields, published: { type: 'date', label: 'Veröffentlicht' } }, publishedOn: 'published' }
+    expect(checkSchema(schema)).toEqual([])
+  })
+})

@@ -26,7 +26,7 @@ export const SCHEMA_KEYS = new Set(['format', 'site', 'name', 'url', 'timeZone',
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'visible', 'untranslated', 'publishedOn', 'plans', 'planned', 'drafts', 'status', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'rows', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
@@ -424,6 +424,7 @@ function schemaProblems(schema: Schema): string[] {
     if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
     if (brick.status !== undefined) problems.push(...statusProblems(key, brick, schema))
     if (brick.kind === 'single' && 'plans' in brick) problems.push(`${key}: plans are only allowed for collections.`)
+    if (brick.kind === 'single' && 'publishedOn' in brick) problems.push(`${key}: publishedOn is only allowed for collections.`)
     if (brick.kind === 'collection') {
       if (!(brick.max >= 1 && brick.max <= 500)) problems.push(`${key}: max must be between 1 and 500.`)
       problems.push(...listingProblems(key, brick))
@@ -433,6 +434,10 @@ function schemaProblems(schema: Schema): string[] {
         problems.push(`${key}: untranslated is missing. The site has more than one language, so say what an entry does in a language it has no text in: 'hide' leaves it out there, 'fallback' shows the main language.`)
       }
       if (brick.plans !== undefined) problems.push(...plansProblems(key, brick.plans, brick.fields, schema))
+      if (brick.publishedOn !== undefined) {
+        const field = typeof brick.publishedOn === 'string' ? brick.fields[brick.publishedOn] : undefined
+        if (field?.type !== 'date' || field.retired) problems.push(`${key}.publishedOn: “${String(brick.publishedOn)}” is no date field of the brick. Name the date field that holds the day an entry was published, such as 'date'.`)
+      }
       if (brick.order !== 'manual' && !brick.fields[brick.order.field]) problems.push(`${key}: the sort field is missing.`)
       if (brick.order !== 'manual' && brick.order.dir !== undefined && brick.order.dir !== 'asc' && brick.order.dir !== 'desc') problems.push(`${key}: order.dir must be “asc” or “desc”.`)
       if (brick.route) {

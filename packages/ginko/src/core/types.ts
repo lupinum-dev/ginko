@@ -250,6 +250,12 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
    * one language.
    */
   untranslated?: 'fallback' | 'hide'
+  /**
+   * The date field that holds the day an entry was published (a live `date` field of the brick), such as the date a
+   * post shows. It never hides an entry: a file entry waits for its `$publishAt`, and `ginko check` notes a date that
+   * does not fit it.
+   */
+  publishedOn?: string
   /** Entries of this collection plan weeks of the single brick `brick`; `field` (a date field here) holds the first day of the week (`week.firstDay`). A planned week counts as entered for the weekly upkeep rule. */
   plans?: { brick: string; field: string }
   /** The status line on the Studio's Today page (see `CollectionStatus`). Without one, the collection shows its drafts and scheduled entries. */

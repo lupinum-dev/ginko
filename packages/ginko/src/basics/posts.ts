@@ -32,6 +32,8 @@ export function posts<const R extends Record<Locale, RouteTemplate> | undefined 
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
+    // The day a post shows. It never hides a post: a post written ahead waits with `$publishAt` in its file.
+    publishedOn: 'date',
     ...(o.route ? { route: o.route as R } : {}),
     body: 'body',
     fields: {
@@ -83,7 +85,8 @@ export function changelog(o: ChangelogOptions = {}) {
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
-    // A release written ahead waits with `$publishAt` in its file; `$draft: true` holds it back with no time.
+    // The day of the release. It never hides one: a release written ahead waits with `$publishAt` in its file.
+    publishedOn: 'date',
     body: 'body',
     fields: {
       version: f.text(t('Version', 'Version', 'Versión', 'Version'), { max: 40, translate: false }),

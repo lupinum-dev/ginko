@@ -210,6 +210,8 @@ export function collection<const F extends Fields, const R extends Record<Locale
    * main language and links to the main-language page. Required when the site has more than one language.
    */
   untranslated?: 'fallback' | 'hide'
+  /** The date field that holds the day an entry was published, such as the date a post shows. */
+  publishedOn?: FieldsOfType<F, 'date'>
   /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`week.firstDay`). */
   plans?: { brick: string; field: FieldsOfType<F, 'date'> }
   /** The status line on the Studio's Today page (see `CollectionStatus`). */

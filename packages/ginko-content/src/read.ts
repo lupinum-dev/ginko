@@ -54,6 +54,8 @@ export interface ReadResult {
   /** Images placed next to Markdown files: served URL (`/_ginko/img/<hash>.<ext>`) to absolute path. */
   images: Map<string, string>
   errors: ContentError[]
+  /** Things worth a look that do not stop a build, such as a `publishedOn` date that does not fit the entry's `$publishAt`. */
+  notes: ContentError[]
 }
 
 type Prints = Record<string, Partial<Record<Locale, string>>>
@@ -424,6 +426,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
   // `$publishAt` is compared with the site's wall clock, so a time in Vienna means Vienna whatever the build machine.
   const now = wallClockIn(schema.timeZone, options.now)
   const errors: ContentError[] = []
+  const notes: ContentError[] = []
   const entries: Record<string, StoredEntry[]> = {}
   const files: Record<string, FileInfo> = {}
   const images = new Map<string, string>()
@@ -634,6 +637,20 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     }
 
     /**
+     * The two notes on the `publishedOn` date of a main file: it is before the day of `$publishAt` (the entry shows a
+     * day before it goes online), or it is after today and nothing holds the entry back (it is online now; before
+     * `$publishAt`, a date in the future hid it).
+     */
+    function notePublishedOn(src: Src, fields: Record<string, unknown>, publishAt: string | undefined) {
+      const name = brick.kind === 'collection' ? brick.publishedOn : undefined
+      const day = name === undefined ? undefined : fields[name]
+      if (name === undefined || !isDate(day)) return
+      const note = (message: string) => notes.push({ file: src.rel, path: name, message, ...(src.csv ? { line: src.csv.row.line } : {}) })
+      if (publishAt !== undefined && day < publishAt.slice(0, 10)) note(`“${name}” (publishedOn) is ${day}, before the day of $publishAt (${publishAt.slice(0, 10)}): the entry shows a day before it goes online.`)
+      else if (publishAt === undefined && day > now.slice(0, 10)) note(`“${name}” (publishedOn) is ${day}, after today, and the entry has no $publishAt: it is online now. Add \`$publishAt: ${day}\` to hold it back until that day.`)
+    }
+
+    /**
      * Reads one source: its data converted (Markdown: frontmatter, body text into the brick's markdown field, plus
      * the parsed body; YAML, JSON and CSV: the whole file or row is data and there is no body).
      * `'draft'` when the entry is marked `$draft: true` and drafts are off.
@@ -705,6 +722,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
+      if (isMain && fileErrors.length === 0) notePublishedOn(src, fields, publishAt)
       return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, planned: planned ? true : undefined }
     }
   }
@@ -724,7 +742,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     }
   }
 
-  return { entries, files, images, errors }
+  return { entries, files, images, errors, notes }
 }
 
 /** A field's label in every language: a plain label is its own only text. */

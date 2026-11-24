@@ -39,7 +39,7 @@ export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options:
 export async function buildFileBundles(options: BuildOptions): Promise<BuildResult> {
   const { contentDir, publicDir, schema, now = new Date() } = options
   const files = fileSchema(schema)
-  const { entries, files: fileInfo, images, errors } = await readContent(contentDir, publicDir, files, { ...options, now })
+  const { entries, files: fileInfo, images, errors, notes } = await readContent(contentDir, publicDir, files, { ...options, now })
   const imageFiles = new Set<string>()
   if (options.imageDir) await addVariants(fileInfo, images, publicDir, options.imageDir, imageFiles)
   const build = (locale: Locale) => buildBundle({
@@ -50,7 +50,7 @@ export async function buildFileBundles(options: BuildOptions): Promise<BuildResu
   const main = build(schema.locales[0]!)
   const bundles: Partial<Record<Locale, Bundle>> = {}
   for (const locale of schema.locales) bundles[locale] = resolveRouteLinks(locale === main.locale ? main : build(locale), files, main)
-  return { bundles, images, imageFiles, errors }
+  return { bundles, images, imageFiles, errors, notes }
 }
 
 export interface BuildOptions extends ReadOptions {
@@ -71,6 +71,8 @@ export interface BuildResult {
   /** Every WebP variant file name that was written to `imageDir`. */
   imageFiles: Set<string>
   errors: ContentError[]
+  /** Things worth a look that do not stop a build (`ReadResult.notes`). */
+  notes: ContentError[]
 }
 
 /**
