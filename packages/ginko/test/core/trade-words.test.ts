@@ -40,6 +40,7 @@ const EXCEPTIONS: Exception[] = [
   { file: 'packages/ginko-server/convex/lib/list.ts', term: 'plans', until: 'cp3', reason: PLANS },
   { file: 'packages/ginko-server/convex/lib/reminders.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
   { file: 'packages/ginko-server/convex/lib/status.ts', term: 'hours', until: 'cp4', reason: RENDERER },
+  { file: 'packages/ginko-server/convex/lib/status.ts', term: 'opening', until: 'cp4', reason: RENDERER },
   { file: 'packages/ginko-server/convex/lib/status.ts', term: 'plans', until: 'cp3', reason: `${PLANS}; ${RULE_PLANS}` },
   { file: 'packages/ginko-server/convex/reminders.ts', term: 'hour', until: 'stays', reason: CLOCK },
   { file: 'packages/ginko-server/convex/reminders.ts', term: 'hours', until: 'cp4', reason: RENDERER },

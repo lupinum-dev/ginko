@@ -304,6 +304,8 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       case 'drafts': return t('server.status.drafts', { drafts: line.drafts, scheduled: line.scheduled })
       // One renderer per rule, keyed by its name (D6).
       case 'rule': {
+        // Only the opening-hours rule has these words; another rule gets none until it has its own.
+        if (line.rule !== 'opening-hours') return null
         const today = line.today
         if ('ranges' in today) return t('server.status.open', { ranges: timesOf(today.ranges) })
         if ('unknown' in today) return t('server.status.hoursUnknown')

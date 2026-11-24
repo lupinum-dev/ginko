@@ -74,6 +74,8 @@ export function statusText(locale: string, schema: Schema, brick: Brick, line: T
     case 'drafts': return t(locale, 'status.drafts', { drafts: line.drafts, scheduled: line.scheduled })
     // One renderer per rule, keyed by its name (D6); a general line form comes with the Today redesign (checkpoint 4).
     case 'rule': {
+      // Only the opening-hours rule has these words; another rule gets none until it has its own.
+      if (line.rule !== 'opening-hours') return ''
       const today = line.today
       if ('ranges' in today) return t(locale, 'status.open', { ranges: new Intl.ListFormat(locale, { style: 'short', type: 'unit' }).format(today.ranges.map(([from, to]) => `${from}–${to}`)) })
       if ('unknown' in today) return t(locale, 'status.hoursUnknown')
