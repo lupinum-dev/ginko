@@ -226,6 +226,11 @@ describe('import keeps what the Studio keeps', () => {
       cli: 'Two entries of “services” have the name “gleich”. A name is unique in its brick, the trash included.', server: 'Zwei Einträge von „services“ haben den Namen „gleich“. Ein Name kommt in seinem Baustein nur einmal vor, auch im Papierkorb.',
     },
     {
+      case: 'a name that is no entry name', entries: [{ ...service('services/a', 'a'), name: 'Ann_Smith' }],
+      cli: 'Entry services/a (services) has the name “Ann_Smith”. An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-menu”.',
+      server: 'Der Eintrag „services/a“ hat den Namen „Ann_Smith“. Ein Name besteht aus 1 bis 100 Kleinbuchstaben (a bis z), Ziffern und einzelnen Bindestrichen dazwischen.',
+    },
+    {
       case: 'two entries with one URL', entries: [service('services/a', 'webseiten'), service('services/b', 'webseiten')],
       cli: '“services/a” and “services/b” have the same address /leistungen/webseiten.', server: '„services/a“ und „services/b“ haben dieselbe Adresse /leistungen/webseiten.',
     },

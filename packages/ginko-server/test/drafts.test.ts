@@ -363,6 +363,30 @@ describe('entry names (D96)', () => {
     expect(await nameOf(s, entry.entry)).toEqual({ name: 'gansl-essen', nameFixed: undefined, slug: 'gansl-im-november' })
   })
 
+  // Wrong behaviour caught: a title change gives a draft the name another entry holds, or a slug only an old forwarding
+  // row holds, so two entries share a name or a forward points at the wrong page; or name and slug get different ends.
+  it('a title change to a taken name, or to a slug an old forwarding row holds, gives -2 to name and slug together', async () => {
+    const s = await draftSetup()
+    await s.createDraft('Herbstball')
+    // "markt-a" is held only by an old row: the live market moved on to "markt-b", and no entry has that name.
+    const market = await s.createDraft('Wintermarkt', {})
+    for (const slug of ['markt-a', 'markt-b']) await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: market.entry, locale: 'de', slug })
+    const first = await s.createDraft('Erster Titel')
+    const second = await s.createDraft('Zweiter Titel')
+    await retitle(s, first.entry, 1, 'Herbstball')
+    await retitle(s, second.entry, 1, 'Markt A')
+    expect(await nameOf(s, first.entry)).toEqual({ name: 'herbstball-2', nameFixed: undefined, slug: 'herbstball-2' })
+    expect(await nameOf(s, second.entry)).toEqual({ name: 'markt-a-2', nameFixed: undefined, slug: 'markt-a-2' })
+  })
+
+  // Wrong behaviour caught: a copy takes the name of the entry it copies, or a name that is not made from its title.
+  it('a copy is named after its marked title', async () => {
+    const s = await draftSetup()
+    const original = await s.createDraft('Martinsfest')
+    const copy = await s.as.owner.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), entry: original.entry })
+    expect(await nameOf(s, copy.entry)).toEqual({ name: 'martinsfest-kopie', nameFixed: undefined, slug: 'martinsfest-kopie' })
+  })
+
   // Wrong behaviour caught: a live entry removed before its name was fixed comes back with a name that follows its
   // title, so an unpublish and a title change rename an entry that was online.
   it('a restored live entry has a fixed name', async () => {

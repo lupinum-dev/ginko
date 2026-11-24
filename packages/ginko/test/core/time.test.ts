@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatMoney, isCurrency, minorDigits, resolveToken, todayIn, weekInfo, startOfWeek, workWeekOf, type SiteWeek } from '../../src/core/index.ts'
+import { formatMoney, isCurrency, minorDigits, resolveToken, todayIn, wallClockIn, weekInfo, startOfWeek, workWeekOf, type SiteWeek } from '../../src/core/index.ts'
 
 const MONDAY: SiteWeek = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }
 
@@ -11,6 +11,20 @@ describe('todayIn (SPEC 2.7, B7)', () => {
     ['2026-10-08T22:30:00Z', '2026-10-09'],
   ])('at %s in Europe/Vienna is %s', (now, expected) => {
     expect(todayIn('Europe/Vienna', new Date(now))).toBe(expected)
+  })
+})
+
+describe('wallClockIn ($publishAt)', () => {
+  // Wrong behaviour caught: around a daylight-saving change the wall clock is off by an hour, so an entry planned for
+  // that night goes online an hour early or late.
+  it.each([
+    ['2026-03-29T00:59:00Z', '2026-03-29T01:59'],
+    ['2026-03-29T01:30:00Z', '2026-03-29T03:30'],
+    ['2026-10-25T00:30:00Z', '2026-10-25T02:30'],
+    ['2026-10-25T01:30:00Z', '2026-10-25T02:30'],
+    ['2026-10-25T02:00:00Z', '2026-10-25T03:00'],
+  ])('at %s in Europe/Vienna is %s', (now, expected) => {
+    expect(wallClockIn('Europe/Vienna', new Date(now))).toBe(expected)
   })
 })
 

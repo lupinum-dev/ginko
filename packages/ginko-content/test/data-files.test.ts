@@ -216,6 +216,17 @@ describe('$publishAt', () => {
     expect(r.entries.posts!.map((e) => e.id).sort()).toEqual(ids)
   })
 
+  // Wrong behaviour caught: a `$publishAt` cell in a CSV file is taken as a field, refused, or ignored, so the row goes
+  // online at once.
+  it.each([
+    [false, ['posts/day']],
+    [true, ['posts/day', 'posts/later']],
+  ])('reads a $publishAt cell of a CSV row, with drafts %s', async (drafts, ids) => {
+    const r = await readAt({ 'content/posts/list.csv': 'slug,title,date,$publishAt\nday,Day,2026-12-01,2026-12-01\nlater,Later,2026-12-01,2026-12-01T09:00' }, drafts)
+    expect(r.errors).toEqual([])
+    expect(r.entries.posts!.map((e) => e.id)).toEqual(ids)
+  })
+
   // Wrong behaviour caught: a post that the old date guess kept hidden goes online without a word, or a planned post
   // shows a day before it goes online, and nobody is told; or a note stops the build.
   it('notes a publishedOn date after today without $publishAt, and one before the day of $publishAt', async () => {
