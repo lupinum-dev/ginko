@@ -81,10 +81,12 @@ function rowStatus(row: Row): EntryStatus | undefined {
 function status(row: Row): string {
   const b = brick.value
   const st = rowStatus(row)
-  if (!b || !st) return ''
+  // No time text while the model loads (D114): the site's zone comes with it.
+  const zone = s.schema.value?.timeZone
+  if (!b || !st || !zone) return ''
   if (st.now === 'draft') {
     const planned = st.waiting.find((w) => w.kind === 'planned')
-    return planned ? t('site.status.onlineFrom', { when: whenText(planned.at, s.schema.value?.timeZone ?? 'Europe/Vienna', format) }) : t('site.status.draft')
+    return planned ? t('site.status.onlineFrom', { when: whenText(planned.at, zone, format) }) : t('site.status.draft')
   }
   if (st.now === 'ended') {
     const until = shownUntil(b, row.dates)

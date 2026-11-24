@@ -4,6 +4,7 @@ import { createTranslator, type MessageTree } from '@lupinum/ginko-i18n/core'
 import { compileCatalogs } from '@lupinum/ginko-i18n/compile'
 import { describe, expect, it } from 'vitest'
 import { textOf } from '../app/utils/textOf.ts'
+import { useTextOf } from '../app/composables/useTextOf.ts'
 
 const catalogs = compileCatalogs({
   de: { server: { history: { changedSingle: '{label}: {fields} geändert', undo: 'Rückgängig: {what}', revert: 'Zurück zur Version vom {when, date, ::ddMMyyyy} {when, time, ::HHmm}' }, errors: { siteNotFound: 'Diese Seite gibt es nicht.' } } },
@@ -58,5 +59,17 @@ describe('textOf', () => {
     const translator = createTranslator({ messages: catalogs.en, language: 'en', onMissing: (key) => missing.push(key) })
     const shown = textOf({ key: 'issues.fieldMissing', params: { label: 'Title' } }, 'Etwas Neues.', { t: translator.t, has: translator.has, locale: 'en' })
     expect([shown, missing]).toEqual(['“Title” is missing.', []])
+  })
+})
+
+describe('useTextOf', () => {
+  // Wrong behaviour caught (D114): while the site's model loads, a stored time showed in Vienna's zone or in UTC
+  // instead of the site's, and changed when the model came.
+  it('gives no text while the site zone is unknown, and the text in the site zone once it is known', () => {
+    let timeZone: string | undefined
+    const text = useTextOf(() => ({ timeZone, main: 'de' }))
+    expect(text(revert, 'Zurück zur Version vom 08.10.2026 12:00')).toBe('')
+    timeZone = 'America/New_York'
+    expect(text(revert, '')).toContain('06:00')
   })
 })

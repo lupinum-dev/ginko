@@ -46,7 +46,9 @@ export async function useSiteData() {
   const role = computed(() => query.data.value?.role)
   const grants = computed(() => new Set(query.data.value?.grants ?? []))
   const main = computed(() => schema.value?.locales[0] ?? 'de')
-  const today = useToday(() => schema.value?.timeZone ?? 'Europe/Vienna')
+  // The site's day, '' while the model loads (D114): a day in another zone would be wrong, and nothing has ended on ''.
+  const zoned = useToday(() => schema.value?.timeZone ?? 'UTC')
+  const today = computed(() => (schema.value ? zoned.value : ''))
 
   /** owner and admin may do everything; staff only granted tasks (SPEC 2.7). */
   const may = (brick: string, task: Task) => role.value === 'owner' || role.value === 'admin' || grants.value.has(taskRef(brick, task))

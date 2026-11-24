@@ -337,9 +337,10 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   const ownRead = useConvexQuery(api.proposals.mine, () => ({ site: s.slug.value }))
   // Plans that did not go online (D104): the person's own, every one for an owner.
   const stoppedRead = useConvexQuery(api.entries.stoppedPlans, () => ({ site: s.slug.value }))
-  const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone ?? 'UTC', main: s.main.value }))
+  // No time text while the model loads (D114): useTextOf and ownWhen wait for the site's zone.
+  const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone, main: s.main.value }))
   const ownLine = (p: OwnRow) => textOf(p.msg, p.sentence)
-  const ownWhen = (at: number) => whenFull(at, s.schema.value?.timeZone ?? 'UTC', format)
+  const ownWhen = (at: number) => { const zone = s.schema.value?.timeZone; return zone ? whenFull(at, zone, format) : '' }
   /** A proposal made in the Studio through a task of `key` (an agent's are in Verlauf). */
   const ofSection = (key: string) => (p: OwnRow) => p.via === 'ui' && !!p.task?.startsWith(`${key}.`)
   /** Own open proposals and rejections still to fix of section `key`. */
