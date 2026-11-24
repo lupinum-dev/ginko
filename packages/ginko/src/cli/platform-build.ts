@@ -14,6 +14,18 @@ import type { CommandRunner } from './platform-run.ts'
  */
 export const RUN_ON_PRODUCTION = ['--prod']
 
+/**
+ * How the Convex CLI refuses `convex run` to a deploy key without the right to run an internal mutation. A key made in
+ * the Convex dashboard gets only the rights ticked there; one from `convex deployment token create` (what
+ * `ginko-platform setup` makes) has both. The runner keeps the last lines of the output, where these two stand.
+ */
+const LACKS_MIGRATION_RIGHT = /deployment:functions:runInternalMutations|permissions granted to CONVEX_DEPLOY_KEY/
+
+const KEY_LACKS_RIGHT = 'Warning: CONVEX_DEPLOY_KEY may deploy but may not start the data migrations. The backend is '
+  + 'deployed and the Studio builds. To fix it, make a new deploy key with the rights deployment:deploy and '
+  + 'deployment:functions:runInternalMutations and set it as CONVEX_DEPLOY_KEY, or start them once with your own login: '
+  + 'npx convex run --prod migrations:runPending'
+
 export type BuildDecision =
   | { deploy: true }
   | { deploy: false; note: string }
@@ -58,8 +70,8 @@ export async function build({ cwd, convexDir, env, run, log }: BuildInput): Prom
     try {
       const line = parseOutput(await run({ command: 'npx', args: ['convex', 'run', ...RUN_ON_PRODUCTION, 'migrations:runPending'], cwd: convexDir }))
       if (typeof line === 'string') log(line)
-    } catch {
-      log('Warning: the data migrations could not be started. The next deploy tries again; see ops:status.')
+    } catch (error) {
+      log(error instanceof Error && LACKS_MIGRATION_RIGHT.test(error.message) ? KEY_LACKS_RIGHT : 'Warning: the data migrations could not be started. The next deploy tries again; see ops:status.')
     }
   }
   await run({ command: 'npx', args: ['nuxt', 'build'], cwd, show: true })

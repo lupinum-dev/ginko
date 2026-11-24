@@ -93,4 +93,7 @@ and 5, a release from `main` fails (it would remove the moved bricks from the pl
 keep that time short. The import takes only a site without content.
 
 Updates: raise the three `@lupinum/*` versions in `package.json` (always the same version), then run
-`vercel deploy --prod`, or push when the Vercel project is connected to Git.
+`vercel deploy --prod`, or push when the Vercel project is connected to Git. The build deploys the backend and then
+starts its data migrations. If you made `CONVEX_DEPLOY_KEY` in the Convex dashboard instead of with `setup`, give the
+key the rights `deployment:deploy` and `deployment:functions:runInternalMutations`; without the second, the build only
+warns and the migrations do not start.
