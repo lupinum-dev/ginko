@@ -21,6 +21,13 @@ export function writeLocaleCookie(code: string) {
 /** Payload data key for a dynamic page's alternates, filled by `definePageMeta({ i18nAlternates })` (see plugin). */
 export const alternatesKey = (path: string) => `ginko-i18n:alternates:${path}`
 
+/**
+ * How many parts of the path a route's params took: 0 for a page with a fixed address, 1 for `/blog/[slug]`, all
+ * of them for a catch-all page.
+ */
+const paramParts = (params: RouteParamsGeneric) =>
+  Object.values(params).flat().reduce((count, value) => count + String(value ?? '').split('/').filter(Boolean).length, 0)
+
 /** Resolve a path written in any locale (or unprefixed) to the same page in `code`. */
 export function createLocalePath(router: Router) {
   return (target: string, code: string): string => {
@@ -29,15 +36,22 @@ export function createLocalePath(router: Router) {
     const path = match[1] || '/'
     const tail = match[2] ?? ''
     const bare = stripLocale(path, c)
-    for (const candidate of [path, ...c.locales.map(l => localizePath(bare, l.code, c))]) {
+    // The path as written, then with each locale's prefix. The page that matches the most of the path by its own
+    // words wins, the earlier candidate on a tie: `/menu/print` is no address where that page is `/speisekarte/drucken`,
+    // so a catch-all page matches it first, but `/en/menu/print` is the print page itself.
+    let page: { base: string, params: RouteParamsGeneric, parts: number } | undefined
+    for (const candidate of new Set([path, ...c.locales.map(l => localizePath(bare, l.code, c))])) {
       const resolved = router.resolve(candidate)
       const base = resolved.meta.i18nBase as string | undefined
       if (!resolved.matched.length || !base) continue
-      const name = `${base}__${code}`
-      if (!router.hasRoute(name)) return localizePath('/', code, c)
-      return resolveClone(router, name, resolved.params) + tail
+      const parts = paramParts(resolved.params)
+      if (!page || parts < page.parts) page = { base, params: resolved.params, parts }
+      if (parts === 0) break
     }
-    return localizePath(bare, code, c) + tail
+    if (!page) return localizePath(bare, code, c) + tail
+    const name = `${page.base}__${code}`
+    if (!router.hasRoute(name)) return localizePath('/', code, c)
+    return resolveClone(router, name, page.params) + tail
   }
 }
 
