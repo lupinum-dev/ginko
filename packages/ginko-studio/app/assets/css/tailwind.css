@@ -15,8 +15,11 @@
    [data-theme="light"] is set. The dark values stand twice below (CSS has no way to share them); the test compares them.
    Surfaces, lowest to highest: --canvas (behind the rail and the framed panel on wide screens), --sidebar (side
    columns inside the panel), --card / --background (the page), --popover. Dark mode keeps the canvas darkest and
-   borders one step above the page, so panels read as surfaces instead of outlines.
-   The light --canvas is still a light surface: it turns to ink together with the rail (text on it must turn light). */
+   borders one step above the page, so panels read as surfaces instead of outlines. Its greys are neutral with only a
+   trace of green: green is left for what it says (links, focus, checked, chosen).
+   The canvas is ink in light mode too. Text on it takes --canvas-foreground (the current item) or
+   --canvas-muted-foreground; --canvas-leaf draws the large leaf behind the rail. No page puts its content on the
+   canvas: content sits in the panel. --paper is the ground of pages without a rail (sign-in, invitation, error). */
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/preflight.css' layer(base);
@@ -34,7 +37,11 @@
 
 :root {
   --radius: 0.625rem;
-  --canvas: #f1f3f0;
+  --canvas: #10231c;
+  --canvas-foreground: #f6f3ea;
+  --canvas-muted-foreground: #b4bfb7;
+  --canvas-leaf: #17352d;
+  --paper: #f6f3ea;
   --background: #ffffff;
   --foreground: #17211c;
   --card: #ffffff;
@@ -73,39 +80,43 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --canvas: #0a1410;
-    --background: #121e19;
-    --foreground: #e9ede8;
-    --card: #121e19;
-    --card-foreground: #e9ede8;
-    --popover: #18271f;
-    --popover-foreground: #e9ede8;
+    --canvas: #0b0d0c;
+    --canvas-foreground: #f6f3ea;
+    --canvas-muted-foreground: #b4bfb7;
+    --canvas-leaf: #151a17;
+    --paper: #101311;
+    --background: #141816;
+    --foreground: #e9ece9;
+    --card: #141816;
+    --card-foreground: #e9ece9;
+    --popover: #1a1f1c;
+    --popover-foreground: #e9ece9;
     --primary: #f6f3ea;
     --primary-foreground: #10231c;
-    --secondary: #1c2b24;
-    --secondary-foreground: #e9ede8;
-    --muted: #1c2b24;
-    --muted-foreground: #9fada4;
-    --accent: #17302a;
+    --secondary: #1e2320;
+    --secondary-foreground: #e9ece9;
+    --muted: #1e2320;
+    --muted-foreground: #a2aaa5;
+    --accent: #1a2e27;
     --accent-foreground: #9fdcc2;
     --destructive: #f28b82;
-    --border: #25362e;
-    --input: #566d62;
+    --border: #2a302c;
+    --input: #5f6963;
     --ring: #62c6a0;
     --link: #62c6a0;
     --marker: #f2b82e;
     --marker-foreground: #10231c;
-    --scrim: #050a08;
+    --scrim: #050706;
     --hover-strength: 10%;
     --success: #62c6a0;
     --warning: #f2a65a;
-    --sidebar: #0e1914;
-    --sidebar-foreground: #e9ede8;
+    --sidebar: #101311;
+    --sidebar-foreground: #e9ece9;
     --sidebar-primary: #f6f3ea;
     --sidebar-primary-foreground: #10231c;
-    --sidebar-accent: #1c2b24;
-    --sidebar-accent-foreground: #e9ede8;
-    --sidebar-border: #25362e;
+    --sidebar-accent: #1e2320;
+    --sidebar-accent-foreground: #e9ece9;
+    --sidebar-border: #2a302c;
     --sidebar-ring: #62c6a0;
     color-scheme: dark;
   }
@@ -113,39 +124,43 @@
 
 .dark,
 [data-theme='dark'] {
-  --canvas: #0a1410;
-  --background: #121e19;
-  --foreground: #e9ede8;
-  --card: #121e19;
-  --card-foreground: #e9ede8;
-  --popover: #18271f;
-  --popover-foreground: #e9ede8;
+  --canvas: #0b0d0c;
+  --canvas-foreground: #f6f3ea;
+  --canvas-muted-foreground: #b4bfb7;
+  --canvas-leaf: #151a17;
+  --paper: #101311;
+  --background: #141816;
+  --foreground: #e9ece9;
+  --card: #141816;
+  --card-foreground: #e9ece9;
+  --popover: #1a1f1c;
+  --popover-foreground: #e9ece9;
   --primary: #f6f3ea;
   --primary-foreground: #10231c;
-  --secondary: #1c2b24;
-  --secondary-foreground: #e9ede8;
-  --muted: #1c2b24;
-  --muted-foreground: #9fada4;
-  --accent: #17302a;
+  --secondary: #1e2320;
+  --secondary-foreground: #e9ece9;
+  --muted: #1e2320;
+  --muted-foreground: #a2aaa5;
+  --accent: #1a2e27;
   --accent-foreground: #9fdcc2;
   --destructive: #f28b82;
-  --border: #25362e;
-  --input: #566d62;
+  --border: #2a302c;
+  --input: #5f6963;
   --ring: #62c6a0;
   --link: #62c6a0;
   --marker: #f2b82e;
   --marker-foreground: #10231c;
-  --scrim: #050a08;
+  --scrim: #050706;
   --hover-strength: 10%;
   --success: #62c6a0;
   --warning: #f2a65a;
-  --sidebar: #0e1914;
-  --sidebar-foreground: #e9ede8;
+  --sidebar: #101311;
+  --sidebar-foreground: #e9ece9;
   --sidebar-primary: #f6f3ea;
   --sidebar-primary-foreground: #10231c;
-  --sidebar-accent: #1c2b24;
-  --sidebar-accent-foreground: #e9ede8;
-  --sidebar-border: #25362e;
+  --sidebar-accent: #1e2320;
+  --sidebar-accent-foreground: #e9ece9;
+  --sidebar-border: #2a302c;
   --sidebar-ring: #62c6a0;
   color-scheme: dark;
 }
@@ -161,6 +176,10 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --color-canvas: var(--canvas);
+  --color-canvas-foreground: var(--canvas-foreground);
+  --color-canvas-muted-foreground: var(--canvas-muted-foreground);
+  --color-canvas-leaf: var(--canvas-leaf);
+  --color-paper: var(--paper);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

@@ -48,9 +48,10 @@ const over = (top: string, alpha: number, under: string) =>
 /** Text and the ground it stands on in the Studio. A name is a token; `[token, alpha, token]` is a tint over a ground. */
 type Ground = string | [string, number, string]
 const TEXT: [text: string, ground: Ground][] = [
-  ['foreground', 'background'], ['foreground', 'sidebar'], ['foreground', 'muted'], ['foreground', 'canvas'],
+  ['foreground', 'background'], ['foreground', 'sidebar'], ['foreground', 'muted'], ['foreground', 'paper'],
+  ['canvas-foreground', 'canvas'], ['canvas-muted-foreground', 'canvas'], ['canvas', 'canvas-foreground'],
   ['card-foreground', 'card'], ['popover-foreground', 'popover'], ['secondary-foreground', 'secondary'],
-  ['muted-foreground', 'background'], ['muted-foreground', 'sidebar'], ['muted-foreground', 'muted'], ['muted-foreground', 'canvas'],
+  ['muted-foreground', 'background'], ['muted-foreground', 'sidebar'], ['muted-foreground', 'muted'], ['muted-foreground', 'paper'],
   ['primary-foreground', 'primary'], ['sidebar-primary-foreground', 'sidebar-primary'], ['sidebar-accent-foreground', 'sidebar-accent'],
   ['accent-foreground', 'accent'], ['marker-foreground', 'marker'], ['background', 'ring'],
   ['link', 'background'], ['link', 'sidebar'], ['link', 'muted'],
@@ -60,7 +61,7 @@ const TEXT: [text: string, ground: Ground][] = [
 ]
 /** Edges that must be seen but are not read: the focus ring, and in dark mode the edge of a control. */
 const EDGES: [edge: string, ground: string, modes: ('light' | 'dark')[]][] = [
-  ['ring', 'background', ['light', 'dark']], ['ring', 'sidebar', ['light', 'dark']], ['marker', 'canvas', ['dark']], ['input', 'background', ['dark']],
+  ['ring', 'background', ['light', 'dark']], ['ring', 'sidebar', ['light', 'dark']], ['marker', 'canvas', ['light', 'dark']], ['input', 'background', ['dark']],
 ]
 
 describe.each([['light', light, hoverStrength(LIGHT)], ['dark', darkByChoice, hoverStrength(DARK_BY_CHOICE)]] as const)('colour tokens, %s', (mode, tokens, hover) => {

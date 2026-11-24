@@ -1,6 +1,5 @@
-<!-- Wide screens: the views of one site as an icon rail on the canvas beside the framed panel (UI.md 10.2, design A).
-     The current view is a filled primary tile; a count (changes to review) sits on its icon. The person's menu is at
-     the foot. -->
+<!-- The rail of a site on wide screens: the site's tile (to My sites), the views, the person's menu. It stands on the
+     canvas (ink), so its colours are the canvas ones. Gold marks the current view and the count of open reviews. -->
 <script setup lang="ts">
 import type { SiteLink } from '../utils/siteLinks'
 
@@ -10,20 +9,20 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="sticky top-3 flex h-[calc(100dvh-1.5rem)] w-20 flex-none flex-col items-center pt-1.5 pb-1 text-foreground">
+  <div class="sticky top-3 flex h-[calc(100dvh-1.5rem)] w-24 flex-none flex-col items-center pt-2.5 pb-2 text-canvas-foreground">
     <NuxtLink
       to="/?all" :aria-label="`${siteName} · ${t('nav.mySites')}`" :title="siteName"
-      class="mb-4 grid size-11 flex-none place-items-center rounded-[10px] border border-primary bg-card text-base font-bold text-primary no-underline outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/80"
+      class="grid size-[46px] flex-none place-items-center rounded-[14px] rounded-bl-[4px] bg-canvas-foreground font-display text-[21px] font-extrabold text-canvas no-underline outline-none hover:bg-canvas-foreground/90 focus-visible:ring-3 focus-visible:ring-canvas-foreground/80 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
     >{{ initial }}</NuxtLink>
-    <nav class="grid gap-0.5" :aria-label="t('nav.views')">
+    <nav class="mt-5 grid gap-1" :aria-label="t('nav.views')">
       <NuxtLink
         v-for="l in links" :key="l.to" :to="l.to" :aria-current="isSiteLinkActive(route.path, l) ? 'page' : undefined"
-        class="group grid w-[72px] justify-items-center gap-1 rounded-lg pt-1 pb-1.5 text-center text-[11.5px] leading-tight font-medium text-muted-foreground no-underline outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/80 aria-[current=page]:text-foreground"
+        class="group grid w-[76px] justify-items-center gap-1 rounded-[10px] pt-1 pb-1.5 text-center text-[11.5px] leading-tight font-medium text-canvas-muted-foreground no-underline outline-none hover:text-canvas-foreground focus-visible:ring-3 focus-visible:ring-canvas-foreground/80 aria-[current=page]:font-semibold aria-[current=page]:text-canvas-foreground"
       >
-        <span class="relative grid h-8 w-11 place-items-center rounded-lg transition-colors group-hover:bg-foreground/[0.06] group-aria-[current=page]:bg-primary group-aria-[current=page]:text-primary-foreground">
+        <span class="relative grid h-8 w-[46px] place-items-center rounded-[10px] transition-colors group-hover:bg-canvas-foreground/10 group-aria-[current=page]:bg-marker group-aria-[current=page]:text-marker-foreground">
           <component :is="l.icon" class="size-[18px]" aria-hidden="true" />
           <span
-            v-if="l.count" aria-hidden="true" class="absolute -top-[5px] -right-[3px] grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-[5px] text-[11px] font-semibold text-primary-foreground ring-2 ring-canvas"
+            v-if="l.count" aria-hidden="true" class="absolute -top-[5px] -right-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-marker px-[5px] text-[11px] font-bold text-marker-foreground ring-2 ring-canvas"
           >{{ l.count }}</span>
         </span>
         {{ l.label }}
