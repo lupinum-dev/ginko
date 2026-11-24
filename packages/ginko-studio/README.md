@@ -44,3 +44,6 @@ Prefer the `NUXT_PUBLIC_*` names on a host; when both names are set, they win.
 The Studio serves a public discovery document at `/.well-known/ginko-platform`: `{ "backend": <the Convex HTTP
 actions URL>, "version": <this package's version> }`. The `ginko` CLI reads it once per run, so a website's
 `GINKO_PLATFORM` can be the Studio's address; it sends releases to `backend`.
+
+`/connect` confirms `ginko connect`: the person types the code from the terminal, picks a site they manage (owner or
+admin) and confirms; the computer then gets a publishing key. The code is never part of the address.

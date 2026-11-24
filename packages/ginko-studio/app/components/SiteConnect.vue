@@ -10,6 +10,8 @@ const { t } = useI18n()
 // sends the release to the backend address it finds there, so a website needs only the address people know.
 const studio = useRequestURL().origin
 const config = computed(() => `site: '${props.slug}',`)
+// `ginko connect` replaces step 1: the person confirms a code on /connect and the command stores the key.
+const connect = `npx ginko connect ${studio}`
 const release = computed(() => `GINKO_PLATFORM=${studio} GINKO_KEY=… GINKO_COMMIT=$(git rev-parse HEAD) npx ginko release`)
 const CODE = 'm-0 select-all whitespace-pre-wrap rounded-md bg-muted px-3 py-2 font-mono text-[13px] [overflow-wrap:anywhere]'
 </script>
@@ -25,6 +27,8 @@ const CODE = 'm-0 select-all whitespace-pre-wrap rounded-md bg-muted px-3 py-2 f
         <span class="text-sm font-semibold text-muted-foreground tabular-nums" aria-hidden="true">1</span>
         <p class="max-w-[65ch] text-sm">{{ t('site.connect.key') }}</p>
         <Button as-child variant="outline" size="sm" class="col-start-2 justify-self-start"><NuxtLink :to="`/s/${slug}/team`">{{ t('site.connect.keyLink') }}</NuxtLink></Button>
+        <p class="col-start-2 max-w-[65ch] text-sm text-muted-foreground">{{ t('site.connect.short') }}</p>
+        <pre :class="[CODE, 'col-start-2']">{{ connect }}</pre>
       </li>
       <li class="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-3 gap-y-2">
         <span class="text-sm font-semibold text-muted-foreground tabular-nums" aria-hidden="true">2</span>

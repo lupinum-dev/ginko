@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The `ginko` command: `ginko check | release | export | prepare-import`. Output and exit codes: run.ts.
+// The `ginko` command: `ginko check | release | export | prepare-import | connect`. Output and exit codes: run.ts.
 // Reads GINKO_PLATFORM (or NUXT_PUBLIC_GINKO_PLATFORM), GINKO_KEY, GINKO_COMMIT (or GITHUB_SHA), GINKO_BRANCH and
 // GINKO_REMOTE from the environment; it does not read .env files.
 import { existsSync, readFileSync } from 'node:fs'
@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { loadConfig } from './config.ts'
 import { check } from './check.ts'
+import { connect, realConnectIO, type ConnectIO } from './connect.ts'
 import { exportSite, siteOfKey } from './export.ts'
 import { defaultDir } from './model.ts'
 import { CliError } from './model.ts'
@@ -30,6 +31,9 @@ Commands:
                      downloads images into files/, renames Markdown components, writes redirects.json. Rewrites
                      export.json (backup: export.json.bak); a second run changes nothing. Needs --config for
                      redirects to entries and for the list of unknown components. Exit 1 when an image failed.
+  connect <address>  Get a publishing key for this website folder from the Studio at <address>: confirm the code it
+                     shows on the page of the Studio, then it stores the key as the GitHub secret GINKO_KEY (with gh, after
+                     a yes) or shows it once. Writes no file.
 
 Options:
   --map <file>       JSON map for prepare-import (all keys optional): { "images": { "folder" },
@@ -76,7 +80,7 @@ async function versionWarnings(platform: ConnectedPlatform, deps: CliDeps): Prom
   return [note]
 }
 
-export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCode> {
+export function main(argv: string[], deps: CliDeps = realDeps(), io: ConnectIO = realConnectIO()): Promise<ExitCode> {
   const configPathOf = (args: Args) => resolve(args.config ?? 'ginko.config.ts')
 
   return runCli(argv, deps, {
@@ -146,6 +150,11 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const config = args.config !== undefined || existsSync(path) ? await loadConfig(path) : undefined
           return prepareImport({ dir: args.folder!, map, config, fetch: deps.fetch, log: deps.log })
         },
+      },
+      // The positional argument is the Studio's address, not a folder.
+      connect: {
+        folder: 'optional',
+        run: (args) => connect({ address: args.folder, configPath: args.config && resolve(args.config), deps, io }),
       },
     },
   })

@@ -12,11 +12,13 @@ vi.stubGlobal('useI18n', useI18n)
 vi.stubGlobal('useRequestURL', () => new URL('https://studio.example.org/s/linde/all'))
 
 // Wrong behaviour caught: the release command names the Convex backend address, which a person cannot read off any
-// screen and which changes with the deployment, instead of the Studio's own address that the CLI resolves.
-test('the release command names this Studio address and the site identifier', () => {
+// screen and which changes with the deployment, instead of the Studio's own address that the CLI resolves. The same for
+// the short way, `ginko connect`, whose confirmation page is on this Studio.
+test('the connect and release commands name this Studio address and the site identifier', () => {
   const wrapper = mount(SiteConnect, { props: { slug: 'linde' }, global: { stubs: { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } })
   const blocks = wrapper.findAll('pre').map((pre) => pre.text())
   expect(blocks).toEqual([
+    'npx ginko connect https://studio.example.org',
     "site: 'linde',",
     'GINKO_PLATFORM=https://studio.example.org GINKO_KEY=… GINKO_COMMIT=$(git rev-parse HEAD) npx ginko release',
   ])

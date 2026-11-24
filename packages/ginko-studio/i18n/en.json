@@ -381,6 +381,7 @@
       "lede": "This site has no areas yet. They come from the code of the website. Three steps send them here.",
       "key": "Create a publishing key under “Publishing keys”. The Studio shows it once.",
       "keyLink": "Open Team",
+      "short": "Shorter than step 1: run this in the project of the website and confirm the code it shows; it stores the key for you:",
       "id": "In the ginko.config.ts of the website, set this identifier:",
       "release": "Run the first release in the project of the website, on a commit that is pushed to main. Put your key in place of the dots:",
       "after": "After the release, this page lists the areas."
@@ -1341,5 +1342,20 @@
     },
     "nothingOnline": "Nothing on the website right now.",
     "rejectedNote": "{line} · Not approved, see above."
+  },
+  "connect": {
+    "title": "Connect a website",
+    "lede": "A computer asks for a publishing key. Confirm only if you started this yourself and the code matches the one in your terminal.",
+    "code": "Code from the terminal",
+    "request": "Request from “{label}”, started {minutes, plural, =0 {less than a minute ago} one {# minute ago} other {# minutes ago}}.",
+    "site": "Site",
+    "granted": "The key can publish the content structure of this site and back up its content, like a “Publish and back up” key. You can revoke it on the Team page.",
+    "connect": "Connect",
+    "decline": "Decline",
+    "done": "Connected. Go back to the terminal.",
+    "declined": "Declined. The computer gets no key.",
+    "invalid": "This code is not valid. Start again in the terminal.",
+    "limited": "Too many wrong codes. Wait 10 minutes, then try again.",
+    "noSites": "You manage no site, so you cannot connect a website."
   }
 }

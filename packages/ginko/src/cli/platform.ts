@@ -104,7 +104,7 @@ export function versionNote(platformVersion: string | undefined, siteVersion: st
 }
 
 /** Plain http only for the machine itself; the push key must not travel unencrypted. */
-function checkPlatformUrl(url: string): void {
+export function checkPlatformUrl(url: string): void {
   let parsed: URL
   try {
     parsed = new URL(url)
