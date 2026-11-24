@@ -77,7 +77,7 @@ export interface SiteInput {
     image?: string
     /** The brand colour, `#rrggbb` or `#rgb`: the background of generated share cards (nuxt-og-image). */
     color?: string
-    /** The home page's Organization JSON-LD. A page with its own (`siteJsonLd` of `@lupinum/ginko/basics`) gets none from here. */
+    /** The home page's Organization JSON-LD. A page with its own (`siteJsonLd` of `@lupinum/ginko/patterns`) gets none from here. */
     organization?: { logo?: string; sameAs?: string[] }
     /**
      * Keys of `pages` that stay out of search, such as a thank-you page after a form: they leave the sitemap and

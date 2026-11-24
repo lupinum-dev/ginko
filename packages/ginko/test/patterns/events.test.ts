@@ -1,9 +1,10 @@
-// Events and sessions of the basics. Wrong behaviour caught: search engines show an event an hour off (no offset, or
+// Events and sessions of the patterns. Wrong behaviour caught: search engines show an event an hour off (no offset, or
 // the winter offset in summer), a cancelled session still looks scheduled, a session that ends before it starts is
 // saved, and the sessions brick does not pass the platform's schema check.
 import { describe, expect, it } from 'vitest'
 import { collection, coreMessage, defineSite, f, serializeSchema, checkSchema, validate, type Issue } from '../../src/core/index.ts'
-import { eventJsonLd, events, sessions, sessionsInOrder, type EventJsonLdInput } from '../../src/basics/index.ts'
+import { events, sessions } from '../../src/patterns/functions.ts'
+import { eventJsonLd, sessionsInOrder, type EventJsonLdInput } from '../../src/patterns/index.ts'
 
 const event = (over: Partial<EventJsonLdInput> = {}): EventJsonLdInput => ({
   title: 'Open Data Days', url: 'https://odd.example/en/events/odd', when: { from: '2026-12-03', to: '2026-12-04' }, timeZone: 'Europe/Vienna', ...over,

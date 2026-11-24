@@ -1,4 +1,4 @@
-// The gastro hours are a thin wrapper over `@lupinum/ginko/basics`. Wrong behaviour caught: a restaurant that never
+// The gastro hours are a thin wrapper over `@lupinum/ginko/patterns`. Wrong behaviour caught: a restaurant that never
 // named a calendar loses its Austrian holidays.
 import { describe, expect, it } from 'vitest'
 import { hoursOn, type HoursContext } from '../src/index.ts'

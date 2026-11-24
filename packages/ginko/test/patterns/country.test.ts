@@ -2,7 +2,7 @@
 // disagree about a holiday because one of them guessed the calendar; a config without `country` silently changes a
 // 0.4 site; an explicit calendar loses to the country.
 import { describe, expect, it } from 'vitest'
-import { hoursOn, type HoursContext } from '../../src/basics/index.ts'
+import { hoursOn, type HoursContext } from '../../src/patterns/index.ts'
 import { checkSchema, checkSite, collection, defineSite, diffSchema, f, serializeSchema, type SiteInput } from '../../src/core/index.ts'
 
 const base = defineSite({
@@ -45,7 +45,7 @@ describe('schema.holidays', () => {
   })
 })
 
-describe('the basics hours rules pick the calendar (none without one)', () => {
+describe('the hours rules pick the calendar (none without one)', () => {
   // A week open every day, so only the holiday rule can close it.
   const week = Object.fromEntries((['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const).map((day) => [day, { closed: false, from1: '09:00', to1: '17:00' }]))
   const ctx = (over: Partial<HoursContext>): HoursContext => ({ hours: { week, exceptions: [], holidays: 'closed' }, ...over })

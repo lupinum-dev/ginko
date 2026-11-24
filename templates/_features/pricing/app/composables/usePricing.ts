@@ -1,5 +1,5 @@
 import { formatMoney, safeHref, type Money } from '@lupinum/ginko'
-import { offerJsonLd } from '@lupinum/ginko/basics'
+import { offerJsonLd } from '@lupinum/ginko/patterns'
 
 /** A plan as the pricing table shows it, in the page's language. */
 export interface Plan {

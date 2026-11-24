@@ -1,6 +1,6 @@
 // Synced from templates/_features/changelog/server/middleware/changelog-feed.ts by `pnpm templates sync`. Edit the source, not this copy.
 import type { MarkdownTree, MarkdownValue } from '@lupinum/ginko'
-import { releaseAnchor, rssXml } from '@lupinum/ginko/basics'
+import { releaseAnchor, rssXml } from '@lupinum/ginko/patterns'
 import { defineEventHandler, getRequestURL, serverFetch, useRuntimeConfig } from 'nuxt/server'
 import site from '../../ginko.config'
 import { releaseSummary } from '#shared/utils/changelog'

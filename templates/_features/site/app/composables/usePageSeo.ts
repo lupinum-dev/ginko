@@ -1,5 +1,5 @@
 import { breadcrumbJsonLd } from '@lupinum/ginko'
-import { siteJsonLd } from '@lupinum/ginko/basics'
+import { siteJsonLd } from '@lupinum/ginko/patterns'
 
 export interface PageSeoInput {
   title?: string

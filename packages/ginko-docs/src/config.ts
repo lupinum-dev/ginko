@@ -3,9 +3,7 @@
 // (`entries: { docs: '/docs/[slug]' }`); the layer serves its page there. Where a brick lives is `studio.bricks`. The
 // start page, the blog and the changelog are optional. Each brick is made from a private builder of the stored form
 // and turned into the written form by `defOf`, so its stored model is exactly what it was.
-import { collection, defOf, f, single, type Locale } from '@lupinum/ginko/internal'
-import { authors, changelog, posts } from '@lupinum/ginko/basics'
-import { labelsIn } from '@lupinum/ginko/internal'
+import { authorsBrick, changelogBrick, collection, defOf, f, labelsIn, postsBrick, single, type Locale } from '@lupinum/ginko/internal'
 import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
 
 /** The registry of the Markdown components the layer renders, for `components` in `defineSite`. */
@@ -132,8 +130,8 @@ function storedHome() {
  */
 export function blogCollections(opts: { max?: number } = {}) {
   return {
-    posts: defOf(labelsIn(posts({ max: opts.max }), 'en'), { item: 'a post' }),
-    authors: defOf(labelsIn(authors(), 'en'), { item: 'an author' }),
+    posts: defOf(labelsIn(postsBrick({ max: opts.max }), 'en'), { item: 'a post' }),
+    authors: defOf(labelsIn(authorsBrick(), 'en'), { item: 'an author' }),
   }
 }
 
@@ -145,7 +143,7 @@ export function blogCollections(opts: { max?: number } = {}) {
  * sites store.
  */
 export function changelogCollection(opts: { max?: number } = {}) {
-  return defOf(labelsIn(changelog({ max: opts.max }), 'en'), { item: 'a release' })
+  return defOf(labelsIn(changelogBrick({ max: opts.max }), 'en'), { item: 'a release' })
 }
 
 /** The start page by locale, for `pages` in ginko.config.ts: the main locale at `/`, the others at `/<locale>`. */

@@ -1,6 +1,6 @@
 // Synced from templates/_features/site/app/composables/usePageSeo.ts by `pnpm templates sync`. Edit the source, not this copy.
 import { breadcrumbJsonLd } from '@lupinum/ginko'
-import { siteJsonLd } from '@lupinum/ginko/basics'
+import { siteJsonLd } from '@lupinum/ginko/patterns'
 
 export interface PageSeoInput {
   title?: string

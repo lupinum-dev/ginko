@@ -2,7 +2,7 @@
 import {
   calendarOfCountry, hoursLine, hoursOn, upcomingClosures, upcomingPlans, weekFor,
   type DayHours, type HourPlan, type HoursContext, type HoursData, type Weekday,
-} from '@lupinum/ginko/basics'
+} from '@lupinum/ginko/patterns'
 
 /** The day keys of the stored week, Monday first. */
 const KEYS: Weekday[] = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
@@ -11,7 +11,7 @@ const HOLIDAY_SETTINGS = ['sunday', 'closed', 'normal'] as const
 
 /**
  * The opening hours of the site, read once per component: the `hours` single and the `hourPlans` entries, shaped for
- * the rules of `@lupinum/ginko/basics`, with the site's country for public holidays. `now` is the time of the server's
+ * the rules of `@lupinum/ginko/patterns`, with the site's country for public holidays. `now` is the time of the server's
  * render, carried to the browser, so both show the same state; HoursToday moves it on every minute.
  */
 export function useHours() {

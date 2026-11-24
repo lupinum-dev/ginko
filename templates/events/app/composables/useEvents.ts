@@ -1,8 +1,8 @@
 // Synced from templates/_features/events/app/composables/useEvents.ts by `pnpm templates sync`. Edit the source, not this copy.
 import { formatMoney, safeHref, type ImageValue, type MarkdownTree, type Money } from '@lupinum/ginko'
-import { eventJsonLd, type SessionJsonLdInput } from '@lupinum/ginko/basics'
+import { eventJsonLd, type SessionJsonLdInput } from '@lupinum/ginko/patterns'
 
-/** What the events feature reads of an entry of the `events` brick (`events()` of `@lupinum/ginko/basics`). */
+/** What the events feature reads of an entry of the `events` brick (`events()` of `@lupinum/ginko/patterns`). */
 export interface EventFacts {
   title: string
   when: { from: string, to: string }

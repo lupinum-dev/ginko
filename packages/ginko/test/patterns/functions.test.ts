@@ -1,13 +1,13 @@
-// @lupinum/ginko/basics: the stored names a site's data depends on, labels in every Studio
+// The functions behind the patterns: the stored names a site's data depends on, labels in every Studio
 // language, the JSON-LD per type, and a files site with every brick that builds and moves to the platform unchanged.
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildFileBundles, publicBundle } from '@lupinum/ginko-content'
-import { collection, defineSite, f, type Brick, type Field, type Label } from '@lupinum/ginko/internal'
-import { authors, changelog, downloads, faq, faqJsonLd, jobJsonLd, jobs, legal, offerJsonLd, people, personJsonLd, postJsonLd, posts, releaseAnchor, site, siteJsonLd, withoutFiles } from '@lupinum/ginko/basics'
-import { checkSite, siteForContent, serializeSchema } from '@lupinum/ginko/internal'
+import { checkSite, collection, defineSite, f, serializeSchema, siteForContent, withoutFiles, type Brick, type Field, type Label } from '@lupinum/ginko/internal'
+import { faqJsonLd, jobJsonLd, offerJsonLd, personJsonLd, postJsonLd, releaseAnchor, siteJsonLd } from '@lupinum/ginko/patterns'
+import { authors, changelog, downloads, faq, jobs, legal, people, posts, site } from '../../src/patterns/functions.ts'
 
 const route = (path: string) => ({ en: `/${path}/[slug]`, de: `/de/${path}/[slug]` }) as const
 /** The brick as a site file stores it when it lives in files, with its address from `entries`. */
@@ -20,7 +20,7 @@ const factories: Record<string, () => Brick> = {
 /** `field name: type` of each stored field, with `?` for optional ones: the data of every site that uses the brick. */
 const shape = (brick: Brick) => Object.entries(brick.fields).map(([name, field]) => `${name}${field.optional ? '?' : ''}: ${field.type}`)
 
-describe('basics factories', () => {
+describe('the functions behind the patterns', () => {
   it.each([
     ['site', ['legalName?: text', 'street?: text', 'postalCode?: text', 'city?: text', 'email?: text', 'phone?: text', 'registryNumber?: text', 'registryCourt?: text', 'vatId?: text']],
     ['legal', ['title: text', 'description?: longtext', 'slug: slug', 'legalType: choice', 'updatedAt: date', 'body: markdown']],
@@ -107,7 +107,7 @@ describe('releaseAnchor', () => {
   })
 })
 
-describe('basics JSON-LD', () => {
+describe('the JSON-LD of the patterns', () => {
   // Wrong behaviour caught: a net price that search engines read as the full price, cents as the price, or a price
   // per month read as a one-off price.
   it.each([

@@ -1,6 +1,6 @@
 // The rules behind "open now" without Vue or Nuxt: plain functions of dates, times and the hours line of the basics.
 // useHours and the components use them (auto-imported from app/utils/); tests import this file directly.
-import { spansText, type HoursLine, type Span } from '@lupinum/ginko/basics'
+import { spansText, type HoursLine, type Span } from '@lupinum/ginko/patterns'
 
 /** `YYYY-MM-DD` plus `days`. */
 export function plusDays(date: string, days: number): string {

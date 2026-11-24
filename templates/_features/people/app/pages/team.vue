@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { personJsonLd } from '@lupinum/ginko/basics'
+import { personJsonLd } from '@lupinum/ginko/patterns'
 
 // The team or board: every entry of content/people/ in its order, with Person JSON-LD. The address per language
 // comes from `pages.team` in ginko.config.ts. A template may bring `app/components/people/TeamContact.vue` (the

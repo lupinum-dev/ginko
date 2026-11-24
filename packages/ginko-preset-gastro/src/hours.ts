@@ -1,13 +1,13 @@
-// Opening hours: the rules live in `@lupinum/ginko/basics`. The preset keeps its 0.4 default: a site that gives the
+// Opening hours: the rules live in `@lupinum/ginko/patterns`. The preset keeps its 0.4 default: a site that gives the
 // rules neither `calendar` nor `country` keeps the Austrian public holidays.
-import * as basics from '@lupinum/ginko/basics'
-import type { DayRule, Exception, Holiday, HolidayClosure, HolidaysOption, HoursContext, TodayState, Weekday } from '@lupinum/ginko/basics'
+import * as basics from '@lupinum/ginko/patterns'
+import type { DayRule, Exception, Holiday, HolidayClosure, HolidaysOption, HoursContext, TodayState, Weekday } from '@lupinum/ginko/patterns'
 
 export {
   austrianHolidays, closedOnClosure, planOn, spansOf, spansText, timesOf, upcomingPlans, weekdayOf, weekFor,
   type DayHours, type DayRule, type Exception, type Holiday, type HolidayClosure, type HolidayNames, type HolidaySetting, type HourPlan,
   type HoursContext, type HoursData, type HoursSource, type Span, type Times, type TodayState, type Weekday, type WeekHours,
-} from '@lupinum/ginko/basics'
+} from '@lupinum/ginko/patterns'
 
 /** The context with Austria as the calendar when it names none (the preset's 0.4 behaviour). */
 const withDefault = (ctx: HoursContext): HoursContext => (ctx.calendar !== undefined || ctx.country ? ctx : { ...ctx, calendar: 'AT' })

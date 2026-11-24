@@ -1,5 +1,5 @@
 // Which public holidays a site keeps (SPEC templates T6): one stored answer, `schema.holidays`, so the server, the
-// Studio, the reminder mail and the site agree. The calendars themselves are in basics/holidays.ts.
+// Studio, the reminder mail and the site agree. The calendars themselves are in patterns/holidays.ts.
 
 /** One public holiday with its name for guests in German and English. */
 export interface Holiday { date: string; de: string; en: string }

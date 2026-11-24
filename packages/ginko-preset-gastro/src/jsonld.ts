@@ -1,6 +1,6 @@
 // schema.org Restaurant and Event for search engines. The opening hours come from the same rule as the page (`hoursOn`),
-// so Google never shows "open" on a day the site says "closed". The builders live in `@lupinum/ginko/basics`.
-import { eventJsonLd as basicsEventJsonLd, openingHoursJsonLd, type EventJsonLdInput as BasicsEventInput, type HoursContext } from '@lupinum/ginko/basics'
+// so Google never shows "open" on a day the site says "closed". The builders live in `@lupinum/ginko/patterns`.
+import { eventJsonLd as basicsEventJsonLd, openingHoursJsonLd, type EventJsonLdInput as BasicsEventInput, type HoursContext } from '@lupinum/ginko/patterns'
 import { offerPrice, postalAddress } from '@lupinum/ginko/internal'
 import type { MarkdownTree } from '@lupinum/ginko'
 import { withDefault } from './hours.ts'

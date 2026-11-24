@@ -1,4 +1,4 @@
-// schema.org building blocks shared by the JSON-LD of the basics: postal address and offer price.
+// schema.org building blocks shared by the JSON-LD of the patterns: postal address and offer price.
 import { minorDigits } from '../core/money.ts'
 
 /** An amount in minor units; `currency` (ISO 4217) defaults to the site's. */

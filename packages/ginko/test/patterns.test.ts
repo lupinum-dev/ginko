@@ -1,12 +1,12 @@
-// @lupinum/ginko/patterns: each pattern in a site file gives the stored brick its function of '@lupinum/ginko/basics'
+// @lupinum/ginko/patterns: each pattern in a site file gives the stored brick its function of '@lupinum/ginko/patterns'
 // gives. Wrong behaviour this catches: a pattern differs from its function in a name, a limit, a label or a task, so
 // a site that takes the pattern in place of the function call gets a changed model, which a release reports or refuses.
 import { describe, expect, it } from 'vitest'
-import * as basics from '../src/basics/index.ts'
+import * as basics from '../src/patterns/functions.ts'
 import { checkSite } from '../src/core/index.ts'
 import type { Brick } from '../src/core/types.ts'
 import { defineSite, extend, f, type BrickDef } from '../src/index.ts'
-import * as patterns from '../src/patterns/index.ts'
+import * as patterns from '../src/patterns/bricks.ts'
 
 const base = { name: 'Halden Pumps', url: 'https://halden.example', timeZone: 'Europe/Vienna', currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, locales: ['de', 'en'] } as const
 

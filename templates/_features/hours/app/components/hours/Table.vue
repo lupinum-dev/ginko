@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { spansOf, weekdayOf, type DayHours, type HourPlan } from '@lupinum/ginko/basics'
+import { spansOf, weekdayOf, type DayHours, type HourPlan } from '@lupinum/ginko/patterns'
 import { ChevronDown } from '@lucide/vue'
 
 /**

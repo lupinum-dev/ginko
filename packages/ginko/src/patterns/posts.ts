@@ -1,5 +1,6 @@
 // A blog and a changelog. The stored shape is the one of `@lupinum/ginko-docs/config` (posts with `authors` refs and
-// `tags`, authors, changelog entries), which re-exports these factories: docs sites and basics sites store the same data.
+// `tags`, authors, changelog entries), which builds its bricks from these functions: docs sites and other sites store
+// the same data.
 import { f } from '../core/fields.ts'
 import { collection } from '../core/site.ts'
 import { articleLd } from '../core/seo.ts'

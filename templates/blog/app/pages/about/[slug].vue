@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { personJsonLd } from '@lupinum/ginko/basics'
+import { personJsonLd } from '@lupinum/ginko/patterns'
 import { ArrowRight } from '@lucide/vue'
 
 // One author: initials, name, role, short bio, and their posts, newest first, with Person JSON-LD. The address comes

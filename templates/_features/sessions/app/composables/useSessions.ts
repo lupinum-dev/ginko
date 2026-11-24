@@ -1,4 +1,4 @@
-import { sessionsInOrder, type SessionJsonLdInput, type SessionStatus } from '@lupinum/ginko/basics'
+import { sessionsInOrder, type SessionJsonLdInput, type SessionStatus } from '@lupinum/ginko/patterns'
 
 /** A session as the programme, a speaker's page and "now and next" show it: every value read from its entry. */
 export interface SessionEntry {

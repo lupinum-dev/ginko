@@ -1,6 +1,6 @@
 // Synced from templates/_features/menu/app/composables/useMenu.ts by `pnpm templates sync`. Edit the source, not this copy.
 import { allergensEU, dishOn, lunchWeekOn, menuCategories, priceOn, upcomingPrice } from '@lupinum/ginko-preset-gastro'
-import { hoursOn, weekdayOf } from '@lupinum/ginko/basics'
+import { hoursOn, weekdayOf } from '@lupinum/ginko/patterns'
 
 /** The 14 EU allergen letters (`allergensEU` of the gastro preset): the menu texts name each of them. */
 export type Allergen = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'L' | 'M' | 'N' | 'O' | 'P' | 'R'
