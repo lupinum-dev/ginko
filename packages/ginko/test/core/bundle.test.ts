@@ -290,14 +290,14 @@ describe('retired fields are projected into the bundle (SPEC 2.5)', () => {
   })
 })
 
-describe('collections: hidden entries have no URL (SPEC 2.1, 6)', () => {
-  it('lists a hidden entry without urls and a visible entry with its URL, in when order', () => {
-    const hidden: StoredEntry = { id: 'h1', data: { title: { de: 'Frühlingsfest' }, slug: { de: 'fruehlingsfest' }, when: { from: '2026-10-01', to: '2026-10-02' } } }
+// Wrong behaviour caught: an ended entry stays in the bundle (its text, and a reference to it, reach the page), or a
+// shown one loses its address.
+describe('collections: an entry that ended is not in the bundle (D111)', () => {
+  it('leaves out the ended entry and keeps the shown one with its URL', () => {
+    const ended: StoredEntry = { id: 'h1', data: { title: { de: 'Frühlingsfest' }, slug: { de: 'fruehlingsfest' }, when: { from: '2026-10-01', to: '2026-10-02' } } }
     const shown: StoredEntry = { id: 'v1', data: { title: { de: 'Weinabend' }, slug: { de: 'weinabend' }, when: { from: '2026-10-10', to: '2026-10-10' } } }
-    const items = itemsOf(build(base(), { events: [shown, hidden] }, 'de').bricks.events)
-    expect(items.map((i) => i.id)).toEqual(['h1', 'v1'])
-    expect(items[0]).not.toHaveProperty('urls')
-    expect(items[1]?.urls?.de).toBe('/veranstaltungen/weinabend')
+    const items = itemsOf(build(base(), { events: [shown, ended] }, 'de').bricks.events)
+    expect(items.map((i) => [i.id, i.urls?.de])).toEqual([['v1', '/veranstaltungen/weinabend']])
   })
 })
 

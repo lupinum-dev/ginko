@@ -298,9 +298,8 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     images = result.images
     writeImages(result.imageFiles)
     trees = new Map()
-    // What is served to everyone: no expired entries, no repo paths (kept only for the docs layer's "Edit this page" link).
-    const now = new Date()
-    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, withMarkdownRefs(content.publicBundle(bundle!, schema, now, fileOptions), schema, trees, (brick, id, field) => fileMarkdownRef(locale, brick, id, field))]))
+    // What is served to everyone: no repo paths (kept only for the docs layer's "Edit this page" link).
+    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, withMarkdownRefs(content.publicBundle(bundle!, fileOptions), schema, trees, (brick, id, field) => fileMarkdownRef(locale, brick, id, field))]))
     searches = Object.fromEntries(await Promise.all(Object.entries(bundles).map(async ([locale, bundle]) => [locale, await content.searchIndex(bundle!, trees, schema)])))
   }
   await build()

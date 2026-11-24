@@ -48,8 +48,11 @@ describe('query order', () => {
   })
 
   it('sorts by money, with missing values last in both directions', () => {
-    expect(ids(query(bundle, 'events', { order: 'price desc' }, schema).items)).toEqual(['martinigans', 'weinabend', 'sommerfest'])
-    expect(ids(query(bundle, 'events', { order: 'price asc' }, schema).items)).toEqual(['weinabend', 'martinigans', 'sommerfest'])
+    const events = (bundle.bricks.events as { items: BundleItem[] }).items
+    const { price: _, ...free } = events[0]!.data
+    const withFree = mini({ ...bundle.bricks, events: { kind: 'collection', items: [{ ...events[0]!, id: 'gratis', data: free }, ...events] } })
+    expect(ids(query(withFree, 'events', { order: 'price desc' }, schema).items)).toEqual(['martinigans', 'weinabend', 'gratis'])
+    expect(ids(query(withFree, 'events', { order: 'price asc' }, schema).items)).toEqual(['weinabend', 'martinigans', 'gratis'])
   })
 
   it('uses several keys and is stable for equal keys', () => {
@@ -59,8 +62,8 @@ describe('query order', () => {
   })
 
   it('takes the { field, dir } form of a brick order, same result as the string', () => {
-    expect(ids(query(bundle, 'events', { order: { field: 'price', dir: 'desc' } }, schema).items)).toEqual(['martinigans', 'weinabend', 'sommerfest'])
-    expect(ids(query(bundle, 'events', { order: { field: 'price' } }, schema).items)).toEqual(['weinabend', 'martinigans', 'sommerfest'])
+    expect(ids(query(bundle, 'events', { order: { field: 'price', dir: 'desc' } }, schema).items)).toEqual(['martinigans', 'weinabend'])
+    expect(ids(query(bundle, 'events', { order: { field: 'price' } }, schema).items)).toEqual(['weinabend', 'martinigans'])
   })
 
   it('rejects an invalid order', () => {
@@ -141,7 +144,7 @@ describe('neighbors', () => {
   })
 
   it('uses the given order', () => {
-    const n = neighbors(bundle, 'events', 'weinabend', 'price desc')
-    expect([n.prev?.id, n.next?.id]).toEqual(['martinigans', 'sommerfest'])
+    const n = neighbors(bundle, 'events', 'weinabend', 'price asc')
+    expect([n.prev?.id, n.next?.id]).toEqual([undefined, 'martinigans'])
   })
 })

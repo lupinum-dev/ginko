@@ -6,7 +6,7 @@ import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import { useSchemaOrg } from '#ginko/schema-org'
 import {
-  applyDefaults, breadcrumbs, factText, shownOn as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, weekInfo, websiteLd, withCountry, withAbsoluteImages,
+  applyDefaults, breadcrumbs, factText, shownOn, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, weekInfo, websiteLd, withCountry, withAbsoluteImages,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from './shared.ts'
@@ -121,7 +121,7 @@ export function useGinkoWeek(): WeekInfo {
 
 /**
  * The content of one brick: `{ data, fallback }` for a single, `{ items }` for a collection.
- * Collections contain only entries that are visible today (SPEC 2.1 `visible`), in order.
+ * Collections contain only the entries shown today (`showUntil`), in order.
  */
 export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<Bricks[K]>> {
   const bundle = useVisibleBundle([brick])
@@ -136,7 +136,10 @@ export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<B
   })
 }
 
-/** The bundle with only the entries visible today (SPEC 2.1 `visible`) in the given collections. The one place that rule is applied. */
+/**
+ * The bundle with only the entries shown today (`showUntil`) in the given collections, by the reader's day: a page
+ * from a cache is right after midnight (D111). The server routes apply the same rule (`loadServerBundles`).
+ */
 function useVisibleBundle(bricks: MaybeRefOrGetter<readonly BrickKey[]>): ComputedRef<Bundle> {
   const bundle = useGinkoBundle()
   const today = useGinkoToday()
@@ -146,7 +149,7 @@ function useVisibleBundle(bricks: MaybeRefOrGetter<readonly BrickKey[]>): Comput
     for (const key of toValue(bricks)) {
       const value = out[key]
       const def = schema.bricks[key] as Brick | undefined
-      if (value?.kind === 'collection' && def) out[key] = { ...value, items: value.items.filter((item) => visible(def, item.data, now)) }
+      if (value?.kind === 'collection' && def) out[key] = { ...value, items: value.items.filter((item) => shownOn(def, item.data, now)) }
     }
     return { ...bundle.value, bricks: out }
   })

@@ -247,6 +247,19 @@ export function shownOn(brick: Brick, data: Record<string, unknown>, today: stri
 }
 
 /**
+ * The bundle without the entries that ended before `today` (`shownOn`): what a page or a server route reads on that
+ * day. `buildBundle` already leaves out what ended before the day it ran, so this matters for a bundle from a cache,
+ * read after midnight.
+ */
+export function shownBundle(bundle: Bundle, schema: Schema, today: string): Bundle {
+  const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, value]) => {
+    const def = schema.bricks[key]
+    return [key, value.kind === 'collection' && def ? { ...value, items: value.items.filter((item) => shownOn(def, item.data, today)) } : value]
+  }))
+  return { ...bundle, bricks }
+}
+
+/**
  * The last day an entry is shown under `showUntil`: the date, or the end `to` of a daterange, plus `plusDays`.
  * `undefined` when the entry has no end: the brick has no `showUntil`, or the field is empty.
  */
@@ -342,7 +355,8 @@ export function buildBundle(input: BuildBundleInput): Bundle {
     const items: BundleItem[] = []
     for (const entry of sortEntries(brick, stored, { locale, main })) {
       const r = resolveEntry(schema, key, entry, ctx)
-      if (r.hidden) continue
+      // An entry outside its life is not in what a page gets, in files and on the platform alike (D111).
+      if (r.hidden || !shownOn(brick, r.data, input.today)) continue
       const item: BundleItem = { id: entry.id, data: r.data, fallback: r.fallback }
       // `data` holds the fields only; a file entry's old paths forward to its page in this language.
       if (entry.redirectFrom?.length) item.oldUrls = { [locale]: [...entry.redirectFrom] }
@@ -350,7 +364,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
       // The file of this locale ("edit this page" opens the translation), else the main-language file.
       const source = entry.sources?.[locale] ?? entry.sources?.[main]
       if (source !== undefined) item.source = source
-      if (brick.route && shownOn(brick, r.data, input.today)) item.urls = urlsFor(schema, key, brick, entry)
+      if (brick.route) item.urls = urlsFor(schema, key, brick, entry)
       items.push(item)
     }
     bricks[key] = { kind: 'collection', items }

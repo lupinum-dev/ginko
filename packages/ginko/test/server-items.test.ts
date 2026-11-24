@@ -1,5 +1,6 @@
 // getGinkoItems (runtime/server/items.ts): the entries a site's own server route reads, filtered like a page's list.
-// '#ginko/schema' is the restaurant config (test shim); the bundles are stubbed, the clock is fixed.
+// '#ginko/schema' is the restaurant config (test shim); the platform's answer is stubbed, the clock is fixed. The
+// filter runs in `loadServerBundles`, so every server route reads the site's day at the request (D111).
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 import type { GinkoPublicConfig } from '../src/nuxt/runtime/shared.ts'
 
@@ -8,15 +9,17 @@ const event = (slug: string, from: string, to: string) => ({ id: `events/${slug}
 
 vi.mock('nuxt/server', () => ({
   createError: (input: { statusCode: number; statusMessage: string }) => Object.assign(new Error(input.statusMessage), input),
+  getRequestHeader: () => undefined,
   useRuntimeConfig: () => ({ public: { ginko: config } }),
 }))
-vi.mock('../src/nuxt/runtime/server/bundles.ts', () => ({
-  loadServerBundles: async () => ({
-    de: {
-      locale: 'de',
-      mainLocale: 'de',
-      bricks: { events: { kind: 'collection', items: [event('vorbei', '2026-10-01', '2026-10-14'), event('heute', '2026-10-15', '2026-10-15'), event('bald', '2026-11-01', '2026-11-02')] } },
-    },
+vi.mock('#ginko/files', () => ({ default: {} }))
+// A bundle built before midnight (from a cache): it still holds the event that ended yesterday.
+vi.mock('../src/nuxt/runtime/fetch.ts', () => ({
+  PlatformError: class extends Error {},
+  loadBundle: async () => ({
+    locale: 'de',
+    mainLocale: 'de',
+    bricks: { events: { kind: 'collection', items: [event('vorbei', '2026-10-01', '2026-10-14'), event('heute', '2026-10-15', '2026-10-15'), event('bald', '2026-11-01', '2026-11-02')] } },
   }),
 }))
 
@@ -30,7 +33,7 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers())
 
 // Wrong behaviour caught: a feed or calendar file that still lists an event (or a campaign) after its last day.
-test('an entry past its visible date is left out; the others keep their order and their address', async () => {
+test('an entry that ended is left out, also from a bundle of yesterday; the others keep their order and their address', async () => {
   const items = await getGinkoItems(request, 'events', 'de')
   expect(items.map((item) => [item.id, item.url])).toEqual([['events/heute', '/veranstaltungen/heute'], ['events/bald', '/veranstaltungen/bald']])
 })

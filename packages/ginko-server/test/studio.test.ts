@@ -395,12 +395,14 @@ describe('sites.translationStatus', () => {
     for (const brick of status.bricks.filter((b) => b.kind === 'collection')) {
       const withFallback = (bundle.bricks[brick.brick]!.items ?? []).filter((item) => item.fallback.length)
       const rows = (await s.as.owner.query(api.entries.list, { site, brick: brick.brick, limit: 2000 })).rows
-      const missing = new Map(rows.map((row) => [row._id as string, row.gaps.reduce((sum, g) => sum + g.missing, 0)]))
+      // An entry that ended is in the list but not in the bundle (D111); the site does not show it.
+      const ended = new Set((await s.t.run((ctx) => ctx.db.query('entries').collect()))
+        .filter((e) => e.brick === brick.brick && !shownOn(schema.bricks[brick.brick]!, e.data, '2026-10-08')).map((e) => e._id as string))
+      const missing = new Map(rows.filter((row) => !ended.has(row._id as string)).map((row) => [row._id as string, row.gaps.reduce((sum, g) => sum + g.missing, 0)]))
       expect([...missing].filter(([, count]) => count).map(([id]) => id).sort(), brick.brick).toEqual(withFallback.map((i) => i.id).sort())
       for (const item of withFallback) expect(missing.get(item.id), `${brick.brick} ${item.id}`).toBe(item.fallback.length)
-      // The status counts what the site shows: the bundle still holds a past event, its listings leave it out.
-      const shown = withFallback.filter((item) => shownOn(schema.bricks[brick.brick]!, item.data, '2026-10-08'))
-      expect(brick.locales.en!.missing, brick.brick).toBe(shown.length)
+      // The status counts what the site shows, as the bundle does.
+      expect(brick.locales.en!.missing, brick.brick).toBe(withFallback.length)
     }
     expect(menu.outdated).toBeGreaterThan(0)
   })

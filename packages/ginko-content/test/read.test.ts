@@ -203,8 +203,9 @@ describe('publicBundle', () => {
   }))
   const now = new Date('2026-10-08T10:00:00Z')
 
-  // Wrong behaviour caught: an expired entry (and its text) stays in the public file, or a current/future one is dropped, or repo paths leak.
-  it('drops entries whose window ended and the source path, and keeps current and future ones', async () => {
+  // Wrong behaviour caught: an ended entry (and its text) stays in the bundle, or a current/future one is dropped, or
+  // repo paths leak (D111: the build leaves ended entries out, as the platform does).
+  it('leaves out entries that ended and the source path, and keeps current and future ones', async () => {
     const s = site({
       'content/events/1.vorbei.md': md('title: Vorbei\nwhen:\n  from: 2026-09-01\n  to: 2026-09-02', 'EXPIRED-MARKER'),
       'content/events/2.heute.md': md('title: Heute\nwhen:\n  from: 2026-10-01\n  to: 2026-10-08'),
@@ -213,12 +214,12 @@ describe('publicBundle', () => {
     const { bundles, errors } = await buildFileBundles({ contentDir: s.content, publicDir: s.public, schema: events, now })
     expect(errors).toEqual([])
     const full = bundles.de!
-    expect(JSON.stringify(full)).toContain('EXPIRED-MARKER')
-    const served = publicBundle(full, events, now)
+    expect(JSON.stringify(full)).not.toContain('EXPIRED-MARKER')
+    const served = publicBundle(full)
     const brick = served.bricks.events!
     expect(brick.kind === 'collection' && brick.items.map((i) => i.data.title)).toEqual(['Heute', 'Bald'])
     expect(JSON.stringify(served)).not.toMatch(/EXPIRED-MARKER|"source"|content\/events/)
-    const kept = publicBundle(full, events, now, { keepSource: true }).bricks.events!
+    const kept = publicBundle(full, { keepSource: true }).bricks.events!
     expect(kept.kind === 'collection' && kept.items.map((i) => i.source)).toEqual(['content/events/2.heute.md', 'content/events/3.bald.md'])
   })
 })

@@ -161,7 +161,8 @@ describe('entry helpers', () => {
   })
 })
 
-// Events of the corpus on 2026-10-08: sommerfest is past (hidden), weinabend and martinigans are upcoming.
+// Events of the corpus on 2026-10-08: weinabend (16 Oct) and martinigans (11 Nov); sommerfest had ended, so the bundle
+// does not hold it (D111).
 function today(date: string) {
   useState<Partial<Record<Locale, Bundle>>>(BUNDLE_STATE).value = bundles
   useState<string>(TODAY_STATE).value = date
@@ -170,7 +171,7 @@ function today(date: string) {
 
 describe('collection composables', () => {
   test.each([
-    ['all visible, hidden one not counted', {}, ['weinabend', 'martinigans'], 2, 1],
+    ['all shown', {}, ['weinabend', 'martinigans'], 2, 1],
     ['order newest first', { order: 'when desc' }, ['martinigans', 'weinabend'], 2, 1],
     ['where on money', { where: { price: { gt: 4000 } } }, ['martinigans'], 1, 1],
     ['limit with page 2', { limit: 1, page: 2 }, ['martinigans'], 2, 2],
@@ -183,16 +184,20 @@ describe('collection composables', () => {
     expect(result.items[0]).toHaveProperty('url', `/veranstaltungen/${ids[0] === 'weinabend' ? 'weinabend-ebner' : 'martini-gansl'}`)
   })
 
-  test('useGinkoQuery follows a reactive query and a hidden entry comes back when it is current', () => {
-    today('2026-06-20')
+  // Wrong behaviour caught: a page from a cache still lists an entry after its last day (the reader's day decides).
+  test('useGinkoQuery follows a reactive query and drops an entry that ended by the reader\'s day', () => {
+    today('2026-10-08')
     const page = ref(1)
     const result = useGinkoQuery('events' as never, () => ({ limit: 1, page: page.value }))
-    expect(result.value.items.map((i: { id: string }) => i.id)).toEqual(['sommerfest'])
-    page.value = 3
+    expect(result.value.items.map((i: { id: string }) => i.id)).toEqual(['weinabend'])
+    page.value = 2
+    expect(result.value.items.map((i: { id: string }) => i.id)).toEqual(['martinigans'])
+    today('2026-10-17')
+    page.value = 1
     expect(result.value.items.map((i: { id: string }) => i.id)).toEqual(['martinigans'])
   })
 
-  test('useGinkoNeighbors skips the hidden entry: the first visible one has no prev', () => {
+  test('useGinkoNeighbors: the first entry has no prev', () => {
     today('2026-10-08')
     const { prev, next } = useGinkoNeighbors('events' as never, 'weinabend').value as { prev?: unknown; next?: { id: string } }
     expect(prev).toBeUndefined()
