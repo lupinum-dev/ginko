@@ -228,7 +228,9 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
     return unchanged
   }
 
-  const { errors, warnings } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+  // A draft's empty `publishedOn` field is filled when it goes online, so it counts as filled (D108).
+  const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data) : data
+  const { errors, warnings } = await validate(schema, entry.brick, checked, { mode: 'patch', changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
   if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
   // A planned draft goes online at its time without a person: a save that leaves it failing the full check is refused
   // now, not stopped then (D101). The person fills the field or cancels the plan first.
@@ -609,7 +611,8 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     Object.assign(prints, (change.printsBefore ?? {}) as Prints)
 
     const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, entry.data as Data, data)
-    const { errors } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+    const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data) : data
+    const { errors } = await validate(schema, entry.brick, checked, { mode: 'patch', changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('NOT_UNDOABLE', 'errors.oldVersionNoLongerFitsSchema', undefined, { errors: errors as unknown as Json })
     // An undo of a planned draft is held to the full check, as a save is (D101).
     if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }))
@@ -970,10 +973,17 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     // Retired fields are not writable (SPEC 4.1 step 3); validation skips them, so reject them here.
     for (const key of Object.keys(args.data)) liveField(brick, key)
     const slugged = await namedFor(ctx, actor, args.brick, brick, args.data as Data)
-    const data = slugged.data
+    // A new entry is a draft (SPEC 15); only `publish: {}` puts it live at once. "Show me first" asks to go online.
+    const publish = args.publish ?? (actor.forceProposal ? {} : undefined)
+    const lateAt = lapsed(actor, publish?.at)
+    const draft = publish === undefined || (publish.at !== undefined && !lateAt)
+    const at = draft ? publish?.at : undefined
+    // Online at once, an empty `publishedOn` field holds the site's day; a draft's is filled when it goes online, and
+    // counts as filled for the check (D108).
+    const data = draft ? slugged.data : withPublishedOn(schema, args.brick, slugged.data)
     // Translations sent with a new entry are fresh: every foreign leaf gets the print of its main value.
     const prints = nextPrints({ fields: brick.fields, roots: Object.keys(brick.fields), before: {}, after: data, prints: {}, main: schema.locales[0]!, confirm: undefined })
-    const { errors } = await validate(schema, args.brick, data, { mode: 'create', ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+    const { errors } = await validate(schema, args.brick, withPublishedOn(schema, args.brick, data), { mode: 'create', ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
     await refuseSecondPlan(ctx, actor, args.brick, brick, data)
 
@@ -988,11 +998,6 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     if (c.treeBytes + trees.bytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
     const files = fileIdsOf(brick.fields, data, { isUploadId: uploadIdsOf(ctx) })
     await checkFiles(ctx, actor.site._id, files, fileIdsOf(brick.fields, data, { only: 'image' }))
-    // A new entry is a draft (SPEC 15); only `publish: {}` puts it live at once. "Show me first" asks to go online.
-    const publish = args.publish ?? (actor.forceProposal ? {} : undefined)
-    const lateAt = lapsed(actor, publish?.at)
-    const draft = publish === undefined || (publish.at !== undefined && !lateAt)
-    const at = draft ? publish?.at : undefined
     // Checked before anything is written, so a late failure (apply of a proposal) leaves no half-done removal behind.
     if (at !== undefined) checkFuture(at)
 
@@ -1265,8 +1270,21 @@ type Issue = ValidationResult['errors'][number]
  */
 async function onlineErrors(ctx: QueryCtx, site: Id<'sites'>, schema: Schema, entry: { brick: string; data: unknown }): Promise<Issue[]> {
   const fields = structuralBrick(schema, entry.brick).fields
-  const data = entry.data as Data
+  // An empty `publishedOn` field is filled when the entry goes online, so it counts as filled (D108).
+  const data = withPublishedOn(schema, entry.brick, entry.data as Data)
   return (await validate(schema, entry.brick, data, { mode: 'create', ...(await lookupsFor(ctx, site, fields, data)) })).errors
+}
+
+/**
+ * Rule 9 (D108): an empty `publishedOn` field means "the day the entry goes online". Returns `data` with the site's day
+ * in that field, or `data` itself when the brick states no such field or the field holds a day (a typed date stays).
+ */
+function withPublishedOn(schema: Schema, brickKey: string, data: Data): Data {
+  const brick = schema.bricks[brickKey]
+  const field = brick?.kind === 'collection' ? brick.publishedOn : undefined
+  const value = field === undefined ? undefined : data[field]
+  if (field === undefined || (value !== undefined && value !== null && value !== '')) return data
+  return { ...data, [field]: todayIn(schema.timeZone) }
 }
 
 /** Refuses a write with the field errors of `onlineErrors`, as the form shows them. */
@@ -1295,13 +1313,28 @@ async function refuseChangedSince(ctx: QueryCtx, actor: Actor, entry: Doc<'entri
   if (conflicts.length) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, { ...(current(entry) as object), conflicts, by: await conflictAuthors(ctx, actor, entry, conflicts, rev, null) })
 }
 
-/** Draft → live: state, no schedule, `contentAt`, lifeRev+1, contentRev+1 and one 'publish' change. Shared by `publishAs` and `publishDue`. */
-async function goLive(ctx: MutationCtx, c: Counters, entry: Doc<'entries'>, by: By, opId: string, history: Recorded, now = Date.now()) {
+/**
+ * Draft → live: state, no schedule, `contentAt`, lifeRev+1, contentRev+1 and one 'publish' change. An empty
+ * `publishedOn` field gets the site's day in the same write, with its field revision, and the change names it (D108).
+ * Shared by `publishAs` and `publishDue`.
+ */
+async function goLive(ctx: MutationCtx, schema: Schema, c: Counters, entry: Doc<'entries'>, by: By, opId: string, history: Recorded, now = Date.now()) {
   await cancelJob(ctx, entry)
-  await ctx.db.patch(entry._id, { state: 'live', ...NO_PLAN, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentAt: now, ...nameFixedFor(entry) })
+  const rev = entry.rev + 1
+  const data = entry.data as Data
+  const filled = withPublishedOn(schema, entry.brick, data)
+  const day = Object.keys(filled).filter((root) => filled[root] !== data[root])
+  const bytes = day.length ? entryBytes(filled, entry.prints) : entry.bytes
+  await ctx.db.patch(entry._id, {
+    state: 'live', ...NO_PLAN, lifeRev: entry.lifeRev + 1, rev, contentAt: now, ...nameFixedFor(entry),
+    ...(day.length ? { data: filled, bytes, fieldRevs: { ...entry.fieldRevs, ...Object.fromEntries(day.map((root) => [root, rev])) } } : {}),
+  })
   c.contentRev += 1
+  c.bytes += bytes - entry.bytes
   return ctx.db.insert('changes', {
-    site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'publish', ...history, entryRev: entry.rev + 1, contentRev: c.contentRev, at: now,
+    site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'publish', ...history,
+    ...(day.length ? { fields: day, before: {}, after: Object.fromEntries(day.map((root) => [root, filled[root]!])) } : {}),
+    entryRev: rev, contentRev: c.contentRev, at: now,
   })
 }
 
@@ -1354,7 +1387,7 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     const c = countersOf(actor.site)
     let change: Id<'changes'>
     if (at === undefined) {
-      change = await goLive(ctx, c, entry, byOf(actor), args.opId, recorded(msg(late ? 'history.publishedLate' : 'history.published', { title: label }), schema))
+      change = await goLive(ctx, schema, c, entry, byOf(actor), args.opId, recorded(msg(late ? 'history.publishedLate' : 'history.published', { title: label }), schema))
     } else {
       // A new time replaces the old job, so the entry never goes online at the old time.
       await cancelJob(ctx, entry)
@@ -1488,7 +1521,7 @@ export const publishDue = internalMutation({
     const broken = await brokenNewLinks(ctx, site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }], args.at)
     if (broken) return await stop({ code: 'link', href: broken.href }, msg('history.publishStoppedBrokenLink', { title: label, link: broken.href }))
     // The job is running now, so there is nothing left to cancel.
-    await goLive(ctx, c, { ...entry, publishJob: undefined }, SYSTEM, `publish:${entry._id}:${args.at}`, recorded(msg('history.publishedDue', { title: label }), site.schema as Schema))
+    await goLive(ctx, schema, c, { ...entry, publishJob: undefined }, SYSTEM, `publish:${entry._id}:${args.at}`, recorded(msg('history.publishedDue', { title: label }), site.schema as Schema))
     await writeCounters(ctx, site._id, c)
     return null
   },

@@ -988,3 +988,63 @@ describe('unpublished changes of a live entry (save without publishing)', () => 
     expect(await pendingRows(s)).toEqual([])
   })
 })
+
+describe('the day it went online (D108)', () => {
+  // Wrong behaviour caught: a required `publishedOn` date refused every draft and plan that left it for Ginko to fill,
+  // and a post went online with no date (or a date typed by hand was overwritten). Rule 9: empty means "the day it goes
+  // online", whether that is now or at its time; a typed date stays.
+  async function postedSetup() {
+    const s = await draftSetup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      const events = schema.bricks.events!
+      if (events.kind !== 'collection') throw new Error('events is a collection')
+      await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, events: { ...events, publishedOn: 'postedOn', fields: { ...events.fields, postedOn: { type: 'date', label: { de: 'Veröffentlicht am' } } } } } } })
+    })
+    const create = (title: string, extra: object, publish?: { at?: number }) =>
+      s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: { ...event(title), ...extra }, ...(publish ? { publish } : {}) })
+    const publish = async (id: string, at?: number) => {
+      const row = (await s.row(id))!
+      return s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: id, lifeRev: row.lifeRev, ...(at === undefined ? {} : { at, rev: row.rev }) })
+    }
+    const posted = async (id: string) => {
+      const row = (await s.row(id))!
+      const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', row._id)).collect())
+      const published = changes.find((c) => c.kind === 'publish' || (c.kind === 'create' && row.state === undefined))
+      return { postedOn: (row.data as { postedOn?: string }).postedOn, rev: row.fieldRevs.postedOn === row.rev, change: published && { fields: published.fields, after: published.after } }
+    }
+    return { ...s, create, publish, posted }
+  }
+
+  it.each([
+    ['published now with the field empty', async (s: Awaited<ReturnType<typeof postedSetup>>) => {
+      const { entry } = await s.create('Leer', {})
+      await s.publish(entry)
+      return entry
+    }, { postedOn: '2026-10-08', rev: true, change: { fields: ['postedOn'], after: { postedOn: '2026-10-08' } } }],
+    ['published now with a typed date', async (s: Awaited<ReturnType<typeof postedSetup>>) => {
+      const { entry } = await s.create('Getippt', { postedOn: '2026-09-01' })
+      await s.publish(entry)
+      return entry
+    }, { postedOn: '2026-09-01', rev: false, change: { fields: undefined, after: undefined } }],
+    ['created online with the field empty', async (s: Awaited<ReturnType<typeof postedSetup>>) => (await s.create('Sofort', {}, {})).entry,
+      { postedOn: '2026-10-08', rev: true, change: { fields: undefined, after: expect.objectContaining({ postedOn: '2026-10-08' }) } }],
+    ['planned with the field empty: the day of its time, not of the plan', async (s: Awaited<ReturnType<typeof postedSetup>>) => {
+      const { entry } = await s.create('Geplant', {})
+      await s.publish(entry, NOW + 20 * HOUR)
+      await s.advanceTo(NOW + 20 * HOUR)
+      return entry
+    }, { postedOn: '2026-10-09', rev: true, change: { fields: ['postedOn'], after: { postedOn: '2026-10-09' } } }],
+  ])('%s', async (_, act, expected) => {
+    const s = await postedSetup()
+    expect(await s.posted(await act(s))).toEqual(expected)
+  })
+
+  it('a planned draft with the field empty may be saved, and a typed date may be taken out again', async () => {
+    const s = await postedSetup()
+    const { entry } = await s.create('Geplant', { postedOn: '2026-09-01' }, { at: NOW + 3 * HOUR })
+    const row = (await s.row(entry))!
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: row.rev, fields: { postedOn: null }, sentence: 'Datum' })
+    expect((await s.row(entry))!.publishAt).toBe(NOW + 3 * HOUR)
+  })
+})
