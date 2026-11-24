@@ -136,4 +136,9 @@ describe('no trade word in the core, the written form and the server (V2 5.9)', 
   it('does not read a word in a comment', () => {
     expect([...termsIn('// opening hours\nconst x = 1 /* lunch */')]).toEqual([])
   })
+
+  // Wrong behaviour caught: a term inside a longer word that is not in the list counts as the term, so plain code fails.
+  it('reads whole words only, not a term inside a longer word', () => {
+    expect([...termsIn('const lunchbox = 1; const dishwasher = 2')]).toEqual([])
+  })
 })
