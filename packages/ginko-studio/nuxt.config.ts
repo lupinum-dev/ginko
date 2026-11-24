@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -23,6 +24,8 @@ const missing = [
 const siteUrl = env.site || 'http://localhost:3100'
 const convexUrl = env.convex || 'http://127.0.0.1:3210'
 const convexSiteUrl = env.convexSite || 'http://127.0.0.1:3211'
+/** The platform's Ginko version (the packages release together); 0.0.0 inside the monorepo means unknown. */
+const { version } = JSON.parse(readFileSync(here('./package.json'), 'utf8')) as { version: string }
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-01',
@@ -42,6 +45,14 @@ export default defineNuxtConfig({
   alias: { '@studio': here('./app') },
   // Absolute paths: the same reason. Tokens and Tailwind first, then the old CSS (it sits in a lower-priority layer).
   css: [here('./app/assets/css/tailwind.css'), here('./app/assets/ui.css')],
+  // Nuxt DevTools adds a client plugin in dev whose `@vue/devtools-core` import Vite finds only when the browser loads it,
+  // after the scan below: it optimizes again and reloads the page, which loses a form a person (or the install walk)
+  // is filling in on the first start. The Studio is a finished app for its host; a host can turn DevTools on again.
+  devtools: { enabled: false },
+  // A platform project has no app/ folder, so `nuxt dev` watches the project root, and with it the local backend's data
+  // in .convex/. SQLite adds and removes its journal file there on writes; Nuxt takes each added or removed file as a
+  // change of the app structure and reloads the page, which loses a form a person is filling in (sign-in, New site).
+  ignore: ['**/.convex'],
   vite: {
     plugins: [tailwindcss()],
     // Dev: scan every Studio file for dependencies at start. Without it Vite finds a dependency only when a page first
@@ -59,6 +70,10 @@ export default defineNuxtConfig({
     // Stable file addresses of a site (/__ginko/file/…) end here; the platform answers with a redirect to the storage.
     '/file/**': { proxy: `${convexSiteUrl}/file/**` },
   },
+  // The discovery document (server/ginko-platform.ts): the backend address and the version, for the `ginko` CLI.
+  // Server-only config; `routes: 'protected'` below guards pages, not server handlers, so the document stays public.
+  runtimeConfig: { ginkoPlatform: { backend: convexSiteUrl, version } },
+  serverHandlers: [{ route: '/.well-known/ginko-platform', method: 'get', handler: here('./server/ginko-platform.ts') }],
   // Sign-in for people in the platform (SPEC 10). Origin and trusted IP header come from the env (see docs: Better Auth setup).
   convex: {
     url: convexUrl,

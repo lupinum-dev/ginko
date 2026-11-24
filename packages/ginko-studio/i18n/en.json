@@ -57,7 +57,24 @@
       "button": "Delete my account"
     },
     "lede": "Choose a site to edit its content.",
-    "invites": "Invitations"
+    "invites": "Invitations",
+    "new": {
+      "title": "New site",
+      "lede": "A site holds the content of one website. Its areas come from the code of the website with the first release.",
+      "first": "This platform has no site yet. Create the first one, then connect its website.",
+      "adminsOnly": "Only admins of this platform create sites.",
+      "name": "Name",
+      "nameHint": "What the site is called in the Studio and in mails. The first release takes the name from the code of the website.",
+      "nameMissing": "Enter a name.",
+      "url": "Website address",
+      "urlHint": "Where the website is online, or will be. The first release takes the address from the code of the website.",
+      "urlInvalid": "Enter the full address, for example https://www.example.com.",
+      "id": "Identifier",
+      "idHint": "The same value as “site” in the ginko.config.ts of the website. It cannot be changed later.",
+      "idInvalid": "Start with a lowercase letter, then 1 to 40 lowercase letters, digits or hyphens.",
+      "idTaken": "The identifier “{id}” is already in use. Choose another one.",
+      "submit": "Create site"
+    }
   },
   "login": {
     "title": "Sign in",
@@ -358,6 +375,16 @@
         "name": "“{title}”",
         "newIn": "{area}: New entry"
       }
+    },
+    "connect": {
+      "title": "Connect the website",
+      "lede": "This site has no areas yet. They come from the code of the website. Three steps send them here.",
+      "key": "Create a publishing key under “Publishing keys”. The Studio shows it once.",
+      "keyLink": "Open Team",
+      "short": "Shorter than step 1: run this in the project of the website and confirm the code it shows; it stores the key for you:",
+      "id": "In the ginko.config.ts of the website, set this identifier:",
+      "release": "Run the first release in the project of the website, on a commit that is pushed to main. Put your key in place of the dots:",
+      "after": "After the release, this page lists the areas."
     },
     "all": {
       "heading": "Content",
@@ -1315,5 +1342,20 @@
     },
     "nothingOnline": "Nothing on the website right now.",
     "rejectedNote": "{line} · Not approved, see above."
+  },
+  "connect": {
+    "title": "Connect a website",
+    "lede": "A computer asks for a publishing key. Confirm only if you started this yourself and the code matches the one in your terminal.",
+    "code": "Code from the terminal",
+    "request": "Request from “{label}”, started {minutes, plural, =0 {less than a minute ago} one {# minute ago} other {# minutes ago}}.",
+    "site": "Site",
+    "granted": "The key can publish the content structure of this site and back up its content, like a “Publish and back up” key. You can revoke it on the Team page.",
+    "connect": "Connect",
+    "decline": "Decline",
+    "done": "Connected. Go back to the terminal.",
+    "declined": "Declined. The computer gets no key.",
+    "invalid": "This code is not valid. Start again in the terminal.",
+    "limited": "Too many wrong codes. Wait 10 minutes, then try again.",
+    "noSites": "You manage no site, so you cannot connect a website."
   }
 }

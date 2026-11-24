@@ -20,6 +20,7 @@ import { translationNotes } from './lib/translation'
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
+import { advance, stepArgs } from './lib/migrations'
 import { editorEntry, editorEntryWithTranslation, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
 
@@ -1691,14 +1692,14 @@ const CONTENT_KINDS = new Set(['create', 'save', 'confirm', 'undo', 'restore', '
  * Brings every entry to the storage model of now (internals/migrations.md) and writes its Markdown trees again
  * from its data, also after a parser change (a row keeps the trees of the parser it was saved with). Per entry:
  * `bytes` = core `entryBytes`, the trees into `entryTrees` (none in the trash), `treeBytes`, no legacy `trees`, and
- * `contentAt` from its change history when it has none. Works through 10 entries at a time and schedules itself;
- * then `recountStorage` sets every site's counters to the sums. Running it again is safe. Entries of a brick the
- * schema no longer has keep the trees they have.
+ * `contentAt` from its change history when it has none. A migration step (lib/migrations.ts): 10 entries per page;
+ * the list runs `recountStorage` after it. Running it again is safe. Entries of a brick the schema no longer has keep
+ * the trees they have. After a parser change, add a new list entry that points here.
  */
 export const migrateStorage = internalMutation({
-  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  args: stepArgs,
   handler: async (ctx, args): Promise<null> => {
-    const page = await ctx.db.query('entries').paginate({ cursor: args.cursor ?? null, numItems: 10 })
+    const page = await ctx.db.query('entries').paginate({ cursor: args.cursor, numItems: 10 })
     const sites = new Map<Id<'sites'>, Doc<'sites'> | null>()
     const changed = new Set<Id<'sites'>>()
     for (const row of page.page) {
@@ -1724,28 +1725,25 @@ export const migrateStorage = internalMutation({
       const site = sites.get(id)
       if (site) await ctx.db.patch(id, { contentRev: site.contentRev + 1 })
     }
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.entries.migrateStorage, { cursor: page.continueCursor })
-    else await ctx.scheduler.runAfter(0, internal.entries.recountStorage, {})
-    return null
+    return advance(ctx, args.run, page.isDone ? null : page.continueCursor)
   },
 })
 
-/** The last step of `migrateStorage`: per site (one per run), `bytes`, `trashBytes` and `treeBytes` become the sums over its entries. */
+/** A migration step after the entry migrations: per site (one per page), `bytes`, `trashBytes` and `treeBytes` become the sums over its entries. */
 export const recountStorage = internalMutation({
-  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  args: stepArgs,
   handler: async (ctx, args): Promise<null> => {
-    const page = await ctx.db.query('sites').paginate({ cursor: args.cursor ?? null, numItems: 1 })
+    const page = await ctx.db.query('sites').paginate({ cursor: args.cursor, numItems: 1 })
     for (const site of page.page) {
       const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).collect()
       await ctx.db.patch(site._id, storageSums(rows))
     }
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.entries.recountStorage, { cursor: page.continueCursor })
-    return null
+    return advance(ctx, args.run, page.isDone ? null : page.continueCursor)
   },
 })
 
 /**
- * Read-only check after `migrateStorage`, one site per call (repeat with `cursor` until `isDone`): entries that still
+ * Read-only check of the storage migrations, one site per call (repeat with `cursor` until `isDone`): entries that still
  * hold legacy `trees` or have no `contentAt`, counters that differ from the sums over the entries, and entries over
  * the entry limit (expected: none of each).
  */

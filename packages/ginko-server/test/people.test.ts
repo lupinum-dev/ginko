@@ -353,6 +353,13 @@ describe('sites.create and sites.bootstrap input (F05)', () => {
     expect((await errorOf(s.t.mutation(internal.sites.bootstrap, { slug, name: 'Neu', url: 'https://neu.example' }))).code).toBe('INVALID')
   })
 
+  // Wrong behaviour caught: the Studio offers "New site" to an owner, who then only gets a refusal; or an admin of a
+  // platform without any site sees no way to create the first one.
+  it('mayCreate is true for an admin only', async () => {
+    const s = await setup()
+    expect([await s.as.admin.query(api.sites.mayCreate, {}), await s.as.owner.query(api.sites.mayCreate, {})]).toEqual([true, false])
+  })
+
   it('refuses a name over 100 characters and an url that is not http or https', async () => {
     const s = await setup()
     expect((await errorOf(create(s, { name: 'x'.repeat(101) }))).code).toBe('INVALID')

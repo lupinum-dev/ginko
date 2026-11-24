@@ -50,6 +50,26 @@ test('an invitation\'s "Annehmen" stays disabled while it is accepted, also when
   expect(buttons().map((b) => b.attributes('disabled') !== undefined)).toEqual([false, true])
 })
 
+// Wrong behaviour caught: the admin of a new platform reads "ask the person who invited you" and finds no way to
+// create the first site; or an owner is offered "Neue Seite", which the server refuses.
+test.each([
+  { who: 'the admin of an empty platform', mayCreate: true, sites: [], links: ['/new'], text: 'Auf dieser Plattform gibt es noch keine Seite.' },
+  { who: 'an admin with sites', mayCreate: true, sites: [{ slug: 'linde', name: 'Linde', url: 'https://linde.at', role: 'admin', deleting: false }, { slug: 'post', name: 'Post', url: 'https://post.at', role: 'admin', deleting: false }], links: ['/new'], text: 'Linde' },
+  { who: 'an owner', mayCreate: false, sites: [{ slug: 'linde', name: 'Linde', url: 'https://linde.at', role: 'owner', deleting: false }, { slug: 'post', name: 'Post', url: 'https://post.at', role: 'owner', deleting: false }], links: [], text: 'Linde' },
+])('"Neue Seite" is offered to $who: $links', async ({ mayCreate, sites, links, text }) => {
+  answers['sites.mine'] = sites
+  answers['sites.mayCreate'] = mayCreate
+  try {
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(wrapper.findAll('a').map((a) => a.attributes('href')).filter((href) => href === '/new')).toEqual(links)
+    expect(wrapper.text()).toContain(text)
+  } finally {
+    answers['sites.mine'] = []
+    delete answers['sites.mayCreate']
+  }
+})
+
 // Wrong behaviour caught: an agency scanned two dozen sites in creation order, with no search, nothing it opened last
 // near the top, no address to tell two sites apart, "Admin" on every row, and a site being deleted looking like the others.
 test('many sites: by name with their address, the last opened first, and a search', async () => {

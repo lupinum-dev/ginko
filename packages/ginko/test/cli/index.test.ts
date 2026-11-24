@@ -1,9 +1,13 @@
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { main } from '../../src/cli/index.ts'
+import type { LocalPlatform } from '../../src/cli/dev.ts'
+import { main as platformMain } from '../../src/cli/ginko-platform.ts'
 import { main as monorepoMain } from '../../src/cli/monorepo.ts'
-import { PlatformError } from '../../src/cli/platform.ts'
+import { DISCOVERY_PATH, PlatformError } from '../../src/cli/platform.ts'
 import { exitCodeOf, type CliDeps } from '../../src/cli/run.ts'
 
 /** Runs the CLI (`ginko` unless another is given) and returns its exit code, the stdout text and the stderr lines. */
@@ -88,6 +92,21 @@ describe('ginko output and exit codes', () => {
     expect(result.log.join('\n')).toContain(JSON.parse(result.stdout).error.message)
   })
 
+  // Wrong behaviour caught: an older platform rejects the release and the log does not say why; or the note turns into
+  // a refusal and stops a client site's deploy.
+  it('a platform on an older minor: the release log says so before the platform answers, the outcome stays the platform\'s', async () => {
+    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }
+    const [major, minor] = pkg.version.split('.').map(Number) as [number, number]
+    const older = minor > 0 ? `${major}.${minor - 1}.9` : `${major - 1}.99.0`
+    const fetch = async (url: string) => (url.endsWith(DISCOVERY_PATH) ? Response.json({ backend: 'https://backend.example', version: older }) : otherSite())
+    const result = await run(['release', '--config', RESTAURANT], { env: RELEASE, git: head, fetch })
+    expect(result.log).toContain(`This platform runs Ginko ${older}; the site uses ${pkg.version}. Update the platform first if the release is rejected.`)
+    expect(result.code).toBe(4)
+    expect(JSON.parse(result.stdout).error.code).toBe('FORBIDDEN')
+    const same = await run(['release', '--config', RESTAURANT], { env: RELEASE, git: head, fetch: async (url: string) => (url.endsWith(DISCOVERY_PATH) ? Response.json({ backend: 'https://backend.example', version: pkg.version }) : otherSite()) })
+    expect(same.log.join('\n')).not.toContain('This platform runs Ginko')
+  })
+
   it.each([
     ['a platform rejection', 1, new PlatformError('SCHEMA_REJECTED', 'no', 400)],
     ['a server error of the platform', 3, new PlatformError('INTERNAL', 'try later', 500)],
@@ -130,5 +149,112 @@ describe('pnpm local:*', () => {
     const { code, stdout } = await run(['import'], {}, monorepoMain)
     expect(code).toBe(2)
     expect(JSON.parse(stdout)).toEqual({ ok: false, error: { code: 'USAGE', message: 'local:import needs a folder: local:import <folder>.' } })
+  })
+})
+
+describe('ginko-platform', () => {
+  async function platform(argv: string[], cwd = import.meta.dirname) {
+    const log: string[] = []
+    const error: string[] = []
+    const code = await platformMain(argv, { cwd, log: (line) => log.push(line), error: (line) => error.push(line) })
+    return { code, log: log.join('\n'), error: error.join('\n') }
+  }
+
+  // Wrong behaviour caught: a typo (`ginko-platform deV`) or a bare call starts nothing and says nothing, or exits 0 in a script.
+  it.each([
+    ['no command', [], 'Give a command.'],
+    ['an unknown command', ['start'], 'Unknown command "start".'],
+    ['an extra argument', ['dev', 'now'], 'Unknown argument "now".'],
+    // Wrong behaviour caught: an import without a folder or a second folder silently picks one.
+    ['import without a folder', ['import', '--site', 'linde'], 'import needs a folder.'],
+    ['import with two folders', ['import', 'a', 'b', '--site', 'linde'], 'Unknown argument "b".'],
+  ])('%s: exit 2 with the usage', async (_name, argv, message) => {
+    const { code, error } = await platform(argv)
+    expect(code).toBe(2)
+    expect(error).toContain(message)
+    expect(error).toContain('Usage: ginko-platform <command>')
+  })
+
+  // Wrong behaviour caught: an import without --site writes into the site named in export.json, which may be another one.
+  it('import without --site: exit 2, nothing imported', async () => {
+    let imported = false
+    const error: string[] = []
+    const code = await platformMain(['import', 'folder'], { cwd: import.meta.dirname, log: () => undefined, error: (line) => error.push(line), import: async () => { imported = true; return { entries: 0, files: 0 } } })
+    expect(code).toBe(2)
+    expect(imported).toBe(false)
+    expect(error.join('\n')).toContain('needs --site <slug>')
+  })
+
+  // Wrong behaviour caught: run in the wrong folder, `convex dev` would create a new, empty Convex project there.
+  it('dev outside a platform project (no convex.json): exit 2, nothing started', async () => {
+    const { code, error } = await platform(['dev'])
+    expect(code).toBe(2)
+    expect(error).toMatch(/ginko-platform dev stopped: .* has no convex\.json/)
+  })
+
+  // Wrong behaviour caught: Nuxt changes the wording of its ready line, and in quiet mode the person sees nothing forever.
+  it.each([
+    ['no ready line after 2 minutes: the Studio output is shown, nothing stops', [], true],
+    ['the ready line in time: no notice', ['[nitro] ✔ Nuxt Nitro server built in 797ms'], false],
+  ])('dev: %s', async (_name, studioLines, notice) => {
+    vi.useFakeTimers()
+    const dir = mkdtempSync(join(tmpdir(), 'ginko-platform-'))
+    writeFileSync(join(dir, 'convex.json'), '{}')
+    try {
+      const shown: (string | undefined)[] = []
+      let errors = 0
+      const log: string[] = []
+      const fake = {
+        target: { kind: 'local' }, admin: 'admin@example.test', exited: new Promise<number>(() => undefined),
+        start: (_name: string, _cmd: string, _args: string[], _cwd: string, options?: { onLine?: (line: string) => void }) => {
+          for (const line of studioLines) options?.onLine?.(line)
+          return {}
+        },
+        showOutput: (replay?: string) => { shown.push(replay) },
+        onStop: () => undefined, stopping: () => false,
+      } as unknown as LocalPlatform
+      void platformMain(['dev'], { cwd: dir, log: (line) => log.push(line), error: () => { errors++ }, startPlatform: async () => fake, loadDemo: async () => false })
+      await vi.advanceTimersByTimeAsync(120_000)
+      expect(log.includes('The Studio is not ready after 2 minutes. Its output follows.')).toBe(notice)
+      expect(shown).toEqual(notice ? ['studio'] : [undefined])
+      expect(errors).toBe(0)
+    } finally {
+      vi.useRealTimers()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  // Wrong behaviour caught: the demo sentence is lost above the ready block, or --no-demo still loads the demo.
+  it.each([
+    ['dev: the demo sentence follows the ready block', ['dev'], true],
+    ['dev --no-demo: no demo is loaded', ['dev', '--no-demo'], false],
+  ])('%s', async (_name, argv, withDemo) => {
+    const dir = mkdtempSync(join(tmpdir(), 'ginko-platform-'))
+    writeFileSync(join(dir, 'convex.json'), '{}')
+    try {
+      const log: string[] = []
+      let loads = 0
+      let ready: () => void = () => undefined
+      const fake = {
+        target: { kind: 'local' }, admin: 'admin@example.test', exited: new Promise<number>(() => undefined),
+        start: (_name: string, _cmd: string, _args: string[], _cwd: string, options?: { onLine?: (line: string) => void }) => {
+          ready = () => options?.onLine?.('[nitro] ✔ Nuxt Nitro server built in 797ms')
+          return {}
+        },
+        showOutput: () => undefined, onStop: () => undefined, stopping: () => false,
+      } as unknown as LocalPlatform
+      void platformMain(argv, { cwd: dir, log: (line) => log.push(line), error: () => undefined, startPlatform: async () => fake, loadDemo: async () => { loads++; return true } })
+      await vi.waitFor(() => expect(log).toContain('Starting the Studio.'))
+      ready()
+      await new Promise((done) => setTimeout(done, 10))
+      const block = log.findIndex((line) => line.includes('The Studio runs on'))
+      const demo = log.findIndex((line) => line.startsWith('Loaded a demo site.'))
+      expect(loads).toBe(withDemo ? 1 : 0)
+      expect(block).toBeGreaterThan(-1)
+      if (withDemo) expect(demo).toBeGreaterThan(block)
+      else expect(demo).toBe(-1)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

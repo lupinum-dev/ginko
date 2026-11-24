@@ -1,7 +1,7 @@
 # The client platform lupinum-ginko-cms (internals/decisions.md D55) runs released code only. Its Vercel project
 # deploys the branch `cms-production`, and only this workflow moves that branch: after the release workflow, to a
 # commit with a v* tag; by hand, to any tag (a redeploy or a rollback). Vercel's production build deploys the Convex
-# backend first (apps/platform/scripts/vercel-build.sh; CONVEX_DEPLOY_KEY lives in that Vercel project only), so no
+# backend first (`ginko-platform build` in apps/platform; CONVEX_DEPLOY_KEY lives in that Vercel project only), so no
 # Vercel or Convex credential is stored here. The release workflow's own tag push starts no workflow (GITHUB_TOKEN),
 # hence workflow_run. Environment `cms`: Matthias approves every deploy.
 name: cms

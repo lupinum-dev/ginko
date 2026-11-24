@@ -57,7 +57,24 @@
       "button": "Eliminar mi cuenta"
     },
     "lede": "Elige un sitio para editar su contenido.",
-    "invites": "Invitaciones"
+    "invites": "Invitaciones",
+    "new": {
+      "title": "Nuevo sitio",
+      "lede": "Un sitio contiene el contenido de una web. Sus áreas llegan con la primera publicación desde el código de la web.",
+      "first": "Esta plataforma aún no tiene ningún sitio. Crea el primero y conecta después su web.",
+      "adminsOnly": "Solo los administradores de esta plataforma crean sitios.",
+      "name": "Nombre",
+      "nameHint": "Así se llama el sitio en el Studio y en los correos. La primera publicación toma el nombre del código de la web.",
+      "nameMissing": "Escribe un nombre.",
+      "url": "Dirección de la web",
+      "urlHint": "Dónde está o estará en línea la web. La primera publicación toma la dirección del código de la web.",
+      "urlInvalid": "Escribe la dirección completa, por ejemplo https://www.example.com.",
+      "id": "Identificador",
+      "idHint": "El mismo valor que «site» en el ginko.config.ts de la web. No se puede cambiar después.",
+      "idInvalid": "Empieza con una letra minúscula, seguida de 1 a 40 letras minúsculas, cifras o guiones.",
+      "idTaken": "El identificador «{id}» ya está en uso. Elige otro.",
+      "submit": "Crear sitio"
+    }
   },
   "login": {
     "title": "Iniciar sesión",
@@ -358,6 +375,16 @@
         "name": "“{title}”",
         "newIn": "{area}: entrada nueva"
       }
+    },
+    "connect": {
+      "title": "Conectar la web",
+      "lede": "Este sitio aún no tiene áreas. Llegan desde el código de la web. Tres pasos las traen aquí.",
+      "key": "Crea una clave en «Claves de publicación». El Studio la muestra una sola vez.",
+      "keyLink": "Abrir Equipo",
+      "short": "Más corto que el paso 1: ejecuta esto en el proyecto de la web y confirma el código que muestra; guarda la clave por ti:",
+      "id": "En el ginko.config.ts de la web, pon este identificador:",
+      "release": "Lanza la primera publicación en el proyecto de la web, en un commit que esté subido a main. Pon tu clave en lugar de los puntos:",
+      "after": "Después de la publicación, esta página muestra las áreas."
     },
     "all": {
       "heading": "Contenido",
@@ -1315,5 +1342,20 @@
     },
     "nothingOnline": "Ahora no hay nada en el sitio web.",
     "rejectedNote": "{line} · No aprobado, ver arriba."
+  },
+  "connect": {
+    "title": "Conectar una web",
+    "lede": "Un ordenador pide una clave de publicación. Confirma solo si lo has iniciado tú y el código coincide con el de tu terminal.",
+    "code": "Código del terminal",
+    "request": "Solicitud de «{label}», iniciada {minutes, plural, =0 {hace menos de un minuto} one {hace # minuto} other {hace # minutos}}.",
+    "site": "Sitio",
+    "granted": "La clave puede publicar la estructura de contenido de este sitio y hacer copias de seguridad de su contenido, como una clave «Publicar y hacer copias de seguridad». Puedes revocarla en la página Equipo.",
+    "connect": "Conectar",
+    "decline": "Rechazar",
+    "done": "Conectado. Vuelve al terminal.",
+    "declined": "Rechazado. El ordenador no recibe ninguna clave.",
+    "invalid": "Este código no es válido. Empieza de nuevo en el terminal.",
+    "limited": "Demasiados códigos incorrectos. Espera 10 minutos y vuelve a intentarlo.",
+    "noSites": "No gestionas ningún sitio, así que no puedes conectar una web."
   }
 }

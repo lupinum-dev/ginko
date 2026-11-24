@@ -12,7 +12,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { confirmLocal, findBackend, knownTargetError, prepareLocalBackend, readDeploymentTarget } from '../packages/ginko/src/cli/local.ts'
+import { backendAt, confirmLocal, knownTargetError, prepareLocalBackend, readDeploymentTarget } from '../packages/ginko/src/cli/local.ts'
 import { busyPorts, CONVEX_READY, heavyLock, PLATFORM_PORTS, recoverCrashedRun, startSession, waitFor, waitForCalm } from './lib/runs.ts'
 
 const root = join(import.meta.dirname, '..')
@@ -30,7 +30,7 @@ await waitForCalm()
 if (process.env.CONVEX_DEPLOY_KEY) stop('CONVEX_DEPLOY_KEY is set: the platform e2e writes data and runs against the local backend only.')
 const active = await recoverCrashedRun()
 if (active) stop(active)
-const backendDir = findBackend(root, COMMAND)
+const backendDir = backendAt(join(root, 'packages/ginko-server'), COMMAND)
 const early = knownTargetError(readDeploymentTarget(backendDir), COMMAND)
 if (early) stop(early)
 const ports = Object.values(PLATFORM_PORTS)

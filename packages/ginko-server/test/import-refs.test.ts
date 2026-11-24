@@ -294,7 +294,7 @@ describe('hosted import guard', () => {
     // The CLI path: checks the released bricks, imports, rewrites refs, closes the site.
     const { run, upload, calls } = runnerOf(s)
     await call('seed:importDone', { site: 'andere' })
-    await importSite({ dir, run, upload, log: () => undefined, prod: true, site: 'andere' })
+    await importSite({ dir, run, upload, log: () => undefined, empty: true, site: 'andere' })
     expect(calls).not.toContain('release:devPush')
     expect(calls).not.toContain('seed:importClear')
     expect(calls.at(-1)).toBe('seed:importDone')
@@ -315,7 +315,7 @@ describe('hosted import guard', () => {
     const before = (await entriesOf(s, s.site)).length
     const dir = await exportFolder()
     const { run, upload, calls } = runnerOf(s)
-    const reset = () => importSite({ dir, run, upload, log: () => undefined, prod: true, reset: true, site: 'restaurant' })
+    const reset = () => importSite({ dir, run, upload, log: () => undefined, empty: true, reset: true, site: 'restaurant' })
 
     expect((await errorOf(reset())).code).toBe('FORBIDDEN')
     expect(await entriesOf(s, s.site)).toHaveLength(before)
@@ -345,7 +345,7 @@ describe('hosted import guard', () => {
     })
     const dir = await exportFolder([{ id: 'home', brick: 'home', kind: 'single', order: 0, data: { count: 7 }, prints: {}, rev: 1 }], singles)
     const { run, upload } = runnerOf(s)
-    await importSite({ dir, run, upload, log: () => undefined, prod: true, site: 'neu' })
+    await importSite({ dir, run, upload, log: () => undefined, empty: true, site: 'neu' })
 
     const rows = await entriesOf(s, site._id)
     expect(rows.map((e) => [e.brick, e.data]).sort()).toEqual([['about', { count: 1 }], ['home', { count: 7 }]])
@@ -356,7 +356,7 @@ describe('hosted import guard', () => {
   it('stops before it opens the site when the released schema lacks a brick of the export', async () => {
     const s = await setup()
     const { run, upload, calls } = runnerOf(s)
-    await expect(importSite({ dir: await exportFolder(), run, upload, log: () => undefined, prod: true, site: 'andere' })).rejects.toThrow(/ginko release/)
+    await expect(importSite({ dir: await exportFolder(), run, upload, log: () => undefined, empty: true, site: 'andere' })).rejects.toThrow(/ginko release/)
     expect(calls).toEqual(['seed:importStatus'])
   })
 })
