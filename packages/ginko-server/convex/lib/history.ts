@@ -48,7 +48,8 @@ const twiceOnClock = (ms: number, timeZone: string) => [ms - HOUR, ms + HOUR].so
 
 /** The text of a message in `locale`: nested messages first, labels in `locale` (else the main language), dates in the site's zone. */
 export function historyText(message: HistoryMsg, locale: string, where: Where | undefined): string {
-  const main = where?.locales[0] ?? 'de'
+  // Without a site (a stored fallback sentence), labels fall back to the reader's language, never to a guessed one.
+  const main = where?.locales[0] ?? locale
   const timeZone = where?.timeZone ?? 'UTC'
   const params = Object.fromEntries(Object.entries(message.params ?? {}).map(([name, value]) => [
     name,

@@ -1,5 +1,5 @@
 // Site queries for the UI and the admin-only creation of a site (SPEC 4.2, 10).
-import { isCurrency, isLocale, isTimeZone, isVisible, labelOf as labelIn, MAX_LOCALES, ordered, todayIn, weekInfoOf, type Schema } from '@lupinum/ginko/internal'
+import { isCurrency, isLocale, isTimeZone, isVisible, labelOf as labelIn, MAX_LOCALES, ordered, SCHEMA_FORMAT, todayIn, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
@@ -175,7 +175,8 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
   }
   if (url?.protocol !== 'http:' && url?.protocol !== 'https:') fail('INVALID', 'errors.siteAddressNotUrl')
   if (!isFetchableSiteUrl(args.url, process.env.GINKO_LOCAL === '1')) fail('INVALID', 'errors.siteUrlNotAllowed')
-  // Defaults stay Vienna, German, EUR; the first release may still change them while the site has no bricks.
+  // Defaults stay Vienna, German, EUR and a Monday-to-Friday week (D92): the first release replaces them while the
+  // site has no bricks, and no website reads them before.
   const timeZone = args.timeZone ?? 'Europe/Vienna'
   const locales = args.locales ?? ['de']
   const currency = args.currency ?? 'EUR'
@@ -186,14 +187,14 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
   if (existing) fail('SLUG_TAKEN', 'errors.addressTaken')
 
   const schema = {
+    format: SCHEMA_FORMAT,
     site: args.slug,
     name,
     url: args.url,
     timeZone,
     locales,
     currency,
-    // Every stored schema has `week` (the hourly reminder sweep reads it for every site); the first release replaces it.
-    week: weekInfoOf(locales[0]!),
+    week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: {},
     bricks: {},
     migrations: [],

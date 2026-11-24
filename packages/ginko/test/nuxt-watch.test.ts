@@ -9,8 +9,8 @@ const CORE = pathToFileURL(join(import.meta.dirname, '../src/core/index.ts')).hr
 const config = (timeZone: string) => `import { collection, defineSite, f } from '${CORE}'
 export default defineSite({
   site: 'demo', name: 'Demo', url: 'https://demo.example', timeZone: '${timeZone}',
-  locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
-  bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }) },
+  locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/' } },
+  bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, listing: { title: 'name' }, max: 20, order: 'manual' }) },
 })
 `
 

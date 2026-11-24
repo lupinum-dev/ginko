@@ -1,6 +1,6 @@
 <!-- Reception today: staffed with times, closed with a reason, or weekend. Next to it the address and phone. -->
 <script setup lang="ts">
-import { telHref, todayState, type DayHours, type Exception } from '../utils/site'
+import { telHref, todayState, type Exception, type WeekHours } from '../utils/site'
 
 const langOf = useGinkoLang()
 const { t, format } = useI18n()
@@ -9,7 +9,7 @@ const { lang, today } = useSite()
 const hours = useGinko('hours')
 const company = useGinko('company')
 
-const h = computed(() => hours.value.data as unknown as { week: DayHours[]; exceptions: Exception[]; closedOn?: string; closedNote?: string })
+const h = computed(() => hours.value.data as unknown as { week: WeekHours; exceptions: Exception[]; closedOn?: string; closedNote?: string })
 const state = computed(() => todayState(h.value, today.value, t('and')))
 </script>
 

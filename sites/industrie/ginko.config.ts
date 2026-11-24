@@ -1,20 +1,9 @@
 // Brunner Präzisionstechnik GmbH (Steyr, AT): demo 1 in DEMOS.md. All content is invented.
 import { collection, defineSite, f, single } from '@lupinum/ginko'
 
-const weekdays = [
-  { value: 'mo', label: 'Montag' }, { value: 'tu', label: 'Dienstag' }, { value: 'we', label: 'Mittwoch' },
-  { value: 'th', label: 'Donnerstag' }, { value: 'fr', label: 'Freitag' }, { value: 'sa', label: 'Samstag' },
-  { value: 'su', label: 'Sonntag' },
-] as const
-
-
-// Row IDs in defaults are fixed so every fresh site starts with the same, stable rows.
-const weekDefault = weekdays.map((d) => ({
-  _id: `wk${d.value}000000`,
-  day: d.value,
-  closed: d.value === 'sa' || d.value === 'su',
-  ...(d.value === 'sa' || d.value === 'su' ? {} : { from1: '07:00', to1: '12:00', from2: '12:30', to2: '16:00' }),
-}))
+// Monday to Friday 07:00–12:00 and 12:30–16:00, closed at the weekend.
+const workday = { closed: false, from1: '07:00', to1: '12:00', from2: '12:30', to2: '16:00' }
+const weekDefault = { mo: workday, tu: workday, we: workday, th: workday, fr: workday, sa: { closed: true }, su: { closed: true } }
 
 export default defineSite({
   studio: { id: 'industrie', bricks: 'all' },
@@ -24,6 +13,7 @@ export default defineSite({
   locales: ['de', 'en'],
   languages: { de: 'de-AT', en: 'en-GB' },
   currency: 'EUR',
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: {
     home: '/',
     news: { de: '/aktuelles', en: '/news' },
@@ -43,17 +33,16 @@ export default defineSite({
     hours: single({
       label: 'Empfang und Erreichbarkeit',
       fields: {
-        week: f.list('Wochenplan', {
-          itemLabel: 'Tag',
+        week: f.rows('Wochenplan', {
+          rows: 'weekdays',
           fields: {
-            day: f.choice('Tag', { options: weekdays }),
             closed: f.boolean('Geschlossen'),
             from1: f.time('Vormittag von', { optional: true }),
             to1: f.time('Vormittag bis', { optional: true }),
             from2: f.time('Nachmittag von', { optional: true }),
             to2: f.time('Nachmittag bis', { optional: true }),
           },
-          min: 7, max: 7, unique: 'day', default: weekDefault,
+          default: weekDefault,
         }),
         exceptions: f.list('Betriebsferien und Ausnahmen', {
           itemLabel: 'Ausnahme',
@@ -74,6 +63,8 @@ export default defineSite({
       ],
     }),
     notices: collection({
+      listing: { title: 'text', detail: 'until' },
+      untranslated: 'fallback',
       label: 'Hinweise',
       item: 'Hinweis',
       fields: {
@@ -88,6 +79,8 @@ export default defineSite({
       ],
     }),
     news: collection({
+      listing: { title: 'title', detail: 'date' },
+      untranslated: 'hide',
       label: 'Aktuelles und Presse',
       item: 'Beitrag',
       fields: {
@@ -107,6 +100,8 @@ export default defineSite({
       ],
     }),
     jobs: collection({
+      listing: { title: 'title', detail: 'until' },
+      untranslated: 'fallback',
       label: 'Stellen',
       item: 'Stelle',
       fields: {
@@ -134,6 +129,9 @@ export default defineSite({
       ],
     }),
     events: collection({
+      preview: 'events',
+      listing: { title: 'title', detail: 'when' },
+      untranslated: 'fallback',
       label: 'Messen und Termine',
       item: 'Messe',
       fields: {
@@ -152,6 +150,8 @@ export default defineSite({
       ],
     }),
     products: collection({
+      listing: { title: 'name' },
+      untranslated: 'hide',
       label: 'Produkte',
       item: 'Produkt',
       fields: {
@@ -178,6 +178,8 @@ export default defineSite({
       ],
     }),
     contacts: collection({
+      listing: { title: 'name' },
+      untranslated: 'fallback',
       label: 'Ansprechpartner',
       item: 'Ansprechpartner',
       fields: {
@@ -195,6 +197,9 @@ export default defineSite({
       ],
     }),
     certificates: collection({
+      preview: 'certificates',
+      listing: { title: 'title', detail: 'validUntil' },
+      untranslated: 'fallback',
       label: 'Zertifikate',
       item: 'Zertifikat',
       fields: {

@@ -38,20 +38,15 @@ describe('changes.get diff', () => {
     }])
   })
 
-  it('a list shows added, removed and changed rows by _id', async () => {
+  it('a rows field shows its changed rows by row key', async () => {
     const s = await setup()
     const entry = s.entries.lunch!
-    const days = ((await s.t.run((ctx) => ctx.db.get(entry)))!.data as { days: Record<string, Json>[] }).days
-    const next = days.filter((d) => d._id !== 'ldfr000000').map((d) => (d._id === 'ldmo000000' ? { ...d, price: { amount: 1200 } } : d))
-    next.push({ _id: 'ldnew00000', day: 'fr', dish: { de: 'Fisch' }, price: { amount: 1000 }, allergens: [] })
+    const days = ((await s.t.run((ctx) => ctx.db.get(entry)))!.data as { days: Record<string, Record<string, Json>> }).days
+    const next = { ...days, mo: { ...days.mo!, price: { amount: 1200 } } }
     const diff = await diffOf(s, await save(s, entry, { days: next }))
     expect(diff).toHaveLength(1)
-    expect(diff[0]).toMatchObject({ field: 'days', kind: 'list' })
-    expect(diff[0]!.rows).toEqual([
-      { id: 'ldmo000000', change: 'changed', fields: ['price'], before: days[0], after: next[0] },
-      { id: 'ldnew00000', change: 'added', before: null, after: next.at(-1) },
-      { id: 'ldfr000000', change: 'removed', before: days.find((d) => d._id === 'ldfr000000'), after: null },
-    ])
+    expect(diff[0]!.field).toBe('days')
+    expect(diff[0]!.rows).toEqual([{ id: 'mo', change: 'changed', fields: ['price'], before: days.mo, after: next.mo }])
   })
 
   it('a change of another site does not exist', async () => {
@@ -282,8 +277,8 @@ describe('history messages', () => {
   it('a planned week is named by its week, as the Studio names it', async () => {
     const s = await setup()
     const entry = s.entries['plan-kw42']!
-    const days = ((await s.t.run((ctx) => ctx.db.get(entry)))!.data as { days: Record<string, Json>[] }).days
-    const change = await save(s, entry, { days: days.map((d, i) => (i === 0 ? { ...d, price: { amount: 1190 } } : d)) })
+    const days = ((await s.t.run((ctx) => ctx.db.get(entry)))!.data as { days: Record<string, Record<string, Json>> }).days
+    const change = await save(s, entry, { days: { ...days, mo: { ...days.mo!, price: { amount: 1190 } } } })
     expect((await changeRows(s)).find((r) => r._id === change)).toMatchObject({ sentence: 'Tage von „Woche ab 12.10.2026“ geändert' })
   })
 

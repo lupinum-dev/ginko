@@ -2,8 +2,9 @@ import type { ComponentRegistry } from './components.ts'
 import type { HolidaysOption } from './holidays.ts'
 import type { LinkConfig } from './links.ts'
 import type { Redirect } from './redirects.ts'
+import type { SiteWeek } from './time.ts'
 import type {
-  Brick, BrickSource, CollectionBrick, CollectionStatus, Currency, Fields, Json, Label, Locale, RetiredRule, SingleBrick, SingleStatus, Task, Visibility,
+  Brick, BrickSource, CollectionBrick, CollectionListing, CollectionStatus, CollectionTree, Currency, Fields, Json, Label, Locale, RetiredRule, SingleBrick, SingleStatus, Task, Visibility,
 } from './types.ts'
 
 export interface MigrationContext {
@@ -40,10 +41,12 @@ export interface SiteInput {
   /** The BCP 47 language per locale for `lang`, hreflang and dates, e.g. `{ de: 'de-AT' }`. Default: the locale itself. Keys are entries of `locales`. */
   languages?: Partial<Record<Locale, string>>
   /**
-   * The first day of the week, 1 (Monday) to 7 (Sunday). Default: the first day of the main locale's language
-   * (`languages`), e.g. Monday for `de-AT`, Sunday for `en-US`. Weekly bricks (`@workWeek`) start on this day.
+   * The site's week: the day the calendar week starts on and the workdays, by day key (`mo` to `su`), e.g.
+   * `{ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`. Weeks start on `firstDay` (the calendar, planned
+   * weeks, `@workWeek`); after the workday that comes last in the week, the coming week counts; rows of `'workdays'` are
+   * these days. The language of the site does not decide it.
    */
-  firstDayOfWeek?: 1 | 2 | 3 | 4 | 5 | 6 | 7
+  week: SiteWeek
   currency: Currency
   /**
    * The country of the site (ISO 3166-1 alpha-2, e.g. `AT`). It picks the public-holiday calendar (`calendar`) and is
@@ -113,8 +116,17 @@ type SingleFieldPath<B> = { [K in keyof B & string]: B[K] extends { kind: 'singl
 /** `facts` names fields of single bricks; a list typed only as `string[]` (built elsewhere) is left to checkSite. */
 type FactsInput<S extends SiteInput> = NonNullable<S['facts']> extends readonly (infer P)[] ? (string extends P ? readonly string[] : readonly SingleFieldPath<S['bricks']>[]) : never
 
-/** `retired` names bricks of the config (they take `{ drop: true }`) and their fields (any rule); anything else fails. */
-type RetiredInput<S extends SiteInput> = { [P in keyof S['retired']]: P extends keyof S['bricks'] ? { drop: true } : P extends RetiredFieldPath<S['bricks']> ? RetiredRule : never }
+/**
+ * The row keys `retired` takes: `lunch.days.mo` for the row `mo` of the rows field `days`. The row is one the field no
+ * longer has, so any key; `checkSchema` checks it.
+ */
+type RetiredRowPath<B> = { [K in keyof B & string]: B[K] extends { fields: infer F } ? { [N in keyof F & string]: F[N] extends { type: 'rows' } ? `${K}.${N}.${string}` : never }[keyof F & string] : never }[keyof B & string]
+
+/**
+ * `retired` names bricks of the config (they take `{ drop: true }`), their fields (any rule) and removed rows of their
+ * rows fields (`{ drop: true }`); anything else fails.
+ */
+type RetiredInput<S extends SiteInput> = { [P in keyof S['retired']]: P extends keyof S['bricks'] ? { drop: true } : P extends RetiredFieldPath<S['bricks']> ? RetiredRule : P extends RetiredRowPath<S['bricks']> ? { drop: true } : never }
 
 export function defineSite<const S extends SiteInput>(site: S & { retired?: RetiredInput<S>; facts?: FactsInput<S> }): S {
   return site
@@ -164,7 +176,7 @@ type Planned<F> = { field: keyof F & string; next: keyof F & string; from: keyof
 /** A collection's detail page per locale: a path with `[slug]` where the entry's slug goes, e.g. `/blog/[slug]`. */
 export type RouteTemplate = `/${string}[slug]${string}`
 
-export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task<F>[]; planned?: Planned<F>; status?: SingleStatus }): SingleBrick<F> {
+export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; body?: keyof F & string; preview?: string; layout?: 'sections' | 'tabs'; tasks?: readonly Task<F>[]; planned?: Planned<F>; status?: SingleStatus }): SingleBrick<F> {
   // A task's prefill is typed by the brick's fields here and stored as JSON; TypeScript cannot relate the two for a generic `F`.
   return { kind: 'single', ...input, tasks: input.tasks as readonly Task[] | undefined }
 }
@@ -174,20 +186,31 @@ export function collection<const F extends Fields, const R extends Record<Locale
   describe?: Label
   source?: BrickSource
   fields: F
+  /** The markdown field that is the text of the brick's file; other fields are its front matter. */
+  body?: keyof F & string
+  /** The key of the page the Studio's preview opens for an entry (a brick without `route`). */
+  preview?: string
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task<F>[]
   /** A planned change of one field: from the date in `from` on, `next` replaces `field`. */
   planned?: Planned<F>
   max: number
   order: 'manual' | { field: keyof F & string; dir?: 'asc' | 'desc' }
+  /**
+   * How an entry appears in lists: the field that names it, and optionally a detail, a group and an image. Field names
+   * only, as in `planned`: a factory with generic fields could not name them otherwise; `checkSchema` checks the types.
+   */
+  listing: CollectionListing<keyof F & string, keyof F & string, keyof F & string, keyof F & string>
+  /** The entries are pages of a navigation tree: `parent` (a ref to this collection), `section` and `tab` (text fields). */
+  tree?: CollectionTree<keyof F & string, keyof F & string, keyof F & string, keyof F & string, keyof F & string>
   route?: R
   visible?: Visibility<FieldsOfType<F, 'date' | 'daterange'>>
   /**
-   * A required translatable field is missing in a language: `'hide'` (default with a `route`) leaves the entry out
-   * there; `'fallback'` (default without) shows the main language and links to the main-language page.
+   * A required translatable field is missing in a language: `'hide'` leaves the entry out there; `'fallback'` shows the
+   * main language and links to the main-language page. Required when the site has more than one language.
    */
   untranslated?: 'fallback' | 'hide'
-  /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`firstDayOfWeek`). */
+  /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`week.firstDay`). */
   plans?: { brick: string; field: FieldsOfType<F, 'date'> }
   /** The status line on the Studio's Today page (see `CollectionStatus`). */
   status?: CollectionStatus<FieldsOfType<F, 'date' | 'daterange'>, keyof F & string>

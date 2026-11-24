@@ -17,9 +17,9 @@ const { computed, defineComponent, h, onMounted, ref, shallowRef, Suspense, watc
 Object.entries({ computed, onMounted, ref, shallowRef, watch, useI18n, useKeptEntry, shownLabel }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const schema = serializeSchema(defineSite({
-  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
-  bricks: { dishes: collection({ label: 'Gerichte', max: 500, order: 'manual', fields: { title: f.text('Name') } }) },
+  bricks: { dishes: collection({ label: 'Gerichte', max: 500, order: 'manual', listing: { title: 'title' }, fields: { title: f.text('Name') } }) },
 }))
 const brick = schema.bricks.dishes!
 

@@ -18,8 +18,8 @@ type Bricks = SiteInput['bricks']
 function site(fields: Fields = {}, over: Partial<SiteInput> = {}): SiteInput {
   return defineSite({
     site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
-    locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
-    bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }), ...fields }, max: 20, order: 'manual' }) },
+    locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
+    bricks: { menu: collection({ listing: { title: 'name' }, untranslated: 'fallback', label: 'Karte', fields: { name: f.text('Name', { max: 120 }), ...fields }, max: 20, order: 'manual' }) },
     ...over,
   })
 }
@@ -193,7 +193,7 @@ describe('4b. translatable labels', () => {
   })
   it('checks labels of bricks, options and tasks too', () => {
     const input = site({ kind: f.choice('Art', { options: [{ value: 'a', label: { fr: 'A' } }] }) }, {
-      bricks: { menu: collection({ label: { fr: 'Menu' }, fields: { name: f.text('Name') }, max: 5, order: 'manual', tasks: [{ id: 'new', kind: 'create', label: { fr: 'Nouveau' } }] }) },
+      bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: { fr: 'Menu' }, fields: { name: f.text('Name') }, max: 5, order: 'manual', tasks: [{ id: 'new', kind: 'create', label: { fr: 'Nouveau' } }] }) },
     })
     expect(problemsOf(input)).toEqual(['menu.label: label needs a text in the main language “de” or in English.', 'menu.new.label: label needs a text in the main language “de” or in English.'])
   })
@@ -226,7 +226,8 @@ describe('5. money options stay within SPEC 2.2', () => {
 })
 
 describe('6. routes and pages', () => {
-  const news = (de: string, en = '/en/news/[slug]') => collection({
+  const news = (de: string, en = '/en/news/[slug]') => collection({ untranslated: 'hide',
+    listing: { title: 'title' },
     // Invalid routes on purpose: the schema check must report what the type would reject.
     label: 'News', fields: { title: f.text('Titel', { max: 80 }), slug: f.slug('Adresse', { from: 'title' }) }, max: 5, order: 'manual', route: { de, en } as Record<string, RouteTemplate>,
   })
@@ -361,19 +362,21 @@ describe('9. value rules (F12)', () => {
 // Phase 13 (CONTENT.md): file bricks and their markdown field.
 describe('file bricks', () => {
   const md = { body: f.markdown('Text') }
-  const files = (fields: Fields, source?: 'files') => site({}, { bricks: { docs: collection({ label: 'Doku', source, fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }) } })
+  const files = (fields: Fields, source?: 'files', body?: string) => site({}, { bricks: { docs: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Doku', source, body: body as never, fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }) } })
   const list = (cell: Fields[string]) => ({ rows: f.list('Zeilen', { itemLabel: 'Zeile', fields: { cell }, max: 5 }) })
 
   it.each([
-    ['two markdown fields in a file brick', files({ ...md, intro: f.markdown('Intro') }, 'files'), 'docs: at most one markdown field (the text of the file).'],
-    ['markdown in a list of a file brick', files(list(f.markdown('Zelle')), 'files'), 'docs: in file bricks, markdown is only allowed as the text of the file, not in a list.'],
+    ['two markdown fields in a file brick', files({ ...md, intro: f.markdown('Intro') }, 'files', 'body'), "docs.intro: in a file brick, a markdown field is the text of the file. Write `body: 'intro'` (one markdown field per file brick)."],
+    ['a markdown field of a file brick without body', files(md, 'files'), "docs.body: in a file brick, a markdown field is the text of the file. Write `body: 'body'` (one markdown field per file brick)."],
+    ['body naming a text field', files(md, 'files', 'title'), 'docs.body: “title” is not a markdown field of this brick.'],
+    ['markdown in a list of a file brick', files(list(f.markdown('Zelle')), 'files'), 'docs: in file bricks, markdown is only allowed as the text of the file, not in a list or a rows field.'],
   ])('%s is refused', (_, input, problem) => {
     expect(problemsOf(input)).toContain(problem)
   })
 
   // Wrong behaviour caught: the old rule "markdown only in file bricks" comes back and blocks editable Markdown in the platform.
   it.each([
-    ['one markdown field in a file brick', files(md, 'files')],
+    ['one markdown field in a file brick, named by body', files(md, 'files', 'body')],
     ['markdown in a platform brick', files(md)],
     ['markdown in a list of a platform brick', files(list(f.markdown('Zelle')))],
   ])('%s is fine', (_, input) => {
@@ -387,14 +390,14 @@ describe('file bricks', () => {
     ['a ref in a list row', { links: f.list('Links', { itemLabel: 'Link', fields: { page: f.ref('Seite', { to: 'docs' }) }, max: 5 }) }, 'notes.links.page'],
   ])('%s from a platform brick to a file brick is refused', (_, fields, path) => {
     const input = site({}, { bricks: {
-      docs: collection({ label: 'Doku', source: 'files', fields: { title: f.text('Titel'), ...md }, max: 50, order: 'manual' }),
-      notes: collection({ label: 'Notizen', fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }),
+      docs: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Doku', source: 'files', fields: { title: f.text('Titel'), ...md }, max: 50, order: 'manual' }),
+      notes: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Notizen', fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }),
     } })
     expect(problemsOf(input)).toContain(`${path}: points at “docs”, which comes from files; a brick on the platform can only point at platform bricks. Keep “docs” on the platform or move “notes” to files.`)
   })
 
   it('the platform never sees a file brick', async () => {
-    const input = site({}, { bricks: { ...site().bricks, docs: collection({ label: 'Doku', source: 'files', fields: { title: f.text('Titel'), ...md }, max: 50, order: 'manual' }) } })
+    const input = site({}, { bricks: { ...site().bricks, docs: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Doku', source: 'files', fields: { title: f.text('Titel'), ...md }, max: 50, order: 'manual' }) } })
     expect(Object.keys(platformSchema(serializeSchema(input)).bricks)).toEqual(['menu'])
     const state = { site: 'linde', schema: serializeSchema(site()), schemaRev: 1, contentRev: 1, migrations: [], entries: [] }
     expect((await plan(state, input)).schema.bricks.docs).toBeUndefined()
@@ -437,7 +440,7 @@ describe('markdown field rules', () => {
 // Wrong behaviour caught: a site whose config (or stored schema, from 0.12 or older) still says `drafts` cannot be
 // checked or released after the option was removed (SPEC 15: every collection keeps changes until published).
 describe('drafts, no option since 0.13', () => {
-  const menu = { ...collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }), drafts: false }
+  const menu = { ...collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }), drafts: false }
   it('a config that still says drafts passes the check, and its schema leaves the key out', () => {
     const input = site({}, { bricks: { menu: menu as never } })
     expect(problemsOf(input)).toEqual([])
@@ -469,14 +472,14 @@ describe('week tokens', () => {
   })
 
   // Wrong behaviour caught: the week is not stored on the schema, so server, Studio and site disagree about the first day.
-  it('stores the week of the main language, with firstDayOfWeek as override', () => {
-    expect(serializeSchema(site({}, { languages: { de: 'en-US' } })).week).toEqual({ firstDay: 7, weekend: [6, 7] })
-    expect(serializeSchema(site({}, { languages: { de: 'de-AT' }, firstDayOfWeek: 6 })).week).toEqual({ firstDay: 6, weekend: [6, 7] })
+  it('stores the week as the site states it, and none when it states none', () => {
+    expect(serializeSchema(site({}, { week: { firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] } })).week).toEqual({ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] })
+    expect('week' in serializeSchema(site({}, { week: undefined }))).toBe(false)
   })
 })
 
 describe('defaults in the stored form', () => {
-  const stored = (fields: Fields, tasks?: unknown) => serializeSchema(site({}, { bricks: { menu: collection({ label: 'Karte', fields, max: 20, order: 'manual', tasks: tasks as never }) } })).bricks.menu!
+  const stored = (fields: Fields, tasks?: unknown) => serializeSchema(site({}, { bricks: { menu: collection({ untranslated: 'fallback', label: 'Karte', listing: { title: Object.keys(fields)[0]! }, fields, max: 20, order: 'manual', tasks: tasks as never }) } })).bricks.menu!
   // Wrong behaviour caught: a plain default of a translatable field is stored as a string and fails the release check,
   // or a preset's `{ de, en }` text keeps locales the site does not have.
   it.each([
@@ -508,14 +511,14 @@ describe('defaults in the stored form', () => {
 describe('brick describe', () => {
   // Wrong behaviour caught: a per-language describe without the main language shows an empty text in the Studio.
   it('is checked like a label', () => {
-    const input = site({}, { bricks: { menu: collection({ label: 'Karte', describe: { fr: 'Carte' }, fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }) } })
+    const input = site({}, { bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', describe: { fr: 'Carte' }, fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }) } })
     expect(problemsOf(input)).toEqual(['menu.describe: label needs a text in the main language “de” or in English.'])
   })
 })
 
 describe('visible', () => {
   const withVisible = (visible: unknown) => site({}, {
-    bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }), until: f.date('Bis', optional), when: f.daterange('Wann', optional) }, max: 20, order: 'manual', visible: visible as never }) },
+    bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name', { max: 120 }), until: f.date('Bis', optional), when: f.daterange('Wann', optional) }, max: 20, order: 'manual', visible: visible as never }) },
   })
   // Wrong behaviour caught: a mode or option name from before 0.4 is stored and every entry shows for ever.
   it.each([
@@ -536,8 +539,8 @@ describe('plans (weeks planned ahead)', () => {
   const planner = (plans: { brick: string; field: string }) => site({}, {
     bricks: {
       lunch: week,
-      other: collection({ label: 'Andere', fields: { name: f.text('Name', { max: 20 }) }, max: 3, order: 'manual' }),
-      plan: collection({ label: 'Plan', fields: { weekOf: f.date('Woche'), note: f.text('Hinweis', { max: 20 }) }, max: 3, order: 'manual', plans: plans as never }),
+      other: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Andere', fields: { name: f.text('Name', { max: 20 }) }, max: 3, order: 'manual' }),
+      plan: collection({ untranslated: 'fallback', listing: { title: 'note' }, label: 'Plan', fields: { weekOf: f.date('Woche'), note: f.text('Hinweis', { max: 20 }) }, max: 3, order: 'manual', plans: plans as never }),
     },
   })
 
@@ -555,7 +558,8 @@ describe('plans (weeks planned ahead)', () => {
 describe('planned (a change from a date on)', () => {
   const dish = (planned: unknown, priceTask: readonly string[] = ['price', 'nextPrice', 'priceFrom']) => site({}, {
     bricks: {
-      menu: collection({
+      menu: collection({ untranslated: 'fallback',
+        listing: { title: 'name' },
         label: 'Karte', max: 20, order: 'manual',
         fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), nextPrice: f.money('Geplanter Preis', optional), priceFrom: f.date('Gilt ab', optional), note: f.text('Hinweis', { max: 20, optional: true }), old: f.text('Alt', { max: 20, optional: true }) },
         planned: planned as never,
@@ -582,7 +586,7 @@ describe('planned (a change from a date on)', () => {
 
 describe('approvals (SPEC 17)', () => {
   const withTasks = (needsApproval: unknown, over: Partial<SiteInput> = {}) => site({}, {
-    bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual', tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', needsApproval } as never] }) },
+    bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual', tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', needsApproval } as never] }) },
     ...over,
   })
 
@@ -675,7 +679,7 @@ describe('askAgainWhen', () => {
 describe('group and layout (display only)', () => {
   it('serializeSchema keeps them and the schema stays valid', () => {
     const input = site({ note: f.longtext('Notiz', { group: { de: 'Mehr', en: 'More' } }) }, {
-      bricks: { menu: collection({ label: 'Karte', layout: 'tabs', fields: { name: f.text('Name', { group: 'Basis' }) }, max: 20, order: 'manual' }) },
+      bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', layout: 'tabs', fields: { name: f.text('Name', { group: 'Basis' }) }, max: 20, order: 'manual' }) },
     })
     const schema = serializeSchema(input)
     expect(schema.bricks.menu).toMatchObject({ layout: 'tabs', fields: { name: { group: 'Basis' } } })
@@ -689,7 +693,7 @@ describe('group and layout (display only)', () => {
     const problems = problemsOf(site({ note: f.longtext('Notiz', extra as never) })); expect(problems, JSON.stringify(problems)).toContain(problem)
   })
   it('rejects an unknown layout', () => {
-    const input = site({}, { bricks: { menu: collection({ label: 'Karte', layout: 'columns' as never, fields: { name: f.text('Name') }, max: 20, order: 'manual' }) } })
+    const input = site({}, { bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', layout: 'columns' as never, fields: { name: f.text('Name') }, max: 20, order: 'manual' }) } })
     expect(problemsOf(input)).toContain('menu: layout must be “sections” or “tabs”.')
   })
 })
@@ -712,7 +716,8 @@ describe('create task fields', () => {
   const dish = (fields: unknown, prefill?: unknown) => site({}, {
     retired: { 'menu.old': { drop: true } },
     bricks: {
-      menu: collection({
+      menu: collection({ untranslated: 'fallback',
+        listing: { title: 'name' },
         label: 'Karte', max: 20, order: 'manual',
         fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), nextPrice: f.money('Neuer Preis', { optional: true }), priceFrom: f.date('Preis ab', { optional: true }), slug: f.slug('Adresse', { from: 'name' }), onMenu: f.boolean('Auf der Karte', { optional: true, default: true }), note: f.text('Hinweis', { max: 20, optional: true }), old: f.text('Alt', { max: 20, optional: true }) },
         planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
@@ -750,8 +755,8 @@ describe('status (Today page status line)', () => {
     ['hours on the hours single', set('hours', { hours: true }), []],
     ['hours linked to the hour plans', set('hours', { hours: { plans: 'hourPlans' } }), []],
     ['hours linked to a missing brick', set('hours', { hours: { plans: 'seasons' } }), ['hours: status.hours.plans names “seasons”, which is not a live brick of the site.']],
-    ['hours linked to a collection that is not hour plans', set('hours', { hours: { plans: 'events' } }), ['hours: status.hours.plans names “events”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).']],
-    ['hours linked to hour plans without yearly', (s) => { node(s, 'bricks.hourPlans.fields.yearly').type = 'text'; set('hours', { hours: { plans: 'hourPlans' } })(s) }, ['hours: status.hours.plans names “hourPlans”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).']],
+    ['hours linked to a collection that is not hour plans', set('hours', { hours: { plans: 'events' } }), ['hours: status.hours.plans names “events”, which is not a collection of hour plans (hourPlans(): rows of weekdays “week”, a date “from” and a switch “yearly”).']],
+    ['hours linked to hour plans without yearly', (s) => { node(s, 'bricks.hourPlans.fields.yearly').type = 'text'; set('hours', { hours: { plans: 'hourPlans' } })(s) }, ['hours: status.hours.plans names “hourPlans”, which is not a collection of hour plans (hourPlans(): rows of weekdays “week”, a date “from” and a switch “yearly”).']],
     ['hours with a link of another form', set('hours', { hours: 'hourPlans' }), ['hours: status.hours must be true or { plans: \'<key of the hour plans>\' }.']],
     ['next on a missing field', set('events', { next: 'date' }), ['events: status.next names “date”, which is not a field of the brick.']],
     ['age on a text field', set('events', { age: 'title' }), ['events: status.age needs a date or daterange field, “title” is a text field.']],
@@ -780,7 +785,7 @@ describe('status (Today page status line)', () => {
   it('collection() and single() carry the status into the stored schema', () => {
     const input = site({ until: f.date('Bis', optional) }, {
       bricks: {
-        menu: collection({ label: 'Karte', fields: { name: f.text('Name'), until: f.date('Bis', optional) }, max: 20, order: 'manual', visible: { mode: 'until', field: 'until' }, status: { count: true } }),
+        menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name'), until: f.date('Bis', optional) }, max: 20, order: 'manual', visible: { mode: 'until', field: 'until' }, status: { count: true } }),
       },
     })
     expect(serializeSchema(input).bricks.menu!.status).toEqual({ count: true })

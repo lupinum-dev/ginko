@@ -55,6 +55,8 @@ const common = {
   // The words for one entry as they stand in a task: "Leistung bearbeiten", "Edit a service", "Modifier une prestation".
   item: { de: 'Leistung', en: 'a service', fr: 'une prestation' },
   max: 50,
+  listing: { title: 'title', image: 'image' },
+  untranslated: 'hide',
   tasks: [
     { id: 'price', label: { de: 'Preis ändern', en: 'Change a price', fr: 'Modifier un prix' }, fields: ['pricing', 'price'] },
     'edit',
@@ -62,8 +64,8 @@ const common = {
   ],
 } as const
 
-const plain = () => collection({ ...common, fields: { ...head, body } })
-const withSheets = (downloads: string) => collection({ ...common, fields: { ...head, sheet: sheetIn(downloads), body } })
+const plain = () => collection({ ...common, body: 'body', fields: { ...head, body } })
+const withSheets = (downloads: string) => collection({ ...common, body: 'body', fields: { ...head, sheet: sheetIn(downloads), body } })
 
 /**
  * The services brick. `downloads` is the key of the site's downloads brick; with it an entry has a `sheet` field.

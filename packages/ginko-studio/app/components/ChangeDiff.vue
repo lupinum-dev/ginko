@@ -10,7 +10,7 @@ import { fileRefOf, isShown, ordered } from '@lupinum/ginko/internal'
 import { GinkoMarkdown } from '@lupinum/ginko/vue'
 import { computedAsync } from '@vueuse/core'
 import { computed, defineComponent, h } from 'vue'
-import { displayValue, rowTitle } from '../utils/content'
+import { displayValue, rowLabel, rowTitle } from '../utils/content'
 import { markdownDiff, pictureIdsOf, type BlockChange } from '../utils/markdownDiff'
 import { paragraphDiff } from '../utils/paragraphDiff'
 import { useStudioSite } from '../utils/labels'
@@ -20,7 +20,7 @@ import type { DiffField } from '../utils/review'
  *  plain value shows Before and After side by side once the diff is wide enough, on an inset surface (Review). */
 const props = defineProps<{ diff: readonly DiffField[]; fields?: Fields; locale: Locale; site?: string; split?: boolean }>()
 const { t, format } = useI18n()
-const { shown } = useStudioSite()
+const { shown, currency } = useStudioSite()
 
 interface Unit { tag?: string; before: Json | null; after: Json | null }
 
@@ -34,7 +34,7 @@ const items = computed(() => props.diff.map((d) => {
 /** A value like in the list; a field the schema no longer has shows plain text, or "changed" for anything bigger. */
 function show(d: DiffField, value: Json | null): string {
   const field = props.fields && Object.hasOwn(props.fields, d.field) ? props.fields[d.field] : undefined
-  if (field) return displayValue(field, value, props.locale, { t, format })
+  if (field) return displayValue(field, value, props.locale, { t, format, currency: currency() })
   if (value === null || value === '') return t('ops.value.empty')
   return typeof value === 'string' || typeof value === 'number' ? String(value) : t('ops.value.changed')
 }
@@ -44,14 +44,14 @@ interface Cell { key: string; label: string; before?: string; after?: string; ke
 
 function columnsOf(d: DiffField): Fields {
   const field = props.fields && Object.hasOwn(props.fields, d.field) ? props.fields[d.field] : undefined
-  return field?.type === 'list' ? field.of : {}
+  return field?.type === 'list' || field?.type === 'rows' ? field.of : {}
 }
 
 const filled = (value: Json | undefined) => value !== undefined && value !== null && value !== ''
 
 /** One cell value of a row; a column the schema no longer has shows plain text. */
 function cellText(columns: Fields, key: string, value: Json | undefined): string {
-  if (Object.hasOwn(columns, key)) return displayValue(columns[key]!, value ?? null, props.locale, { t, format })
+  if (Object.hasOwn(columns, key)) return displayValue(columns[key]!, value ?? null, props.locale, { t, format, currency: currency() })
   return value === undefined || value === null || value === '' ? t('ops.value.empty') : typeof value === 'string' || typeof value === 'number' ? String(value) : t('ops.value.changed')
 }
 
@@ -61,8 +61,9 @@ function rowView(d: DiffField, row: RowDiff) {
   const columns = columnsOf(d)
   const list = props.fields && Object.hasOwn(props.fields, d.field) ? props.fields[d.field] : undefined
   const data = (row.after ?? row.before) as Record<string, Json> | null
-  const named = rowTitle(columns, row.before ?? row.after, props.locale, { t, format })
-  const title = named?.text || (list?.type === 'list' ? shown(list.itemLabel) : '')
+  // A row of a rows field is named by its row ("Montag"); a list row by its first text column.
+  const named = list?.type === 'rows' ? undefined : rowTitle(columns, row.before ?? row.after, props.locale, { t, format, currency: currency() })
+  const title = list?.type === 'rows' ? rowLabel(list, row.id, props.locale, { t, format }) : named?.text || (list?.type === 'list' ? shown(list.itemLabel) : '')
   const label = (key: string) => (Object.hasOwn(columns, key) ? shown(columns[key]!.label) : key)
   const cells: Cell[] = row.change === 'changed' ? changedCells(columns, row, named?.key, label) : Object.keys(columns).filter((key) => key !== named?.key && data && filled(data[key])).map((key) => ({ key, label: label(key), after: cellText(columns, key, data![key]) }))
   return { id: row.id, change: row.change, title, cells }

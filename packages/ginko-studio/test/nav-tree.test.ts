@@ -13,8 +13,8 @@ const { computed, nextTick, ref, watch } = vue
 Object.entries({ computed, nextTick, ref, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const brick = serializeSchema(defineSite({
-  site: 'docs', name: 'Docs', url: 'https://docs.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: {},
-  bricks: { docs: collection({ label: 'Doku', max: 100, order: 'manual', fields: { title: f.text('Titel'), section: f.text('Abschnitt', { optional: true }), parent: f.ref('Über', { to: 'docs', optional: true }), slug: f.slug('Adresse', { from: 'title' }) } }) },
+  site: 'docs', name: 'Docs', url: 'https://docs.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
+  bricks: { docs: collection({ listing: { title: 'title' }, tree: { parent: 'parent', section: 'section' }, label: 'Doku', max: 100, order: 'manual', fields: { title: f.text('Titel'), section: f.text('Abschnitt', { optional: true }), parent: f.ref('Über', { to: 'docs', optional: true }), slug: f.slug('Adresse', { from: 'title' }) } }) },
 })).bricks.docs as CollectionBrick
 
 type Row = { _id: string; rev?: number; state?: string; parent?: string; section?: string }
@@ -22,7 +22,7 @@ const data = ref<unknown>()
 const pages = (rows: Row[]) => {
   data.value = rows.map((r) => ({
     id: r._id, ...(r.parent ? { parent: r.parent } : {}), ...(r.section ? { section: r.section } : {}), ...(r.state === 'draft' ? { draft: true } : {}),
-    rev: r.rev ?? 3, state: r.state ?? 'live', publishAt: null, title: r._id, navTitle: null, badge: null, sectionLabel: r.section ?? null, tabLabel: null,
+    rev: r.rev ?? 3, state: r.state ?? 'live', publishAt: null, title: r._id, label: null, badge: null, sectionLabel: r.section ?? null, tabLabel: null,
   }))
 }
 const placeEntry = vi.fn(async () => true)

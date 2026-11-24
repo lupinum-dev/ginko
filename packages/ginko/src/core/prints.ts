@@ -1,4 +1,4 @@
-import { isTranslatable } from './fields.ts'
+import { isTable, isTranslatable, rowsIn } from './fields.ts'
 import { printOf } from './resolve.ts'
 import { stableJson } from './sha256.ts'
 import type { Field, Fields, Json, Locale } from './types.ts'
@@ -11,11 +11,8 @@ export function leavesOf(field: Field, value: Json | undefined, path: string, ou
   if (value === undefined || value === null) return out
   if (isTranslatable(field)) out.set(path, asRecord(value))
   else if (field.type === 'image') out.set(`${path}.alt`, asRecord(asRecord(value).alt))
-  else if (field.type === 'list' && Array.isArray(value)) {
-    for (const row of value) {
-      if (!isRecord(row)) continue
-      for (const [key, inner] of Object.entries(field.of)) leavesOf(inner, row[key], `${path}.${String(row._id)}.${key}`, out)
-    }
+  else if (isTable(field)) {
+    for (const [id, row] of rowsIn(field, value)) for (const [key, inner] of Object.entries(field.of)) leavesOf(inner, row[key], `${path}.${id}.${key}`, out)
   }
   return out
 }

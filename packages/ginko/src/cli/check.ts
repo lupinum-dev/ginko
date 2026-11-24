@@ -63,6 +63,7 @@ function warnEntrySize(config: SiteInput, log: (line: string) => void) {
     const fields = Object.entries(brick.fields).map(([name, field]) => ({ name, field, bytes: largestFieldBytes(field, locales) }))
     const largest = fields.filter((f) => f.bytes > 0).sort((a, b) => b.bytes - a.bytes).slice(0, 3).map(({ name, field, bytes }) => {
       if (field.type === 'list') return `${name} ${field.max} rows`
+      if (field.type === 'rows') return `${name} ${Array.isArray(field.rows) ? field.rows.length : 7} rows`
       if (field.type !== 'text' && field.type !== 'longtext' && field.type !== 'markdown') return `${name} ${kib(bytes)}`
       const languages = isTranslatable(field) && locales.length > 1 ? ` × ${locales.length} languages` : ''
       return `${name} ${effectiveMax(field).toLocaleString('en-US')}${languages}`

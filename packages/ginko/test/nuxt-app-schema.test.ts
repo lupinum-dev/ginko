@@ -12,7 +12,7 @@ const site = defineSite({
   url: 'https://cafe.example',
   timeZone: 'Europe/Vienna',
   locales: ['de', 'en'],
-  currency: 'EUR',
+  currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/', en: '/en' } },
   bricks: {
     about: single({
@@ -25,6 +25,7 @@ const site = defineSite({
       tasks: [{ id: 'edit', kind: 'edit', label: { de: 'Text ändern', en: 'Change the text' }, fields: ['title'] }],
     }),
     dishes: collection({
+      listing: { title: 'name' },
       label: { de: 'Speisen', en: 'Dishes' },
       max: 50,
       order: { field: 'price', dir: 'desc' },

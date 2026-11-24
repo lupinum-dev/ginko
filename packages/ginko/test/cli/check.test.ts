@@ -9,9 +9,10 @@ import { collection, defineSite, f, single } from '../../src/core/index.ts'
 // One file brick (docs/<name>.md) with a route, and a home page that a link can point to.
 const config = defineSite({
   site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
-  locales: ['de'], currency: 'EUR', pages: { home: '/' },
+  locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
   bricks: {
-    docs: collection({
+    docs: collection({ body: 'body', untranslated: 'hide',
+      listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') },
@@ -20,7 +21,7 @@ const config = defineSite({
 })
 
 // A platform brick: `ginko check` compares it with production unless --offline.
-const news = collection({ label: 'News', max: 10, order: 'manual', fields: { title: f.text('Titel') } })
+const news = collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'News', max: 10, order: 'manual', fields: { title: f.text('Titel') } })
 
 /** A site folder: ginko.config.ts (a plain module, so the test needs no imports), content/ and public/. */
 function siteWith(markdown: string, site: object = config) {
@@ -142,8 +143,9 @@ describe('ginko check and links in content files', () => {
   // Wrong behaviour caught: a schema allows entries larger than the platform accepts, and nobody hears of it until a Save fails.
   // A file brick never reaches the platform, so the same maxima there get no warning.
   it('warns when a platform brick\'s maxima can pass the entry limit', async () => {
-    const legal = single({ label: 'Rechtliches', fields: { body: f.markdown('Text', { max: 300_000 }) } })
-    const docs = collection({
+    const legal = single({ body: 'body', label: 'Rechtliches', fields: { body: f.markdown('Text', { max: 300_000 }) } })
+    const docs = collection({ body: 'body', untranslated: 'hide',
+      listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]', en: '/docs/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text', { max: 300_000 }) },
     })
@@ -155,7 +157,7 @@ describe('ginko check and links in content files', () => {
 
   // Bug caught: the content package knows the line of a CSV row, but `ginko check` printed only the file and field.
   it('prints the line of a data file error', async () => {
-    const menu = collection({ label: 'Karte', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), price: f.number('Preis', { min: 0, max: 100, step: 0.1 }) } })
+    const menu = collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Karte', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), price: f.number('Preis', { min: 0, max: 100, step: 0.1 }) } })
     const path = siteWith('Text.', { ...config, bricks: { ...config.bricks, menu } })
     mkdirSync(join(dirname(path), 'content/menu'))
     writeFileSync(join(dirname(path), 'content/menu/preise.csv'), 'slug,title,price\nkaffee,Kaffee,"3,5"\n')

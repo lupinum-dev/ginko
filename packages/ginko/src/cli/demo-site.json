@@ -3,6 +3,7 @@
   "site": "demo",
   "name": "Demo",
   "schema": {
+    "format": 2,
     "site": "demo",
     "name": "Demo",
     "url": "https://example.com",
@@ -13,10 +14,13 @@
     ],
     "currency": "EUR",
     "week": {
-      "firstDay": 7,
-      "weekend": [
-        6,
-        7
+      "firstDay": "mo",
+      "workdays": [
+        "mo",
+        "tu",
+        "we",
+        "th",
+        "fr"
       ]
     },
     "pages": {
@@ -72,6 +76,7 @@
             "pos": 2
           }
         },
+        "body": "body",
         "pos": 0
       },
       "pages": {
@@ -167,6 +172,7 @@
             "pos": 6
           }
         },
+        "body": "body",
         "tasks": [
           {
             "id": "edit",
@@ -198,6 +204,11 @@
         ],
         "max": 50,
         "order": "manual",
+        "listing": {
+          "title": "title",
+          "image": "image"
+        },
+        "untranslated": "hide",
         "route": {
           "en": "/[slug]",
           "de": "/de/[slug]"
@@ -254,11 +265,16 @@
         ],
         "max": 5,
         "order": "manual",
+        "listing": {
+          "title": "text",
+          "detail": "until"
+        },
         "visible": {
           "mode": "until",
           "field": "until",
           "deleteExpired": true
         },
+        "untranslated": "fallback",
         "pos": 2
       },
       "site": {
@@ -552,6 +568,7 @@
             "pos": 5
           }
         },
+        "body": "body",
         "tasks": [
           {
             "id": "update",
@@ -574,6 +591,11 @@
         ],
         "max": 20,
         "order": "manual",
+        "listing": {
+          "title": "title",
+          "detail": "updatedAt"
+        },
+        "untranslated": "hide",
         "route": {
           "en": "/legal/[slug]",
           "de": "/de/legal/[slug]"
@@ -708,7 +730,7 @@
           "en": "New: I now also translate from French.",
           "de": "Neu: Ich übersetze jetzt auch aus dem Französischen."
         },
-        "until": "2027-01-29"
+        "until": "2027-03-12"
       },
       "prints": {
         "text": {

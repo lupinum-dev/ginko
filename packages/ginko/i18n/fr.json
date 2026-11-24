@@ -37,7 +37,9 @@
     "notList": "« {label} » doit être une liste.",
     "tooManyRows": "« {label} » contient trop d’éléments ({max} au maximum).",
     "tooFewRows": "« {label} » exige au moins {min} éléments.",
-    "duplicateRowValue": "« {label} » : « {value} » apparaît plusieurs fois.",
+    "notRows": "« {label} » exige un objet avec une ligne par clé de ligne.",
+    "rowMissing": "« {label} » : la ligne « {row} » est manquante.",
+    "unknownRow": "« {label} » : il n’existe pas de ligne « {row} ».",
     "badRowId": "« {label} » : la ligne {row} n’a pas d’identifiant valide.",
     "duplicateRowId": "« {label} » : un identifiant de ligne apparaît deux fois.",
     "notImage": "« {label} » n’est pas une image valide.",
@@ -177,8 +179,10 @@
     "optionRemoved": "« {at} » : l’option « {option} » est manquante.",
     "optionRenamed": "Option renommée.",
     "optionAdded": "Nouvelle option « {option} ».",
-    "uniqueChanged": "« {at} » : unique ne peut être ni défini ni modifié.",
-    "uniqueDropped": "« {at} » : unique a été retiré.",
+    "rowAdded": "Nouvelle ligne « {row} » dans « {at} », remplie avec les valeurs par défaut des colonnes.",
+    "rowWithoutDefault": "Nouvelle ligne « {row} » dans « {at} » : une colonne obligatoire n’a pas de valeur par défaut.",
+    "rowRemoved": "« {at} » : la ligne « {row} » est manquante.",
+    "rowRetired": "« {at} » : la ligne « {row} » est retirée ; la publication la supprime de toutes les entrées enregistrées.",
     "fix": {
       "newField": "Ajoutez un nouveau champ, remplissez-le avec une migration et listez l’ancien champ sous `retired`.",
       "newFieldOnly": "Ajoutez un nouveau champ.",
@@ -202,7 +206,8 @@
       "keepMin": "Conservez min.",
       "minOnGrid": "Abaissez min pour que la différence soit un multiple de step.",
       "keepOption": "Conservez l’option ; elle peut être renommée (label).",
-      "newList": "Ajoutez une nouvelle liste et remplissez-la avec une migration.",
+      "retireRow": "Conservez la ligne, ou écrivez {line} : la publication la supprime alors de toutes les entrées enregistrées.",
+      "rowDefaults": "Donnez une valeur par défaut à chaque colonne obligatoire, ou rendez-la facultative.",
       "factInUse": "Retirez d’abord la donnée de ces textes ou gardez-la dans `facts`."
     },
     "factInUse": "La donnée « {fact} » manque dans `facts`, mais elle est encore citée dans {count, plural, one {un texte} other {# textes}} : {texts}."

@@ -8,7 +8,7 @@
 import { createServer } from 'node:http'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { addDays, DEFAULT_WEEK, todayIn, workWeekOf } from '../packages/ginko/src/core/time.ts'
+import { addDays, todayIn, weekInfo, workWeekOf } from '../packages/ginko/src/core/time.ts'
 
 const root = fileURLToPath(new URL('../contracts/', import.meta.url))
 const port = Number(process.env.FAKE_PLATFORM_PORT ?? 3999)
@@ -86,7 +86,7 @@ createServer((req, res) => {
     if (mode === 'proto') return res.end(readFileSync(file, 'utf8').replace(/"bricks":\s*\{/, '"bricks":{"__proto__":{"kind":"single","data":{},"fallback":[]},'))
     const bundle = JSON.parse(readFileSync(file, 'utf8'))
     // The lunch week is always the current one, as the owner would keep it (the corpus week is 2026-10-05).
-    if (bundle.bricks.lunch?.data?.weekOf) bundle.bricks.lunch.data.weekOf = workWeekOf(todayIn('Europe/Vienna'), DEFAULT_WEEK)
+    if (bundle.bricks.lunch?.data?.weekOf) bundle.bricks.lunch.data.weekOf = workWeekOf(todayIn('Europe/Vienna'), weekInfo({ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }))
     if (match[1] === 'restaurant') {
       const today = todayIn('Europe/Vienna')
       const data = (brick, id) => bundle.bricks[brick].items.find((item) => item.id === id).data

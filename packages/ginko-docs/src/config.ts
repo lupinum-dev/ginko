@@ -49,10 +49,16 @@ export function docsCollection(opts: { locales: Locales; label?: string; max?: n
   const base = opts.base ?? '/docs'
   return collection({
     label: opts.label ?? 'Docs',
+    listing: { title: 'title' },
+    untranslated: 'hide',
+    // The side navigation: pages nest by `parent`, `section` starts a heading, `navTitle` is the short name; `tab` starts a
+    // tab and `badge` shows a badge (both left out with `navExtras: false`).
+    tree: { parent: 'parent', section: 'section', label: 'navTitle', ...(opts.navExtras !== false ? { tab: 'tab', badge: 'badge' } : {}) },
     ...sourceOf(opts.source),
     max: opts.max ?? 500,
     order: 'manual',
     route: localized(locales, `${base}/[slug]`),
+    body: 'body',
     fields: withExtras(opts.navExtras !== false, {
       title: f.text(l('Titel', 'Title', 'Título', 'Titre')),
       description: f.longtext(l('Beschreibung', 'Description', 'Descripción', 'Description'), { optional: true }),
@@ -100,6 +106,7 @@ export function docsHome(opts: { source?: DocsSource } = {}) {
   return single({
     label: 'Start page',
     ...sourceOf(opts.source),
+    body: 'body',
     fields: {
       title: f.text('Title', { max: 120, default: 'Documentation' }),
       description: f.longtext('Description', { optional: true, max: 400 }),

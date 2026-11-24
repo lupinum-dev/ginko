@@ -3,63 +3,49 @@
     {
       "id": "hours",
       "data": {
-        "week": [
-          {
-            "_id": "wkmo000000",
-            "day": "mo",
+        "week": {
+          "mo": {
             "closed": false,
             "from1": "07:00",
             "to1": "12:00",
             "from2": "12:30",
             "to2": "16:00"
           },
-          {
-            "_id": "wktu000000",
-            "day": "tu",
+          "tu": {
             "closed": false,
             "from1": "07:00",
             "to1": "12:00",
             "from2": "12:30",
             "to2": "16:00"
           },
-          {
-            "_id": "wkwe000000",
-            "day": "we",
+          "we": {
             "closed": false,
             "from1": "07:00",
             "to1": "12:00",
             "from2": "12:30",
             "to2": "16:00"
           },
-          {
-            "_id": "wkth000000",
-            "day": "th",
+          "th": {
             "closed": false,
             "from1": "07:00",
             "to1": "12:00",
             "from2": "12:30",
             "to2": "16:00"
           },
-          {
-            "_id": "wkfr000000",
-            "day": "fr",
+          "fr": {
             "closed": false,
             "from1": "07:00",
             "to1": "12:00",
             "from2": "12:30",
             "to2": "14:00"
           },
-          {
-            "_id": "wksa000000",
-            "day": "sa",
+          "sa": {
             "closed": true
           },
-          {
-            "_id": "wksu000000",
-            "day": "su",
+          "su": {
             "closed": true
           }
-        ],
+        },
         "exceptions": [
           {
             "_id": "exWeihn001",

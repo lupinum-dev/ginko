@@ -1,4 +1,5 @@
 {
+  "format": 2,
   "site": "saas",
   "name": "Taktwerk",
   "url": "https://ginko-demo-saas.vercel.app",
@@ -15,10 +16,13 @@
   },
   "currency": "EUR",
   "week": {
-    "firstDay": 1,
-    "weekend": [
-      6,
-      7
+    "firstDay": "mo",
+    "workdays": [
+      "mo",
+      "tu",
+      "we",
+      "th",
+      "fr"
     ]
   },
   "pages": {
@@ -211,6 +215,7 @@
           "pos": 7
         }
       },
+      "preview": "pricing",
       "tasks": [
         {
           "id": "add",
@@ -238,6 +243,10 @@
       ],
       "max": 6,
       "order": "manual",
+      "listing": {
+        "title": "name"
+      },
+      "untranslated": "fallback",
       "pos": 2
     },
     "changelog": {
@@ -284,6 +293,7 @@
           "pos": 3
         }
       },
+      "preview": "changelog",
       "tasks": [
         {
           "id": "add",
@@ -313,6 +323,11 @@
         "field": "date",
         "dir": "desc"
       },
+      "listing": {
+        "title": "version",
+        "detail": "date"
+      },
+      "untranslated": "fallback",
       "pos": 3
     },
     "blog": {
@@ -395,6 +410,11 @@
         "field": "date",
         "dir": "desc"
       },
+      "listing": {
+        "title": "title",
+        "detail": "date"
+      },
+      "untranslated": "hide",
       "route": {
         "de": "/blog/[slug]",
         "en": "/en/blog/[slug]",
@@ -459,6 +479,10 @@
       ],
       "max": 30,
       "order": "manual",
+      "listing": {
+        "title": "quote"
+      },
+      "untranslated": "fallback",
       "pos": 5
     },
     "faq": {
@@ -479,6 +503,7 @@
           "pos": 1
         }
       },
+      "preview": "faq",
       "tasks": [
         {
           "id": "add",
@@ -503,6 +528,10 @@
       ],
       "max": 60,
       "order": "manual",
+      "listing": {
+        "title": "question"
+      },
+      "untranslated": "fallback",
       "pos": 6
     },
     "notices": {
@@ -543,11 +572,16 @@
       ],
       "max": 5,
       "order": "manual",
+      "listing": {
+        "title": "text",
+        "detail": "until"
+      },
       "visible": {
         "mode": "until",
         "field": "until",
         "deleteExpired": true
       },
+      "untranslated": "fallback",
       "pos": 7
     },
     "company": {

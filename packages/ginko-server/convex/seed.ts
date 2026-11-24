@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { carryPrints, defaultsFor, entryBytes, fitsBudget, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { carryPrints, defaultsFor, entryBytes, fitsBudget, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, withoutUnknownRows, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -344,10 +344,12 @@ export const importExport = internalMutation({
         problems.push({ code: 'INVALID', key: 'errors.entryBrickMissingFromSchema', params: { id: row.id, brick: row.brick } })
         continue
       }
-      const data = remapFileIds(def.fields, row.data as Data, uploads)
+      const remapped = remapFileIds(def.fields, row.data as Data, uploads)
+      const checked = await validate(schema, row.brick, remapped, { mode: 'restore' })
+      // A row its rows field no longer has (retired since the export) is dropped; its warning stays (UNKNOWN_ROW).
+      const data = withoutUnknownRows(def.fields, remapped, schema.week)
       // New file IDs change the main-language text a translation was made from, not its meaning.
       const prints = carryPrints(def.fields, row.data as Data, data, row.prints, schema.locales[0]!)
-      const checked = await validate(schema, row.brick, data, { mode: 'restore' })
       if (checked.errors.length) problems.push({ code: 'INVALID', key: 'errors.importEntryInvalid', params: { id: row.id, path: checked.errors[0]!.path, count: checked.errors.length } })
       const warning = checked.warnings[0]
       if (warning) {
@@ -540,7 +542,7 @@ export const importOpen = internalMutation({
     const untouched = (e: Doc<'entries'>) => {
       const def = Object.hasOwn(schema.bricks, e.brick) ? schema.bricks[e.brick] : undefined
       return def?.kind === 'single' && e.kind === 'single' && e.rev === 1 && e.deletedAt === undefined && e.state === undefined
-        && stableJson(e.data) === stableJson(defaultsFor(def.fields))
+        && stableJson(e.data) === stableJson(defaultsFor(def.fields, schema.week))
     }
     if (used || !entries.every(untouched) || site.entryCount !== entries.length) fail('INVALID', 'errors.importNeedsEmptySite')
     let bytes = 0
@@ -575,7 +577,7 @@ export const importDone = internalMutation({
         if (def.kind !== 'single') continue
         const have = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', brick)).first()
         if (have) continue
-        const single = await newSingle(brick, def.fields, schema.locales[0]!)
+        const single = await newSingle(brick, def.fields, schema.locales[0]!, schema.week)
         await insertSingle(ctx, site._id, single, schema.locales)
         created.push(single)
       }

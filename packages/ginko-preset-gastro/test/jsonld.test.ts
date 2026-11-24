@@ -1,13 +1,13 @@
 // Search engines show the hours from this JSON. Wrong output makes Google say "open" on a closure day or lists a day twice.
 import { describe, expect, it } from 'vitest'
 import { eventJsonLd, restaurantJsonLd, type EventJsonLdInput } from '../src/jsonld.ts'
-import type { DayHours, Exception } from '../src/hours.ts'
+import type { DayHours, Exception, WeekHours } from '../src/hours.ts'
 
-const full = (day: string, t: object = {}): DayHours => ({ day, closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00', ...t })
-const week: DayHours[] = [
-  { day: 'mo', closed: true }, full('tu'), full('we'), full('th'), full('fr'), full('sa'),
-  { day: 'su', closed: false, from1: '11:30', to1: '15:00' },
-]
+const full: DayHours = { closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00' }
+const week: WeekHours = {
+  mo: { closed: true }, tu: full, we: full, th: full, fr: full, sa: full,
+  su: { closed: false, from1: '11:30', to1: '15:00' },
+}
 const exceptions: Exception[] = [
   { _id: 'e1', when: { from: '2026-11-04', to: '2026-11-05' }, reason: 'Betriebsausflug', closed: true },
   { _id: 'e2', when: { from: '2026-11-06', to: '2026-11-06' }, reason: 'Feier', closed: false, from1: '11:00', to1: '14:00' },
@@ -61,7 +61,7 @@ describe('restaurantJsonLd', () => {
   })
 
   it('takes the week of a running season and adds cuisine and menu with the price given', () => {
-    const winter = { from: '2026-10-01', week: week.map((d) => (d.day === 'tu' ? { day: 'tu', closed: true } : d)) }
+    const winter = { from: '2026-10-01', week: { ...week, tu: { closed: true } } }
     expect(restaurantJsonLd({
       ...base,
       hours: { hours: { week, exceptions: [], holidays: 'normal' }, plans: [winter] },

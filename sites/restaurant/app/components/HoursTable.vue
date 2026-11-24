@@ -1,6 +1,6 @@
 <!-- The weekly opening hours, today's row marked with what applies today (a closure or special hours win), plus the closures still ahead. -->
 <script setup lang="ts">
-import { closedOnClosure, hoursOn, spansOf, spansText, timesOf, todayState, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type Weekday } from '../utils/site'
+import { closedOnClosure, daysOf, hoursOn, spansOf, spansText, timesOf, todayState, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure } from '../utils/site'
 
 const langOf = useGinkoLang()
 
@@ -12,7 +12,7 @@ const { hours, hourPlans, data, plans, ctx } = useHours()
 const shown = (e: Exception) => spansOf(e).length > 0 && hoursOn(ctx.value, e.when.from).field === `exceptions.${e._id}.reason`
 // The week that applies today (a running season replaces the standard week), then the plans that start soon, each
 // headed with its dates (a season with its end, "new hours from a date" with its start only).
-const week = computed(() => weekFor(ctx.value, today.value).week)
+const week = computed(() => daysOf(weekFor(ctx.value, today.value).week))
 const coming = computed(() => upcomingPlans(plans.value, today.value, 120))
 // A day set in "Geschlossen am" (closedOn) after today is listed like a closure; today's row shows today's.
 const closedOn = computed(() => closedOnClosure(data.value, today.value))
@@ -44,7 +44,7 @@ const todayCell = computed(() => {
       <caption class="sr">{{ t('hours') }}</caption>
       <tbody>
         <tr v-for="d in week" :key="d.day" :class="{ today: d.day === todayKey }">
-          <th scope="row">{{ labels.weekdays[d.day as Weekday] }}</th>
+          <th scope="row">{{ labels.weekdays[d.day] }}</th>
           <td>{{ d.day === todayKey ? todayCell : cell(d) }}</td>
         </tr>
       </tbody>
@@ -53,8 +53,8 @@ const todayCell = computed(() => {
       <h3>{{ planDates(c) }}<template v-if="c.plan.label">: <span :lang="langOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
       <table>
         <tbody>
-          <tr v-for="d in c.plan.week" :key="d.day">
-            <th scope="row">{{ labels.weekdays[d.day as Weekday] }}</th>
+          <tr v-for="d in daysOf(c.plan.week)" :key="d.day">
+            <th scope="row">{{ labels.weekdays[d.day] }}</th>
             <td>{{ cell(d) }}</td>
           </tr>
         </tbody>

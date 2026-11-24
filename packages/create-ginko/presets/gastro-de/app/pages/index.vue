@@ -3,6 +3,8 @@ import { formatMoney } from '@lupinum/ginko'
 import { dishOn, priceOn, timesOf, weekdayNames, type Weekday } from '@lupinum/ginko-preset-gastro'
 
 const hours = useGinko('hours')
+// The week starts on Monday (`week` in ginko.config.ts).
+const days: Weekday[] = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
 const menu = useGinko('menu')
 const today = useGinkoToday()
 const { language } = useI18n()
@@ -17,9 +19,9 @@ useGinkoSeo({ title: 'Speisekarte und Öffnungszeiten' })
     <h1>Öffnungszeiten</h1>
     <table>
       <tbody>
-        <tr v-for="d in hours.data.week" :key="d.day">
-          <th scope="row">{{ weekdayNames.de[d.day as Weekday] }}</th>
-          <td>{{ d.closed ? 'Ruhetag' : timesOf(d, 'und') }}</td>
+        <tr v-for="day in days" :key="day">
+          <th scope="row">{{ weekdayNames.de[day] }}</th>
+          <td>{{ hours.data.week[day].closed ? 'Ruhetag' : timesOf(hours.data.week[day], 'und') }}</td>
         </tr>
       </tbody>
     </table>

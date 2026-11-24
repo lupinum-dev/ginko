@@ -47,11 +47,11 @@ afterEach(async () => {
   for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true })
 })
 
-/** The bricks of the tests below: `authors`, `posts` with the ref fields above, and `notes` with a text. */
+/** The bricks of the tests below: `authors`, `posts` with the ref fields above, and `notes` with a Markdown text (and an optional title, which names an entry). */
 const refBricks = {
-  authors: { kind: 'collection', label, fields: { name: { type: 'text', label } } },
-  posts: { kind: 'collection', label, fields },
-  notes: { kind: 'collection', label, fields: { body: { type: 'markdown', label } } },
+  authors: { kind: 'collection', label, listing: { title: 'name' }, fields: { name: { type: 'text', label } } },
+  posts: { kind: 'collection', label, listing: { title: 'title' }, fields: { ...fields, title: { type: 'text', label, optional: true } } },
+  notes: { kind: 'collection', label, listing: { title: 'title' }, fields: { title: { type: 'text', label, optional: true }, body: { type: 'markdown', label } } },
 }
 
 /** The site with the bricks above in its stored schema. */
@@ -165,7 +165,7 @@ describe('import keeps references between entries', () => {
 })
 
 describe('import keeps what the Studio keeps', () => {
-  const services = { kind: 'collection', label, max: 2, route: { de: '/leistungen/[slug]' }, fields: { title: { type: 'text', label }, slug: { type: 'slug', from: 'title', label } } }
+  const services = { kind: 'collection', label, max: 2, listing: { title: 'title' }, route: { de: '/leistungen/[slug]' }, fields: { title: { type: 'text', label }, slug: { type: 'slug', from: 'title', label } } }
   const service = (id: string, slug: string) => ({ id, brick: 'services', kind: 'item' as const, order: 1, data: { title: { de: id }, slug: { de: slug } }, prints: {}, rev: 1 })
 
   // Wrong behaviour caught: an import stores a collection over its max (its removed entries can then never come back),
@@ -213,7 +213,7 @@ describe('import of a big site', () => {
     vi.stubEnv('GINKO_LOCAL', '1')
     const s = await setup()
     // A collection holds at most 500 entries: four of them.
-    const bricks = Object.fromEntries([0, 1, 2, 3].map((n) => [`faq${n}`, { kind: 'collection', label, max: 500, fields: { question: { type: 'text', label }, next: { type: 'ref', to: `faq${(n + 1) % 4}`, label } } }]))
+    const bricks = Object.fromEntries([0, 1, 2, 3].map((n) => [`faq${n}`, { kind: 'collection', label, max: 500, listing: { title: 'question' }, fields: { question: { type: 'text', label }, next: { type: 'ref', to: `faq${(n + 1) % 4}`, label } } }]))
     await s.t.run(async (ctx) => {
       const schema = (await ctx.db.get(s.site))!.schema as { bricks: Record<string, unknown> }
       Object.assign(schema.bricks, bricks)
@@ -402,7 +402,7 @@ describe('import checks each entry like a save', () => {
     await s.t.run(async (ctx) => {
       const row = (await ctx.db.get(s.site))!
       const schema = row.schema as { bricks: Record<string, unknown> }
-      schema.bricks.notes = { kind: 'collection', label, fields: { body: { type: 'markdown', label } } }
+      schema.bricks.notes = { kind: 'collection', label, listing: { title: 'title' }, fields: { title: { type: 'text', label, optional: true }, body: { type: 'markdown', label } } }
       await ctx.db.patch(s.site, { schema, treeBytes: 8 * 1024 * 1024 - 10 })
     })
     const before = (await entriesOf(s, s.site)).length

@@ -16,16 +16,17 @@ const { computed, defineComponent, h, onBeforeUnmount, ref, Suspense, toValue, w
 Object.entries({ computed, onBeforeUnmount, ref, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const schema = serializeSchema(defineSite({
-  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
-  bricks: { dishes: collection({ label: 'Gerichte', max: 500, order: 'manual', fields: { title: f.text('Name') } }) },
+  bricks: { dishes: collection({ listing: { title: 'title', detail: 'price' }, label: 'Gerichte', max: 500, order: 'manual', fields: { title: f.text('Name'), price: f.money('Preis', { optional: true }) } }) },
 }))
 const brick = schema.bricks.dishes!
 
 vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
 vi.stubGlobal('useRoute', () => ({ params: { site: 'restaurant', brick: 'dishes' }, query: {} }))
-vi.stubGlobal('useStudioSite', () => ({ shown: (label: string) => label }))
+// The site's currency as layouts/site.vue provides it: this site is in Swiss francs.
+vi.stubGlobal('useStudioSite', () => ({ shown: (label: string) => label, currency: () => 'CHF' }))
 vi.stubGlobal('useOps', () => ({}))
 vi.stubGlobal('useSiteData', async () => ({
   slug: ref('restaurant'), schema: ref(schema), site: ref({ slug: 'restaurant' }), main: ref('de'), today: ref('2026-10-15'), isManager: ref(true),
@@ -163,4 +164,34 @@ test('a live entry with unpublished changes is marked but not greyed out like a 
     [true, false, 'true'],
     [false, true, undefined],
   ])
+})
+
+// Wrong behaviour caught: a price in a list row shows in euros on a site in Swiss francs (the money field of the form
+// shows francs).
+test('a price in a list row shows in the site\'s currency', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
+    global: { mocks: { shownLabel }, stubs },
+  })
+  await flushPromises()
+  list.error.value = undefined
+  answer({ rows: [{ _id: 'e1', title: 'Rösti', state: 'live', dates: { price: { amount: 1450 } }, gaps: [] }], total: 1 })
+  await flushPromises()
+  expect(wrapper.get('li[class*="group/row"]').text()).toContain('14,50\u00a0CHF')
+})
+
+// Wrong behaviour caught (design V2 guess 5): the line under an entry's name shows the first date or price of the brick,
+// or nothing, instead of the value of the field `listing.detail` names; a row without that value gets an empty line.
+test('the line under the title of a list row is the value of listing.detail', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
+    global: { mocks: { shownLabel }, stubs },
+  })
+  await flushPromises()
+  list.error.value = undefined
+  answer({ rows: [
+    { _id: 'e1', title: 'Rösti', state: 'live', dates: { price: { amount: 900 } }, gaps: [] },
+    { _id: 'e2', title: 'Suppe', state: 'live', dates: {}, gaps: [] },
+  ], total: 2 })
+  await flushPromises()
+  const lines = wrapper.findAll('li[class*="group/row"]').map((row) => row.findAll('div.min-w-0 > span').map((span) => span.text()))
+  expect(lines).toEqual([['9,00 CHF'], []])
 })

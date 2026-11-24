@@ -4,7 +4,7 @@
      writes. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
 import { provide } from 'vue'
-import { resolveToken, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
+import { resolveToken, weekInfo, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { useTodayAreas, type TodayFlag } from '../../../composables/useTodayAreas'
 import { taskRef, titleOf, type Task } from '../../../utils/content'
@@ -58,7 +58,7 @@ const copyFrom = computed(() => {
   if (plan) return plan.entry._id
   const single = singleOf(brick.plans.brick)
   const weekly = weeklyTask(schema!.bricks[brick.plans.brick]!)
-  return single && weekly && single.data[weekly.field] === workWeekOf(s.today.value, schema!.week) ? single._id : undefined
+  return single && weekly && single.data[weekly.field] === workWeekOf(s.today.value, weekInfo(schema!.week)) ? single._id : undefined
 })
 const picking = ref<{ key: string; task: Task } | null>(null)
 // The pick list groups by a choice field and shows prices, so it reads the entries of its one brick while open: slim
@@ -75,7 +75,7 @@ watch([open, picking], ([sheet, pick]) => {
 })
 
 /**
- * "Nächste Woche planen" when that week is planned already: the person's edit task on that plan. A second plan for
+ * "Nächste Woche planen" when that week is planned already: the person's task `edit` on that plan. A second plan for
  * the same week would never show (the server refuses it).
  */
 function planOfWeek(key: string, task: Task): { task: Task; entry: Entry } | undefined {
@@ -84,7 +84,7 @@ function planOfWeek(key: string, task: Task): { task: Task; entry: Entry } | und
   if (task.kind !== 'create' || brick.kind !== 'collection' || !brick.plans) return undefined
   const token = task.prefill?.[brick.plans.field]
   const week = typeof token === 'string' ? resolveToken(token, schema.timeZone, schema.week) : undefined
-  const edit = sections.value.find((x) => x.key === key)?.tasks.find((t) => t.kind === 'edit')
+  const edit = sections.value.find((x) => x.key === key)?.tasks.find((t) => t.id === 'edit')
   const entry = week && entriesOf(key).find((e) => e.state !== 'draft' && e.data[brick.plans!.field] === week)
   return edit && entry ? { task: edit, entry } : undefined
 }

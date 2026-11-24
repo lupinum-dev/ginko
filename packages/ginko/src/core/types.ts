@@ -2,7 +2,7 @@ import type { ComponentRegistry } from './components.ts'
 import type { MarkdownProfile } from './markdown.ts'
 import type { ValueInput } from './fields.ts'
 import type { Msg } from './messages.ts'
-import type { WeekInfo } from './time.ts'
+import type { SiteWeek } from './time.ts'
 import type { StoredHolidays } from './holidays.ts'
 // The schema as plain data. This is what `ginko.config.ts` describes, what
 // `ginko release` sends, and what the platform stores. SPEC.md part 2.
@@ -78,11 +78,21 @@ export interface ChoicesField<V extends string = string> extends FieldBase { typ
 }
 export interface ListField<F extends Fields = Fields> extends FieldBase {
   type: 'list'; of: F; itemLabel: Label; max: number
-  /** Fewest rows. With `max` equal and a unique required choice this expresses "every option exactly once". */
+  /** Fewest rows. */
   min?: number
-  /** A required subfield (choice, text, date or time) whose value must differ in every row. */
-  unique?: string
 }
+/** One row of a rows field with its own rows: `key` names it in the stored value and in paths, `label` heads it in the Studio. */
+export interface RowDef { key: string; label: Label }
+/**
+ * The rows of a rows field: `'weekdays'` the seven days (keys `mo` … `su`), `'workdays'` the site's workdays
+ * (`week.workdays` days from `week.firstDay` on), or an own list of rows. A list and not an object: the platform sorts object keys.
+ */
+export type RowSet = 'weekdays' | 'workdays' | readonly RowDef[]
+/**
+ * A table with a fixed set of rows and the same columns in every row (`of`), such as the hours of each weekday. The
+ * value is a map from row key to row (`{ mo: { closed, … }, … }`) with exactly the rows of the field.
+ */
+export interface RowsField<F extends Fields = Fields, R extends RowSet = RowSet> extends FieldBase { type: 'rows'; rows: R; of: F }
 /** Points to entries of a collection brick `to`; stores the entry ID (a list of IDs with `multiple`). `max` only with `multiple`. */
 export interface RefField extends FieldBase { type: 'ref'; to: string; multiple?: boolean; max?: number }
 /** A frame's shape as `width:height`, such as `3:2`, `1:1` or `1.91:1`. */
@@ -101,7 +111,7 @@ export interface SlugField extends FieldBase { type: 'slug'; from: string }
 
 export type Field =
   | TextField | LongTextField | MarkdownField | NumberField | MoneyField | BooleanField
-  | DateField | TimeField | DateRangeField | ChoiceField | ChoicesField | ListField
+  | DateField | TimeField | DateRangeField | ChoiceField | ChoicesField | ListField | RowsField
   | ImageField | FileField | SlugField | RefField
 
 export type FieldType = Field['type']
@@ -180,6 +190,10 @@ export interface SingleBrick<F extends Fields = Fields> {
   /** What the brick is for, shown in the Studio; a text or a text per language like `label`. Fields have `hint` instead. */
   describe?: Label
   fields: F
+  /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
+  body?: string
+  /** The key of the page (`pages`) the Studio's preview opens for an entry; only for a brick without `route`. */
+  preview?: string
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
@@ -206,6 +220,10 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   /** What the brick is for, shown in the Studio; a text or a text per language like `label`. Fields have `hint` instead. */
   describe?: Label
   fields: F
+  /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
+  body?: string
+  /** The key of the page (`pages`) the Studio's preview opens for an entry; only for a brick without `route`. */
+  preview?: string
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
@@ -219,13 +237,17 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   max: number
   /** `manual`: the owner sorts the entries. Else by a field, ascending unless `dir: 'desc'`. */
   order: 'manual' | { field: string; dir?: 'asc' | 'desc' }
+  /** How an entry appears in lists (see `CollectionListing`). */
+  listing: CollectionListing
+  /** The entries are pages of a navigation tree (see `CollectionTree`). */
+  tree?: CollectionTree
   route?: R
   visible?: Visibility
   /**
    * What an entry does in a language where a translatable required field is missing (an outdated translation still
    * counts): `'hide'` leaves it out of that language (no page, not in lists, sitemap or hreflang); `'fallback'` shows
-   * the main language there and, with a `route`, links to the main-language page. Default: `'hide'` with a `route`,
-   * else `'fallback'` (`untranslatedMode`).
+   * the main language there and, with a `route`, links to the main-language page. Required when the site has more than
+   * one language.
    */
   untranslated?: 'fallback' | 'hide'
   /** Entries of this collection plan weeks of the single brick `brick`; `field` (a date field here) holds the first day of the week (`week.firstDay`). A planned week counts as entered for the weekly upkeep rule. */
@@ -237,6 +259,38 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
 }
 
 export type Brick = SingleBrick | CollectionBrick
+
+/** The field types `listing.title` may name: the name of an entry is a text, or the day it is for. */
+export const LISTING_TITLE_TYPES = ['text', 'longtext', 'date'] as const
+/** The field types `listing.detail` may name: a value that reads as one short line. */
+export const LISTING_DETAIL_TYPES = ['text', 'longtext', 'number', 'money', 'date', 'daterange', 'time', 'choice', 'choices', 'boolean'] as const
+
+/**
+ * How an entry of a collection appears in the Studio's lists, pick lists and search, and in the site's lists of
+ * entries (navigation, llms.txt, search): `title` is the field that names it, `detail` the value shown beside or under
+ * the name, `group` a choice field whose options group a pick list, `image` a picture shown with it. Field names only;
+ * the stored data does not change with it.
+ */
+export type CollectionListing<T extends string = string, D extends string = string, G extends string = string, I extends string = string> = {
+  title: T
+  detail?: D
+  group?: G
+  image?: I
+}
+
+/**
+ * A collection whose entries are pages of a navigation tree, such as documentation: `parent` is a ref field to the
+ * same collection that nests a page under another, `section` and `tab` are text fields that start a heading or a tab
+ * at a top-level page, `label` is a text field with the short name the tree shows in place of the title, `badge` a
+ * text field shown as a badge beside it. The order is the owner's (`order: 'manual'`). Field names only; any name works.
+ */
+export type CollectionTree<P extends string = string, S extends string = string, T extends string = string, L extends string = string, B extends string = string> = {
+  parent: P
+  section?: S
+  tab?: T
+  label?: L
+  badge?: B
+}
 
 /**
  * What a retired field (SPEC 2.5) answers to old code: `from` mirrors another field of the brick, `value` is a fixed
@@ -252,8 +306,16 @@ export interface MigrationDescriptor {
   fingerprint: string
 }
 
+/**
+ * The number of the stored model's form. A platform reads one form only (it serves every site from one deployment), so
+ * it refuses a schema of another form, and a release never changes it: the platform's upgrade does.
+ */
+export const SCHEMA_FORMAT = 2
+
 /** The serialized schema (JSON). `serializeSchema()` produces it; the platform stores it. */
 export interface Schema {
+  /** The form of the stored model (`SCHEMA_FORMAT`). */
+  format: typeof SCHEMA_FORMAT
   site: string
   name: string
   url: string
@@ -262,8 +324,8 @@ export interface Schema {
   /** The language tag per locale for numbers, money and dates (`SiteInput.languages`, "de-AT"); absent when the site sets none. */
   languages?: Partial<Record<Locale, string>>
   currency: Currency
-  /** First day of the week and weekend days of the site (computed once from the main language or `firstDayOfWeek`). */
-  week: WeekInfo
+  /** The site's week as the site states it (`SiteInput.week`). */
+  week: SiteWeek
   /** The public-holiday calendar of the site (`calendar`, else from `country`); absent when the config sets neither. */
   holidays?: StoredHolidays
   /** Static pages by key, each with its path per locale (the home page is the one whose main-locale path is `/`). */

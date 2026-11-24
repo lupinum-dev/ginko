@@ -97,8 +97,7 @@ describe('create-ginko', () => {
         expect(result.status).toBe(0)
         for (const file of files) expect(existsSync(join(work, name, file)), file).toBe(true)
         expect(existsSync(join(work, name, 'content/start.md'))).toBe(false)
-        // The docs starter is written with '@lupinum/ginko/v1' (the docs theme's helpers give that form).
-        expect(read(name, 'ginko.config.ts')).toContain(preset === 'docs' ? `site: '${name}'` : `studio: { id: '${name}', bricks: [] }`)
+        expect(read(name, 'ginko.config.ts')).toContain(`studio: { id: '${name}', bricks: [] }`)
         expect(read(name, 'ginko.config.ts')).toMatch(new RegExp(`locales.*\\['${lang}'\\]`))
         expect(read(name, 'ginko.config.ts')).not.toContain('{{')
         expect(read(name, 'ginko.config.ts')).toContain(pkg)

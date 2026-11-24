@@ -1,7 +1,7 @@
 // Pure content rules of the write path (SPEC part 3 "Übersetzungs-Abdrücke", 4.2 save).
 // No Convex here, so every rule is testable with plain data.
 import type { CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { effectiveAlt, factNamesIn, fileImagesWithoutAlt, fileRefsIn, isNavTree, isTranslatable, leavesOf, markdownTrees, printOf, stableJson, type Prints, type Schema } from '@lupinum/ginko/internal'
+import { effectiveAlt, factNamesIn, fileImagesWithoutAlt, fileRefsIn, isTranslatable, leavesOf, markdownTrees, printOf, stableJson, type Prints, type Schema } from '@lupinum/ginko/internal'
 
 export type { Prints }
 
@@ -24,20 +24,25 @@ export function mergeField(field: Field, stored: Json | undefined, next: Json, l
     const kept = next.file === asRecord(stored).file ? asRecord(stored).alt : undefined
     return { ...next, alt: mergeLocalized(kept, next.alt, locale) ?? {} } as Json
   }
+  if (field.type !== 'list' && field.type !== 'rows') return next
+  const mergeRow = (row: Record<string, Json>, old: Record<string, Json> | undefined): Json => {
+    const out: Record<string, Json> = { ...row }
+    for (const [key, inner] of Object.entries(field.of)) {
+      if (row[key] === undefined) continue
+      const merged = mergeField(inner, old?.[key], row[key]!, locale)
+      if (merged === undefined) delete out[key]
+      else out[key] = merged
+    }
+    return out
+  }
   if (field.type === 'list' && Array.isArray(next)) {
     const oldRows = new Map((Array.isArray(stored) ? stored : []).filter(isRecord).map((r) => [r._id, r]))
-    return next.map((row) => {
-      if (!isRecord(row)) return row
-      const old = oldRows.get(row._id)
-      const out: Record<string, Json> = { ...row }
-      for (const [key, inner] of Object.entries(field.of)) {
-        if (row[key] === undefined) continue
-        const merged = mergeField(inner, old?.[key], row[key]!, locale)
-        if (merged === undefined) delete out[key]
-        else out[key] = merged
-      }
-      return out as Json
-    })
+    return next.map((row) => (isRecord(row) ? mergeRow(row, oldRows.get(row._id)) : row))
+  }
+  // A rows field: each row with the stored row of the same key.
+  if (field.type === 'rows' && isRecord(next)) {
+    const old = asRecord(stored)
+    return Object.fromEntries(Object.entries(next).map(([key, row]) => [key, isRecord(row) ? mergeRow(row, isRecord(old[key]) ? old[key] : undefined) : row]))
   }
   return next
 }
@@ -127,6 +132,7 @@ export function fileIdsOf(fields: Fields, data: Data, which: { isUploadId: IsUpl
     if ((field.type === 'image' || field.type === 'file') && (!only || field.type === only) && typeof asRecord(value).file === 'string') ids.add(asRecord(value).file as string)
     if (field.type === 'markdown' && 'isUploadId' in which) for (const text of textsOf(value)) for (const id of fileRefsIn(text)) if (which.isUploadId(id)) ids.add(id)
     if (field.type === 'list' && Array.isArray(value)) for (const row of value) for (const [k, inner] of Object.entries(field.of)) walk(inner, asRecord(row)[k])
+    if (field.type === 'rows' && isRecord(value)) for (const row of Object.values(value)) for (const [k, inner] of Object.entries(field.of)) walk(inner, asRecord(row)[k])
   }
   for (const [name, field] of Object.entries(fields)) walk(field, data[name])
   return ids
@@ -170,6 +176,9 @@ export function usesOf(fields: Fields, data: Data, locales: readonly Locale[], i
         for (const [k, inner] of Object.entries(field.of)) walk(`${path}.${key}.${k}`, inner, asRecord(row)[k])
       })
     }
+    if (field.type === 'rows' && isRecord(value)) {
+      for (const [key, row] of Object.entries(value)) for (const [k, inner] of Object.entries(field.of)) walk(`${path}.${key}.${k}`, inner, asRecord(row)[k])
+    }
   }
   for (const [name, field] of Object.entries(fields)) walk(name, field, data[name])
   return out
@@ -191,6 +200,9 @@ export function markdownTextsOf(fields: Fields, data: Data): { path: string; tex
         const key = typeof asRecord(row)._id === 'string' ? (asRecord(row)._id as string) : String(i)
         for (const [k, inner] of Object.entries(field.of)) walk(`${path}.${key}.${k}`, inner, asRecord(row)[k])
       })
+    }
+    if (field.type === 'rows' && isRecord(value)) {
+      for (const [key, row] of Object.entries(value)) for (const [k, inner] of Object.entries(field.of)) walk(`${path}.${key}.${k}`, inner, asRecord(row)[k])
     }
   }
   for (const [name, field] of Object.entries(fields)) if (!field.retired) walk(name, field, data[name])
@@ -236,6 +248,9 @@ export function refIdsIn(fields: Fields, data: Data): RefId[] {
         for (const [k, inner] of Object.entries(field.of)) walk(root, `${path}.${key}.${k}`, inner, row[k])
       })
     }
+    if (field.type === 'rows' && isRecord(value)) {
+      for (const [key, row] of Object.entries(value)) if (isRecord(row)) for (const [k, inner] of Object.entries(field.of)) walk(root, `${path}.${key}.${k}`, inner, row[k])
+    }
   }
   for (const [name, field] of Object.entries(fields)) walk(name, name, field, data[name])
   return out
@@ -250,7 +265,7 @@ export function fieldLabelAt(schema: Schema, brick: string, path: string): Label
     const field: Field | undefined = Object.hasOwn(fields, keys[i]!) ? fields[keys[i]!] : undefined
     if (!field) return label
     label = field.label
-    if (field.type === 'list' && i + 2 < keys.length) {
+    if ((field.type === 'list' || field.type === 'rows') && i + 2 < keys.length) {
       fields = field.of
       i += 1
     } else fields = undefined
@@ -268,14 +283,15 @@ export function remapEntryRefs(fields: Fields, data: Data, map: ReadonlyMap<stri
   const walk = (field: Field, value: Json | undefined): Json | undefined => {
     if (value === undefined || value === null) return value
     if (field.type === 'ref') return Array.isArray(value) ? value.map(swap) : swap(value)
-    if (field.type === 'list' && Array.isArray(value)) {
-      return value.map((row) => {
-        if (!isRecord(row)) return row
-        const out: Record<string, Json> = { ...row }
-        for (const [key, inner] of Object.entries(field.of)) if (out[key] !== undefined) out[key] = walk(inner, out[key])!
-        return out
-      })
+    if (field.type !== 'list' && field.type !== 'rows') return value
+    const swapRow = (row: Json): Json => {
+      if (!isRecord(row)) return row
+      const out: Record<string, Json> = { ...row }
+      for (const [key, inner] of Object.entries(field.of)) if (out[key] !== undefined) out[key] = walk(inner, out[key])!
+      return out
     }
+    if (field.type === 'list' && Array.isArray(value)) return value.map(swapRow)
+    if (field.type === 'rows' && isRecord(value)) return Object.fromEntries(Object.entries(value).map(([key, row]) => [key, swapRow(row)]))
     return value
   }
   const out: Data = { ...data }
@@ -299,8 +315,8 @@ export async function treesOf(fields: Fields, data: Data): Promise<{ json: strin
  * site shows it first in a manually ordered collection. A navigation tree stores it last instead: it joins the last
  * section until it is placed (NavPlace). `orders` are those of every row of the brick, removed ones included.
  */
-export function newOrder(key: string, brick: CollectionBrick, orders: number[]): number {
-  return isNavTree(key, brick) ? Math.max(0, ...orders) + 1 : Math.min(1, ...orders) - 1
+export function newOrder(brick: CollectionBrick, orders: number[]): number {
+  return brick.tree ? Math.max(0, ...orders) + 1 : Math.min(1, ...orders) - 1
 }
 
 /** The texts of a Markdown value: one string, or one per language. */

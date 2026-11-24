@@ -2,7 +2,7 @@
 // turns it into the stored form (core/types.ts), because the labels of the standard tasks need the site's languages
 // and the texts of its label files.
 import type { ValueInput } from '../core/fields.ts'
-import type { Fields, Label } from '../core/types.ts'
+import type { CollectionListing, CollectionTree, Fields, Label } from '../core/types.ts'
 
 /** Marks a brick written with `single` or `collection` of this entry. A symbol key, so it is never stored. */
 export const DEF: unique symbol = Symbol.for('ginko.brick.def')
@@ -12,6 +12,32 @@ type FieldsOfType<F, T extends string> = { [K in keyof F]: F[K] extends { type: 
 type Need<K extends string, Missing extends string> = [K] extends [never] ? Missing : K
 type DateKey<F> = Need<FieldsOfType<F, 'date' | 'daterange'>, 'This brick has no date field'>
 type DayKey<F> = Need<FieldsOfType<F, 'date'>, 'This brick has no date field'>
+type MarkdownKey<F> = Need<FieldsOfType<F, 'markdown'>, 'This brick has no markdown field'>
+
+/**
+ * How an entry appears in the Studio's lists, pick lists and search: `title` names it (a text, longtext or date field),
+ * `detail` is shown beside the name (such as a price or a date), `group` is a choice field that groups a pick list,
+ * `image` a picture shown with it.
+ */
+export type ListingInput<F> = CollectionListing<
+  Need<FieldsOfType<F, 'text' | 'longtext' | 'date'>, 'This brick has no text or date field'>,
+  FieldsOfType<F, 'text' | 'longtext' | 'number' | 'money' | 'date' | 'daterange' | 'time' | 'choice' | 'choices' | 'boolean'>,
+  FieldsOfType<F, 'choice'>,
+  FieldsOfType<F, 'image'>
+>
+
+/**
+ * The entries are pages of a navigation tree: `parent` is a ref field to the collection itself, `section` and `tab`
+ * are text fields that start a heading or a tab at a top-level page, `label` a text field with the short name the tree
+ * shows in place of the title, `badge` a text field shown as a badge.
+ */
+export type TreeInput<F> = CollectionTree<
+  Need<FieldsOfType<F, 'ref'>, 'This brick has no ref field'>,
+  FieldsOfType<F, 'text'>,
+  FieldsOfType<F, 'text'>,
+  FieldsOfType<F, 'text'>,
+  FieldsOfType<F, 'text'>
+>
 
 /** The tasks every brick can have by their short name. `'add'` and `'remove'` are for collections. */
 export type StandardTask = 'add' | 'edit' | 'remove'
@@ -74,6 +100,10 @@ interface Common<F extends Fields> {
    */
   item?: Label
   fields: F
+  /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
+  body?: MarkdownKey<F>
+  /** The key of the page (`pages`) the Studio's preview opens for an entry. Only for a brick whose entries have no page of their own. */
+  preview?: string
   /** How the form groups its fields. Default `'sections'`. */
   layout?: 'sections' | 'tabs'
   /** The owner's buttons, in order; the first is the main one. A Studio brick with a task is on the Today page. */
@@ -84,14 +114,18 @@ interface Common<F extends Fields> {
 export interface SingleInput<F extends Fields> extends Common<F> { status?: SingleStatusInput }
 
 export interface CollectionInput<F extends Fields> extends Common<F> {
+  /** How an entry appears in lists: `{ title: 'name', detail: 'price', group: 'category' }`. Only `title` is required. */
+  listing: ListingInput<F>
+  /** The entries are pages of a navigation tree: `{ parent: 'parent', section: 'section', tab: 'tab' }`. */
+  tree?: TreeInput<F>
   /** Most entries. Default 500. */
   max?: number
   /** Default `'manual'`: the owner's order. */
   order?: 'manual' | { field: keyof F & string; dir?: 'asc' | 'desc' }
   showUntil?: ShowUntil<DateKey<F>>
   /**
-   * A required translatable field is missing in a language: `'hide'` (default for a brick with a line in the site's
-   * `entries`) leaves the entry out there; `'fallback'` (default without) shows the main language.
+   * A required translatable field is missing in a language: `'hide'` leaves the entry out there; `'fallback'` shows the
+   * main language. Required when the site has more than one language.
    */
   untranslated?: 'fallback' | 'hide'
   /** Entries plan weeks of the single brick `brick`; `field` (a date field) holds the first day of the week. */
@@ -100,10 +134,12 @@ export interface CollectionInput<F extends Fields> extends Common<F> {
 }
 
 /** What `single` and `collection` return. The names in tasks and keys are typed by `F` where they are written and kept as plain names. */
-interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields> }
+interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; body?: string; preview?: string; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields> }
 export interface SingleDef<F extends Fields = Fields> extends Def<F> { kind: 'single'; status?: SingleStatusInput }
 export interface CollectionDef<F extends Fields = Fields> extends Def<F> {
   kind: 'collection'
+  listing: CollectionListing
+  tree?: CollectionTree
   max?: number
   order?: 'manual' | { field: string; dir?: 'asc' | 'desc' }
   showUntil?: ShowUntil
@@ -128,8 +164,10 @@ export function collection<const F extends Fields>(input: CollectionInput<F>): C
 type Merge<F, G> = Fields extends G ? F : { [K in keyof F | keyof G]: K extends keyof G ? G[K] : K extends keyof F ? F[K] : never }
 
 /**
- * A ready-made brick with your changes: another label or word for one entry, more fields, other tasks, another line
- * on Today. Fields are added, never replaced; `tasks` replaces the brick's tasks and may name the added fields.
+ * A ready-made brick with your changes: another label or word for one entry, the page its preview opens (`preview`),
+ * more fields, other tasks, another line on Today; for a collection also how its entries appear in lists (`listing`) and
+ * what an entry does in a language it has no text in (`untranslated`). Fields are added, never replaced; `tasks`
+ * replaces the brick's tasks and may name the added fields, and `listing` replaces the brick's listing.
  *
  * ```ts
  * jobs: extend(jobs(), {
@@ -140,7 +178,7 @@ type Merge<F, G> = Fields extends G ? F : { [K in keyof F | keyof G]: K extends 
  */
 export function extend<const F extends Fields, const G extends Fields = {}>(
   brick: SingleDef<F>,
-  change: { label?: Label; describe?: Label; item?: Label; fields?: G; tasks?: readonly TaskInput<Merge<F, G>>[]; status?: SingleStatusInput },
+  change: { label?: Label; describe?: Label; item?: Label; preview?: string; fields?: G; tasks?: readonly TaskInput<Merge<F, G>>[]; status?: SingleStatusInput },
 ): SingleDef<Merge<F, G>>
 export function extend<const F extends Fields, const G extends Fields = {}>(
   brick: CollectionDef<F>,
@@ -148,12 +186,15 @@ export function extend<const F extends Fields, const G extends Fields = {}>(
     label?: Label
     describe?: Label
     item?: Label
+    preview?: string
     fields?: G
     tasks?: readonly TaskInput<Merge<F, G>>[]
     status?: CollectionStatusInput<DateKey<Merge<F, G>>, keyof Merge<F, G> & string>
+    listing?: ListingInput<Merge<F, G>>
+    untranslated?: 'fallback' | 'hide'
   },
 ): CollectionDef<Merge<F, G>>
-export function extend(brick: BrickDef, change: { label?: Label; describe?: Label; item?: Label; fields?: Fields; tasks?: readonly TaskInput[]; status?: object }): BrickDef {
+export function extend(brick: BrickDef, change: { label?: Label; describe?: Label; item?: Label; preview?: string; fields?: Fields; tasks?: readonly TaskInput[]; status?: object; listing?: CollectionListing; untranslated?: 'fallback' | 'hide' }): BrickDef {
   if (typeof brick === 'function') throw new Error('extend: the first argument is a function. Call it: `extend(posts({ authors: \'people\' }), { … })`.')
   if ((brick as { [DEF]?: true })[DEF] !== true) throw new Error('extend: the first argument is a brick made with `single` or `collection` of \'@lupinum/ginko\', such as a brick of \'@lupinum/ginko/patterns\'.')
   const { fields, ...rest } = change

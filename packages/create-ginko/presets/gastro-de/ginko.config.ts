@@ -11,6 +11,7 @@ export default defineSite({
   timeZone: 'Europe/Vienna', // für dein Land ändern
   locales: ['de'],
   currency: 'EUR', // für dein Land ändern
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: '/' },
   // Steht in Suchergebnissen und Link-Vorschauen. Ersetze es durch einen Satz über deine Website.
   // `color`: the brand colour of the generated share cards.

@@ -27,10 +27,13 @@ export function posts<const R extends Record<Locale, RouteTemplate> | undefined 
   const tag = t('Schlagwort', 'Tag', 'Etiqueta', 'Mot-clé')
   return collection({
     label: o.label ?? t('Beiträge', 'Posts', 'Artículos', 'Articles'),
+    listing: { title: 'title', detail: 'date', image: 'image' },
+    untranslated: 'hide', // a post without a text in a language has no page there
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
     ...(o.route ? { route: o.route as R } : {}),
+    body: 'body',
     fields: {
       title: f.text(t('Titel', 'Title', 'Título', 'Titre')),
       description: f.longtext(t('Beschreibung', 'Description', 'Descripción', 'Description'), { optional: true }),
@@ -48,6 +51,8 @@ export function posts<const R extends Record<Locale, RouteTemplate> | undefined 
 export function authors(o: BasicsOptions = {}) {
   return collection({
     label: o.label ?? t('Autorinnen und Autoren', 'Authors', 'Autores', 'Auteurs'),
+    listing: { title: 'name', image: 'avatar' },
+    untranslated: 'fallback',
     ...sourceOf(o),
     max: 100,
     order: 'manual',
@@ -73,10 +78,13 @@ export interface ChangelogOptions extends BasicsOptions {
 export function changelog(o: ChangelogOptions = {}) {
   return collection({
     label: o.label ?? t('Änderungen', 'Changelog', 'Registro de cambios', 'Journal des modifications'),
+    listing: { title: 'version', detail: 'date' },
+    untranslated: 'fallback',
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
     // A release written ahead is the normal case: an entry dated after the build day is scheduled, `draft: true` holds it back.
+    body: 'body',
     fields: {
       version: f.text(t('Version', 'Version', 'Versión', 'Version'), { max: 40, translate: false }),
       date: f.date(t('Datum', 'Date', 'Fecha', 'Date')),

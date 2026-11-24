@@ -1,4 +1,5 @@
 {
+  "format": 2,
   "site": "restaurant",
   "name": "Gasthaus zur Linde",
   "url": "https://ginko-demo-restaurant.vercel.app",
@@ -13,10 +14,13 @@
   },
   "currency": "EUR",
   "week": {
-    "firstDay": 1,
-    "weekend": [
-      6,
-      7
+    "firstDay": "mo",
+    "workdays": [
+      "mo",
+      "tu",
+      "we",
+      "th",
+      "fr"
     ]
   },
   "holidays": "AT",
@@ -64,82 +68,20 @@
       },
       "fields": {
         "week": {
-          "type": "list",
+          "type": "rows",
           "label": {
             "de": "Wochenplan",
             "en": "Weekly hours"
           },
-          "itemLabel": {
-            "de": "Tag",
-            "en": "Day"
-          },
+          "rows": "weekdays",
           "of": {
-            "day": {
-              "type": "choice",
-              "label": {
-                "de": "Tag",
-                "en": "Day"
-              },
-              "options": [
-                {
-                  "value": "mo",
-                  "label": {
-                    "de": "Montag",
-                    "en": "Monday"
-                  }
-                },
-                {
-                  "value": "tu",
-                  "label": {
-                    "de": "Dienstag",
-                    "en": "Tuesday"
-                  }
-                },
-                {
-                  "value": "we",
-                  "label": {
-                    "de": "Mittwoch",
-                    "en": "Wednesday"
-                  }
-                },
-                {
-                  "value": "th",
-                  "label": {
-                    "de": "Donnerstag",
-                    "en": "Thursday"
-                  }
-                },
-                {
-                  "value": "fr",
-                  "label": {
-                    "de": "Freitag",
-                    "en": "Friday"
-                  }
-                },
-                {
-                  "value": "sa",
-                  "label": {
-                    "de": "Samstag",
-                    "en": "Saturday"
-                  }
-                },
-                {
-                  "value": "su",
-                  "label": {
-                    "de": "Sonntag",
-                    "en": "Sunday"
-                  }
-                }
-              ],
-              "pos": 0
-            },
             "closed": {
               "type": "boolean",
               "label": {
                 "de": "Ruhetag",
                 "en": "Closed all day"
               },
-              "pos": 1
+              "pos": 0
             },
             "from1": {
               "type": "time",
@@ -152,7 +94,7 @@
                 "field": "closed",
                 "not": true
               },
-              "pos": 2
+              "pos": 1
             },
             "to1": {
               "type": "time",
@@ -165,7 +107,7 @@
                 "field": "closed",
                 "not": true
               },
-              "pos": 3
+              "pos": 2
             },
             "from2": {
               "type": "time",
@@ -182,7 +124,7 @@
                 "de": "Nur wenn du untertags eine Pause machst.",
                 "en": "Only if you close for a break during the day."
               },
-              "pos": 4
+              "pos": 3
             },
             "to2": {
               "type": "time",
@@ -195,73 +137,56 @@
                 "field": "closed",
                 "not": true
               },
-              "pos": 5
+              "pos": 4
             }
           },
-          "min": 7,
-          "max": 7,
-          "unique": "day",
-          "default": [
-            {
-              "_id": "wkmo000000",
-              "day": "mo",
+          "default": {
+            "mo": {
               "closed": true
             },
-            {
-              "_id": "wktu000000",
-              "day": "tu",
+            "tu": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             },
-            {
-              "_id": "wkwe000000",
-              "day": "we",
+            "we": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             },
-            {
-              "_id": "wkth000000",
-              "day": "th",
+            "th": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             },
-            {
-              "_id": "wkfr000000",
-              "day": "fr",
+            "fr": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             },
-            {
-              "_id": "wksa000000",
-              "day": "sa",
+            "sa": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             },
-            {
-              "_id": "wksu000000",
-              "day": "su",
+            "su": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             }
-          ],
+          },
           "pos": 0
         },
         "exceptions": {
@@ -495,6 +420,11 @@
         "de": "Öffnungszeiten ab Datum",
         "en": "Opening hours from a date"
       },
+      "listing": {
+        "title": "label",
+        "detail": "from"
+      },
+      "untranslated": "fallback",
       "fields": {
         "label": {
           "type": "text",
@@ -532,82 +462,20 @@
           "pos": 3
         },
         "week": {
-          "type": "list",
+          "type": "rows",
           "label": {
             "de": "Wochenplan",
             "en": "Weekly hours"
           },
-          "itemLabel": {
-            "de": "Tag",
-            "en": "Day"
-          },
+          "rows": "weekdays",
           "of": {
-            "day": {
-              "type": "choice",
-              "label": {
-                "de": "Tag",
-                "en": "Day"
-              },
-              "options": [
-                {
-                  "value": "mo",
-                  "label": {
-                    "de": "Montag",
-                    "en": "Monday"
-                  }
-                },
-                {
-                  "value": "tu",
-                  "label": {
-                    "de": "Dienstag",
-                    "en": "Tuesday"
-                  }
-                },
-                {
-                  "value": "we",
-                  "label": {
-                    "de": "Mittwoch",
-                    "en": "Wednesday"
-                  }
-                },
-                {
-                  "value": "th",
-                  "label": {
-                    "de": "Donnerstag",
-                    "en": "Thursday"
-                  }
-                },
-                {
-                  "value": "fr",
-                  "label": {
-                    "de": "Freitag",
-                    "en": "Friday"
-                  }
-                },
-                {
-                  "value": "sa",
-                  "label": {
-                    "de": "Samstag",
-                    "en": "Saturday"
-                  }
-                },
-                {
-                  "value": "su",
-                  "label": {
-                    "de": "Sonntag",
-                    "en": "Sunday"
-                  }
-                }
-              ],
-              "pos": 0
-            },
             "closed": {
               "type": "boolean",
               "label": {
                 "de": "Ruhetag",
                 "en": "Closed all day"
               },
-              "pos": 1
+              "pos": 0
             },
             "from1": {
               "type": "time",
@@ -620,7 +488,7 @@
                 "field": "closed",
                 "not": true
               },
-              "pos": 2
+              "pos": 1
             },
             "to1": {
               "type": "time",
@@ -633,7 +501,7 @@
                 "field": "closed",
                 "not": true
               },
-              "pos": 3
+              "pos": 2
             },
             "from2": {
               "type": "time",
@@ -650,7 +518,7 @@
                 "de": "Nur wenn du untertags eine Pause machst.",
                 "en": "Only if you close for a break during the day."
               },
-              "pos": 4
+              "pos": 3
             },
             "to2": {
               "type": "time",
@@ -663,73 +531,56 @@
                 "field": "closed",
                 "not": true
               },
-              "pos": 5
+              "pos": 4
             }
           },
-          "min": 7,
-          "max": 7,
-          "unique": "day",
-          "default": [
-            {
-              "_id": "wkmo000000",
-              "day": "mo",
+          "default": {
+            "mo": {
               "closed": true
             },
-            {
-              "_id": "wktu000000",
-              "day": "tu",
+            "tu": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             },
-            {
-              "_id": "wkwe000000",
-              "day": "we",
+            "we": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             },
-            {
-              "_id": "wkth000000",
-              "day": "th",
+            "th": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             },
-            {
-              "_id": "wkfr000000",
-              "day": "fr",
+            "fr": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             },
-            {
-              "_id": "wksa000000",
-              "day": "sa",
+            "sa": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             },
-            {
-              "_id": "wksu000000",
-              "day": "su",
+            "su": {
               "closed": false,
               "from1": "11:30",
               "to1": "14:00",
               "from2": "17:30",
               "to2": "22:00"
             }
-          ],
+          },
           "pos": 4
         }
       },
@@ -780,6 +631,11 @@
         "de": "Hinweise",
         "en": "Notices"
       },
+      "listing": {
+        "title": "text",
+        "detail": "until"
+      },
+      "untranslated": "fallback",
       "fields": {
         "text": {
           "type": "text",
@@ -863,61 +719,13 @@
           "pos": 0
         },
         "days": {
-          "type": "list",
+          "type": "rows",
           "label": {
             "de": "Tage",
             "en": "Days"
           },
-          "itemLabel": {
-            "de": "Tag",
-            "en": "Day"
-          },
+          "rows": "workdays",
           "of": {
-            "day": {
-              "type": "choice",
-              "label": {
-                "de": "Tag",
-                "en": "Day"
-              },
-              "options": [
-                {
-                  "value": "mo",
-                  "label": {
-                    "de": "Montag",
-                    "en": "Monday"
-                  }
-                },
-                {
-                  "value": "tu",
-                  "label": {
-                    "de": "Dienstag",
-                    "en": "Tuesday"
-                  }
-                },
-                {
-                  "value": "we",
-                  "label": {
-                    "de": "Mittwoch",
-                    "en": "Wednesday"
-                  }
-                },
-                {
-                  "value": "th",
-                  "label": {
-                    "de": "Donnerstag",
-                    "en": "Thursday"
-                  }
-                },
-                {
-                  "value": "fr",
-                  "label": {
-                    "de": "Freitag",
-                    "en": "Friday"
-                  }
-                }
-              ],
-              "pos": 0
-            },
             "dish": {
               "type": "text",
               "label": {
@@ -925,7 +733,11 @@
                 "en": "Dish"
               },
               "max": 200,
-              "pos": 1
+              "default": {
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
+              },
+              "pos": 0
             },
             "price": {
               "type": "money",
@@ -934,7 +746,7 @@
                 "en": "Price"
               },
               "optional": true,
-              "pos": 2
+              "pos": 1
             },
             "allergens": {
               "type": "choices",
@@ -943,6 +755,7 @@
                 "en": "Allergens"
               },
               "askAgainWhen": "dish",
+              "default": [],
               "options": [
                 {
                   "value": "A",
@@ -1043,59 +856,9 @@
                   }
                 }
               ],
-              "pos": 3
+              "pos": 2
             }
           },
-          "min": 5,
-          "max": 5,
-          "unique": "day",
-          "default": [
-            {
-              "_id": "ldmo000000",
-              "day": "mo",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldtu000000",
-              "day": "tu",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldwe000000",
-              "day": "we",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldth000000",
-              "day": "th",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldfr000000",
-              "day": "fr",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            }
-          ],
           "pos": 1
         },
         "note": {
@@ -1141,6 +904,7 @@
           "needsApproval": true
         }
       ],
+      "preview": "lunch",
       "pos": 3
     },
     "lunchPlans": {
@@ -1149,6 +913,10 @@
         "de": "Mittagsmenü vorausplanen",
         "en": "Plan the lunch menu ahead"
       },
+      "listing": {
+        "title": "weekOf"
+      },
+      "untranslated": "fallback",
       "fields": {
         "weekOf": {
           "type": "date",
@@ -1159,61 +927,13 @@
           "pos": 0
         },
         "days": {
-          "type": "list",
+          "type": "rows",
           "label": {
             "de": "Tage",
             "en": "Days"
           },
-          "itemLabel": {
-            "de": "Tag",
-            "en": "Day"
-          },
+          "rows": "workdays",
           "of": {
-            "day": {
-              "type": "choice",
-              "label": {
-                "de": "Tag",
-                "en": "Day"
-              },
-              "options": [
-                {
-                  "value": "mo",
-                  "label": {
-                    "de": "Montag",
-                    "en": "Monday"
-                  }
-                },
-                {
-                  "value": "tu",
-                  "label": {
-                    "de": "Dienstag",
-                    "en": "Tuesday"
-                  }
-                },
-                {
-                  "value": "we",
-                  "label": {
-                    "de": "Mittwoch",
-                    "en": "Wednesday"
-                  }
-                },
-                {
-                  "value": "th",
-                  "label": {
-                    "de": "Donnerstag",
-                    "en": "Thursday"
-                  }
-                },
-                {
-                  "value": "fr",
-                  "label": {
-                    "de": "Freitag",
-                    "en": "Friday"
-                  }
-                }
-              ],
-              "pos": 0
-            },
             "dish": {
               "type": "text",
               "label": {
@@ -1221,7 +941,11 @@
                 "en": "Dish"
               },
               "max": 200,
-              "pos": 1
+              "default": {
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
+              },
+              "pos": 0
             },
             "price": {
               "type": "money",
@@ -1230,7 +954,7 @@
                 "en": "Price"
               },
               "optional": true,
-              "pos": 2
+              "pos": 1
             },
             "allergens": {
               "type": "choices",
@@ -1239,6 +963,7 @@
                 "en": "Allergens"
               },
               "askAgainWhen": "dish",
+              "default": [],
               "options": [
                 {
                   "value": "A",
@@ -1339,59 +1064,9 @@
                   }
                 }
               ],
-              "pos": 3
+              "pos": 2
             }
           },
-          "min": 5,
-          "max": 5,
-          "unique": "day",
-          "default": [
-            {
-              "_id": "ldmo000000",
-              "day": "mo",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldtu000000",
-              "day": "tu",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldwe000000",
-              "day": "we",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldth000000",
-              "day": "th",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldfr000000",
-              "day": "fr",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            }
-          ],
           "pos": 1
         },
         "note": {
@@ -1463,6 +1138,12 @@
         "de": "Speisekarte",
         "en": "Menu"
       },
+      "listing": {
+        "title": "name",
+        "detail": "price",
+        "group": "category"
+      },
+      "untranslated": "fallback",
       "fields": {
         "category": {
           "type": "choice",
@@ -1808,6 +1489,7 @@
           "kind": "remove"
         }
       ],
+      "preview": "menu",
       "pos": 5
     },
     "events": {
@@ -1816,6 +1498,13 @@
         "de": "Veranstaltungen",
         "en": "Events"
       },
+      "listing": {
+        "title": "title",
+        "detail": "when",
+        "image": "image"
+      },
+      "untranslated": "hide",
+      "body": "description",
       "fields": {
         "title": {
           "type": "text",
@@ -1990,6 +1679,7 @@
           ]
         }
       ],
+      "preview": "gallery",
       "pos": 7
     },
     "contact": {

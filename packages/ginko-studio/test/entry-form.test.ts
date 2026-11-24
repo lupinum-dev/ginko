@@ -67,7 +67,7 @@ const { useKeptEntry } = await import('../app/composables/useKeptEntry')
 const { default: ConflictPanel } = await import('../app/components/ConflictPanel.vue')
 
 const brick = {
-  kind: 'collection', label: 'Gerichte',
+  kind: 'collection', label: 'Gerichte', listing: { title: 'name' },
   fields: {
     name: { type: 'text', label: 'Name', pos: 0 }, description: { type: 'longtext', label: 'Beschreibung', pos: 1 },
     sides: { type: 'list', label: 'Beilagen', pos: 2, of: { name: { type: 'text', label: 'Name' } } },
@@ -161,6 +161,51 @@ describe('useEntryForm', () => {
     expect(calls).toEqual([
       ['save', { entry: 'e1', baseRev: 6, fields: { sides: [salad, { _id: 'r2', name: 'Frittatensuppe' }, { _id: 'r3', name: 'Kaspressknödel' }] } }],
     ])
+  })
+})
+
+// A rows field keeps its rows, so a conflict merges row by row key, as a list merges by `_id`.
+describe('a rows field in a conflict', () => {
+  const hoursBrick = {
+    kind: 'collection', label: 'Gerichte', listing: { title: 'name' },
+    fields: {
+      name: { type: 'text', label: 'Name', pos: 0 },
+      hours: { type: 'rows', label: 'Zeiten', pos: 1, rows: [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }], of: { note: { type: 'text', label: 'Notiz', translate: false } } },
+    },
+  } as never
+  const rowsForm = () => mountForm({ brick: () => hoursBrick, fields: () => (hoursBrick as { fields: never }).fields })
+  const withHours = (rev: number, mo: string, tu: string) => ({ ...stored, rev, data: { ...stored.data, hours: { mo: { note: mo }, tu: { note: tu } } } })
+  /** I change Monday; the cook saved `theirs` meanwhile. */
+  async function conflictOver(theirs: Entry) {
+    live.value = withHours(5, 'zu', 'zu')
+    const form = rowsForm()
+    form.setField('hours', { mo: { note: '11–14' }, tu: { note: 'zu' } })
+    refuseNext = { code: 'CHANGED_SINCE', message: 'Inzwischen hat jemand das geändert.', details: { rev: 6, conflicts: ['hours'], data: theirs.data, by: { hours: { email: 'koch@example.com' } } } }
+    expect(await form.save()).toBe(false)
+    return form
+  }
+
+  // Wrong behaviour caught: the weekday table offers no "Beides behalten" (it did when the rows were a list), so one
+  // person's day is lost.
+  test('we change different rows: "Beides behalten" saves both rows', async () => {
+    const form = await conflictOver(withHours(6, 'zu', '17–22'))
+    expect(await form.mergeLists()).toBe(true)
+    expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { hours: { mo: { note: '11–14' }, tu: { note: '17–22' } } } }]])
+  })
+
+  // Wrong behaviour caught: "Meine behalten" sends my whole table, so the cook's Tuesday goes back to what it was.
+  test('"Meine behalten" keeps the row the other person changed and I left alone', async () => {
+    const form = await conflictOver(withHours(6, 'zu', '17–22'))
+    expect(await form.keepMine()).toBe(true)
+    expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { hours: { mo: { note: '11–14' }, tu: { note: '17–22' } } } }]])
+  })
+
+  // Wrong behaviour caught: a clash on one row is merged, and one person's value of that row is lost without a word.
+  test('we change the same row differently: no "Beides behalten", the conflict stays', async () => {
+    const form = await conflictOver(withHours(6, '12–15', 'zu'))
+    expect(await form.mergeLists()).toBe(false)
+    expect(form.conflict.value?.fields).toEqual(['hours'])
+    expect(calls).toEqual([])
   })
 })
 
@@ -307,7 +352,7 @@ describe('TaskSheet', () => {
   /** This week's lunch as stored: Montag with its dish and allergens. */
   const thisWeek = {
     weekOf: '2026-10-12', note: { de: 'Suppe inklusive' },
-    days: [{ _id: 'ldmo000000', day: 'mo', dish: { de: 'Gulasch' }, allergens: ['A'] }, { _id: 'ldtu000000', day: 'tu', dish: { de: 'Fisch' }, allergens: ['D'] }],
+    days: { mo: { dish: { de: 'Gulasch' }, allergens: ['A'] }, tu: { dish: { de: 'Fisch' }, allergens: ['D'] } },
   }
 
   /**
@@ -339,6 +384,8 @@ describe('TaskSheet', () => {
     const entry = o.data ? { ...stored, _id: 'l1', brick: o.brickKey, kind: brick.kind === 'single' ? 'single' : 'item', data: o.data } as Entry : undefined
     const sheet = mount(TaskSheet, {
       props: { site: 'restaurant', brickKey: o.brickKey, brick, task: brick.tasks!.find((t) => t.id === o.task)!, entry, main: 'de', locales: ['de', 'en'], schema, copyFrom: o.copyFrom, reopen: o.reopen },
+      // The site's week, as layouts/site.vue provides it: rows of workdays follow it.
+      global: { provide: { 'ginko:week': vue.ref(schema.week) } },
       attachTo: document.body,
     })
     await flushPromises()
@@ -482,9 +529,9 @@ describe('TaskSheet', () => {
     await sheet.findAll('button').find((b) => b.text() === 'Von dieser Woche übernehmen')!.trigger('click')
     await flushPromises()
     const dish = (row: string) => sheet.get(`[data-row="${row}"] input[type="text"]`)
-    expect((dish('ldmo000000').element as HTMLInputElement).value).toBe('Gulasch')
+    expect((dish('mo').element as HTMLInputElement).value).toBe('Gulasch')
     expect((sheet.get('input[type="date"]').element as HTMLInputElement).value).toBe('2026-10-19')
-    await dish('ldmo000000').setValue('Schnitzel')
+    await dish('mo').setValue('Schnitzel')
     await sheet.get('form').trigger('submit')
     await flushPromises()
     expect(sheet.get('[role="alert"]').text()).toBe('Bitte bestätige bei „Montag“: Sind die Allergene noch richtig?')

@@ -28,6 +28,8 @@ export interface JobsOptions<R extends Record<Locale, RouteTemplate> | undefined
 export function jobs<const R extends Record<Locale, RouteTemplate> | undefined = undefined>(o: JobsOptions<R> = {}) {
   return collection({
     label: o.label ?? t('Stellen', 'Jobs', 'Empleos', 'Offres d’emploi'),
+    listing: { title: 'title', detail: 'validUntil' },
+    untranslated: 'hide',
     ...sourceOf(o),
     max: 30,
     order: { field: 'title', dir: 'asc' },
@@ -38,6 +40,7 @@ export function jobs<const R extends Record<Locale, RouteTemplate> | undefined =
       { id: 'extend', kind: 'edit', pick: true, fields: ['validUntil'], label: t('Bewerbungsfrist ändern', 'Change the deadline', 'Cambiar el plazo', 'Modifier la date limite') },
       { id: 'remove', kind: 'remove', label: t('Stelle entfernen', 'Remove a job', 'Eliminar una oferta', 'Retirer une offre') },
     ],
+    body: 'body',
     fields: {
       title: f.text(t('Titel', 'Title', 'Título', 'Titre')),
       description: f.longtext(t('Kurzbeschreibung', 'Short description', 'Descripción breve', 'Description courte')),

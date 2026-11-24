@@ -20,6 +20,8 @@ export default defineSite({
   },
   url: siteUrl('https://example.com'),
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   // German public holidays, and `addressCountry` in the Organization and JobPosting JSON-LD.
   country: 'DE',
   locales,
@@ -95,7 +97,7 @@ export default defineSite({
     events: events(),
     // Product sheets and other PDFs, newest first (content/downloads/, the files in public/sheets/). A product names
     // its sheet with `sheet`.
-    downloads: downloads(),
+    downloads: extend(downloads(), { preview: 'downloads' }),
     // Customer logos on the home page (content/logos/, the files in public/logos/).
     logos,
     // What customers say, on the home page (content/quotes/), with their permission.

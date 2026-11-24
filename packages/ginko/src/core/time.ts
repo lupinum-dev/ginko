@@ -46,21 +46,37 @@ export interface WeekInfo {
   weekend: number[]
 }
 
-/** Used when the runtime knows no week data, and for stored schemas that have no `week` yet. */
-export const DEFAULT_WEEK: WeekInfo = { firstDay: 1, weekend: [6, 7] }
+/** The keys of the days in the site's week and in stored values (a rows field of weekdays, the opening hours), Monday first. */
+export const DAY_KEYS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const
+export type DayKey = (typeof DAY_KEYS)[number]
 
 /**
- * Week info of a BCP 47 language (`de-AT`, `en-US`) from the runtime's locale data. `firstDayOfWeek` is the site
- * owner's override of the first day. Computed once when the schema is built; everything else reads `schema.week`.
+ * The site's week, as the site states it (`defineSite({ week })`) and the schema stores it: the day the calendar week
+ * starts on and the days that are workdays, any days (`{ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`;
+ * a restaurant closed on Mondays `['tu', 'we', 'th', 'fr', 'sa']`; a US site `firstDay: 'su'` with Monday to Friday).
+ * Every site states it. Weeks start on `firstDay`; after the workday that comes last in the week counted from
+ * `firstDay`, the coming week counts.
  */
-export function weekInfoOf(language: string, firstDayOfWeek?: WeekInfo['firstDay']): WeekInfo {
-  let info: WeekInfo = DEFAULT_WEEK
-  try {
-    const locale = new Intl.Locale(language) as Intl.Locale & { getWeekInfo?: () => Partial<WeekInfo>; weekInfo?: Partial<WeekInfo> }
-    const found = locale.getWeekInfo?.() ?? locale.weekInfo
-    if (found?.firstDay && Array.isArray(found.weekend)) info = { firstDay: found.firstDay as WeekInfo['firstDay'], weekend: [...found.weekend] }
-  } catch { /* invalid tag: checkSite reports it */ }
-  return { firstDay: firstDayOfWeek ?? info.firstDay, weekend: info.weekend }
+export interface SiteWeek {
+  firstDay: DayKey
+  workdays: readonly DayKey[]
+}
+
+/** The week a site states, in ISO numbers for the date helpers. */
+export function weekInfo(week: SiteWeek): WeekInfo {
+  const iso = (day: DayKey) => DAY_KEYS.indexOf(day) + 1
+  return { firstDay: iso(week.firstDay) as WeekInfo['firstDay'], weekend: DAY_KEYS.filter((day) => !week.workdays.includes(day)).map(iso) }
+}
+
+/** The site's seven days in its order, from `week.firstDay` on. */
+export function daysOf(week: SiteWeek): DayKey[] {
+  const first = DAY_KEYS.indexOf(week.firstDay)
+  return DAY_KEYS.map((_, i) => DAY_KEYS[(first + i) % 7]!)
+}
+
+/** The site's workdays in its week order, from `week.firstDay` on. */
+export function workdaysOf(week: SiteWeek): DayKey[] {
+  return daysOf(week).filter((day) => week.workdays.includes(day))
 }
 
 const isoDay = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay() || 7 // 1 = Monday, 7 = Sunday
@@ -93,10 +109,10 @@ export function firstDayShown(weekStart: string, week: WeekInfo): string {
   return weekStart
 }
 
-export function resolveToken(token: string, timeZone: string, week: WeekInfo, now: Date = new Date()): string | undefined {
+export function resolveToken(token: string, timeZone: string, week: SiteWeek, now: Date = new Date()): string | undefined {
   const today = todayIn(timeZone, now)
   if (token === '@today') return today
-  if (token === '@workWeek') return workWeekOf(today, week)
-  if (token === '@nextWorkWeek') return addDays(workWeekOf(today, week), 7)
+  if (token === '@workWeek') return workWeekOf(today, weekInfo(week))
+  if (token === '@nextWorkWeek') return addDays(workWeekOf(today, weekInfo(week)), 7)
   return undefined
 }

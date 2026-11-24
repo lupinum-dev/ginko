@@ -1,15 +1,17 @@
 // A documentation site: the layout, side navigation and search come from @lupinum/ginko-docs.
 // Every page is a Markdown file in content/docs/.
-import { defineSite } from '@lupinum/ginko/v1'
+import { defineSite } from '@lupinum/ginko'
 import { components, docsCollection } from '@lupinum/ginko-docs/config'
 
 const locales = ['en'] as const
 
 export default defineSite({
-  site: '{{SITE}}',
+  studio: { id: '{{SITE}}', bricks: [] }, // the site's id on a Ginko platform; every page is a file in content/
   name: '{{SITE}}',
   url: 'https://example.com',
   timeZone: 'Europe/Vienna', // change for your country
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   currency: 'EUR', // change for your country
   pages: { home: '/' },

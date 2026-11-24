@@ -1,5 +1,5 @@
 import type { Bundle } from './bundle.ts'
-import type { Locale } from './types.ts'
+import type { Brick, Locale } from './types.ts'
 import { trimPath } from './path.ts'
 
 export interface NavNode {
@@ -21,20 +21,25 @@ function ancestorsOf(path: string): string[] {
 
 /**
  * Navigation tree of the collections `bricks` in `locale`, built from item URLs. An item is a child of the
- * node at its nearest existing path prefix, else a root node. A string `parent` field (item id) overrides that.
- * Siblings keep the item order of the bundle (bricks in the given order).
+ * node at its nearest existing path prefix, else a root node. In a collection with `tree`, the item its parent field
+ * names (an item id) overrides that. Siblings keep the item order of the bundle (bricks in the given order). `schema`
+ * gives each brick's `listing` and `tree`: a node's title is the field `listing.title` names, else the last part of its path.
  */
-export function navTree(bundle: Bundle, bricks: string[], locale: Locale): NavNode[] {
+export function navTree(bundle: Bundle, bricks: string[], locale: Locale, schema: { bricks: Record<string, Brick> }): NavNode[] {
   const entries: { node: NavNode; parent?: string }[] = []
   for (const brick of bricks) {
     const b = Object.hasOwn(bundle.bricks, brick) ? bundle.bricks[brick] : undefined
     if (b?.kind !== 'collection') continue
+    const def = Object.hasOwn(schema.bricks, brick) ? schema.bricks[brick] : undefined
+    const titleKey = def?.kind === 'collection' ? def.listing.title : undefined
+    const parentKey = def?.kind === 'collection' ? def.tree?.parent : undefined
     for (const item of b.items) {
       const url = item.urls?.[locale]
       if (url === undefined) continue
       const path = trimPath(url)
-      const title = typeof item.data.title === 'string' && item.data.title ? item.data.title : (path.split('/').filter(Boolean).pop() ?? path)
-      entries.push({ node: { title, path, id: item.id, brick, children: [] }, parent: typeof item.data.parent === 'string' ? item.data.parent : undefined })
+      const named = titleKey === undefined ? undefined : item.data[titleKey]
+      const title = typeof named === 'string' && named ? named : (path.split('/').filter(Boolean).pop() ?? path)
+      entries.push({ node: { title, path, id: item.id, brick, children: [] }, parent: parentKey !== undefined && typeof item.data[parentKey] === 'string' ? item.data[parentKey] as string : undefined })
     }
   }
   const byPath = new Map<string, NavNode>()

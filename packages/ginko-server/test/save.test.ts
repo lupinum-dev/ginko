@@ -219,6 +219,21 @@ describe('save with a locale (F02, F03)', () => {
     expect((await t.run((ctx) => ctx.db.get(entry)))!.data.note).toEqual({ de: note.de })
   })
 
+  // Wrong behaviour caught: an English save of the lunch week sends every row whole, and the German dishes (or a
+  // German typed meanwhile) are overwritten with what the English form held.
+  it('a rows field saved in English takes only the English of each cell; the German stays', async () => {
+    const { t, as, entries } = await setup()
+    const entry = entries.lunch!
+    type Days = Record<string, { dish: Record<string, string> }>
+    const days = (await t.run((ctx) => ctx.db.get(entry)))!.data.days as Days
+    const sent = structuredClone(days)
+    sent.mo!.dish = { de: 'IGNORED', en: 'Pumpkin soup' }
+    sent.tu!.dish = { en: 'Boiled beef' }
+    await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry, baseRev: 1, locale: 'en', fields: { days: sent }, sentence: 'x' })
+    const stored = (await t.run((ctx) => ctx.db.get(entry)))!.data.days as Days
+    expect([stored.mo!.dish, stored.tu!.dish, stored.we]).toEqual([{ de: days.mo!.dish.de, en: 'Pumpkin soup' }, { de: days.tu!.dish.de, en: 'Boiled beef' }, days.we])
+  })
+
   it('null with the main locale (Aufheben) still removes the whole field', async () => {
     const { t, as, entries } = await setup()
     const entry = entries.lunch!

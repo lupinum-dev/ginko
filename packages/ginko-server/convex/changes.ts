@@ -129,7 +129,7 @@ export const get = query({
     const schema = actor.site.schema as Schema
     const brick = Object.hasOwn(schema.bricks, change.brick) ? schema.bricks[change.brick] : undefined
     // before/after hold exactly the changed roots; a change without fields (publish, remove) has no field diff.
-    const diff = diffFields(brick?.fields, (change.before ?? {}) as Record<string, Json>, (change.after ?? {}) as Record<string, Json>, schema.locales[0]!)
+    const diff = diffFields(brick?.fields, (change.before ?? {}) as Record<string, Json>, (change.after ?? {}) as Record<string, Json>, schema.locales[0]!, schema.week)
     const [summary] = await summaries(ctx, actor, [change])
     return { ...summary!, diff }
   },

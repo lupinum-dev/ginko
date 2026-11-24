@@ -11,6 +11,7 @@ export const pages = collection({
   // The words for one entry as they stand in a task: "Seite bearbeiten", "Edit a page", "Modifier une page".
   item: { de: 'Seite', en: 'a page', fr: 'une page' },
   max: 50,
+  body: 'body',
   fields: {
     title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 80 }),
     slug: f.slug({ de: 'Adresse', en: 'Address', fr: 'Adresse' }, { from: 'title' }),
@@ -29,5 +30,7 @@ export const pages = collection({
     body: f.markdown({ de: 'Text', en: 'Text', fr: 'Texte' }, { profile: 'page' }),
   },
   // 'edit' is every field but the address: a changed address breaks links.
+  listing: { title: 'title', image: 'image' },
+  untranslated: 'hide',
   tasks: ['edit', 'add'],
 })

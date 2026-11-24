@@ -18,10 +18,11 @@ const { computed, defineComponent, h, nextTick, onMounted, reactive, ref, Suspen
 Object.entries({ computed, nextTick, onMounted, reactive, ref, watch, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const notices = serializeSchema(defineSite({
-  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
   bricks: {
     notices: collection({
+      listing: { title: 'text' },
       label: 'Hinweise', max: 20, order: 'manual',
       fields: { text: f.text('Text'), until: f.date('Gilt bis', { optional: true }) },
       visible: { mode: 'until', field: 'until' },
@@ -69,7 +70,9 @@ vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => ({
 vi.stubGlobal('useConvex', () => ({ query: async () => [] }))
 // Each removal runs until the test lets it finish.
 const finish = new Map<string, () => void>()
-vi.stubGlobal('useOps', () => ({ removeEntry: (entry: string) => new Promise<boolean>((resolve) => finish.set(entry, () => resolve(true))) }))
+/** The task each removal went through (useOps.removeEntry's third argument). */
+const removedWith: (string | undefined)[] = []
+vi.stubGlobal('useOps', () => ({ removeEntry: (entry: string, _lifeRev: number, task?: string) => { removedWith.push(task); return new Promise<boolean>((resolve) => finish.set(entry, () => resolve(true))) } }))
 
 // Wrong behaviour caught: removing one notice, then another, re-enabled the second's button when the first finished,
 // so a second click sent its removal twice.
@@ -88,6 +91,52 @@ test('a row\'s "Entfernen" stays disabled while its removal runs, also when anot
   expect(removeButton('Heute geschlossen').attributes('disabled')).toBeUndefined()
   expect(removeButton('Neue Karte').attributes('disabled')).toBeDefined()
   wrapper.unmount()
+})
+
+// Wrong (design V2 guess 11): a tap on a row opens the first edit task in the list ("Text korrigieren"), so the order of
+// the buttons decides what a row opens; the standard task is the one with the id `edit`, and without it a row opens nothing.
+test.each([
+  ['fix first, then edit', [{ id: 'fix', label: 'Text korrigieren', kind: 'edit', pick: true, fields: ['text'] }, { id: 'edit', label: 'Hinweis bearbeiten', kind: 'edit', pick: true, fields: ['text', 'until'] }], 'edit'],
+  ['fix only', [{ id: 'fix', label: 'Text korrigieren', kind: 'edit', pick: true, fields: ['text'] }], undefined],
+])('a row opens the task `edit` (%s)', async (_name, tasks, opened) => {
+  const brick = notices.bricks.notices!
+  schema = { ...notices, bricks: { ...notices.bricks, notices: { ...brick, tasks: [...brick.tasks!, ...tasks] as never } } }
+  listed = [notice('e1', 'Heute geschlossen')]
+  const sheet = { name: 'TaskSheet', props: ['task'], template: '<p data-test="sheet">{{ task.id }}</p>' }
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+    global: { stubs: { TaskSheet: sheet, PickSheet: true, I18nT: true, NuxtLink: true } },
+  })
+  await flushPromises()
+  const row = wrapper.get('section[aria-labelledby="b-notices"]').findAll('li button').find((b) => b.text().includes('Heute geschlossen'))
+  expect(!!row).toBe(opened !== undefined)
+  if (row) {
+    await row.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-test="sheet"]').text()).toBe(opened)
+  }
+  wrapper.unmount()
+  schema = notices
+})
+
+// Wrong (design V2 guess 11): a row's "Entfernen" goes through the first remove task in the list, so the order of the
+// tasks decides it; the standard task is the one with the id `remove`.
+test('a row\'s "Entfernen" is the task `remove`, not the first remove task', async () => {
+  const brick = notices.bricks.notices!
+  schema = { ...notices, bricks: { ...notices.bricks, notices: { ...brick, tasks: [{ id: 'archive', label: 'Hinweis ablegen', kind: 'remove' }, ...brick.tasks!] } } }
+  listed = [notice('e1', 'Heute geschlossen')]
+  removedWith.length = 0
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+    global: { stubs: { TaskSheet: true, PickSheet: true, I18nT: true, NuxtLink: true } },
+  })
+  await flushPromises()
+  await wrapper.get('button[aria-label="Heute geschlossen entfernen"]').trigger('click')
+  await flushPromises()
+  expect(removedWith).toEqual(['notices.remove'])
+  finish.get('e1')!()
+  await flushPromises()
+  wrapper.unmount()
+  schema = notices
+  listed = [notice('e1', 'Heute geschlossen'), notice('e2', 'Neue Karte')]
 })
 
 const DAY = 86_400_000
@@ -214,6 +263,26 @@ describe('a planned price (menu, `planned`)', () => {
     const schnitzel = { _id: 's1', brick: 'menu', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { category: 'mains', name: { de: 'Schnitzel' }, price: { amount: 2190 }, nextPrice: { amount: 2290 }, priceFrom: '2026-10-18' } }
     const wrapper = mount(PickSheet, { props: { brick: dishes, task: task('price'), entries: [schnitzel] as never, main: 'de', today } })
     expect(wrapper.get('li').text()).toContain(price)
+    wrapper.unmount()
+  })
+})
+
+describe('the pick list reads `listing`', () => {
+  const dishes = serializeSchema(restaurant).bricks.menu!
+  const entry = (id: string, data: Record<string, unknown>) => ({ _id: id, brick: 'menu', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data })
+  const entries = [
+    entry('a', { category: 'mains', veg: 'vegan', name: { de: 'Linsencurry' }, description: { de: 'Mit Reis' }, price: { amount: 1290 } }),
+    entry('b', { category: 'desserts', veg: 'vegetarian', name: { de: 'Strudel' }, description: { de: 'Mit Vanilleeis' }, price: { amount: 690 } }),
+  ]
+
+  // Wrong (guess 12): the list is grouped by the first choice field and shows the first money field, so a second
+  // choice or money field moved up regroups the list or shows the wrong amount.
+  test('groups by listing.group and shows listing.detail beside the name of listing.title', () => {
+    HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.open = true }
+    const brick = { ...dishes, listing: { title: 'description', group: 'veg' } }
+    const wrapper = mount(PickSheet, { props: { brick, task: dishes.tasks!.find((t) => t.id === 'price')!, entries: entries as never, main: 'de', today: '2026-10-17' } })
+    expect(wrapper.findAll('h3').map((h) => h.text())).toEqual(['vegetarisch', 'vegan'])
+    expect(wrapper.findAll('li').map((li) => li.text())).toEqual(['Mit Vanilleeis', 'Mit Reis'])
     wrapper.unmount()
   })
 })
@@ -346,10 +415,11 @@ test.each([
 // on the website, and nothing on Heute offered to publish it (or, for staff, showed someone else's draft).
 test('a drafts collection lists its drafts apart from what is on the website, staff only their own', async () => {
   const withDrafts = serializeSchema(defineSite({
-    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/' } },
     bricks: {
       notices: collection({
+        listing: { title: 'text' },
         label: 'Hinweise', max: 20, order: 'manual',
         fields: { text: f.text('Text'), until: f.date('Gilt bis', { optional: true }) },
         visible: { mode: 'until', field: 'until' },

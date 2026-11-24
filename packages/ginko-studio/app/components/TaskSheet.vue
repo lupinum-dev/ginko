@@ -154,7 +154,7 @@ watch([prefill, own, ownError], ([p]) => {
   // Both answers first, so the form does not start on the stored values and jump; a failed proposal read does not hold it up.
   if (!p || ready.value || (ownArgs() !== 'skip' && own.value === undefined && !ownError.value)) return
   // A new entry starts from the schema defaults; choices without a default stay unset on purpose (UI.md 5).
-  const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
+  const start: Data = isCreate.value ? { ...defaultsFor(fields.value, props.schema.week) } : {}
   const o = mine.value
   seed.value = { ...start, ...(p as Data) }
   presetKeys.clear()

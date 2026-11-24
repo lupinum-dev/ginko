@@ -94,7 +94,8 @@ describe('search.studio', () => {
     const dish = (name: string) => ({ category: 'desserts', name: { de: name }, price: { amount: 700 }, allergens: [], veg: 'none' })
     await s.as.owner.mutation(api.entries.create, { publish: {}, site, opId: opId(), brick: 'menu', data: dish('Strudelteig') })
     const labels = async (query: string) => (await s.as.owner.query(api.search.studio, { site, query })).entries.map((e) => e.label)
-    expect(await labels('strudel')).toEqual(['Strudelteig', 'Topfenstrudel', 'Alle Gerichte inklusive Beilagensalat.'])
+    // The lunch menu is a single: it has no `listing`, so it is named by its brick.
+    expect(await labels('strudel')).toEqual(['Strudelteig', 'Topfenstrudel', 'Mittagsmenü'])
     expect((await labels('schni'))[0]).toBe('Wiener Schnitzel vom Kalb')
     // Another site's members never see these entries.
     expect((await errorOf(s.as.stranger.query(api.search.studio, { site, query: 'strudel' }))).code).toBe('FORBIDDEN')
@@ -207,6 +208,37 @@ describe('entries.duplicate', () => {
     const id = opId()
     const a = await s.as.owner.mutation(api.entries.duplicate, { site, opId: id, entry: created.entry })
     expect(await s.as.owner.mutation(api.entries.duplicate, { site, opId: id, entry: created.entry })).toEqual(a)
+  })
+
+  // Wrong behaviour caught: the copy mark goes on the first text field of the brick (the dish name) instead of the field
+  // the brick names its entries by (`listing.title`, design V2 guess 5).
+  it('marks the field of listing.title, not the first text field', async () => {
+    const s = await studioSetup()
+    await s.patchSchema((schema) => {
+      const menu = schema.bricks.menu as unknown as { fields: Record<string, unknown>; listing: { title: string } }
+      menu.fields.code = { type: 'text', label: 'Kürzel', translate: false, max: 40, optional: true }
+      menu.listing = { title: 'code' }
+    })
+    const created = await s.as.owner.mutation(api.entries.create, { publish: {}, site, opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: 'Gulasch' }, code: 'G1', price: { amount: 100 }, allergens: [], veg: 'none' } }) as { entry: Id<'entries'> }
+    const copy = await s.as.owner.mutation(api.entries.duplicate, { site, opId: opId(), entry: created.entry }) as { entry: Id<'entries'> }
+    expect((await s.row(copy.entry))!.data).toMatchObject({ name: { de: 'Gulasch' }, code: 'G1 (Kopie)' })
+  })
+
+  // Wrong behaviour caught: a copy of an entry named by a longtext keeps the same name, so two list rows look alike; or a
+  // date title gets " (Kopie)" and is no date any more.
+  it.each([
+    ['a longtext', { type: 'longtext', label: 'Kürzel', translate: false, max: 200, optional: true }, 'G1', 'G1 (Kopie)'],
+    ['a date', { type: 'date', label: 'Datum', optional: true }, '2026-12-01', '2026-12-01'],
+  ])('marks listing.title when it is %s only if it is text', async (_name, field, value, copied) => {
+    const s = await studioSetup()
+    await s.patchSchema((schema) => {
+      const menu = schema.bricks.menu as unknown as { fields: Record<string, unknown>; listing: { title: string } }
+      menu.fields.code = field
+      menu.listing = { title: 'code' }
+    })
+    const created = await s.as.owner.mutation(api.entries.create, { publish: {}, site, opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: 'Gulasch' }, code: value, price: { amount: 100 }, allergens: [], veg: 'none' } }) as { entry: Id<'entries'> }
+    const copy = await s.as.owner.mutation(api.entries.duplicate, { site, opId: opId(), entry: created.entry }) as { entry: Id<'entries'> }
+    expect((await s.row(copy.entry))!.data).toMatchObject({ name: { de: 'Gulasch' }, code: copied })
   })
 
   it('leaves a label unchanged when " (Kopie)" would not fit', async () => {

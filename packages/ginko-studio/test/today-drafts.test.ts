@@ -15,9 +15,9 @@ const ops = { publishEntry: vi.fn(async () => ({})), publishChanges: vi.fn(async
 vi.stubGlobal('useOps', () => ops)
 
 const schema = serializeSchema(defineSite({
-  site: 'blog', name: 'Blog', url: 'https://blog.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'blog', name: 'Blog', url: 'https://blog.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
-  bricks: { posts: collection({ label: 'Beiträge', max: 50, order: 'manual', fields: { title: f.text('Titel', { translate: false }) }, tasks: [{ id: 'write', label: 'Beitrag schreiben', kind: 'create' }] }) },
+  bricks: { posts: collection({ listing: { title: 'title' }, label: 'Beiträge', max: 50, order: 'manual', fields: { title: f.text('Titel', { translate: false }) }, tasks: [{ id: 'write', label: 'Beitrag schreiben', kind: 'create' }] }) },
 }))
 const brick = schema.bricks.posts as Extract<(typeof schema.bricks)[string], { kind: 'collection' }>
 const [create] = brick.tasks!

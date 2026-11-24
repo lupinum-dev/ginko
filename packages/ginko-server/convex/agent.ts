@@ -141,7 +141,7 @@ async function inputSchemaOf(ctx: QueryCtx, actor: Actor, tool: TaskTool): Promi
   // An edit of a single offers what it would write there now; a picked entry is known only at the call.
   const single = tool.task.kind === 'edit' ? await singleOf(ctx, actor, tool.brick) : undefined
   const prefill = await prefillOf(ctx, actor, tool, single?._id)
-  return taskInputSchema(schema.bricks[tool.brick]!, tool.task, { mainLocale: schema.locales[0]!, currency: schema.currency, prefill })
+  return taskInputSchema(schema.bricks[tool.brick]!, tool.task, { mainLocale: schema.locales[0]!, currency: schema.currency, week: schema.week, prefill })
 }
 
 /** tools/list: the fixed tools and one tool per task the person may run; every task tool may carry `propose` and `request_id`, a create or edit task `publish`. */
@@ -648,6 +648,7 @@ function checkFields(actor: Actor, key: string, def: Schema['bricks'][string], v
       const path = `${at}${name}`
       if (field) {
         if (field.type === 'list' && Array.isArray(value)) value.forEach((row, i) => { if (typeof row === 'object' && row !== null && !Array.isArray(row)) check(field.of, row, `${path}[${i}].`) })
+        if (field.type === 'rows' && typeof value === 'object' && value !== null && !Array.isArray(value)) for (const [row, cells] of Object.entries(value)) { if (typeof cells === 'object' && cells !== null && !Array.isArray(cells)) check(field.of, cells, `${path}.${row}.`) }
         continue
       }
       const near = suggest(name, writable.map(([k, f]) => ({ key: k, label: labelIn(f.label, main, main) })))
@@ -673,7 +674,7 @@ function schemaOf(actor: Actor, only: Json | undefined) {
     return {
       brick: key, kind: def.kind, label: labelIn(def.label, main, main),
       ...(def.kind === 'collection' && def.route ? { route: def.route } : {}),
-      input: fieldsInputSchema(def.fields, { mainLocale: main, currency: schema.currency }),
+      input: fieldsInputSchema(def.fields, { mainLocale: main, currency: schema.currency, week: schema.week }),
     }
   })
 }

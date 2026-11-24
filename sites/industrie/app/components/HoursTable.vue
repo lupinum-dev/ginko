@@ -1,13 +1,14 @@
 <!-- The weekly reception hours, today's row marked, plus the exceptions and a "Geschlossen am" day in the next 60 days. -->
 <script setup lang="ts">
-import { exceptionsAhead, timesOf, weekdayOf, type DayHours, type Exception, type Weekday } from '../utils/site'
+import { exceptionsAhead, timesOf, weekdayKeys, weekdayOf, type Exception } from '../utils/site'
 
 const langOf = useGinkoLang()
 const { t, format } = useI18n()
 
 const { lang, labels, today } = useSite()
 const hours = useGinko('hours')
-const week = computed(() => hours.value.data.week as unknown as DayHours[])
+// Monday first, as the site's week starts.
+const week = computed(() => weekdayKeys.map((day) => ({ day, ...hours.value.data.week[day] })))
 const ahead = computed(() => exceptionsAhead(hours.value.data as unknown as { exceptions: Exception[]; closedOn?: string; closedNote?: string }, today.value, 60))
 const todayKey = computed(() => weekdayOf(today.value))
 </script>
@@ -18,7 +19,7 @@ const todayKey = computed(() => weekdayOf(today.value))
       <caption class="sr">{{ t('receptionHours') }}</caption>
       <tbody>
         <tr v-for="d in week" :key="d.day" :class="{ today: d.day === todayKey }">
-          <th scope="row">{{ labels.weekdays[d.day as Weekday] }}</th>
+          <th scope="row">{{ labels.weekdays[d.day] }}</th>
           <td class="mono">{{ d.closed ? t('closed') : timesOf(d, t('and')) }}</td>
         </tr>
       </tbody>

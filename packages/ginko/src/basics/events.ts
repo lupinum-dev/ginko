@@ -40,7 +40,10 @@ export function eventsBrick<const E extends Fields, const B extends Fields = Rec
   ] as const satisfies readonly Task<{ soldOut: Field }>[]
   return collection({
     label: opts.label ?? both('Veranstaltungen', 'Events'),
+    listing: { title: 'title', detail: 'when', image: 'image' },
+    untranslated: 'hide', // events have pages: an event without a text in a language has none there
     ...sourceOf(opts),
+    body: 'description',
     fields,
     max: 30,
     order: { field: 'when', dir: 'asc' },
@@ -76,6 +79,8 @@ export type SessionStatus = 'open' | 'soldOut' | 'cancelled'
 function sessionsBrick<S extends Field>(opts: BasicsOptions & { events?: string }, speakers: S) {
   return collection({
     label: opts.label ?? both('Programmpunkte', 'Sessions'),
+    listing: { title: 'title', detail: 'date' },
+    untranslated: 'fallback',
     ...sourceOf(opts),
     fields: {
       event: f.ref(both('Veranstaltung', 'Event'), { to: opts.events ?? 'events' }),

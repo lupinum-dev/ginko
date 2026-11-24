@@ -85,12 +85,19 @@ const allowed: Row[] = [
   // The option stores no data, so adding it to a choices field that production already has is free.
   { name: 'askAgainWhen added to a choices field', prod: (s) => { delete field(s, 'menu.allergens').askAgainWhen }, mutate: (s) => { field(s, 'menu.allergens').askAgainWhen = 'name' } },
   { name: 'askAgainWhen removed from a choices field', mutate: (s) => { delete field(s, 'menu.allergens').askAgainWhen } },
-  { name: 'a list min lowered', mutate: (s) => { field(s, 'lunch.days').min = 4 } },
+  { name: 'a list min lowered', prod: (s) => { field(s, 'hours.exceptions').min = 2 }, mutate: (s) => { field(s, 'hours.exceptions').min = 1 } },
   { name: 'a number min lowered', mutate: (s) => { field(s, 'hours.holidayNoticeDays').min = -5 } },
   { name: 'a field max raised', mutate: (s) => { field(s, 'seo.title').max = 90 } },
   { name: 'a list max raised', mutate: (s) => { field(s, 'hours.exceptions').max = 25 } },
   { name: 'a collection max raised', mutate: (s) => { node(s, 'bricks.menu').max = 200 } },
-  { name: 'unique removed from a list', mutate: (s) => { delete field(s, 'lunch.days').unique } },
+  // An added row is like a new required field: allowed when the columns' defaults fill it.
+  { name: 'a row added to a rows field, filled from the column defaults', prod: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }] }, mutate: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }] } },
+  { name: 'a workday added to the site week: the lunch week gains a row filled from the column defaults', mutate: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr', 'sa'] } } },
+  // A removed row is stated in retired, the same place a removed field is stated; the release then drops it.
+  { name: 'a workday removed from the site week, with its retired line', mutate: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }; s.retired['lunch.days.fr'] = { drop: true }; s.retired['lunchPlans.days.fr'] = { drop: true } } },
+  { name: 'a row removed from an own row list, with its retired line', prod: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }] }, mutate: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }]; s.retired['lunch.days.tu'] = { drop: true } } },
+  // The row came back, so its retired line may go: the row is an added row again, filled from the column defaults.
+  { name: 'a retired row that comes back, its retired line removed', prod: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }; s.retired['lunch.days.fr'] = { drop: true }; s.retired['lunchPlans.days.fr'] = { drop: true } }, mutate: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }; delete s.retired['lunch.days.fr']; delete s.retired['lunchPlans.days.fr'] } },
   { name: 'a new locale appended at the end', mutate: (s) => { s.locales = ['de', 'en', 'fr'] } },
   {
     name: 'a route added to a collection that had none',
@@ -212,8 +219,16 @@ const rejected: RejectedRow[] = [
     mutate: (s) => { s.migrations.push(migration('2026-12-seo-title-copy', 'seo', 'title', (e) => e.description)) },
     kind: 'migrationFillsExisting',
   },
-  { name: 'unique added to a list', mutate: (s) => { field(s, 'hours.exceptions').unique = 'reason' }, kind: 'uniqueChanged' },
-  { name: 'unique changed on a list', mutate: (s) => { field(s, 'lunch.days').unique = 'dish' }, kind: 'uniqueChanged' },
+  // A removed row is like a removed field: stored rows would lose their values unless retired says so.
+  { name: 'a workday removed from the site week without a retired line (lunchPlans has its line)', mutate: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }; s.retired['lunchPlans.days.fr'] = { drop: true } }, kind: 'rowRemoved' },
+  { name: 'a row removed from a rows field', prod: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }] }, mutate: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }] }, kind: 'rowRemoved' },
+  // An added row is like a new required field: refused when a required column has no default to fill it.
+  {
+    name: 'a row added to a rows field whose required column has no default',
+    prod: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }]; delete node(s, 'bricks.lunch.fields.days.of.dish').default },
+    mutate: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }]; delete node(s, 'bricks.lunch.fields.days.of.dish').default },
+    kind: 'rowWithoutDefault',
+  },
   {
     name: 'a locale reordered (main language unchanged)',
     prod: (s) => { s.locales = ['de', 'en', 'fr'] },
@@ -272,6 +287,18 @@ describe('diffSchema: rejected changes (SPEC 2.4)', () => {
   })
 })
 
+describe('diffSchema: a removed row', () => {
+  // Wrong: the refusal names a fix the developer cannot follow (keep a workday the restaurant no longer opens on).
+  it('is refused with one sentence that shows the retired line to write', () => {
+    const next = base()
+    next.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }
+    next.retired['lunchPlans.days.fr'] = { drop: true }
+    const [change] = diffSchema(base(), next).rejected
+    expect(coreMessage('en', change!.fixMsg!.key, change!.fixMsg!.params)).toBe("Keep the row, or write `retired: { 'lunch.days.fr': { drop: true } }`: the release then removes it from every stored entry.")
+    expect(change!.snippet).toBe("retired: { 'lunch.days.fr': { drop: true } },")
+  })
+})
+
 describe('migrations (SPEC 2.4, 2.6)', () => {
   it('changes the fingerprint when a string literal inside from changes', () => {
     const before = migrationFingerprint('menu', 'tag', (e: Record<string, unknown>) => e.name ?? 'Alt')
@@ -293,8 +320,8 @@ describe('serializeSchema', () => {
     const stored = sortKeys(serializeSchema(restaurant)) as Schema
     expect(ordered(stored.bricks).map(([k]) => k)).toEqual(Object.keys(restaurant.bricks))
     expect(ordered(stored.bricks.menu!.fields).map(([k]) => k)).toEqual(Object.keys(restaurant.bricks.menu.fields))
-    const week = stored.bricks.hours!.fields.week as Extract<Schema['bricks'][string]['fields'][string], { type: 'list' }>
-    expect(ordered(week.of).map(([k]) => k)).toEqual(['day', 'closed', 'from1', 'to1', 'from2', 'to2'])
+    const week = stored.bricks.hours!.fields.week as Extract<Schema['bricks'][string]['fields'][string], { type: 'rows' }>
+    expect(ordered(week.of).map(([k]) => k)).toEqual(['closed', 'from1', 'to1', 'from2', 'to2'])
   })
 
   it('treats a changed position as presentation, not as a schema change', () => {
@@ -424,15 +451,6 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
     mutate(s)
     expect(checkSchema(s)).toEqual(problems)
   })
-
-  // A unique source only holds values the old, non-unique list also accepts.
-  it('SPEC 2.5: a unique source may mirror an old list without unique', () => {
-    const s = base()
-    fieldsOf(s, 'lunch').daysOld = { ...field(s, 'lunch.days') }
-    delete (fieldsOf(s, 'lunch').daysOld as Record<string, unknown>).unique
-    retire(s, 'lunch.daysOld', { from: 'days' })
-    expect(checkSchema(s)).toEqual([])
-  })
 })
 
 describe('checkSchema: limits and structure (SPEC 2.1)', () => {
@@ -462,7 +480,7 @@ describe('checkSchema: limits and structure (SPEC 2.1)', () => {
     {
       name: 'a list inside a list',
       mutate: (s: Schema) => { node(s, 'bricks.hours.fields.week.of').inner = { type: 'list', label: 'Innen', itemLabel: 'Zeile', max: 2, of: {}, optional: true } },
-      problems: ['hours.week.inner: lists cannot be nested.'],
+      problems: ['hours.week.inner: lists and rows fields cannot be nested.'],
     },
     {
       name: 'a slug field in a single brick',
@@ -487,9 +505,14 @@ describe('checkSchema: limits and structure (SPEC 2.1)', () => {
       problems: ['gallery: too many fields.'],
     },
     {
-      name: 'a schema without week',
-      mutate: (s: Schema) => { delete (s as Partial<Schema>).week },
-      problems: ['week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).'],
+      name: 'a week in the old shape (a weekday name and a count)',
+      mutate: (s: Schema) => { (s as { week: unknown }).week = { firstDay: 'monday', workdays: 5 } },
+      problems: ["week must be { firstDay, workdays }: firstDay one of mo, tu, we, th, fr, sa, su, workdays a list of 1 to 7 different days of these, for example `week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`."],
+    },
+    {
+      name: 'a week in numbers',
+      mutate: (s: Schema) => { (s as { week: unknown }).week = { firstDay: 1, weekend: [6, 7] } },
+      problems: ["week must be { firstDay, workdays }: firstDay one of mo, tu, we, th, fr, sa, su, workdays a list of 1 to 7 different days of these, for example `week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`."],
     },
     {
       name: 'a schema over 256 KiB of ASCII',

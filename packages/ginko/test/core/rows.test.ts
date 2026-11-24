@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mergeRows } from '../../src/core/index.ts'
+import { keyedRowDiffs, mergeKeyedRows, mergeRows } from '../../src/core/index.ts'
 
 const row = (id: string, name = id) => ({ _id: id, name })
 const ids = (rows: { _id?: unknown }[]) => rows.map((r) => r._id)
@@ -24,5 +24,30 @@ describe('mergeRows', () => {
 
   it('takes my edit on a row they left as it was', () => {
     expect(mergeRows([row('a')], [row('a', 'A1')], [row('a'), row('y')]).rows).toEqual([row('a', 'A1'), row('y')])
+  })
+})
+
+// Wrong behaviour caught: two people on different days of a weekday table cannot keep both, or a clash on one day is
+// merged and one person's value is lost.
+describe('mergeKeyedRows', () => {
+  const week = (mo: string, tu: string) => ({ mo: { note: mo }, tu: { note: tu } })
+  it.each([
+    ['we change different rows', week('a', 'b'), week('A1', 'b'), week('a', 'B2'), week('A1', 'B2'), []],
+    ['we change one row differently', week('a', 'b'), week('A1', 'b'), week('A2', 'b'), week('A2', 'b'), ['mo']],
+    ['we change one row the same way', week('a', 'b'), week('A1', 'b'), week('A1', 'b'), week('A1', 'b'), []],
+    ['only they changed', week('a', 'b'), week('a', 'b'), week('a', 'B2'), week('a', 'B2'), []],
+  ])('%s', (_, base, mine, theirs, rows, clashes) => {
+    expect(mergeKeyedRows(base, mine, theirs)).toEqual({ rows, clashes })
+  })
+})
+
+// Wrong behaviour caught: history and conflict lines follow the stored map's key order (Convex sorts keys), so they read
+// "Freitag, Montag, Samstag".
+describe('keyedRowDiffs', () => {
+  it('lists the rows in the field order, a row the field no longer has after them', () => {
+    const before = { fr: { dish: 'Fisch' }, mo: { dish: 'Suppe' }, sa: { dish: 'Alt' }, tu: { dish: 'Gulasch' } }
+    const after = { fr: { dish: 'Forelle' }, mo: { dish: 'Kürbissuppe' }, tu: { dish: 'Gulasch' }, we: { dish: 'Strudel' } }
+    const rows = keyedRowDiffs(before, after, ['mo', 'tu', 'we', 'th', 'fr']).rows
+    expect(rows.map((r) => [r.id, r.change])).toEqual([['mo', 'changed'], ['we', 'added'], ['fr', 'changed'], ['sa', 'removed']])
   })
 })

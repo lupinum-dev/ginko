@@ -189,22 +189,20 @@ Rules for a new migration:
 - **Remove when:** together with the German redirects above, and a release after 0.17.0 has the new README
   links on npm.
 
-## The site form of 0.18 (`@lupinum/ginko/v1`)
+## Stored-form bricks in the site file (pass-through in `defineSite`)
 
-- **Why:** since 0.19.0 `defineSite`, `single`, `collection` and `f` of `@lupinum/ginko` are a new, shorter form
-  (`packages/ginko/src/authoring`). A site of 0.18 updates by changing one import to `@lupinum/ginko/v1` and moves to
-  the new form when it wants. Both forms give the same stored model.
+- **Why:** the gastro preset (`@lupinum/ginko-preset-gastro`), the docs theme (`@lupinum/ginko-docs/config`) and the
+  brick functions of `@lupinum/ginko/basics` still build bricks in the stored form. `defineSite` of `@lupinum/ginko`
+  takes such a brick next to bricks of the written form: it sets where the brick lives and keeps its `route`. The
+  `/v1` entry that once wrote whole configs in that form is gone (D81, the direct cut).
 - **Introduced:** 0.19.0 (November 2026).
-- **Compatibility code:** the entry `packages/ginko/src/v1.ts` (and its lines in `package.json` and
-  `build.config.ts`); in `packages/ginko/src/authoring/site.ts` the message for a 0.18 config and for the moved keys
-  of a brick (`MOVED`), and the pass-through of a stored-form brick; the message of `f.list` in
-  `packages/ginko/src/authoring/fields.ts`; the option `route` of `events()` in `@lupinum/ginko-preset-gastro`.
-  Not compatibility code: the stored-form builders in `packages/ginko/src/core` stay (the new form is built on them,
-  and Ginko's own packages use them through `@lupinum/ginko/internal`).
-- **Dependents:** every site that is not moved yet (Lupinum's live sites, one at a time); the docs theme
-  `@lupinum/ginko-docs/config`, whose helpers give stored-form bricks and prefixed paths (`templates/docs`,
-  `sites/docs`, the docs starters of `create-ginko`); the brick functions of `@lupinum/ginko/basics` and of the gastro
-  preset, which take `source` and `route` for such configs.
-- **Remove when:** 1.0.0. Conditions: every live site of Lupinum is written in the new form, the docs theme's config
-  helpers give the new form, and the new form has been in use for some weeks. Then also remove the brick functions
-  from `@lupinum/ginko/basics` (the patterns become their source) and the `source` and `route` options of the preset.
+- **Compatibility code:** in `packages/ginko/src/authoring/site.ts` the branch of `defineSite` for a brick that is not a
+  `BrickDef` (`isDef`), and the `route` check next to `entries`; the options `source` and `route` of the basics brick
+  functions and of the gastro preset's `events()`. A stored-form brick takes `preview` by a spread
+  (`{ ...menu(), preview: 'menu' }`), since `extend` takes written-form bricks only (D90).
+- **Dependents:** the gastro preset (`templates/restaurant`, `sites/restaurant`, the gastro starters of
+  `create-ginko`), the docs theme (`templates/docs`, `sites/docs`, the docs starters), the patterns (made from the
+  basics functions, D73).
+- **Remove when:** the gastro preset is a package of patterns (checkpoint 2, part C) and the docs theme's helpers give
+  written-form bricks. Then delete the branch, the `route` and `source` options and this entry.
+- **Tracking issue:** none yet.

@@ -50,6 +50,8 @@ export function largestFieldBytes(field: Field, locales: readonly string[]): num
   switch (field.type) {
     case 'text': case 'longtext': case 'markdown': return (effectiveMax(field) + VALUE_JSON) * values
     case 'list': return field.max * (largestEntryBytes(field.of, locales) + ID_BYTES)
+    // A row key is no longer than a row id; days are at most seven rows.
+    case 'rows': return (Array.isArray(field.rows) ? field.rows.length : 7) * (largestEntryBytes(field.of, locales) + ID_BYTES)
     case 'choices': return effectiveMax(field) * ID_BYTES
     case 'ref': return field.multiple ? (field.max ?? 0) * ID_BYTES : ID_BYTES
     case 'image': case 'file': return ID_BYTES + ALT_MAX * locales.length

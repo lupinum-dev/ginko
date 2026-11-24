@@ -14,6 +14,7 @@ import GinkoFieldDaterange from './GinkoFieldDaterange.vue'
 import GinkoFieldFile from './GinkoFieldFile.vue'
 import GinkoFieldImage from './GinkoFieldImage.vue'
 import GinkoFieldList from './GinkoFieldList.vue'
+import GinkoFieldRows from './GinkoFieldRows.vue'
 import GinkoFieldMoney from './GinkoFieldMoney.vue'
 import GinkoFieldNumber from './GinkoFieldNumber.vue'
 import GinkoFieldRef from './GinkoFieldRef.vue'
@@ -92,7 +93,7 @@ const showCount = computed(() => (props.field.type === 'text' || props.field.typ
 const inputType = computed(() => (props.field.type === 'text' && props.field.format ? ({ url: 'url', email: 'email', tel: 'tel' } as const)[props.field.format] : 'text'))
 // A choice with up to five options shows radio buttons (GinkoFieldChoice), more a select.
 const radios = computed(() => props.field.type === 'choice' && props.field.options.length <= 5)
-const isGroup = computed(() => ['list', 'choices', 'daterange', 'image', 'file'].includes(props.field.type))
+const isGroup = computed(() => ['list', 'rows', 'choices', 'daterange', 'image', 'file'].includes(props.field.type))
 
 // Translation view (UI.md 4): the main language's value next to the input, and whether it changed
 // since the translation was saved. The state comes from the editor (EntryEditor); lists reuse it per cell.
@@ -178,6 +179,7 @@ const missingText = computed(() => {
       <GinkoFieldChoice v-else-if="field.type === 'choice'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldChoices v-else-if="field.type === 'choices'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldList v-else-if="field.type === 'list'" :id="id" :field="field" :model-value="value" :baseline="baseline" :path="path" :locale="locale" :locales="locales" :issues="issues" @update:model-value="set" />
+      <GinkoFieldRows v-else-if="field.type === 'rows'" :id="id" :field="field" :model-value="value" :baseline="baseline" :path="path" :locale="locale" :locales="locales" :issues="issues" @update:model-value="set" />
       <!-- The editor needs the browser (TipTap mounts into a DOM element), so it is not rendered on the server. -->
       <ClientOnly v-else-if="field.type === 'markdown'">
         <MarkdownEditor :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" :content-locale="locale" @update:model-value="set" />

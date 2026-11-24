@@ -77,7 +77,7 @@ describe('sites.today', () => {
   // Wrong behaviour caught: the owner reads "open" on a day the site is closed (a closure, a public holiday of the
   // stored calendar), the reason is lost, a day with no hours entered is not due, or the line ignores the stored
   // `holidays` and counts Austrian holidays for a site that set none, or a calendar in code makes entered hours due. 2026-10-26 is the Austrian National Day (a Monday).
-  const week = (days: string[]) => ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'].filter((d) => days.includes(d)).map((day) => ({ _id: day, day, closed: false, from1: '11:30', to1: '14:30' }))
+  const week = (days: string[]) => Object.fromEntries(['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'].filter((d) => days.includes(d)).map((day) => [day, { closed: false, from1: '11:30', to1: '14:30' }]))
   const allWeek = week(['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'])
   it.each<[string, { now?: string; holidays?: string; data: Record<string, Json> }, { line: unknown; due: boolean } | undefined]>([
     ['open today', { data: { week: allWeek, exceptions: [] } }, { line: { kind: 'hours', today: { ranges: [['11:30', '14:30']] } }, due: false }],
@@ -115,7 +115,7 @@ describe('sites.today', () => {
       schema.bricks.hours!.status = { hours: { plans: 'hourPlans' } }
       await ctx.db.patch(s.site, { schema })
     })
-    const closedWeek = allWeek.map((day) => ({ ...day, closed: true }))
+    const closedWeek = Object.fromEntries(Object.entries(allWeek).map(([key, day]) => [key, { ...day, closed: true }]))
     await replaceEntries(s, 'hours', [{ data: { week: allWeek, exceptions: [] } }])
     await replaceEntries(s, 'hourPlans', [])
     await replaceEntries(s, 'terracePlans', [{ data: { label: 'Terrasse geschlossen', from: '2026-01-01', yearly: false, week: closedWeek } }])

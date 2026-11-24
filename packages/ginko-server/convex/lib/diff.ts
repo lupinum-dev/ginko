@@ -2,7 +2,7 @@
 // a list of root fields with their old and new value. Pure functions, no Convex. Rows of a list
 // are compared in core (rowDiffs), which the Studio's conflict panel uses too.
 import type { Fields, Json } from '@lupinum/ginko'
-import { isTranslatable, labelOf, rowDiffs, stableJson, type RowDiff } from '@lupinum/ginko/internal'
+import { isTranslatable, labelOf, keyedRowDiffs, rowDiffs, rowKeysOf, stableJson, type RowDiff, type SiteWeek } from '@lupinum/ginko/internal'
 
 export interface LocaleDiff { locale: string; before: Json | null; after: Json | null }
 export interface FieldDiff {
@@ -14,7 +14,7 @@ export interface FieldDiff {
   after: Json | null
   /** Translatable fields: the locales whose value differs. */
   locales?: LocaleDiff[]
-  /** Lists: added, removed and changed rows by `_id`. */
+  /** Lists: added, removed and changed rows by `_id`; rows fields: by row key, in the field's order. */
   rows?: RowDiff[]
   /** Lists: the same rows in a different order. */
   reordered?: boolean
@@ -34,9 +34,9 @@ export function localeDiffs(before: Json | null, after: Json | null): LocaleDiff
 
 /**
  * One entry per root field that appears in `before` or `after`: label and type from the schema,
- * plus the per-locale or per-row detail for translatable fields and lists.
+ * plus the per-locale or per-row detail for translatable fields and lists. `week` orders the rows of day rows fields.
  */
-export function diffFields(fields: Fields | undefined, before: Record<string, Json>, after: Record<string, Json>, main: string): FieldDiff[] {
+export function diffFields(fields: Fields | undefined, before: Record<string, Json>, after: Record<string, Json>, main: string, week: SiteWeek): FieldDiff[] {
   return [...new Set([...Object.keys(before), ...Object.keys(after)])].map((name): FieldDiff => {
     const field = fields && Object.hasOwn(fields, name) ? fields[name] : undefined
     const was = before[name] ?? null
@@ -45,6 +45,7 @@ export function diffFields(fields: Fields | undefined, before: Record<string, Js
     if (!field) return base
     if (isTranslatable(field)) return { ...base, locales: localeDiffs(was, now) }
     if (field.type === 'list') return { ...base, ...rowDiffs(was, now) }
+    if (field.type === 'rows') return { ...base, ...keyedRowDiffs(was, now, rowKeysOf(field, week)) }
     return base
   })
 }

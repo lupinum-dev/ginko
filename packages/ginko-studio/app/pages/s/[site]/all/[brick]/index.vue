@@ -2,8 +2,8 @@
 <script setup lang="ts">
 import { ChevronDownIcon, ChevronUpIcon, PlusIcon } from '@lucide/vue'
 import { api } from '#convex/api'
-import { isNavTree, visibleUntil } from '@lupinum/ginko/internal'
-import { formatDay, languageName, relevantDate } from '../../../../../utils/content'
+import { treeOf, visibleUntil } from '@lupinum/ginko/internal'
+import { formatDay, languageName, listingDetail } from '../../../../../utils/content'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
 import { opErrorOf } from '../../../../../composables/useOps'
@@ -20,7 +20,7 @@ const key = computed(() => String(route.params.brick))
 const brick = computed(() => s.schema.value?.bricks[key.value])
 const access = computed(() => (brick.value ? tasksFor(key.value, brick.value) : undefined))
 const allowed = computed(() => editable.value.some(([k]) => k === key.value))
-const { shown } = useStudioSite()
+const { shown, currency } = useStudioSite()
 const { t, format, locale: uiLocale } = useI18n()
 useHead(() => ({ title: t('site.title.area', { area: brick.value ? shown(brick.value.label) : t('site.fallback.area') }) }))
 // A single's form (EntryEditor) replaces these crumbs with its own.
@@ -58,7 +58,7 @@ type Row = (typeof rows.value)[number]
 const single = useConvexQuery(api.entries.single, () => (brick.value?.kind === 'single' && allowed.value ? { site: s.slug.value, brick: key.value } : 'skip'))
 const manual = computed(() => brick.value?.kind === 'collection' && brick.value.order === 'manual')
 // A docs-like collection shows its navigation as the website does; a search or sort shows the plain list.
-const tree = computed(() => !!brick.value && isNavTree(key.value, brick.value) && !narrowed.value)
+const tree = computed(() => !!brick.value && !!treeOf(brick.value) && !narrowed.value)
 // The tree's titles and headings follow the Studio's language when the site has it (headings are renamed in it).
 const treeLanguage = computed(() => s.schema.value?.locales.find((l) => l === uiLocale.value) ?? s.main.value)
 const canCreate = computed(() => !!access.value && (access.value.all || !!access.value.create))
@@ -134,7 +134,7 @@ const ops = useOps(s.slug)
           <li v-for="(e, i) in rows" :key="e._id" class="group/row relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 min-[900px]:min-h-13 min-[900px]:py-2.5 hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03] sm:flex-nowrap" :data-dim="(!!status(e) && !e.pending) || undefined">
             <div class="min-w-0 flex-1">
               <NuxtLink :to="`/s/${s.slug.value}/all/${key}/${e._id}`" class="line-clamp-2 font-medium text-foreground no-underline outline-none after:absolute after:inset-0 focus-visible:after:ring-3 focus-visible:after:ring-ring/80 focus-visible:after:ring-inset group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground min-[900px]:text-sm">{{ rowTitle(e) }}</NuxtLink>
-              <span v-if="relevantDate(brick, e.dates, { t, format })" class="block text-[13px] text-muted-foreground tabular-nums">{{ relevantDate(brick, e.dates, { t, format }) }}</span>
+              <span v-if="listingDetail(brick, e.dates, s.main.value, { t, format, currency: currency() })" class="block text-[13px] text-muted-foreground tabular-nums">{{ listingDetail(brick, e.dates, s.main.value, { t, format, currency: currency() }) }}</span>
             </div>
             <!-- Phones: badges move under the title so the name keeps the full width. -->
             <div class="relative flex flex-wrap items-center gap-1.5 max-sm:order-last max-sm:basis-full sm:justify-end">

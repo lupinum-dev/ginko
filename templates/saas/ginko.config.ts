@@ -27,6 +27,8 @@ export default defineSite({
   },
   url: siteUrl('https://example.com'),
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   // `addressCountry` in the Organization JSON-LD.
   country: 'DE',
   locales,
@@ -59,6 +61,7 @@ export default defineSite({
     // sentence (the summary on the home page and in the feed), then `<!-- more -->`, then the changes under the
     // headings New, Improved and Fixed. In the Studio, Today shows how old the newest entry is.
     changelog: extend(changelog(), {
+      preview: 'changelog',
       status: { show: 'newest', field: 'date' },
       tasks: [
         { id: 'add', kind: 'add', label: { de: 'Änderung eintragen', en: 'Add a release', fr: 'Ajouter une version' } },
@@ -68,9 +71,9 @@ export default defineSite({
     // Short lines at the top of every page ("New in 4.6: …"), each until a date (content/notices/).
     notices: notices(),
     // The plans, each with a price per month and per year in `currency`, or "on request" (content/pricing/).
-    pricing,
+    pricing: extend(pricing, { preview: 'pricing' }),
     // Questions and answers: billing, cancellation, data export, data location (content/faq/).
-    faq: faq(),
+    faq: extend(faq(), { preview: 'faq' }),
     // The first screen of the home page and its lists (content/home.md): what the product does and for whom, the link
     // to the free trial in the app, a picture of the product, its main features and the facts about security and data.
     home: single({

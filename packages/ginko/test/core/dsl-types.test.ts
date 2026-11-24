@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { collection, defineSite, f, single, type DataOf, type Money, type Query } from '../../src/v1.ts'
+import { collection, defineSite, f, single, type DataOf, type Money, type Query } from '../../src/internal.ts'
 
 // The authoring types reject input the validator would only reject at `ginko release`. `pnpm typecheck`
 // runs this file: each `@ts-expect-error` fails the check when a type is widened again.
 
-const base = { site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: '/' } } as const
+const base = { site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' } } as const
 
 describe('authoring types', () => {
   it('facts take only fields of single bricks', () => {
-    const bricks = { menu: collection({ label: 'Karte', fields: { name: f.text('Name') }, max: 5, order: 'manual' }), contact: single({ label: 'Kontakt', fields: { phone: f.text('Telefon') } }) }
+    const bricks = { menu: collection({ listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name') }, max: 5, order: 'manual' }), contact: single({ label: 'Kontakt', fields: { phone: f.text('Telefon') } }) }
     defineSite({ ...base, bricks, facts: ['contact.phone'] })
     // @ts-expect-error a field of a collection
     defineSite({ ...base, bricks, facts: ['menu.name'] })
@@ -18,7 +18,7 @@ describe('authoring types', () => {
   })
 
   it('retired takes only bricks and fields of the config', () => {
-    const bricks = { menu: collection({ label: 'Karte', fields: { name: f.text('Name'), old: f.text('Alt', { optional: true }) }, max: 5, order: 'manual' }), hours: single({ label: 'Zeiten', fields: { note: f.text('Hinweis') } }) }
+    const bricks = { menu: collection({ listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name'), old: f.text('Alt', { optional: true }) }, max: 5, order: 'manual' }), hours: single({ label: 'Zeiten', fields: { note: f.text('Hinweis') } }) }
     defineSite({ ...base, bricks, retired: { 'menu.old': { drop: true }, hours: { drop: true } } })
     // @ts-expect-error a field that does not exist
     defineSite({ ...base, bricks, retired: { 'menu.gone': { drop: true } } })
@@ -98,21 +98,21 @@ describe('authoring types', () => {
 
   it('tasks, visible and route name what the brick has', () => {
     const fields = { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), until: f.date('Bis') }
-    collection({ label: 'News', fields, max: 5, order: 'manual', route: { de: '/news/[slug]' }, visible: { mode: 'until', field: 'until' }, tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['title'], prefill: { until: '@today' } }] })
+    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', route: { de: '/news/[slug]' }, visible: { mode: 'until', field: 'until' }, tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['title'], prefill: { until: '@today' } }] })
     // @ts-expect-error the visibility field does not exist
-    collection({ label: 'News', fields, max: 5, order: 'manual', visible: { mode: 'until', field: 'untill' } })
+    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', visible: { mode: 'until', field: 'untill' } })
     // @ts-expect-error visibility needs a date or daterange field
-    collection({ label: 'News', fields, max: 5, order: 'manual', visible: { mode: 'until', field: 'title' } })
+    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', visible: { mode: 'until', field: 'title' } })
     // @ts-expect-error plans needs a date field
-    collection({ label: 'News', fields, max: 5, order: 'manual', plans: { brick: 'lunch', field: 'title' } })
+    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', plans: { brick: 'lunch', field: 'title' } })
     // @ts-expect-error a task field that does not exist
-    collection({ label: 'News', fields, max: 5, order: 'manual', tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['titel'] }] })
+    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['titel'] }] })
     // @ts-expect-error a prefill for a field that does not exist
     single({ label: 'S', fields, tasks: [{ id: 'c', label: 'C', kind: 'edit', fields: ['title'], prefill: { titel: 'x' } }] })
     // @ts-expect-error a prefill has the type of its field
     single({ label: 'S', fields: { price: f.money('Preis') }, tasks: [{ id: 'c', label: 'C', kind: 'create', prefill: { price: 'x' } }] })
     // @ts-expect-error a route without [slug]
-    collection({ label: 'News', fields, max: 5, order: 'manual', route: { de: '/news' } })
+    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', route: { de: '/news' } })
     expect(true).toBe(true)
   })
 

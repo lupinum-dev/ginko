@@ -3,7 +3,7 @@
 // (status line, today flag, week, own proposals, timed rows) as one `View`, "Wartet auf dich" and the verdict line.
 // The sheets and the writes stay on the page. Generic: nothing here knows the restaurant.
 import type { Brick, CollectionBrick, Field, Json } from '@lupinum/ginko'
-import { plannedWeeks, plansThisWeek, staleOf, visibleUntil, weeklyTask, workWeekOf, type StatusLine } from '@lupinum/ginko/internal'
+import { plannedWeeks, plansThisWeek, staleOf, visibleUntil, weekInfo, weeklyTask, workWeekOf, type StatusLine } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { api } from '#convex/api'
 import type { Entry } from './useSiteData'
@@ -125,7 +125,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       const tasks = (brick.tasks ?? []).filter((t) => s.may(key, t))
       // Drafts are not on the website: they have their own list (TodayDrafts).
       const listed = isTimed(brick) ? entriesOf(key).filter((e) => e.state !== 'draft') : []
-      return { key, brick, tasks, remove: tasks.find((t) => t.kind === 'remove'), listed, removeOnRows: removeOnRows(brick, listed) }
+      return { key, brick, tasks, remove: tasks.find((t) => t.id === 'remove'), listed, removeOnRows: removeOnRows(brick, listed) }
     })
     const placed = new Map(cardsOf(s.schema.value!, parts).flatMap((card) => card.sections.map((x) => [x.key, { owner: x.plan ? card.key : undefined, split: x.split }] as const)))
     return parts.map((p) => ({ ...p, ...placed.get(p.key)! }))
@@ -145,11 +145,11 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   })
 
   /**
-   * What a tap on a listed entry opens: the edit task's sheet when the person has one, else the entry in Content when
-   * they may edit it there, else nothing (the row is plain text then).
+   * What a tap on a listed entry opens: the sheet of the task `edit` (by its id, never the first edit task) when the
+   * person has it, else the entry in Content when they may edit it there, else nothing (the row is plain text then).
    */
   function rowTarget(sec: Pick<Section, 'key' | 'tasks'>, entry: Entry): Row['target'] {
-    const task = sec.tasks.find((t) => t.kind === 'edit')
+    const task = sec.tasks.find((t) => t.id === 'edit')
     if (task) return { task }
     if (s.isManager.value) return { to: `/s/${s.slug.value}/all/${sec.key}/${entry._id}` }
     return undefined
@@ -215,7 +215,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     const until = visibleUntil(brick, entry.data)
     if (!until) return { text: t('site.status.noEnd'), dim: false }
     const visible = until >= today
-    if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format }), dim: !visible }
+    if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format, currency: s.schema.value!.currency }), dim: !visible }
     return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired', { date: formatDay(until, format) }), dim: true }
   }
 
@@ -247,9 +247,9 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
    * one, it is what the website shows this week, not the single's own fields (lunchWeekOn in the gastro preset).
    */
   function plannedNow(key: string, task = weeklyTask(s.schema.value!.bricks[key]!)?.task) {
-    const schema = s.schema.value!
-    const start = workWeekOf(s.today.value, schema.week)
     if (!task) return undefined
+    const schema = s.schema.value!
+    const start = workWeekOf(s.today.value, weekInfo(schema.week))
     for (const [k, b] of Object.entries(schema.bricks)) {
       if (b.kind !== 'collection' || b.plans?.brick !== key) continue
       const entry = entriesOf(k).find((e) => e.state !== 'draft' && plansThisWeek(schema, key, task, k, e.data as Record<string, Json>, start))
@@ -267,7 +267,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       const field = s.schema.value!.bricks[plan.key]!.fields[plan.field]
       return { current: true, text: t('site.quick.plannedWeek', { label: field ? shownLabel(field.label, s.main.value) : '', date: formatDay(plan.start, format) }) }
     }
-    const state = staleOf(brick, entry.data, s.today.value, s.schema.value!.week, plannedWeeks(s.schema.value!, key, (k) => entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
+    const state = staleOf(brick, entry.data, s.today.value, weekInfo(s.schema.value!.week), plannedWeeks(s.schema.value!, key, (k) => entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
     if (!state) return undefined
     if (!state.stored) return { current: state.current, text: t('site.quick.notFilled') }
     const text = t('today.week.stored', { label: shownLabel(brick.fields[state.field]!.label, s.main.value), date: formatDay(state.stored, format) })

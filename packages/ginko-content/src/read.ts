@@ -5,7 +5,7 @@ import type {
   Brick, Field, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, imageSizeProps, isTranslatable, printOf, sha256, slugify, routeUrls, todayIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, imageSizeProps, isTranslatable, printOf, sha256, slugify, slugKeyOf, routeUrls, todayIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -212,7 +212,7 @@ function convertFields(fields: Fields, data: Record<string, unknown>, cx: FileCx
     const path = cx.prefix + key
     if (!field || field.retired) { fail(cx, path, `Unknown field “${key}”.`); continue }
     if (field.type === 'markdown') { fail(cx, path, `“${key}” is the text of the file, not a frontmatter key.`); continue }
-    if (!cx.isMain && !isTranslatable(field) && field.type !== 'list' && field.type !== 'image') {
+    if (!cx.isMain && !isTranslatable(field) && field.type !== 'list' && field.type !== 'rows' && field.type !== 'image') {
       fail(cx, path, `“${key}” is set in the main-language file only.`)
       continue
     }
@@ -250,6 +250,12 @@ function convertFields(fields: Fields, data: Record<string, unknown>, cx: FileCx
         const rows = Array.isArray(value) && only !== undefined ? value.map((row) => (isRecord(row) ? row : { [only]: row })) : value
         if (!Array.isArray(rows) || !rows.every(isRecord)) { fail(cx, path, `“${key}” must be a list of objects.`); break }
         out[key] = rows.map((row, i) => convertFields(field.of, row, { ...cx, prefix: `${path}.${i}.`, where: [...cx.where, displayOf(cx.where, cx.prefix, path), `row ${i + 1}`] }))
+        break
+      }
+      case 'rows': {
+        // One object per row key: `days: { mo: { dish: … }, tu: { … } }`.
+        if (!isRecord(value) || !Object.values(value).every(isRecord)) { fail(cx, path, `“${key}” must be an object with one object per row, like mo: { … }.`); break }
+        out[key] = Object.fromEntries(Object.entries(value).map(([row, cells]) => [row, convertFields(field.of, cells as Record<string, unknown>, { ...cx, prefix: `${path}.${row}.`, where: [...cx.where, displayOf(cx.where, cx.prefix, path), row] })]))
         break
       }
       default:
@@ -316,6 +322,28 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
         }
         return { _id: id, ...merge(field.of, rowViews, { ...cx, prefix: `${path}.${id}.`, where: [...cx.where, displayOf(cx.where, cx.prefix, path), `row ${i + 1}`] }) }
       })
+    } else if (field.type === 'rows') {
+      // Rows are matched by key: a translation names the rows of the main file it translates.
+      const mainRows = isRecord(mainView[key]) ? mainView[key] : {}
+      for (const locale of cx.locales) {
+        const rows = views[locale]?.[key]
+        if (locale === cx.main || !isRecord(rows)) continue
+        for (const row of Object.keys(rows)) {
+          if (Object.hasOwn(mainRows, row)) continue
+          const display = displayOf(cx.where, cx.prefix, path)
+          cx.errors.push({ file: cx.rels[locale] ?? '', path: `${path}.${row}`, ...(display !== path ? { display } : {}), message: `“${key}” has the row “${row}” here but not in content/${cx.rels[cx.main] ?? ''}. A translation translates the rows of the main file.` })
+        }
+      }
+      if (mainView[key] === undefined) continue
+      out[key] = Object.fromEntries(Object.keys(mainRows).map((row) => {
+        const rowViews: Partial<Record<Locale, View>> = {}
+        for (const locale of cx.locales) {
+          const rows = views[locale]?.[key]
+          const cells = isRecord(rows) ? rows[row] : undefined
+          if (isRecord(cells)) rowViews[locale] = cells
+        }
+        return [row, merge(field.of, rowViews, { ...cx, prefix: `${path}.${row}.`, where: [...cx.where, displayOf(cx.where, cx.prefix, path), row] })]
+      }))
     } else if (field.type === 'image') {
       const image = mainView[key]
       if (!isRecord(image)) continue
@@ -339,7 +367,7 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
  *   Id `docs/<name>`, `order` = n (files without a number come after, by name); entries sorted by order. Slug from
  *   frontmatter `slug`, else `<name>`; a translation may set its own `slug`.
  * - Single `legal`: `legal.md` and `legal.<locale>.md`. One entry, id `legal`.
- * - Frontmatter keys are field names in simple form; the body fills the brick's markdown field.
+ * - Frontmatter keys are field names in simple form; the body fills the brick's `body` field.
  *   Translatable fields collect one locale per file into `{ de, en }`. Simple forms: money `12.5` →
  *   `{ amount: 1250 }`; image `{ src: '/img/a.jpg', alt: '…' }` → `{ file: '/img/a.jpg', alt: { de: '…' } }`
  *   (alt per locale file); file `'/docs/a.pdf'` → `{ file: '/docs/a.pdf' }`; choices `none` → `[]` (an empty list on a
@@ -635,7 +663,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         fail(cx, markdownKey, `“${markdownKey}” is a markdown field: it is the text of a .md file, and ${ext === 'csv' ? 'CSV' : ext.toUpperCase()} files have no text.`)
       }
       if (parsed !== undefined && markdownKey !== undefined && hasBody) view[markdownKey] = parsed.body
-      if (markdownKey === undefined && hasBody) fail(cx, 'body', `The text fits no field of “${key}” (it has no markdown field).`)
+      if (markdownKey === undefined && hasBody) fail(cx, 'body', `The text fits no field of “${key}”: the brick states no \`body\` (the markdown field the text of a file fills).`)
       // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
@@ -691,6 +719,13 @@ function locate(root: Fields, data: unknown, path: string): Located {
       fields = field.of
       sets.push(fields)
       field = undefined
+    } else if (field?.type === 'rows') {
+      // A row key names the row as it is written in the file.
+      shown.push(segment)
+      value = isRecord(value) ? value[segment] : undefined
+      fields = field.of
+      sets.push(fields)
+      field = undefined
     } else if (field) {
       // A locale after a translatable key, or `alt` and a locale after an image key.
       shown[shown.length - 1] += `.${segment}`
@@ -741,9 +776,9 @@ function filesMessage(
   }
 }
 
-/** The field a file's body fills: the brick's markdown field. */
+/** The field a file's body fills: the brick's `body`. */
 function markdownKeyOf(brick: Brick): string | undefined {
-  return Object.keys(brick.fields).find((k) => brick.fields[k]!.type === 'markdown')
+  return brick.body
 }
 
 /** The names of a collection folder's main-language entries: file names, and the slugs of CSV rows. Unreadable CSV is reported later. */
@@ -772,11 +807,6 @@ async function entryNames(dir: string): Promise<string[]> {
 async function dataNames(dir: string): Promise<string[]> {
   const dirents = await readdir(dir, { withFileTypes: true }).catch(() => [])
   return dirents.filter((d) => d.isFile() && extensions.some((e) => d.name.endsWith(`.${e}`))).map((d) => d.name).sort()
-}
-
-/** The brick's slug field, if it has one: the URL of each entry (CONTENT.md "Slug"). */
-function slugKeyOf(brick: Brick): string | undefined {
-  return brick.fields.slug?.type === 'slug' ? 'slug' : undefined
 }
 
 /**

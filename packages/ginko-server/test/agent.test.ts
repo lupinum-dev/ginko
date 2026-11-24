@@ -132,6 +132,18 @@ describe('agent door', () => {
     expect((await s.t.run((ctx) => ctx.db.get(s.entries.hours!)))!.data).toMatchObject({ closedOn: '2026-10-09' })
   })
 
+  // Wrong behaviour caught: an assistant sends only the day it changed ({ mo: … }), and the lunch week is stored without
+  // the other days, or the answer does not say which row is missing.
+  it('a lunch week with only Monday is refused with the missing-row sentence, and nothing is stored', async () => {
+    const s = await setup()
+    const before = (await s.t.run((ctx) => ctx.db.get(s.entries.lunch!)))!
+    const refused = await call(s, await keyOf(s, 'owner'), 'task_lunch_lunchWeek', { publish: true, days: { mo: { dish: 'Kürbissuppe', allergens: [] } } })
+    expect(refused.isError).toBe(true)
+    expect(refused.text).toContain('days.tu: “Tage”: the row “tu” is missing.')
+    const after = (await s.t.run((ctx) => ctx.db.get(s.entries.lunch!)))!
+    expect([after.rev, after.data]).toEqual([before.rev, before.data])
+  })
+
   it('the cook\'s key sees only the menu and lunch tasks and cannot run another task', async () => {
     const s = await setup()
     const key = await keyOf(s, 'cook')
@@ -498,8 +510,9 @@ describe('agent door: builder tools (owners and admins)', () => {
     ['ginko_write', { brick: 'menu', entry: 'x', fields: { descripton: 'x' } }, '“descripton” is not a field of “menu”. Did you mean “description”?'],
     ['ginko_create', { brick: 'notice', fields: { text: 'x' } }, 'There is no brick “notice”. Did you mean “notices”?'],
     ['ginko_create', { brick: 'menu', fields: { zzz: 1 } }, '“zzz” is not a field of “menu”. The fields are listed in ginko_schema.'],
-    // Inside a list row too: the row's unknown name was dropped and the save reported success.
-    ['ginko_write', { brick: 'lunch', fields: { days: [{ day: 'mon', gericht: 'Suppe' }] } }, '“days[0].gericht” is not a field of “lunch”. Did you mean “dish”?'],
+    // Inside a row too: the row's unknown name was dropped and the save reported success.
+    ['ginko_write', { brick: 'lunch', fields: { days: { mo: { gericht: 'Suppe' } } } }, '“days.mo.gericht” is not a field of “lunch”. Did you mean “dish”?'],
+    ['ginko_write', { brick: 'hours', fields: { exceptions: [{ grund: 'Urlaub' }] } }, '“exceptions[0].grund” is not a field of “hours”. Did you mean “reason”?'],
   ])('%s %j names the closest key', async (tool, args, text) => {
     const s = await setup()
     expect(await call(s, await keyOf(s, 'owner'), tool, args)).toMatchObject({ isError: true, text })

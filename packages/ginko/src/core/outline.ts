@@ -2,12 +2,16 @@
 // the plan for moving one page in it. One set of rules for the website (docs layer), the Studio's tree and the server's
 // move, so all three show and write the same structure.
 import { nestBy } from './navigation.ts'
-import type { Brick, CollectionBrick } from './types.ts'
+import type { Brick, CollectionTree } from './types.ts'
 
-/** A collection with a navigation tree: manual order and a single `parent` ref to itself (the docs layer's fields). */
-export function isNavTree(key: string, brick: Brick): brick is CollectionBrick {
-  const parent = brick.kind === 'collection' ? brick.fields.parent : undefined
-  return brick.kind === 'collection' && brick.order === 'manual' && parent?.type === 'ref' && parent.to === key && !parent.multiple
+/** The navigation tree a collection states (`tree`), or undefined: a brick is a tree only when it says so. */
+export function treeOf(brick: Brick): CollectionTree | undefined {
+  return brick.kind === 'collection' ? brick.tree : undefined
+}
+
+/** The fields that place a page in its tree: the parent, and the section and tab fields when the tree has them. */
+export function treeFields(tree: CollectionTree): string[] {
+  return [tree.parent, ...(tree.section ? [tree.section] : []), ...(tree.tab ? [tree.tab] : [])]
 }
 
 /** What decides a root's group: its own `tab` and `section` texts (in the language shown). */

@@ -10,7 +10,7 @@ const spanKey = (spans: Span[]) => spans.map((s) => `${s.from}-${s.to}`).join(',
 function weeklySpecs(week: ReturnType<typeof weekFor>['week']) {
   const groups = new Map<string, { spans: Span[]; days: Weekday[] }>()
   for (const key of weekdayKeys) {
-    const day = week.find((d) => d.day === key)
+    const day = week[key]
     const spans = !day || day.closed ? [] : spansOf(day)
     if (!spans.length) continue
     const k = spanKey(spans)
@@ -31,7 +31,7 @@ function specialSpecs(ctx: HoursContext, today: string, days: number, week: Retu
   for (let i = 0; i < days; i++) {
     const date = addDays(today, i)
     const rule = hoursOn(ctx, date)
-    const base = week.find((d) => d.day === weekdayOf(date))
+    const base = week[weekdayOf(date)]
     const baseKey = !base || base.closed ? '' : spanKey(spansOf(base))
     const key = rule.closed ? '' : spanKey(rule.times)
     if (key === baseKey) continue

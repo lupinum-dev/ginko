@@ -5,7 +5,7 @@
      away and the form and the preview share the panel. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isNavTree, isShown, ordered, routeUrls, textIn, todayIn, untranslatedMode, urlsFor, visibleUntil, type Place, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, slugKeyOf, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, visibleUntil, type Place, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
@@ -87,12 +87,13 @@ const foreign = computed(() => locale.value !== main.value)
  * All live fields; a new entry has no slug yet; a foreign language shows only translatable ones, and the address the
  * page has there (display only: the form never sends a slug, the server makes it from the translated title).
  */
-const navTree = computed(() => isNavTree(props.brickKey, props.brick))
+const navTree = computed(() => treeOf(props.brick))
+const placeFields = computed(() => new Set(navTree.value ? treeFields(navTree.value) : []))
 const fields = computed<Fields>(() => Object.fromEntries(ordered(props.brick.fields).filter(([key, f]) => {
   if (f.retired) return false
   if (!props.entry && f.type === 'slug') return false
   // A navigation tree places its pages itself (NavTree; NavPlace shows where).
-  if (navTree.value && (key === 'parent' || key === 'section' || key === 'tab')) return false
+  if (placeFields.value.has(key)) return false
   if (props.entry && props.tasks?.fields && !props.tasks.fields.includes(key)) return false
   if (foreign.value) return hasTranslation(f) || (f.type === 'slug' && props.brick.kind === 'collection' && !!props.brick.route?.[locale.value])
   return true
@@ -126,16 +127,15 @@ const form = useEntryForm({
 const { draft, baseline, issues, problem, conflict, busy, offline, waiting, dirty, confirm, localOffer } = form
 
 /**
- * A new entry starts like the brick's create task in Schnell ändern: its title and its prefill (e.g. today's date).
- * With several create tasks the general one counts (no prefill); "Heute ausgebucht" fills in values for its own case
- * only. Staff get it only when it is the create task they work with.
+ * A new entry starts like the brick's standard add task (id `add`, D85) in Schnell ändern: its title and its prefill
+ * (e.g. today's date). Other create tasks, such as "Heute ausgebucht", fill in values for their own case only. Staff
+ * get it only when it is the create task they work with.
  */
 const createTask = computed(() => {
   if (props.entry || props.brick.kind !== 'collection') return undefined
-  const creates = (props.brick.tasks ?? []).filter((task): task is Extract<Task, { kind: 'create' }> => task.kind === 'create')
-  const general = creates.length === 1 ? creates[0] : creates.find((task) => !task.prefill)
-  if (!general || (props.tasks && props.tasks.create !== taskRef(props.brickKey, general))) return undefined
-  return general
+  const add = props.brick.tasks?.find((task): task is Extract<Task, { kind: 'create' }> => task.id === 'add' && task.kind === 'create')
+  if (!add || (props.tasks && props.tasks.create !== taskRef(props.brickKey, add))) return undefined
+  return add
 })
 const createPrefill = useConvexQuery(api.tasks.prefill, () => (createTask.value ? { site: props.site.slug, task: taskRef(props.brickKey, createTask.value) } : 'skip'), { server: false })
 /** The server resolves the prefill (tokens such as @today in the site's time zone); only fields of this form. */
@@ -146,7 +146,7 @@ const prefilled = computed<Record<string, Json>>(() => {
 })
 
 function start() {
-  form.load(props.entry ? { ...props.entry.data } : { ...defaultsFor(fields.value), ...prefilled.value })
+  form.load(props.entry ? { ...props.entry.data } : { ...defaultsFor(fields.value, props.schema.week), ...prefilled.value })
 }
 start()
 // The prefill arrives after the form opened: it fills the new form unless the person has typed already.
@@ -244,7 +244,7 @@ const shown = (label: LabelText) => shownLabel(label, main.value)
  * form shows no fields and no Speichern, but a note that says why and whom to ask. Vorschau, Mehr and publishing stay.
  */
 const readOnly = computed(() => !!props.entry && !!props.tasks && !props.tasks.save)
-const readOnlyNote = computed(() => props.tasks?.create
+const readOnlyNote = computed(() => props.tasks?.held?.some((task) => task.kind === 'create')
   ? t('entry.readOnlyOthers')
   : t('entry.readOnly', { area: shown(props.brick.label), tasks: (props.tasks?.held ?? []).map((task) => shown(task.label)).join(', ') }))
 const title = computed(() => {
@@ -634,7 +634,8 @@ const previewFocus = computed(() => focused.value && { ...focused.value, text: f
 /** The label of the field a new entry's address is made from, while it is empty: there is no page to show yet. */
 const previewWaitsFor = computed(() => {
   if (props.entry || props.brick.kind !== 'collection' || !props.brick.route) return undefined
-  const slug = Object.values(props.brick.fields).find((field) => field.type === 'slug' && !field.retired)
+  const key = slugKeyOf(props.brick)
+  const slug = key === undefined ? undefined : props.brick.fields[key]
   if (slug?.type !== 'slug' || textIn(typed.value[slug.from], main.value).trim()) return undefined
   return shown(props.brick.fields[slug.from]!.label)
 })

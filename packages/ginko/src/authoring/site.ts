@@ -2,7 +2,7 @@
 // who edits them (`studio`). It returns the site in its stored form (core/site.ts: `SiteInput`), so the schema, the
 // checks, the CLI and the Nuxt module read one form only.
 //
-// A brick in the stored form (made with '@lupinum/ginko/v1', or by a preset that still uses it) may stand next to
+// A brick in the stored form (made by a preset or the docs theme that still build it that way) may stand next to
 // bricks written with this entry: the site file then sets where it lives and, with `entries`, its address.
 import type { RouteTemplate, SiteInput } from '../core/site.ts'
 import type { Brick, CollectionBrick, Label, Locale, SingleBrick, Task } from '../core/types.ts'
@@ -82,9 +82,7 @@ export function defineSite<
   if (old.length) {
     throw new Error([
       `ginko.config.ts is written in the form of Ginko 0.18 (it has \`${old.join('` and `')}\`).`,
-      'To keep it as it is, change the import in the config and in your brick files:',
-      '  import { defineSite, single, collection, f } from \'@lupinum/ginko/v1\'',
-      'To move it to the new form, write `studio: { id, url, bricks }` and see "Update to 0.19" in the docs.',
+      'Move it to the new form: write `studio: { id, url, bricks }` in place of `site` and `platform`, and see the upgrade guide in the docs.',
     ].join('\n'))
   }
   const { bricks, pages = {}, entries = {}, studio, texts = {}, ...rest } = site
@@ -174,7 +172,7 @@ const MOVED: Record<string, string> = {
 
 /** The stored-form brick for a brick as written. */
 function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | undefined, main: Locale, taskTexts: (id: string) => Record<Locale, string | undefined>, problems: string[]): Brick {
-  for (const [old, now] of Object.entries(MOVED)) if (Object.hasOwn(brick, old)) problems.push(`${key}.${old}: ${now}. (To keep a brick of 0.18 as it is, import from '@lupinum/ginko/v1'.)`)
+  for (const [old, now] of Object.entries(MOVED)) if (Object.hasOwn(brick, old)) problems.push(`${key}.${old}: ${now}.`)
   const names = Object.keys(brick.fields)
   // The form of an edit task without `fields`: every field but the address. Measured on the example sites: of 17
   // tasks that edit a whole entry with an address field, 14 leave the address out (changing it breaks links).
@@ -193,6 +191,8 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
     label,
     ...(brick.describe !== undefined ? { describe: brick.describe } : {}),
     fields: brick.fields,
+    ...(brick.body !== undefined ? { body: brick.body } : {}),
+    ...(brick.preview !== undefined ? { preview: brick.preview } : {}),
     ...(brick.layout ? { layout: brick.layout } : {}),
     ...(tasks ? { tasks } : {}),
     ...(planned ? { planned } : {}),
@@ -209,6 +209,9 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
     ...common,
     max: brick.max ?? 500,
     order: brick.order ?? 'manual',
+    // Required by type; a config without it reaches `checkSite`, which says what to write.
+    listing: brick.listing,
+    ...(brick.tree ? { tree: brick.tree } : {}),
     ...(until ? { visible: { mode: 'until' as const, field: until.field, ...(until.plusDays !== undefined ? { days: until.plusDays } : {}), ...(until.thenDelete ? { deleteExpired: true } : {}) } } : {}),
     ...(brick.untranslated ? { untranslated: brick.untranslated } : {}),
     ...(brick.plans ? { plans: brick.plans } : {}),

@@ -9,7 +9,7 @@ import { changedRoots, changedTextLanguages, ownChangesOver, typedTitle, type Da
 import { shownLabel } from '../utils/labels'
 import { clearLocalDraft, localDraftKey, readLocalDraft, useLocalDraftWriter, writeLocalDraft, type LocalDraft } from './useLocalDraft'
 import { BLOCKERS, FLUSHERS, type Issue } from '@lupinum/ginko-editor'
-import { mergeRows, stableJson } from '@lupinum/ginko/internal'
+import { mergeKeyedRows, mergeRows, stableJson } from '@lupinum/ginko/internal'
 import type { Who } from '../utils/who'
 import { useOnline } from '@vueuse/core'
 
@@ -284,15 +284,22 @@ export function useEntryForm(o: EntryFormOptions) {
     return save(c.rev, asked)
   }
   /**
-   * Both people's rows, when every conflicting field is a list and no row was changed by both or
-   * moved (mergeRows); null otherwise. "Beides behalten" shows only then.
+   * Both people's rows, when every conflicting field is a list or a rows field and no row was changed by both or
+   * moved (mergeRows by `_id`, mergeKeyedRows by row key); null otherwise. "Beides behalten" shows only then.
    */
   const listMerge = computed<Data | null>(() => {
     const c = conflict.value
     if (!c?.fields.length) return null
     const merged: Data = {}
     for (const k of c.fields) {
-      if (o.fields()[k]?.type !== 'list') return null
+      const type = o.fields()[k]?.type
+      if (type === 'rows') {
+        const m = mergeKeyedRows(baseline.value[k], draft.value[k], c.data[k])
+        if (m.clashes.length) return null
+        merged[k] = m.rows
+        continue
+      }
+      if (type !== 'list') return null
       const m = mergeRows(baseline.value[k], draft.value[k], c.data[k])
       if (m.clashes.length || m.reordered) return null
       merged[k] = m.rows

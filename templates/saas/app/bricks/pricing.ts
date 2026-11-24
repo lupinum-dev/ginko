@@ -50,6 +50,8 @@ export const pricing = collection({
   item: { de: 'Tarif', en: 'a plan', fr: 'une offre' },
   max: 6,
   fields,
+  listing: { title: 'name', detail: 'monthly' },
+  untranslated: 'fallback',
   tasks: [
     { id: 'price', label: { de: 'Preis ändern', en: 'Change a price', fr: 'Modifier un prix' }, fields: ['pricing', 'monthly', 'yearly'] },
     // The prices have their own task above.

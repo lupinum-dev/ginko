@@ -46,7 +46,7 @@
     "node": "^22.22.3 || ^24.15.0 || >=26"
   },
   "ginko": {
-    "sampleAnchor": "2026-10-16",
+    "sampleAnchor": "2026-11-27",
     "features": [
       "ui",
       "site",

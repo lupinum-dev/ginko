@@ -60,7 +60,7 @@ describe('basics factories', () => {
     expect(shape(people({ route: route('speakers') }))).toEqual([...shape(people()), 'slug: slug'])
     expect(people({ route: route('speakers') }).fields.slug).toMatchObject({ from: 'name' })
     const site = defineSite({
-      site: 'conf', name: 'Conf', url: 'https://conf.example', timeZone: 'Europe/Vienna', locales: ['en', 'de'], currency: 'EUR', pages: { home: { en: '/', de: '/de' } },
+      site: 'conf', name: 'Conf', url: 'https://conf.example', timeZone: 'Europe/Vienna', locales: ['en', 'de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/', de: '/de' } },
       bricks: { people: people({ route: route('speakers') }) },
     })
     expect(checkSite(site)).toEqual([])
@@ -72,7 +72,7 @@ describe('basics factories', () => {
     expect(posts().fields.authors.to).toBe('authors')
     expect(posts({ authors: 'people' }).fields.authors.to).toBe('people')
     const site = defineSite({
-      site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Berlin', locales: ['en'], currency: 'EUR', pages: { home: { en: '/' } },
+      site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Berlin', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/' } },
       bricks: { people: people(), posts: posts({ authors: 'people' }) },
     })
     expect(checkSite(site)).toEqual([])
@@ -224,7 +224,7 @@ describe('basics JSON-LD', () => {
 describe('a files site with every basic', () => {
   const config = defineSite({
     site: 'basics', name: 'Basics', url: 'https://basics.example', timeZone: 'Europe/Berlin',
-    locales: ['en', 'de'], currency: 'EUR', pages: { home: { en: '/', de: '/de' } },
+    locales: ['en', 'de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/', de: '/de' } },
     bricks: {
       site: site({ source: 'files' }),
       legal: legal({ source: 'files', route: route('legal') }),
@@ -283,6 +283,7 @@ describe('a files site with every basic', () => {
       ...config,
       bricks: {
         offers: collection({
+          listing: { title: 'title' },
           label: 'Offers',
           source: 'files',
           order: 'manual',

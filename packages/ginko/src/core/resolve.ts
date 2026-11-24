@@ -1,5 +1,5 @@
-import { effectiveAlt, isTranslatable } from './fields.ts'
-import { addDays } from './time.ts'
+import { effectiveAlt, isTranslatable, rowKeysOf, slugKeyOf, startValue } from './fields.ts'
+import { addDays, type SiteWeek } from './time.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { resolveRouteLinks } from './links.ts'
 import { resolveFileRefs } from './file-refs.ts'
@@ -62,9 +62,12 @@ export interface ResolvedEntry {
   hidden: boolean
 }
 
-/** Pages (collections with a route) leave an untranslated entry out of that language; parts of pages fall back to the main language. */
+/**
+ * What an untranslated entry does, as the collection states it (`untranslated`). A site with one language need not
+ * state it: no entry is untranslated there, so `'fallback'` changes nothing.
+ */
 export function untranslatedMode(brick: CollectionBrick): 'hide' | 'fallback' {
-  return brick.untranslated ?? (brick.route ? 'hide' : 'fallback')
+  return brick.untranslated ?? 'fallback'
 }
 
 /** The print that marks a translation as fresh for the current main-language value. */
@@ -152,6 +155,14 @@ function resolveValue(field: Field, value: Json, path: string, state: State): un
     }
     case 'list':
       return (value as Record<string, Json>[]).map((row) => ({ _id: row._id, ...resolveFields(field.of, row, `${path}.${String(row._id)}`, state) }))
+    case 'rows': {
+      // The rows the field has, in its order (the site's week for days); a stored row the field no longer has is left out.
+      const rows = value as Record<string, Record<string, Json> | undefined>
+      return Object.fromEntries(rowKeysOf(field, state.schema.week).flatMap((key) => {
+        const row = Object.hasOwn(rows, key) ? rows[key] : undefined
+        return row ? [[key, resolveFields(field.of, row, `${path}.${key}`, state)]] : []
+      }))
+    }
     default:
       return value
   }
@@ -217,9 +228,13 @@ function localized(value: Json, leaf: string, state: State, field: Field): unkno
 }
 
 /** Stored-format data built from the fields' defaults (new singletons, module defaults). */
-export function defaultsFor(fields: Fields): Record<string, Json> {
+export function defaultsFor(fields: Fields, week: SiteWeek): Record<string, Json> {
   const out: Record<string, Json> = {}
-  for (const [name, field] of Object.entries(fields)) if (field.default !== undefined && !field.retired) out[name] = field.default
+  for (const [name, field] of Object.entries(fields)) {
+    if (field.retired) continue
+    const start = startValue(field, week)
+    if (start !== undefined) out[name] = start
+  }
   return out
 }
 
@@ -317,7 +332,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
     const stored = input.entries[key] ?? []
     const ctx: ResolveContext = { locale, markAllFallback: !known, files: input.files }
     if (brick.kind === 'single') {
-      const entry = stored[0] ?? { id: `default:${key}`, data: defaultsFor(brick.fields) }
+      const entry = stored[0] ?? { id: `default:${key}`, data: defaultsFor(brick.fields, schema.week) }
       const r = resolveEntry(schema, key, entry, ctx)
       bricks[key] = { kind: 'single', data: r.data, fallback: r.fallback }
       continue
@@ -359,7 +374,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
  * translated or not: for cache refresh and URL clash checks.
  */
 export function routeUrls(schema: Schema, brick: CollectionBrick, entry: StoredEntry): Partial<Record<Locale, string>> {
-  const slugField = Object.entries(brick.fields).find(([, field]) => field.type === 'slug' && !field.retired)?.[0]
+  const slugField = slugKeyOf(brick)
   if (!slugField || !brick.route) return {}
   const slugs = (entry.data[slugField] ?? {}) as Partial<Record<Locale, string>>
   const main = schema.locales[0]!

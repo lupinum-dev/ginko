@@ -81,10 +81,9 @@ export function labelsIn<B extends Brick>(brick: B, locale: Locale): B {
     if (input.hint !== undefined) out.hint = text(input.hint)
     if (input.group !== undefined) out.group = text(input.group)
     if (input.type === 'choice' || input.type === 'choices') out.options = input.options.map((o) => ({ ...o, label: text(o.label) }))
-    if (input.type === 'list') {
-      out.itemLabel = text(input.itemLabel)
-      out.of = Object.fromEntries(Object.entries(input.of).map(([name, column]) => [name, field(column)]))
-    }
+    if (input.type === 'list') out.itemLabel = text(input.itemLabel)
+    if (input.type === 'rows' && Array.isArray(input.rows)) out.rows = input.rows.map((row) => ({ ...row, label: text(row.label) }))
+    if (input.type === 'list' || input.type === 'rows') out.of = Object.fromEntries(Object.entries(input.of).map(([name, column]) => [name, field(column)]))
     return out as unknown as Field
   }
   return {

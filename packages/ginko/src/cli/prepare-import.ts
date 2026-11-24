@@ -106,7 +106,7 @@ export async function prepareImport(input: PrepareInput): Promise<PrepareResult>
   const site: SiteExport = parseExport(parsed, 'path', 'export.json is not a valid export (format 1).')
 
   const exportSchema = site.schema
-  const main = exportSchema.locales?.[0] ?? 'de'
+  const main = exportSchema.locales?.[0] ?? noLanguage()
   const files = new Map(site.files.map((f) => [f.id, f]))
   const folders = site.folders ?? (site.folders = [])
   const known = input.config?.components as ComponentRegistry | undefined
@@ -234,6 +234,16 @@ export async function prepareImport(input: PrepareInput): Promise<PrepareResult>
       }
       return rows
     }
+    if (field.type === 'rows' && isObject(value)) {
+      const rows: Record<string, Json> = {}
+      for (const [key, row] of Object.entries(value as Record<string, Json>)) {
+        if (!isObject(row)) { rows[key] = row; continue }
+        const out: Record<string, Json> = { ...(row as Record<string, Json>) }
+        for (const [name, column] of Object.entries(field.of)) if (name in out) out[name] = await walk(column, out[name]!)
+        rows[key] = out
+      }
+      return rows
+    }
     return value
   }
 
@@ -295,4 +305,9 @@ async function redirects(input: PrepareInput, map: ImportMap, site: SiteExport, 
   result.redirects.count = good.length
   result.redirects.file = file
   result.redirects.hint = 'Put the array in `redirects` in ginko.config.ts (defineSite).'
+}
+
+/** An export without a language: there is no default (design V2 5.4). */
+function noLanguage(): never {
+  throw new CliError('export.json names no language (schema.locales is missing or empty). Export the site again.')
 }

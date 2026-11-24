@@ -6,7 +6,7 @@ import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import { useSchemaOrg } from '#ginko/schema-org'
 import {
-  applyDefaults, breadcrumbs, factText, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, websiteLd, withCountry, withAbsoluteImages,
+  applyDefaults, breadcrumbs, factText, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, weekInfo, websiteLd, withCountry, withAbsoluteImages,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from './shared.ts'
@@ -111,9 +111,12 @@ export function useGinkoFact(name: MaybeRefOrGetter<string>): ComputedRef<string
   })
 }
 
-/** First day of the week and weekend days of the site (`schema.week`, from the main language or `firstDayOfWeek`), the same the server and the Studio use. */
+/**
+ * First day of the week and weekend days of the site, from `week` in ginko.config.ts, the same the server and the Studio
+ * use. Throws with a sentence when the site states no week.
+ */
 export function useGinkoWeek(): WeekInfo {
-  return schema.week
+  return weekInfo(schema.week)
 }
 
 /**
@@ -183,7 +186,7 @@ export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRe
 export function useGinkoNav(bricks: MaybeRefOrGetter<CollectionKey[]>): ComputedRef<NavNode[]> {
   const bundle = useVisibleBundle(bricks)
   const locale = useGinkoLocale()
-  return computed(() => navTree(bundle.value, toValue(bricks), locale.value))
+  return computed(() => navTree(bundle.value, toValue(bricks), locale.value, schema))
 }
 
 /** The nodes from the root down to the current route's path; empty when the path is not in the tree. */

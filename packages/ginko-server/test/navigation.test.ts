@@ -1,16 +1,16 @@
-// navigation.tree, move and heading: the docs tree of a manually ordered collection with `parent`, `section` and `tab`.
+// navigation.tree, move and heading: the docs tree of a collection with `tree: { parent, section, tab }`.
 import { collection, defineSite, f } from '@lupinum/ginko/internal'
-import { outline, serializeSchema, type Schema } from '@lupinum/ginko/internal'
+import { outline, serializeSchema, type CollectionBrick, type Json, type Schema } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import { errorOf, opId, setup } from './setup'
 
 const docsBrick = serializeSchema(defineSite({
-  site: 'x', name: 'x', url: 'https://x.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', pages: {},
+  site: 'x', name: 'x', url: 'https://x.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
   bricks: {
     docs: collection({
-      label: 'Doku', max: 100, order: 'manual',
+      label: 'Doku', max: 100, order: 'manual', listing: { title: 'title' }, tree: { parent: 'parent', section: 'section', tab: 'tab' },
       fields: {
         title: f.text('Titel'),
         section: f.text('Abschnitt', { optional: true }),
@@ -197,6 +197,68 @@ describe('navigation.move', () => {
     await s.move('api', { before: 'client' })
     expect(await s.shape()).toEqual(before)
     expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev).toBeGreaterThan(site0)
+  })
+})
+
+describe('tree: the brick states its navigation tree (design V2 guess 6)', () => {
+  /** Renames the tree's fields in the schema and in every page: `parent` → `oben`, `section` → `gruppe`. */
+  async function renamed(s: Awaited<ReturnType<typeof docsSite>>) {
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      const docs = schema.bricks.docs as CollectionBrick
+      const { parent, section, ...rest } = docs.fields
+      docs.fields = { ...rest, oben: parent!, gruppe: section! }
+      docs.tree = { parent: 'oben', section: 'gruppe', tab: 'tab' }
+      await ctx.db.patch(s.site, { schema })
+      for (const id of Object.values(s.ids)) {
+        const { parent: p, section: g, ...data } = (await ctx.db.get(id))!.data as Record<string, Json>
+        await ctx.db.patch(id, { data: { ...data, ...(p !== undefined ? { oben: p } : {}), ...(g !== undefined ? { gruppe: g } : {}) } })
+      }
+    })
+  }
+
+  // Wrong: only a field called `parent` (and `section`) nests and groups pages, so a site that names them otherwise
+  // gets a flat list, and a move writes a `parent` the brick does not have.
+  it('reads and writes the fields `tree` names, whatever they are called', async () => {
+    const s = await docsSite(PAGES)
+    await renamed(s)
+    expect(await s.shape()).toEqual(['-/Start: intro', '-/Start: setup(install)', '-/Anleitungen: auth(keys)', '-/Anleitungen: paging'])
+    await s.move('paging', { parent: 'auth', after: 'keys' })
+    expect((await s.t.run((ctx) => ctx.db.get(s.ids.paging!)))!.data).toMatchObject({ oben: s.ids.auth })
+    expect((await s.t.run((ctx) => ctx.db.get(s.ids.paging!)))!.data).not.toHaveProperty('parent')
+  })
+
+  // Wrong (design V2 guess 4): the tree shows a field called `navTitle` as the short name and one called `badge` as the
+  // badge, so a site that names them otherwise shows neither, and a site with such fields shows them unasked.
+  it('shows the short name and the badge of the fields `tree.label` and `tree.badge` name', async () => {
+    const s = await docsSite([{ key: 'intro' }, { key: 'setup' }])
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      const docs = schema.bricks.docs as CollectionBrick
+      docs.fields = { ...docs.fields, kurz: { type: 'text', label: 'Kurztitel', optional: true }, neu: { type: 'text', label: 'Hinweis', optional: true }, navTitle: { type: 'text', label: 'Alt', optional: true }, badge: { type: 'text', label: 'Alt', optional: true } }
+      await ctx.db.patch(s.site, { schema })
+      const data = (await ctx.db.get(s.ids.intro!))!.data as Record<string, Json>
+      await ctx.db.patch(s.ids.intro!, { data: { ...data, kurz: { de: 'Start' }, neu: { de: 'Neu' }, navTitle: { de: 'Nicht' }, badge: { de: 'Nicht' } } })
+    })
+    const rows = async () => (await s.as.owner.query(api.navigation.tree, { site: 'restaurant', brick: 'docs' })).map((r) => [r.label, r.badge])
+    expect(await rows()).toEqual([[null, null], [null, null]])
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.docs as CollectionBrick).tree = { parent: 'parent', section: 'section', tab: 'tab', label: 'kurz', badge: 'neu' }
+      await ctx.db.patch(s.site, { schema })
+    })
+    expect(await rows()).toEqual([['Start', 'Neu'], [null, null]])
+  })
+
+  // Wrong: a manually ordered collection with a `parent` ref to itself becomes a tree by its shape.
+  it('is no tree without `tree`, whatever its fields', async () => {
+    const s = await docsSite(PAGES)
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      delete (schema.bricks.docs as CollectionBrick).tree
+      await ctx.db.patch(s.site, { schema })
+    })
+    expect((await errorOf(s.as.owner.query(api.navigation.tree, { site: 'restaurant', brick: 'docs' }))).code).toBe('INVALID')
   })
 })
 

@@ -10,6 +10,7 @@ import GinkoFieldChoices from '../app/components/fields/GinkoFieldChoices.vue'
 import GinkoFieldDate from '../app/components/fields/GinkoFieldDate.vue'
 import EntryFields from '../app/components/EntryFields.vue'
 import GinkoFieldList from '../app/components/fields/GinkoFieldList.vue'
+import GinkoFieldRows from '../app/components/fields/GinkoFieldRows.vue'
 import GinkoFieldRef from '../app/components/fields/GinkoFieldRef.vue'
 import { REFS, type RefOptions } from '../app/components/fields/refs'
 import { FACT_USES } from '../app/utils/facts'
@@ -340,6 +341,43 @@ describe('a list with default rows', () => {
   })
 })
 
+describe('a rows field without a stored value', () => {
+  const field = {
+    type: 'rows', label: 'Tage', rows: 'workdays', optional: true,
+    of: { dish: { type: 'text', label: 'Gericht', translate: false, default: 'Folgt' }, price: { type: 'money', label: 'Preis', optional: true } },
+  } as Extract<Field, { type: 'rows' }>
+  const week = ref({ firstDay: 'mo', workdays: ['mo', 'tu', 'we'] })
+  function host() {
+    const value = shallowRef<Json | undefined>(undefined)
+    const wrapper = mount(defineComponent({
+      setup: () => () => h(GinkoFieldRows, { id: 'f-days', field, modelValue: value.value, path: 'days', locale: 'de', locales: ['de'], issues: [], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+    }), { global: { provide: { 'ginko:week': week } } })
+    return { wrapper, value }
+  }
+
+  // Wrong behaviour caught: editing Tuesday of an optional (or newly added) rows field sent `{ tu: { … } }` alone, and the
+  // server refused the save with "row mo is missing".
+  test('editing one cell sends every row, the others from the column defaults', async () => {
+    const { wrapper, value } = host()
+    await wrapper.findAll('input[type="text"]')[1]!.setValue('Gulasch')
+    expect(value.value).toEqual({ mo: { dish: 'Folgt' }, tu: { dish: 'Gulasch' }, we: { dish: 'Folgt' } })
+  })
+
+  // Wrong behaviour caught: the owner reads "Die Zeile „tu“ fehlt", a key she never sees, under the card "Dienstag".
+  test('a row sentence names the weekday, not the row key', () => {
+    const issue = { path: 'days.tu', code: 'REQUIRED', key: 'issues.rowMissing', params: { label: 'Tage', row: 'tu' }, message: '„Tage“: Die Zeile „tu“ fehlt.' }
+    const wrapper = mount(GinkoFieldRows, { props: { id: 'f-days', field, modelValue: undefined, path: 'days', locale: 'de', locales: ['de'], issues: [issue] }, global: { provide: { 'ginko:week': week } } })
+    expect(wrapper.get('[data-row="tu"] [role="alert"]').text()).toBe('„Tage“: Die Zeile „Dienstag“ fehlt.')
+  })
+
+  // Wrong behaviour caught: the optional field is stored with default rows although nobody touched it.
+  test('an untouched field stays unset', () => {
+    const { wrapper, value } = host()
+    expect(wrapper.findAll('h3').length).toBe(3)
+    expect(value.value).toBeUndefined()
+  })
+})
+
 describe('choices', () => {
   // Wrong behaviour caught: unchecking the last allergen ticked "Keine" by itself, so a cook who then tapped "Keine" to
   // confirm cleared the answer, and a dish could say "no allergens" without anyone choosing it.
@@ -369,7 +407,7 @@ describe('week fields', () => {
       const value = shallowRef<Json | undefined>(undefined)
       const wrapper = mount(defineComponent({
         setup: () => () => h(GinkoFieldDate, { id: 'f-week', modelValue: value.value, invalid: false, weeks: [1, 2], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
-      }))
+      }), { global: { provide: { 'ginko:week': ref({ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }) } } })
       expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['Nächste Woche', 'Übernächste Woche'])
       await wrapper.findAll('button')[1]!.trigger('click')
       expect(value.value).toBe('2026-10-26')

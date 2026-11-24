@@ -12,9 +12,10 @@ import { errorLine, readContent } from '../src/read.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
   bricks: {
-    docs: collection({
+    docs: collection({ body: 'body',
+      listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]', en: '/en/docs/[slug]' },
       // Listed in English also without a translation (the main-language page), so the fallback of file entries shows.
@@ -28,13 +29,14 @@ const schema = serializeSchema(defineSite({
         body: f.markdown('Text'),
       },
     }),
-    pages: collection({
+    pages: collection({ body: 'body',
+      listing: { title: 'title' },
       label: 'Seiten', source: 'files', max: 5, order: 'manual',
       route: { de: '/seite/[slug]', en: '/en/page/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text', { profile: 'page' }) },
     }),
-    legal: single({ label: 'Rechtliches', source: 'files', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
-    notices: collection({ label: 'Hinweise', max: 5, order: 'manual', fields: { text: f.text('Text') } }),
+    legal: single({ body: 'body', label: 'Rechtliches', source: 'files', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
+    notices: collection({ listing: { title: 'text' }, label: 'Hinweise', max: 5, order: 'manual', fields: { text: f.text('Text') } }),
   },
   components: {
     figure: { kind: 'block', label: 'Bild', describe: 'Bild mit Maßen', props: { src: f.image('Bild'), width: f.number('Breite', { min: 1, max: 10000, step: 1, optional: true }), height: f.number('Höhe', { min: 1, max: 10000, step: 1, optional: true }) } },
@@ -67,6 +69,32 @@ describe('readContent', () => {
       ['docs/bausteine', 2, { de: 'Bausteine' }, { de: 'bausteine' }],
     ])
     expect((r.entries.docs![0]!.data.body as { de: { nodes: unknown[] } }).de.nodes.length).toBeGreaterThan(0)
+  })
+
+  // Wrong (design V2 guess 8): the address field is found by its name `slug`, so a collection whose address field has
+  // another name gets no address from its file names and no URL.
+  it('takes the address from the file name into the slug field, whatever it is called', async () => {
+    const adresse = serializeSchema(defineSite({
+      site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
+      bricks: { pages: collection({ body: 'body', listing: { title: 'title' }, label: 'Seiten', source: 'files', max: 5, order: 'manual', route: { de: '/seite/[slug]' }, fields: { title: f.text('Titel'), adresse: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') } }) },
+    }))
+    const s = site({ 'content/pages/1.ueber-uns.md': md('title: Über uns') })
+    const r = await readContent(s.content, s.public, adresse)
+    expect(r.errors).toEqual([])
+    expect(r.entries.pages!.map((e) => e.data.adresse)).toEqual([{ de: 'ueber-uns' }])
+  })
+
+  // Wrong (design V2 guess 10): the text below the front matter goes to a field found by its name or type, not the
+  // one `body` names, so a brick whose text field is called otherwise loses its text.
+  it('puts the text of a file in the field `body` names', async () => {
+    const story = serializeSchema(defineSite({
+      site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
+      bricks: { about: single({ body: 'story', label: 'Über uns', source: 'files', fields: { title: f.text('Titel'), story: f.markdown('Geschichte') } }) },
+    }))
+    const s = site({ 'content/about.md': md('title: Über uns', 'Seit 1990.') })
+    const r = await readContent(s.content, s.public, story)
+    expect(r.errors).toEqual([])
+    expect(r.entries.about![0]!.data).toMatchObject({ title: { de: 'Über uns' }, story: { de: { nodes: [['p', {}, 'Seit 1990.']] } } })
   })
 
   it('reads a single and never touches platform bricks', async () => {
@@ -164,9 +192,10 @@ describe('buildFileBundles', () => {
 
 describe('publicBundle', () => {
   const events = serializeSchema(defineSite({
-    site: 'ev', name: 'Ev', url: 'https://ev.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
+    site: 'ev', name: 'Ev', url: 'https://ev.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/' } },
     bricks: {
-      events: collection({
+      events: collection({ body: 'body',
+        listing: { title: 'title' },
         label: 'Termine', source: 'files', max: 50, order: 'manual', visible: { mode: 'until', field: 'when' },
         route: { de: '/termine/[slug]' },
         fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), when: f.daterange('Wann'), body: f.markdown('Text') },
@@ -290,8 +319,8 @@ describe('images in Markdown', () => {
 describe('image variants', () => {
   const imageSchema = serializeSchema(defineSite({
     site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
-    locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
-    bricks: { docs: collection({ label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), hero: f.image('Bild', { optional: true }), body: f.markdown('Text') } }) },
+    locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/' } },
+    bricks: { docs: collection({ body: 'body', listing: { title: 'title' }, label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), hero: f.image('Bild', { optional: true }), body: f.markdown('Text') } }) },
   }))
   const png = (width: number, height: number) => sharp({ create: { width, height, channels: 3, background: '#c33' } }).png().toBuffer()
 
@@ -333,10 +362,10 @@ describe('image variants', () => {
 
 describe('checks that never hide a broken entry', () => {
   const blog = serializeSchema(defineSite({
-    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
     bricks: {
-      authors: collection({ label: 'Authors', source: 'files', max: 5, order: 'manual', fields: { name: f.text('Name') } }),
-      posts: collection({ label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date'), author: f.ref('Author', { to: 'authors' }) } }),
+      authors: collection({ listing: { title: 'name' }, label: 'Authors', source: 'files', max: 5, order: 'manual', fields: { name: f.text('Name') } }),
+      posts: collection({ listing: { title: 'title' }, label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date'), author: f.ref('Author', { to: 'authors' }) } }),
       hours: single({
         label: 'Hours', source: 'files',
         fields: { exceptions: f.list('Exceptions', { itemLabel: 'Day', fields: { reason: f.text('Reason') }, max: 10, optional: true }) },
@@ -362,7 +391,7 @@ describe('checks that never hide a broken entry', () => {
   // Wrong behaviour caught: the changelog basic has no drafts line, so a release dated in the future is published at once.
   it('leaves out a changelog entry dated after the build day', async () => {
     const log = serializeSchema(defineSite({
-      site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
+      site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/' } },
       bricks: { changelog: changelog({ source: 'files' }) },
     }))
     const s = site({ 'content/changelog/v1.md': '---\nversion: 1.0.0\ndate: 2026-10-01\n---\nOut.', 'content/changelog/v9.md': '---\nversion: 9.0.0\ndate: 2031-01-01\n---\nLater.' })
@@ -398,10 +427,11 @@ describe('check messages for file owners', () => {
   const both = (de: string, en: string) => ({ de, en })
   const owners = serializeSchema(defineSite({
     site: 'studio', name: 'Studio', url: 'https://studio.example', timeZone: 'Europe/Vienna',
-    locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+    locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
     bricks: {
-      people: collection({ label: 'Personen', source: 'files', max: 20, order: 'manual', fields: { name: f.text('Name') } }),
+      people: collection({ listing: { title: 'name' }, label: 'Personen', source: 'files', max: 20, order: 'manual', fields: { name: f.text('Name') } }),
       events: collection({
+        listing: { title: 'title' },
         label: 'Termine', source: 'files', max: 20, order: 'manual',
         fields: {
           title: f.text('Titel'),
@@ -442,9 +472,10 @@ describe('check messages for file owners', () => {
 describe('multi-choice values in files', () => {
   const dish = (options: string[], optional = false) => serializeSchema(defineSite({
     site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Vienna',
-    locales: ['de'], currency: 'EUR', pages: { home: '/' },
+    locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
     bricks: {
       menu: collection({
+        listing: { title: 'name' },
         label: 'Karte', source: 'files', max: 20, order: 'manual',
         fields: { name: f.text('Name'), allergens: f.choices('Allergene', { options: options.map((value) => ({ value, label: value })), optional }) },
       }),

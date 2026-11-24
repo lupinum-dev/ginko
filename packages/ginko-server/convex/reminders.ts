@@ -3,7 +3,7 @@
 // one mail per person and site, each brick once per person and week, on the day before the site's week starts (Sunday
 // for Monday-first weeks), between 17:00 and 18:00 in the site's time zone.
 import { startOfWeek, type Json } from '@lupinum/ginko'
-import { addDays, labelOf, plannedWeeks, staleOf, todayIn, workWeekOf, type Schema } from '@lupinum/ginko/internal'
+import { addDays, weekInfo, labelOf, plannedWeeks, staleOf, todayIn, workWeekOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { components } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
@@ -22,7 +22,10 @@ function hourIn(timeZone: string, now: Date): number {
 }
 
 /** Whether tomorrow is the first day of the site's week. */
-const isDayBeforeWeekStart = (date: string, schema: Schema) => startOfWeek(addDays(date, 1), schema.week) === addDays(date, 1)
+const isDayBeforeWeekStart = (date: string, schema: Schema) => startOfWeek(addDays(date, 1), weekOfSite(schema)) === addDays(date, 1)
+
+/** The site's week: every site states it (`checkSchema`). */
+const weekOfSite = (schema: Schema) => weekInfo(schema.week)
 
 /**
  * Hourly. Sends the reminders of every site whose 17:00 hour on the day before the week starts it is. `now` is for tests and the
@@ -49,7 +52,7 @@ export const sweep = internalMutation({
 async function remindSite(ctx: MutationCtx, site: Doc<'sites'>, schema: Schema, today: string, at: number): Promise<number> {
   // Tomorrow starts the coming week; asking from there keeps the rule right for any first day.
   const coming = addDays(today, 1)
-  const info = schema.week
+  const info = weekOfSite(schema)
   const week = workWeekOf(coming, info)
   const members = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
   // Live entries of the collections that plan weeks ahead (no drafts, nothing deleted), read once per site.

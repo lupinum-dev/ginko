@@ -12,6 +12,12 @@ type Write = { entry: string; fields: Record<string, Json> }
 
 const commit = () => crypto.randomUUID().replaceAll('-', '')
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+/** Removes the field `hours.closedNote` and takes it out of the tasks, so the only problem left is the missing retirement. */
+const dropClosedNote = (schema: Schema) => {
+  const hours = schema.bricks.hours!
+  delete hours.fields.closedNote
+  hours.tasks = hours.tasks?.map((task) => ('fields' in task && task.fields ? { ...task, fields: task.fields.filter((name) => name !== 'closedNote') } : task))
+}
 
 async function storedSite(s: Setup) {
   return (await s.t.run((ctx) => ctx.db.get(s.site)))!
@@ -93,7 +99,7 @@ describe('release mutation (SPEC 5.2)', () => {
   it('a rejected diff is SCHEMA_REJECTED with the fix text and changes nothing', async () => {
     const s = await setup()
     const schema = copy(await storedSchema(s))
-    delete schema.bricks.hours!.fields.closedNote
+    dropClosedNote(schema)
     const error = await errorOf(release(s, { schema }))
     expect(error).toMatchObject({
       code: 'SCHEMA_REJECTED',
@@ -262,7 +268,7 @@ describe('push keys and the HTTP routes (SPEC 5.1, 10)', () => {
     expect(await stale.json()).toMatchObject({ code: 'CHANGED_SINCE' })
 
     const schema = copy(await storedSchema(s))
-    delete schema.bricks.hours!.fields.closedNote
+    dropClosedNote(schema)
     const rejected = await post(s, token, { commit: 'x2', expectedSchemaRev: 1, expectedContentRev: 1, schema, writes: [] })
     expect(rejected.status).toBe(400)
     expect(await rejected.json()).toMatchObject({ code: 'SCHEMA_REJECTED', details: { rejected: [expect.objectContaining({ path: 'hours.closedNote' })] } })
@@ -295,7 +301,7 @@ describe('devPush (SPEC 5.3)', () => {
     vi.stubEnv('GINKO_LOCAL', '1')
     const s = await setup()
     const schema = copy(await storedSchema(s))
-    delete schema.bricks.hours!.fields.closedNote
+    dropClosedNote(schema)
     const pushed = await s.t.mutation(internal.release.devPush, { site: 'restaurant', schema })
     expect(pushed).toMatchObject({ schemaRev: 2, warnings: [expect.objectContaining({ path: 'hours.closedNote' })] })
     expect((await storedSite(s)).schemaRev).toBe(2)
@@ -444,6 +450,48 @@ describe('devPush on a fresh local backend', () => {
     const hours = singles.find((e) => e.brick === 'hours')!
     expect(await s.as.owner.mutation(api.entries.save, { publish: true, site: 'neu', opId: opId(), entry: hours._id, baseRev: 1, fields: { closedNote: { de: 'Betriebsurlaub' } }, sentence: 'Hinweis gesetzt' }))
       .toMatchObject({ rev: 2 })
+  })
+})
+
+describe('a site changes its workdays (f.rows)', () => {
+  // Convex stores object keys sorted, so the row set is compared sorted; the field's own order is rowKeysOf.
+  const daysOf = async (s: Setup, brick: string) => Object.keys((await rowsOf(s, brick))[0]!.data.days as Record<string, Json>).sort()
+
+  // Wrong: the release keeps a row the field no longer has (the website shows a Friday lunch the restaurant dropped),
+  // or refuses the change with no way out.
+  it('a workday removed with its retired line: the release removes the row from the stored entries', async () => {
+    const s = await setup()
+    const schema = copy(await storedSchema(s))
+    schema.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }
+    schema.retired['lunch.days.fr'] = { drop: true }
+    schema.retired['lunchPlans.days.fr'] = { drop: true }
+    expect(await release(s, { schema })).toEqual({ schemaRev: 2, contentRev: 2 })
+    expect(await daysOf(s, 'lunch')).toEqual(['mo', 'th', 'tu', 'we'])
+  })
+
+  it('a workday removed without its retired line is refused with the line to write, and nothing changes', async () => {
+    const s = await setup()
+    const schema = copy(await storedSchema(s))
+    schema.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }
+    schema.retired['lunchPlans.days.fr'] = { drop: true }
+    expect(await errorOf(release(s, { schema }))).toMatchObject({
+      code: 'SCHEMA_REJECTED',
+      details: { rejected: [expect.objectContaining({ path: 'lunch.days', kind: 'rowRemoved', fix: expect.stringContaining("retired: { 'lunch.days.fr': { drop: true } }") })] },
+    })
+    expect((await storedSite(s)).schemaRev).toBe(1)
+    expect(await daysOf(s, 'lunch')).toEqual(['fr', 'mo', 'th', 'tu', 'we'])
+  })
+
+  // Wrong: an added workday leaves the stored entries without the row, so the release (or the next save) fails
+  // with "row … is missing".
+  it('a workday added: every stored entry gains the row from the column defaults and passes the release check', async () => {
+    const s = await setup()
+    const schema = copy(await storedSchema(s))
+    schema.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr', 'sa'] }
+    expect(await release(s, { schema })).toEqual({ schemaRev: 2, contentRev: 2 })
+    expect(await daysOf(s, 'lunch')).toEqual(['fr', 'mo', 'sa', 'th', 'tu', 'we'])
+    const [lunch] = await rowsOf(s, 'lunch')
+    expect((lunch!.data.days as Record<string, Json>).sa).toEqual({ dish: (schema.bricks.lunch!.fields.days as { of: { dish: { default: Json } } }).of.dish.default, allergens: [] })
   })
 })
 

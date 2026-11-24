@@ -131,14 +131,14 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
   })
 
   // Wrong behaviour caught: a list row's missing translation is reported without its row id, so the editor cannot find it.
-  it('lists a list-row leaf with its row id, e.g. days.<id>.dish', () => {
+  it('lists a row leaf with its row key, e.g. days.mo.dish', () => {
     const lunch: StoredEntry = {
       id: 'lunch',
-      data: { weekOf: '2026-10-05', days: [{ _id: 'k3Fd9aZ0qx', day: 'mo', dish: { de: 'Tafelspitz' }, allergens: [] }] },
+      data: { weekOf: '2026-10-05', days: { mo: { dish: { de: 'Tafelspitz' }, allergens: [] } } },
     }
     const r = resolve(base(), 'lunch', lunch, 'en')
-    expect(r.data.days).toEqual([{ _id: 'k3Fd9aZ0qx', day: 'mo', dish: 'Tafelspitz', allergens: [] }])
-    expect(r.fallback).toEqual(['days.k3Fd9aZ0qx.dish'])
+    expect(r.data.days).toEqual({ mo: { dish: 'Tafelspitz', allergens: [] } })
+    expect(r.fallback).toEqual(['days.mo.dish'])
   })
 
   // Wrong behaviour caught: the English imprint text is served with the German tree (or the reverse).

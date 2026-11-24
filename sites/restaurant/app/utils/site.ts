@@ -6,7 +6,14 @@
 import { allergenNames, weekdayNames } from '@lupinum/ginko-preset-gastro'
 
 // Re-exported for the components (Nuxt auto-imports what app/utils exports).
-export { closedOnClosure, hoursOn, noticesOn, spansOf, spansText, timesOf, todayState, upcomingClosures, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type HourPlan, type HoursData, type TodayState, type Weekday } from '@lupinum/ginko-preset-gastro'
+export { closedOnClosure, hoursOn, noticesOn, spansOf, spansText, timesOf, todayState, upcomingClosures, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type HourPlan, type HoursData, type TodayState, type Weekday, type WeekHours } from '@lupinum/ginko-preset-gastro'
+import type { DayHours, Weekday, WeekHours } from '@lupinum/ginko-preset-gastro'
+
+/** The day keys, Monday first: the house's week starts on Monday. */
+export const weekdayKeys: Weekday[] = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
+
+/** A stored week as table rows, Monday first; a day without a row reads as closed. */
+export const daysOf = (week: WeekHours): Array<DayHours & { day: Weekday }> => weekdayKeys.map((day) => ({ day, ...(week[day] ?? { closed: true }) }))
 
 /** The house name. Address, phone and e-mail are content (brick `contact`), maintained by the owner. */
 export const siteName = 'Gasthaus zur Linde'

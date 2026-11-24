@@ -5,6 +5,8 @@ export default defineSite({
   name: 'Taktwerk',
   url: 'https://ginko-demo-saas.vercel.app',
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales: ['de', 'en', 'fr'],
   languages: { de: 'de-DE', en: 'en-GB', fr: 'fr-FR' },
   currency: 'EUR',
@@ -48,6 +50,9 @@ export default defineSite({
       },
     }),
     pricing: collection({
+      preview: 'pricing',
+      listing: { title: 'name' },
+      untranslated: 'fallback',
       label: 'Preise',
       item: 'Plan',
       max: 6,
@@ -64,6 +69,9 @@ export default defineSite({
       tasks: ['add', { id: 'price', label: 'Preis ändern', fields: ['priceEur', 'priceChf', 'yearEur', 'yearChf', 'note'] }, 'remove'],
     }),
     changelog: collection({
+      preview: 'changelog',
+      listing: { title: 'version', detail: 'date' },
+      untranslated: 'fallback',
       label: 'Changelog',
       max: 300,
       fields: {
@@ -81,6 +89,8 @@ export default defineSite({
       tasks: ['add', 'edit', 'remove'],
     }),
     blog: collection({
+      listing: { title: 'title', detail: 'date' },
+      untranslated: 'hide',
       label: 'Blog',
       item: 'Artikel',
       max: 200,
@@ -102,6 +112,8 @@ export default defineSite({
       ],
     }),
     testimonials: collection({
+      listing: { title: 'quote' },
+      untranslated: 'fallback',
       label: 'Kundenstimmen',
       item: 'Stimme',
       max: 30,
@@ -114,6 +126,9 @@ export default defineSite({
       tasks: ['add', 'edit', 'remove'],
     }),
     faq: collection({
+      preview: 'faq',
+      listing: { title: 'question' },
+      untranslated: 'fallback',
       label: 'Fragen und Antworten',
       item: 'Frage',
       max: 60,
@@ -124,6 +139,8 @@ export default defineSite({
       tasks: ['add', 'edit', 'remove'],
     }),
     notices: collection({
+      listing: { title: 'text', detail: 'until' },
+      untranslated: 'fallback',
       label: 'Ankündigungen',
       item: 'Ankündigung',
       max: 5,

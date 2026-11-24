@@ -39,12 +39,14 @@ const ICON_NAME = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*|i-[a-z0
 
 /** One entry as Markdown: its title as `#`, then each text field as a paragraph and each markdown field as its Markdown. */
 export async function entryMarkdown(item: BundleItem, brick: string, options: AgentOptions): Promise<string> {
-  const title = entryTitle(item, options.schema.bricks[brick]?.fields)
+  const def = options.schema.bricks[brick]
+  const title = entryTitle(item, def)
   const parts = [`# ${markdownText(title, true)}`]
-  for (const [name, field] of Object.entries(options.schema.bricks[brick]?.fields ?? {})) {
+  const titleField = def?.kind === 'collection' ? def.listing?.title : undefined
+  for (const [name, field] of Object.entries(def?.fields ?? {})) {
     const value = item.data[name]
-    // The title is the heading already (for a person, the name its slug is made from).
-    if (name === 'title' || value === title) continue
+    // The field of `listing.title` is the heading already.
+    if (name === titleField || value === title) continue
     const text = (field.type === 'text' || field.type === 'longtext') && typeof value === 'string' ? value.trim() : ''
     if (text && !(field.translate === false && ICON_NAME.test(text))) parts.push(markdownText(text))
     if (field.type !== 'markdown') continue
@@ -92,7 +94,7 @@ export function llmsTxt(bundle: Bundle, options: AgentOptions & { siteName: stri
     for (const item of entry.items) {
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      const title = entryTitle(item, options.schema.bricks[brick]?.fields)
+      const title = entryTitle(item, options.schema.bricks[brick])
       links.push(`- [${markdownText(title, true)}](${origin}${markdownPath(url)})`)
     }
     if (links.length === 0) continue
@@ -137,7 +139,7 @@ export function markdownNotFound(bundle: Bundle, path: string, options: { origin
     for (const item of entry.items) {
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      const title = entryTitle(item, options.schema?.bricks[brick]?.fields)
+      const title = entryTitle(item, options.schema?.bricks[brick])
       const haystack = `${url} ${title}`.toLowerCase()
       const score = tokens.filter((token) => haystack.includes(token)).length
       if (score > 0) matches.push({ url, title, score })

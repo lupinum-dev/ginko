@@ -3,63 +3,49 @@
     {
       "id": "hours",
       "data": {
-        "week": [
-          {
-            "_id": "wkmo000000",
-            "day": "mo",
+        "week": {
+          "mo": {
             "closed": true
           },
-          {
-            "_id": "wktu000000",
-            "day": "tu",
+          "tu": {
             "closed": false,
             "from1": "11:30",
             "to1": "14:00",
             "from2": "17:30",
             "to2": "22:00"
           },
-          {
-            "_id": "wkwe000000",
-            "day": "we",
+          "we": {
             "closed": false,
             "from1": "11:30",
             "to1": "14:00",
             "from2": "17:30",
             "to2": "22:00"
           },
-          {
-            "_id": "wkth000000",
-            "day": "th",
+          "th": {
             "closed": false,
             "from1": "11:30",
             "to1": "14:00",
             "from2": "17:30",
             "to2": "22:00"
           },
-          {
-            "_id": "wkfr000000",
-            "day": "fr",
+          "fr": {
             "closed": false,
             "from1": "11:30",
             "to1": "14:00",
             "from2": "17:30",
             "to2": "22:00"
           },
-          {
-            "_id": "wksa000000",
-            "day": "sa",
+          "sa": {
             "closed": false,
             "from1": "11:30",
             "to1": "22:00"
           },
-          {
-            "_id": "wksu000000",
-            "day": "su",
+          "su": {
             "closed": false,
             "from1": "11:30",
             "to1": "15:00"
           }
-        ],
+        },
         "exceptions": [
           {
             "_id": "exWinter01",
@@ -145,10 +131,8 @@
       "id": "lunch",
       "data": {
         "weekOf": "2026-10-05",
-        "days": [
-          {
-            "_id": "ldmo000000",
-            "day": "mo",
+        "days": {
+          "mo": {
             "dish": {
               "de": "Kürbiscremesuppe mit Kernöl",
               "en": "Pumpkin cream soup with pumpkin seed oil"
@@ -161,9 +145,7 @@
               "L"
             ]
           },
-          {
-            "_id": "ldtu000000",
-            "day": "tu",
+          "tu": {
             "dish": {
               "de": "Tafelspitz mit Apfelkren und Erdäpfeln"
             },
@@ -174,9 +156,7 @@
               "L"
             ]
           },
-          {
-            "_id": "ldwe000000",
-            "day": "we",
+          "we": {
             "dish": {
               "de": "Kaiserschmarrn mit Zwetschkenröster"
             },
@@ -189,9 +169,7 @@
               "G"
             ]
           },
-          {
-            "_id": "ldth000000",
-            "day": "th",
+          "th": {
             "dish": {
               "de": "Gebackener Saibling mit Petersilienerdäpfeln",
               "en": "Baked char with parsley potatoes"
@@ -205,9 +183,7 @@
               "G"
             ]
           },
-          {
-            "_id": "ldfr000000",
-            "day": "fr",
+          "fr": {
             "dish": {
               "de": "Gemüsestrudel mit Kräuterrahm"
             },
@@ -220,7 +196,7 @@
               "G"
             ]
           }
-        ],
+        },
         "note": {
           "de": "Alle Gerichte inklusive Beilagensalat."
         }
@@ -625,53 +601,39 @@
         "from": "2026-11-01",
         "to": "2027-03-31",
         "yearly": true,
-        "week": [
-          {
-            "_id": "wpmo000000",
-            "day": "mo",
+        "week": {
+          "mo": {
             "closed": true
           },
-          {
-            "_id": "wptu000000",
-            "day": "tu",
+          "tu": {
             "closed": false,
             "from1": "17:00",
             "to1": "21:30"
           },
-          {
-            "_id": "wpwe000000",
-            "day": "we",
+          "we": {
             "closed": false,
             "from1": "17:00",
             "to1": "21:30"
           },
-          {
-            "_id": "wpth000000",
-            "day": "th",
+          "th": {
             "closed": false,
             "from1": "17:00",
             "to1": "21:30"
           },
-          {
-            "_id": "wpfr000000",
-            "day": "fr",
+          "fr": {
             "closed": false,
             "from1": "17:00",
             "to1": "21:30"
           },
-          {
-            "_id": "wpsa000000",
-            "day": "sa",
+          "sa": {
             "closed": false,
             "from1": "11:30",
             "to1": "22:00"
           },
-          {
-            "_id": "wpsu000000",
-            "day": "su",
+          "su": {
             "closed": true
           }
-        ]
+        }
       }
     }
   ],
@@ -681,10 +643,8 @@
       "order": 1,
       "data": {
         "weekOf": "2026-10-12",
-        "days": [
-          {
-            "_id": "ldmo000000",
-            "day": "mo",
+        "days": {
+          "mo": {
             "dish": {
               "de": "Gulaschsuppe mit Gebäck"
             },
@@ -696,9 +656,7 @@
               "L"
             ]
           },
-          {
-            "_id": "ldtu000000",
-            "day": "tu",
+          "tu": {
             "dish": {
               "de": "Krautfleckerl mit Speck"
             },
@@ -711,9 +669,7 @@
               "M"
             ]
           },
-          {
-            "_id": "ldwe000000",
-            "day": "we",
+          "we": {
             "dish": {
               "de": "Topfenknödel mit Zwetschkenröster"
             },
@@ -726,9 +682,7 @@
               "G"
             ]
           },
-          {
-            "_id": "ldth000000",
-            "day": "th",
+          "th": {
             "dish": {
               "de": "Gebratene Forelle mit Mandelbutter"
             },
@@ -741,9 +695,7 @@
               "H"
             ]
           },
-          {
-            "_id": "ldfr000000",
-            "day": "fr",
+          "fr": {
             "dish": {
               "de": "Spinatknödel mit brauner Butter"
             },
@@ -756,7 +708,7 @@
               "G"
             ]
           }
-        ],
+        },
         "note": {
           "de": "Alle Gerichte inklusive Beilagensalat."
         }

@@ -40,7 +40,7 @@ describe('registry and components', () => {
   // Wrong behaviour caught: the platform refused a site that uses these components ("Das Schema ist nicht gültig"),
   // as it did for the figure's retired `focus` prop, while the registry check above passed.
   test('a site with the registry passes the platform schema check', () => {
-    const site = serializeSchema({ site: 'test', name: 'Test', url: 'https://example.com', timeZone: 'UTC', locales: ['de'], currency: 'EUR', pages: {}, bricks: {}, components })
+    const site = serializeSchema({ site: 'test', name: 'Test', url: 'https://example.com', timeZone: 'UTC', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {}, bricks: {}, components })
     expect(checkSchema(site)).toEqual([])
   })
 

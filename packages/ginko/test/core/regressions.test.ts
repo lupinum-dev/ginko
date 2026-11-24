@@ -97,17 +97,17 @@ describe('validate.ts:33 patch validation matches changed leaf paths and their c
   // Five lunch rows; the Monday row carries `monday` as its dish.
   const lunch = (monday: unknown) => ({
     weekOf: '2026-10-05',
-    days: weekdays.map((day) => ({ _id: `ld${day}000000`, day, dish: day === 'mo' ? monday : { de: 'Gulasch' }, allergens: [] })),
+    days: Object.fromEntries(weekdays.map((day) => [day, { dish: day === 'mo' ? monday : { de: 'Gulasch' }, allergens: [] }])),
   })
 
   it.each([
-    ['the changed dish leaf', 'days.ldmo000000.dish', true],
-    ['the changed row that contains it', 'days.ldmo000000', true],
-    ['the whole days list', 'days', true],
-    ['a changed leaf of another row', 'days.ldtu000000.dish', false],
+    ['the changed dish leaf', 'days.mo.dish', true],
+    ['the changed row that contains it', 'days.mo', true],
+    ['the whole days field', 'days', true],
+    ['a changed leaf of another row', 'days.tu.dish', false],
   ] as const)('a bad value is an error when %s changed, else a warning', async (_name, changed, isError) => {
     const result = (await validate(schema, 'lunch', lunch({ de: 123 }), { mode: 'patch', changed: new Set([changed]) }))
-    const issue = [['days.ldmo000000.dish.de', 'TYPE']]
+    const issue = [['days.mo.dish.de', 'TYPE']]
     expect(pairs(result.errors)).toEqual(isError ? issue : [])
     expect(pairs(result.warnings)).toEqual(isError ? [] : issue)
   })
@@ -285,8 +285,8 @@ describe('Astra phase 4 re-review', () => {
   const text = { type: 'text', label: 'Text' } as const
   const list = (of: Fields) => ({ type: 'list', label: 'Rows', itemLabel: 'Row', max: 5, of }) as const
   const make = (fields: Fields): Schema => serializeSchema({
-    site: 'test', name: 'Test', url: 'https://example.com', timeZone: 'UTC', locales: ['de'], currency: 'EUR', pages: {},
-    bricks: { menu: { kind: 'collection', label: 'Menu', max: 10, order: 'manual', fields } },
+    site: 'test', name: 'Test', url: 'https://example.com', timeZone: 'UTC', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
+    bricks: { menu: { kind: 'collection', label: 'Menu', listing: { title: 'title' }, max: 10, order: 'manual', fields: { title: text, ...fields } } },
   })
 
   it('diff.ts:99 a column inside a retired list cannot be retired on its own', () => {

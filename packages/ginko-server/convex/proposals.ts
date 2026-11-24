@@ -444,7 +444,7 @@ export const get = query({
     // Publishing unpublished changes shows their fields; any other publish or unpublish shows the state.
     const diff = (p.op === 'publish' || p.op === 'unpublish') && before.state !== undefined
       ? [{ field: 'state', label: t(locale, 'history.stateField'), kind: 'state', before: when(before.state, before.publishAt), after: when(after.state, after.publishAt) }]
-      : diffFields(brick?.fields, before, after, schema.locales[0]!)
+      : diffFields(brick?.fields, before, after, schema.locales[0]!, schema.week)
     const names = await labeler(ctx, actor)
     const conflict = p.status === 'open' || p.status === 'scheduled' ? await staleReason(ctx, p) : null
     return {

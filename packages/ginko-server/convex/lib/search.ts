@@ -28,6 +28,10 @@ export function searchTexts(field: Field, value: Json | undefined, out: string[]
     for (const row of value) {
       if (row && typeof row === 'object' && !Array.isArray(row)) for (const [key, inner] of Object.entries(field.of)) searchTexts(inner, row[key], out)
     }
+  } else if (field.type === 'rows' && typeof value === 'object' && !Array.isArray(value)) {
+    for (const row of Object.values(value)) {
+      if (row && typeof row === 'object' && !Array.isArray(row)) for (const [key, inner] of Object.entries(field.of)) searchTexts(inner, row[key], out)
+    }
   }
   return out
 }
@@ -110,7 +114,9 @@ export async function searchEntries(ctx: QueryCtx, actor: Actor, input: { query:
   }
   // The texts of every language are in one record; the main language's word rules fit most of them. A Convex query
   // cannot load a stemmer chunk (`import()` throws), so the index takes a stemmer that is already loaded.
-  const language = schema.locales[0] ?? 'de'
+  // `checkSchema` requires a language; there is no default (design V2 5.4).
+  const language = schema.locales[0]
+  if (language === undefined) throw new Error('The site has no language (schema.locales is empty).')
   const hits = search(indexOf(records, language, stemmerNow(language)), query, { limit: input.limit })
   // The engine matches word beginnings only. German compounds hide the word inside ("Topfenstrudel"), so
   // entries that contain every query word anywhere come after the engine's hits, title matches first.

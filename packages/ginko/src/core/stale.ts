@@ -1,4 +1,4 @@
-import { firstDayShown, workWeekOf, type WeekInfo } from './time.ts'
+import { firstDayShown, weekInfo, workWeekOf, type WeekInfo } from './time.ts'
 import type { Brick, Json, Schema, Task } from './types.ts'
 
 export interface WeekState {
@@ -135,7 +135,7 @@ export function liveFrom(schema: Pick<Schema, 'bricks' | 'week'>, brickKey: stri
   if (!brick) return undefined
   if (brick.kind === 'collection' && brick.plans) {
     const start = data[brick.plans.field]
-    const first = typeof start === 'string' ? firstDayShown(start, schema.week) : undefined
+    const first = typeof start === 'string' ? firstDayShown(start, weekInfo(schema.week)) : undefined
     return first && first > today ? first : undefined
   }
   const plan = brick.planned

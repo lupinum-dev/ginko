@@ -6,8 +6,8 @@ import { hoursOn, type HoursContext } from '../../src/basics/index.ts'
 import { checkSchema, checkSite, collection, defineSite, diffSchema, f, serializeSchema, type SiteInput } from '../../src/core/index.ts'
 
 const base = defineSite({
-  site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', pages: { home: '/' },
-  bricks: { news: collection({ label: 'News', max: 10, order: 'manual', fields: { title: f.text('Title') } }) },
+  site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
+  bricks: { news: collection({ listing: { title: 'title' }, label: 'News', max: 10, order: 'manual', fields: { title: f.text('Title') } }) },
 })
 const site = (over: Pick<SiteInput, 'country' | 'calendar'>): SiteInput => ({ ...base, ...over })
 const houseParty = (year: number) => [{ date: `${year}-03-03`, de: 'Hausfest', en: 'House party' }]
@@ -47,7 +47,7 @@ describe('schema.holidays', () => {
 
 describe('the basics hours rules pick the calendar (none without one)', () => {
   // A week open every day, so only the holiday rule can close it.
-  const week = (['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const).map((day) => ({ day, closed: false, from1: '09:00', to1: '17:00' }))
+  const week = Object.fromEntries((['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const).map((day) => [day, { closed: false, from1: '09:00', to1: '17:00' }]))
   const ctx = (over: Partial<HoursContext>): HoursContext => ({ hours: { week, exceptions: [], holidays: 'closed' }, ...over })
   // 26 Oct 2026 is the Austrian National Day, 3 Oct German Unity Day, 3 Mar the house party.
   it.each([

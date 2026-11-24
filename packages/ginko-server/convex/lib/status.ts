@@ -1,7 +1,7 @@
 // The status lines of the Today page (UI.md 3, `status` on a brick): computed here with core `brickStatus` and the
 // weekly upkeep rule `staleOf`, shown by the Studio (sites.today) and mailed when due (reminders.ts) in the same words.
 import type { Brick, Json } from '@lupinum/ginko'
-import { brickStatus, hoursLine, isHourPlans, labelOf, plannedWeeks, staleOf, type HourPlan, type HoursToday, type Schema, type StatusLine } from '@lupinum/ginko/internal'
+import { brickStatus, weekInfo, hoursLine, isHourPlans, labelOf, plannedWeeks, staleOf, type HourPlan, type HoursToday, type Schema, type StatusLine } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { QueryCtx } from '../_generated/server'
 import { t } from './i18n'
@@ -78,7 +78,7 @@ export async function statesOf(ctx: Pick<QueryCtx, 'db'>, site: Doc<'sites'>, ke
       const planning = Object.entries(schema.bricks).filter(([, b]) => b.kind === 'collection' && !b.retired && b.plans?.brick === key).map(([k]) => k)
       const live = new Map<string, { data: Record<string, Json> }[]>()
       for (const k of planning) live.set(k, (await rowsOf(k)).filter((row) => row.state !== 'draft').map((row) => ({ data: row.data as Record<string, Json> })))
-      const week = staleOf(brick, single.data as Record<string, Json>, today, schema.week, plannedWeeks(schema, key, (k) => live.get(k) ?? []))
+      const week = staleOf(brick, single.data as Record<string, Json>, today, weekInfo(schema.week), plannedWeeks(schema, key, (k) => live.get(k) ?? []))
       stale = week?.current === false
     }
     out.push({ brick: key, line: status.line, due: status.due || stale })

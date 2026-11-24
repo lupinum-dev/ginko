@@ -9,9 +9,10 @@ import { readContent } from '../src/read.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'preise', name: 'Preise', url: 'https://preise.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
   bricks: {
     angebote: collection({
+      listing: { title: 'title' },
       label: 'Angebote', source: 'files', max: 50, order: 'manual',
       route: { de: '/angebote/[slug]', en: '/en/offers/[slug]' },
       fields: {
@@ -22,12 +23,13 @@ const schema = serializeSchema(defineSite({
         steps: f.list('Schritte', { itemLabel: 'Schritt', fields: { label: f.text('Name') }, max: 10, optional: true }),
       },
     }),
-    docs: collection({
+    docs: collection({ body: 'body',
+      listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]', en: '/en/docs/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') },
     }),
-    termine: collection({ label: 'Termine', source: 'files', max: 50, order: 'manual', fields: { angebot: f.ref('Angebot', { to: 'angebote' }), title: f.text('Titel') } }),
+    termine: collection({ listing: { title: 'title' }, label: 'Termine', source: 'files', max: 50, order: 'manual', fields: { angebot: f.ref('Angebot', { to: 'angebote' }), title: f.text('Titel') } }),
   },
 }))
 
@@ -146,10 +148,10 @@ describe('drafts', () => {
 
 describe('scheduled entries', () => {
   const site = serializeSchema(defineSite({
-    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', pages: { home: { en: '/' } },
+    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/' } },
     bricks: {
-      posts: collection({ label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
-      events: collection({ label: 'Events', source: 'files', max: 50, order: { field: 'date', dir: 'asc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
+      posts: collection({ listing: { title: 'title' }, label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
+      events: collection({ listing: { title: 'title' }, label: 'Events', source: 'files', max: 50, order: { field: 'date', dir: 'asc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
     },
   }))
   const files = {

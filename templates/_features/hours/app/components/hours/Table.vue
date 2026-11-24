@@ -97,9 +97,10 @@ const reasonLang = (closure: (typeof closures.value)[number]) => ('holiday' in c
       <table class="mt-2 w-full text-small tabular-nums">
         <caption class="sr-only">{{ planTitle(coming.plan, coming.starts, coming.ends) }}</caption>
         <tbody>
-          <tr v-for="day in coming.plan.week" :key="day.day" class="border-b first:border-t">
-            <th scope="row" class="py-2 pe-6 text-start font-normal">{{ weekday(day.day) }}</th>
-            <td class="py-2 text-end"><span v-for="line in timesOf(day)" :key="line" class="block whitespace-nowrap">{{ line }}</span></td>
+          <!-- The days in the site's order (as the week above); a day the plan does not list reads as closed. -->
+          <tr v-for="{ day } in week.days" :key="day" class="border-b first:border-t">
+            <th scope="row" class="py-2 pe-6 text-start font-normal">{{ weekday(day) }}</th>
+            <td class="py-2 text-end"><span v-for="line in timesOf(coming.plan.week[day] ?? { closed: true })" :key="line" class="block whitespace-nowrap">{{ line }}</span></td>
           </tr>
         </tbody>
       </table>

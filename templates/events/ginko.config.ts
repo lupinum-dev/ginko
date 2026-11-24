@@ -20,6 +20,8 @@ export default defineSite({
   url: siteUrl('https://example.com'),
   // Session times are entered and shown in this zone; JSON-LD writes them with its offset.
   timeZone: 'Europe/Vienna',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   // Austrian public holidays in the Studio, and `addressCountry` in the JSON-LD.
   country: 'AT',
   locales,
@@ -71,7 +73,7 @@ export default defineSite({
       status: { show: 'missing', field: 'bio' },
     }),
     // Questions and answers: getting there, access, food, the code of conduct (content/faq/).
-    faq: faq(),
+    faq: extend(faq(), { preview: 'faq' }),
     // Sponsor and partner logos on the home page (content/logos/, the files in public/logos/).
     logos,
     // Photos of last year's conference on the home page (content/gallery.md).

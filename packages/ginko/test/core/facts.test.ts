@@ -26,11 +26,11 @@ const practice = single({
 })
 
 const site = (over: Partial<SiteInput> = {}): SiteInput => defineSite({
-  site: 'praxis', name: 'Praxis', url: 'https://praxis.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'praxis', name: 'Praxis', url: 'https://praxis.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: '/' },
   bricks: {
     practice,
-    docs: collection({ label: 'Seiten', fields: { title: f.text('Titel', { max: 120 }), body: f.markdown('Text', { profile: 'page' }) }, max: 20, order: 'manual', route: { de: '/[slug]' } }),
+    docs: collection({ listing: { title: 'title' }, label: 'Seiten', fields: { title: f.text('Titel', { max: 120 }), body: f.markdown('Text', { profile: 'page' }) }, max: 20, order: 'manual', route: { de: '/[slug]' } }),
   },
   facts: ['practice.price', 'practice.minutes', 'practice.days', 'practice.times', 'practice.email', 'practice.validUntil'],
   ...over,

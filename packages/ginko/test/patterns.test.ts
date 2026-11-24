@@ -8,7 +8,7 @@ import type { Brick } from '../src/core/types.ts'
 import { defineSite, extend, f, type BrickDef } from '../src/index.ts'
 import * as patterns from '../src/patterns/index.ts'
 
-const base = { name: 'Halden Pumps', url: 'https://halden.example', timeZone: 'Europe/Vienna', currency: 'EUR', locales: ['de', 'en'] } as const
+const base = { name: 'Halden Pumps', url: 'https://halden.example', timeZone: 'Europe/Vienna', currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, locales: ['de', 'en'] } as const
 
 const route = { de: '/team/[slug]', en: '/en/team/[slug]' } as const
 
@@ -60,6 +60,8 @@ describe('patterns', () => {
     const { site, legal, notices, people, posts, jobs, events, sessions, downloads, faq, gallery, hours, hourPlans, changelog } = patterns
     const config = defineSite({
       ...base,
+      // The opening hours have a row per day of the week.
+      week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
       bricks: {
         site: site(), legal: legal(), notices: notices(), jobs: jobs(), downloads: downloads(), faq: faq(), gallery: gallery(), changelog: changelog(),
         news: posts({ authors: 'team' }),

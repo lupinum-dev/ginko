@@ -1,11 +1,11 @@
 // The "Heute" board and the hours table decide open or closed from one rule (`hoursOn`); a wrong order tells guests the house is open on a holiday.
 import { describe, expect, it } from 'vitest'
-import { austrianHolidays, holidayOn, hoursOn, noticesOn, todayState, upcomingClosures, upcomingPlans, weekOf, type DayHours, type Exception, type HourPlan, type HoursData } from '../src/hours.ts'
+import { austrianHolidays, holidayOn, hoursOn, noticesOn, todayState, upcomingClosures, upcomingPlans, weekOf, type DayHours, type Exception, type HourPlan, type HoursData, type WeekHours } from '../src/hours.ts'
 
-const week: DayHours[] = [
-  { day: 'mo', closed: true },
-  { day: 'th', closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00' },
-]
+const week: WeekHours = {
+  mo: { closed: true },
+  th: { closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00' },
+}
 const holiday: Exception = { _id: 'x1', when: { from: '2026-10-26', to: '2026-10-26' }, reason: 'Nationalfeiertag', closed: true }
 const winter: Exception = { _id: 'x2', when: { from: '2026-12-22', to: '2027-01-06' }, reason: 'Betriebsurlaub', closed: true }
 
@@ -58,15 +58,15 @@ describe('upcomingClosures', () => {
   })
 })
 
-const full = (day: string, t: object = {}): DayHours => ({ day, closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00', ...t })
-const weekWith = (overrides: Record<string, DayHours> = {}): DayHours[] =>
-  ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'].map((d) => overrides[d] ?? (d === 'mo' ? { day: d, closed: true } : full(d)))
-const sunday = { day: 'su', closed: false, from1: '11:30', to1: '15:00' }
+const full: DayHours = { closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00' }
+const weekWith = (overrides: WeekHours = {}): WeekHours =>
+  Object.fromEntries((['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const).map((d) => [d, overrides[d] ?? (d === 'mo' ? { closed: true } : full)]))
+const sunday = { closed: false, from1: '11:30', to1: '15:00' }
 const standard = weekWith({ su: sunday })
 const baseHours = { week: standard, exceptions: [] as Exception[] }
 
-const winterPlan: HourPlan = { _id: 'p1', label: 'Winter', from: '2026-11-01', to: '2027-03-31', yearly: true, week: weekWith({ su: { day: 'su', closed: true }, th: { day: 'th', closed: false, from1: '12:00', to1: '15:00' } }) }
-const fromNovember: HourPlan = { _id: 'p2', label: 'Neu ab Nov', from: '2026-11-02', week: weekWith({ th: { day: 'th', closed: false, from1: '10:00', to1: '12:00' } }) }
+const winterPlan: HourPlan = { _id: 'p1', label: 'Winter', from: '2026-11-01', to: '2027-03-31', yearly: true, week: weekWith({ su: { closed: true }, th: { closed: false, from1: '12:00', to1: '15:00' } }) }
+const fromNovember: HourPlan = { _id: 'p2', label: 'Neu ab Nov', from: '2026-11-02', week: weekWith({ th: { closed: false, from1: '10:00', to1: '12:00' } }) }
 const summer: HourPlan = { _id: 'p3', from: '2026-06-01', to: '2026-08-31', yearly: true, week: standard }
 const early: Exception = { _id: 'e1', when: { from: '2026-12-24', to: '2026-12-24' }, reason: 'Heiligabend', closed: false, from1: '11:00', to1: '14:00' }
 
@@ -152,8 +152,8 @@ describe('upcomingClosures with holidays', () => {
   // Wrong behaviour caught: the rest-day check reads the standard week instead of the plan running on that date
   // (Immaculate Conception, Tuesday 8 December 2026).
   it.each([
-    ['the running plan closes that weekday: the holiday adds nothing', weekWith({ tu: { day: 'tu', closed: true } }), standard, []],
-    ['the running plan opens that weekday although the standard week closes it: the holiday is listed', standard, weekWith({ tu: { day: 'tu', closed: true } }), ['holiday-2026-12-08']],
+    ['the running plan closes that weekday: the holiday adds nothing', weekWith({ tu: { closed: true } }), standard, []],
+    ['the running plan opens that weekday although the standard week closes it: the holiday is listed', standard, weekWith({ tu: { closed: true } }), ['holiday-2026-12-08']],
   ])('%s', (_name, planWeek, standardWeek, expected) => {
     const plan: HourPlan = { _id: 'p4', from: '2026-11-01', to: '2027-03-31', yearly: true, week: planWeek }
     const hours = { week: standardWeek, exceptions: [] as Exception[], holidays: 'closed' as const }

@@ -2,9 +2,11 @@
 import type { MarkdownValue } from './markdown.ts'
 import type {
   AspectRatio, BooleanField, ChoiceField, ChoicesField, CollectionBrick, Currency, DateField, DateRangeField, Field, Fields,
-  FileField, ImageField, ListField, LongTextField, MarkdownField, MoneyField, NumberField, RefField, SingleBrick, SlugField,
-  TextField, TimeField,
+  FileField, ImageField, ListField, LongTextField, MarkdownField, MoneyField, NumberField, RefField, RowsField, SingleBrick,
+  SlugField, TextField, TimeField,
 } from './types.ts'
+import type { RowKeyOf } from './fields.ts'
+import type { DayKey } from './time.ts'
 
 declare const unknownChoice: unique symbol
 /** A choice value this code does not know yet (added by a later schema release). Handle it with a fallback. */
@@ -34,6 +36,8 @@ export type ValueOf<F extends Field> =
   : F extends ChoiceField<infer V> ? V | UnknownChoice
   : F extends ChoicesField<infer V> ? (V | UnknownChoice)[]
   : F extends ListField<infer Of> ? (DataOf<Of> & { _id: string })[]
+  // The site's week decides which days are workdays, so each of them may be absent in the type.
+  : F extends RowsField<infer Of, infer R> ? (R extends 'workdays' ? { [K in DayKey]?: DataOf<Of> } : { [K in RowKeyOf<R>]: DataOf<Of> })
   : F extends MarkdownField ? MarkdownValue
   : F extends MoneyField ? Money
   : F extends ImageField ? ImageValue

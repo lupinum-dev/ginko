@@ -23,6 +23,8 @@ export interface LegalOptions<R extends Record<Locale, RouteTemplate> | undefine
 export function legal<const R extends Record<Locale, RouteTemplate> | undefined = undefined>(o: LegalOptions<R> = {}) {
   return collection({
     label: o.label ?? t('Rechtliches', 'Legal', 'Textos legales', 'Informations légales'),
+    listing: { title: 'title', detail: 'updatedAt' },
+    untranslated: 'hide',
     ...sourceOf(o),
     max: 20,
     order: 'manual',
@@ -31,6 +33,7 @@ export function legal<const R extends Record<Locale, RouteTemplate> | undefined 
       id: 'update', kind: 'edit', pick: true, fields: ['body', 'updatedAt'], prefill: { updatedAt: '@today' },
       label: t('Rechtstext aktualisieren', 'Update a legal text', 'Actualizar un texto legal', 'Mettre à jour un texte juridique'),
     }],
+    body: 'body',
     fields: {
       title: f.text(t('Titel', 'Title', 'Título', 'Titre')),
       description: f.longtext(t('Beschreibung', 'Description', 'Descripción', 'Description'), { optional: true }),

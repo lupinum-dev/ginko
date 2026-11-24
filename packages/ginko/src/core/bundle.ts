@@ -1,5 +1,6 @@
 import { parseMarkdown, type MarkdownTree } from './markdown.ts'
-import type { Currency, Fields, Json, Locale, Schema } from './types.ts'
+import { isTable, rowsIn } from './fields.ts'
+import type { Brick, Currency, Fields, Json, Locale, Schema } from './types.ts'
 
 /** 3: text fields carry comark trees; collection items carry `updatedAt` and, for file entries, `source`. Other formats are refused. */
 export const BUNDLE_FORMAT = 3
@@ -20,13 +21,12 @@ export interface BundleItem {
 }
 
 /**
- * The name of an entry in a list or a heading (llms.txt, its Markdown twin, the search): its `title`, else the text
- * field its slug is made from (a person's `name`), else its id.
+ * The name of an entry in a list or a heading (llms.txt, its Markdown twin, the search, the navigation): the value of
+ * the field its brick's `listing.title` names, else its id. A bundle item is in one language, so the value is a text
+ * (a date field gives its ISO day).
  */
-export function entryTitle(item: BundleItem, fields: Fields | undefined): string {
-  if (typeof item.data.title === 'string') return item.data.title
-  const slug = Object.values(fields ?? {}).find((field) => field.type === 'slug')
-  const named = slug?.type === 'slug' ? item.data[slug.from] : undefined
+export function entryTitle(item: BundleItem, brick: Brick | undefined): string {
+  const named = brick?.kind === 'collection' ? item.data[brick.listing.title] : undefined
   return typeof named === 'string' && named.trim() ? named : item.id
 }
 
@@ -102,8 +102,9 @@ export async function markdownTrees(fields: Fields, data: Record<string, Json>):
         const perLocale: Partial<Record<Locale, MarkdownTree>> = {}
         for (const [locale, text] of Object.entries(value)) if (typeof text === 'string') perLocale[locale as Locale] = await parse(text)
         trees[leaf] = perLocale
-      } else if (field.type === 'list' && Array.isArray(value)) {
-        for (const r of value) if (isRecord(r) && typeof r._id === 'string') await walk(field.of, r, `${leaf}.${r._id}`)
+      } else if (isTable(field)) {
+        // A list row without its `_id` has no path (rowsIn names it `#<index>`).
+        for (const [id, r] of rowsIn(field, value)) if (!id.startsWith('#')) await walk(field.of, r, `${leaf}.${id}`)
       }
     }
   }
@@ -124,6 +125,7 @@ export async function withMarkdownTrees(bundle: Bundle, schema: Pick<Schema, 'br
       const value = out[key]
       if (field.type === 'markdown' && typeof value === 'string') out[key] = (await parseMarkdown(value)).value
       else if (field.type === 'list' && Array.isArray(value)) out[key] = await Promise.all(value.map((row) => (isRecord(row) ? fill(field.of, row) : row)))
+      else if (field.type === 'rows' && isRecord(value)) out[key] = Object.fromEntries(await Promise.all(Object.entries(value).map(async ([row, cells]) => [row, isRecord(cells) ? await fill(field.of, cells) : cells])))
     }
     return out
   }

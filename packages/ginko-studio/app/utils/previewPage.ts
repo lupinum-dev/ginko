@@ -1,23 +1,20 @@
-// Which page of the site the preview opens for an entry of a brick without a page of its own (no `route`): the menu
-// for a dish, the lunch page for a planned lunch week, the home page for opening hours or a notice. The schema has no
-// such link, so the convention is the one the presets follow: a page named like the brick shows it. The order of
-// `schema.pages` cannot decide: the platform stores the schema as a Convex value, which sorts object keys.
+// Which page of the site the preview opens for an entry of a brick without a page of its own (no `route`): the page the
+// brick names in `preview` (the menu for a dish), else the page of the brick it plans (a planned lunch week shows on
+// the lunch page), else the start page. Nothing is concluded from the brick's key.
 import type { Locale } from '@lupinum/ginko'
 import { textIn, type Schema } from '@lupinum/ginko/internal'
 
 export function previewPageOf(schema: Schema, brickKey: string, locale: Locale): string {
-  const pageIn = (key: string) => schema.pages[key]?.[locale]
   const seen = new Set<string>()
   let key: string | undefined = brickKey
   while (key && !seen.has(key)) {
     seen.add(key)
-    const own = pageIn(key)
-    if (own) return own
     const brick: Schema['bricks'][string] | undefined = schema.bricks[key]
+    if (brick?.preview !== undefined) return schema.pages[brick.preview]?.[locale] ?? startPage(schema, locale)
     // A plan shows on the page of what it plans: lunch weeks on the lunch page, hour plans where the hours are.
     key = brick?.kind === 'collection' && brick.plans ? brick.plans.brick : plannedBy(schema, key)
   }
-  return pageIn('home') ?? shortestPage(schema, locale) ?? '/'
+  return startPage(schema, locale)
 }
 
 /** The single whose status reads the plans of `key` (`hours({ plans: 'hourPlans' })`). */
@@ -25,9 +22,11 @@ function plannedBy(schema: Schema, key: string): string | undefined {
   return Object.entries(schema.bricks).find(([, b]) => b.kind === 'single' && typeof b.status?.hours === 'object' && b.status.hours.plans === key)?.[0]
 }
 
-/** Without a home page: the page closest to the root in this language. */
-function shortestPage(schema: Schema, locale: Locale): string | undefined {
-  return Object.values(schema.pages).map((p) => p[locale]).filter((p): p is string => !!p).sort((a, b) => a.length - b.length)[0]
+/** The page whose path in the main language is `/`, in `locale`; else `/`. */
+function startPage(schema: Schema, locale: Locale): string {
+  const main = schema.locales[0]
+  const start = Object.values(schema.pages).find((paths) => main !== undefined && paths[main] === '/')
+  return start?.[locale] ?? '/'
 }
 
 /**

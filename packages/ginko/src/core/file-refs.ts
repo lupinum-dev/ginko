@@ -4,7 +4,7 @@
 // rewritten here too: an import gives entries new IDs as it gives files new ones. Pure: works on texts, data and bundles.
 import type { Bundle } from './bundle.ts'
 import type { ComponentRegistry } from './components.ts'
-import { effectiveAlt } from './fields.ts'
+import { effectiveAlt, isTable, mapRows } from './fields.ts'
 import { focusPosition } from './frames.ts'
 import { mapTrees } from './links.ts'
 import type { FileInfo } from './resolve.ts'
@@ -124,9 +124,8 @@ export function remapFileIds(fields: Fields, data: Record<string, Json>, map: Re
       if (typeof value === 'string') return rewriteFileRefs(value, map)
       return isRecord(value) ? Object.fromEntries(Object.entries(value).map(([locale, text]) => [locale, typeof text === 'string' ? rewriteFileRefs(text, map) : text])) : value
     }
-    if (field.type === 'list' && Array.isArray(value)) {
-      return value.map((row) => {
-        if (!isRecord(row)) return row
+    if (isTable(field)) {
+      return mapRows(field, value, (row) => {
         const out: Record<string, Json> = { ...row }
         for (const [key, inner] of Object.entries(field.of)) if (out[key] !== undefined) out[key] = walk(inner, out[key]!)
         return out
@@ -139,14 +138,14 @@ export function remapFileIds(fields: Fields, data: Record<string, Json>, map: Re
   return out
 }
 
-/** The data with `fn` applied to every Markdown text: each language, list rows included. Other values stay as they are. */
+/** The data with `fn` applied to every Markdown text: each language, list and rows rows included. Other values stay as they are. */
 export function mapMarkdownTexts(fields: Fields, data: Record<string, Json>, fn: (text: string) => string): Record<string, Json> {
   const walk = (field: Field, value: Json): Json => {
     if (field.type === 'markdown') {
       if (typeof value === 'string') return fn(value)
       if (isRecord(value)) return Object.fromEntries(Object.entries(value).map(([locale, text]) => [locale, typeof text === 'string' ? fn(text) : text]))
     }
-    if (field.type === 'list' && Array.isArray(value)) return value.map((row) => (isRecord(row) ? mapMarkdownTexts(field.of, row, fn) : row))
+    if (isTable(field)) return mapRows(field, value, (row) => mapMarkdownTexts(field.of, row, fn))
     return value
   }
   return Object.fromEntries(Object.entries(data).map(([name, value]) => [name, Object.hasOwn(fields, name) ? walk(fields[name]!, value) : value]))

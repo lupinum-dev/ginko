@@ -1,15 +1,17 @@
 // Eine Doku-Seite: Layout, Seitennavigation und Suche kommen aus @lupinum/ginko-docs.
 // Jede Seite ist eine Markdown-Datei in content/docs/.
-import { defineSite } from '@lupinum/ginko/v1'
+import { defineSite } from '@lupinum/ginko'
 import { components, docsCollection } from '@lupinum/ginko-docs/config'
 
 const locales = ['de'] as const
 
 export default defineSite({
-  site: '{{SITE}}',
+  studio: { id: '{{SITE}}', bricks: [] }, // die Kennung der Website auf einer Ginko-Plattform; jede Seite ist eine Datei in content/
   name: '{{SITE}}',
   url: 'https://example.com',
   timeZone: 'Europe/Vienna', // für dein Land ändern
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   currency: 'EUR', // für dein Land ändern
   pages: { home: '/' },
