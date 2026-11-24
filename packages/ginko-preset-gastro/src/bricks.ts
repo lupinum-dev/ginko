@@ -245,8 +245,11 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
   })
 }
 
-/** The basics events as in 0.4: no end time, place or online address, and a reservation link. */
-export function events(opts: GastroOptions & { route: Record<Locale, RouteTemplate> }) {
+/**
+ * The basics events as in 0.4: no end time, place or online address, and a reservation link. In a site file of the
+ * new form the address of an event is a line in `entries`; `route` is for a config of '@lupinum/ginko/v1'.
+ */
+export function events(opts: GastroOptions & { route?: Record<Locale, RouteTemplate> } = {}) {
   return eventsBrick(opts, both('Reservierungs-Link', 'Booking link'), {})
 }
 
