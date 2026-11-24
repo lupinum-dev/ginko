@@ -165,7 +165,9 @@ type Merge<F, G> = Fields extends G ? F : { [K in keyof F | keyof G]: K extends 
 
 /**
  * A ready-made brick with your changes: another label or word for one entry, the page its preview opens (`preview`),
- * more fields, other tasks, another line on Today. Fields are added, never replaced; `tasks` replaces the brick's tasks and may name the added fields.
+ * more fields, other tasks, another line on Today; for a collection also how its entries appear in lists (`listing`) and
+ * what an entry does in a language it has no text in (`untranslated`). Fields are added, never replaced; `tasks`
+ * replaces the brick's tasks and may name the added fields, and `listing` replaces the brick's listing.
  *
  * ```ts
  * jobs: extend(jobs(), {
@@ -188,9 +190,11 @@ export function extend<const F extends Fields, const G extends Fields = {}>(
     fields?: G
     tasks?: readonly TaskInput<Merge<F, G>>[]
     status?: CollectionStatusInput<DateKey<Merge<F, G>>, keyof Merge<F, G> & string>
+    listing?: ListingInput<Merge<F, G>>
+    untranslated?: 'fallback' | 'hide'
   },
 ): CollectionDef<Merge<F, G>>
-export function extend(brick: BrickDef, change: { label?: Label; describe?: Label; item?: Label; preview?: string; fields?: Fields; tasks?: readonly TaskInput[]; status?: object }): BrickDef {
+export function extend(brick: BrickDef, change: { label?: Label; describe?: Label; item?: Label; preview?: string; fields?: Fields; tasks?: readonly TaskInput[]; status?: object; listing?: CollectionListing; untranslated?: 'fallback' | 'hide' }): BrickDef {
   if (typeof brick === 'function') throw new Error('extend: the first argument is a function. Call it: `extend(posts({ authors: \'people\' }), { … })`.')
   if ((brick as { [DEF]?: true })[DEF] !== true) throw new Error('extend: the first argument is a brick made with `single` or `collection` of \'@lupinum/ginko\', such as a brick of \'@lupinum/ginko/patterns\'.')
   const { fields, ...rest } = change

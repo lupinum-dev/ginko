@@ -237,6 +237,16 @@ describe('extend', () => {
     extend(jobs, { tasks: [{ id: 'x', label: 'X', fields: ['salary'] }] })
   })
 
+  // Wrong: a site cannot change what a pattern states about its list rows or a missing translation (basics `people`
+  // sets `untranslated` from `route`), so it keeps the pattern's choice or has to copy the whole brick.
+  it('replaces listing and untranslated of a collection', () => {
+    const own = extend(jobs, { listing: { title: 'title', detail: 'until' }, untranslated: 'hide' })
+    const site = defineSite({ ...base, locales: ['de', 'en'], bricks: { jobs: own }, entries: { jobs: '/jobs/[slug]' } })
+    expect(site.bricks.jobs).toMatchObject({ listing: { title: 'title', detail: 'until' }, untranslated: 'hide' })
+    // @ts-expect-error listing.title names a field the brick does not have
+    extend(jobs, { listing: { title: 'salary' } })
+  })
+
   it('refuses to replace a field, and a brick that was not made with this entry', () => {
     expect(() => extend(jobs, { fields: { title: f.longtext('Titel') } })).toThrow('extend: the brick already has the field title.')
     const old = stored.single({ label: 'Alt', fields: { title: stored.f.text('Titel') } })
