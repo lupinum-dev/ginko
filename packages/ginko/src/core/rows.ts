@@ -105,3 +105,21 @@ export function mergeRows(base: Json | null | undefined, mine: Json | null | und
   }
   return { rows, clashes, reordered }
 }
+
+/**
+ * Both people's changes of one rows field (`{ mo: { … }, … }`) since `base`, row by row: a row only one side changed
+ * takes that side's row. `clashes` are the keys of rows both changed differently; such a row keeps theirs, and the
+ * person chooses one version. Rows are never added or moved by people, so there is nothing else to merge.
+ */
+export function mergeKeyedRows(base: Json | null | undefined, mine: Json | null | undefined, theirs: Json | null | undefined): { rows: Row; clashes: string[] } {
+  const [b, m, t] = [base, mine, theirs].map((value) => (isRow(value) ? value : {})) as [Row, Row, Row]
+  const rows: Row = {}
+  const clashes: string[] = []
+  for (const key of new Set([...Object.keys(t), ...Object.keys(m)])) {
+    const [was, my, their] = [b[key], m[key], t[key]]
+    if (differs(was, my) && differs(was, their) && differs(my, their)) clashes.push(key)
+    const value = differs(was, my) && !clashes.includes(key) ? my : their
+    if (value !== undefined) rows[key] = value
+  }
+  return { rows, clashes }
+}

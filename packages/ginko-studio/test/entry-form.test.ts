@@ -164,6 +164,51 @@ describe('useEntryForm', () => {
   })
 })
 
+// A rows field keeps its rows, so a conflict merges row by row key, as a list merges by `_id`.
+describe('a rows field in a conflict', () => {
+  const hoursBrick = {
+    kind: 'collection', label: 'Gerichte', listing: { title: 'name' },
+    fields: {
+      name: { type: 'text', label: 'Name', pos: 0 },
+      hours: { type: 'rows', label: 'Zeiten', pos: 1, rows: [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }], of: { note: { type: 'text', label: 'Notiz', translate: false } } },
+    },
+  } as never
+  const rowsForm = () => mountForm({ brick: () => hoursBrick, fields: () => (hoursBrick as { fields: never }).fields })
+  const withHours = (rev: number, mo: string, tu: string) => ({ ...stored, rev, data: { ...stored.data, hours: { mo: { note: mo }, tu: { note: tu } } } })
+  /** I change Monday; the cook saved `theirs` meanwhile. */
+  async function conflictOver(theirs: Entry) {
+    live.value = withHours(5, 'zu', 'zu')
+    const form = rowsForm()
+    form.setField('hours', { mo: { note: '11–14' }, tu: { note: 'zu' } })
+    refuseNext = { code: 'CHANGED_SINCE', message: 'Inzwischen hat jemand das geändert.', details: { rev: 6, conflicts: ['hours'], data: theirs.data, by: { hours: { email: 'koch@example.com' } } } }
+    expect(await form.save()).toBe(false)
+    return form
+  }
+
+  // Wrong behaviour caught: the weekday table offers no "Beides behalten" (it did when the rows were a list), so one
+  // person's day is lost.
+  test('we change different rows: "Beides behalten" saves both rows', async () => {
+    const form = await conflictOver(withHours(6, 'zu', '17–22'))
+    expect(await form.mergeLists()).toBe(true)
+    expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { hours: { mo: { note: '11–14' }, tu: { note: '17–22' } } } }]])
+  })
+
+  // Wrong behaviour caught: "Meine behalten" sends my whole table, so the cook's Tuesday goes back to what it was.
+  test('"Meine behalten" keeps the row the other person changed and I left alone', async () => {
+    const form = await conflictOver(withHours(6, 'zu', '17–22'))
+    expect(await form.keepMine()).toBe(true)
+    expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { hours: { mo: { note: '11–14' }, tu: { note: '17–22' } } } }]])
+  })
+
+  // Wrong behaviour caught: a clash on one row is merged, and one person's value of that row is lost without a word.
+  test('we change the same row differently: no "Beides behalten", the conflict stays', async () => {
+    const form = await conflictOver(withHours(6, '12–15', 'zu'))
+    expect(await form.mergeLists()).toBe(false)
+    expect(form.conflict.value?.fields).toEqual(['hours'])
+    expect(calls).toEqual([])
+  })
+})
+
 // A quick-task sheet edits every language of its texts and saves them whole (allLanguages).
 describe('a form that saves every language', () => {
   const named = (rev: number, name: Record<string, string>) => ({ ...stored, rev, fieldRevs: { ...stored.fieldRevs, name: rev }, data: { ...stored.data, name } })

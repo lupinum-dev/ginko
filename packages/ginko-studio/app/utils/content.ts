@@ -173,12 +173,14 @@ export function ownChangesOver(field: Field, base: Json | undefined, mine: Json 
       return out
     })
   }
-  // A rows field has the same rows on both sides: each row merges like a list row both still have.
+  // A rows field has the same rows on both sides: a row I left as it was takes theirs; a row I changed merges like a
+  // list row both still have.
   if (field.type === 'rows' && isRecord(mine) && isRecord(base) && isRecord(theirs)) {
     const out: Record<string, Json> = {}
-    for (const [key, row] of Object.entries(mine)) {
-      const b = base[key]
-      const t = theirs[key]
+    for (const key of new Set([...Object.keys(theirs), ...Object.keys(mine)])) {
+      const [row, b, t] = [mine[key], base[key], theirs[key]]
+      if (t !== undefined && stableJson(row ?? null) === stableJson(b ?? null)) { out[key] = t; continue }
+      if (row === undefined) continue
       if (!isRecord(row) || !isRecord(b) || !isRecord(t)) { out[key] = row; continue }
       const merged: Record<string, Json> = { ...row }
       for (const [col, inner] of Object.entries(field.of)) {
