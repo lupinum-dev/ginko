@@ -21,6 +21,7 @@ import { cleanName, kindOf, WRONG_TYPE } from './lib/files'
 import { deleteStorage } from './lib/library'
 import { dropTrees, putTrees } from './lib/trees'
 import { BUDGET, same, sizeText, syncEntryRefs, uploadIdsOf } from './lib/write'
+import { stopReason } from './schema'
 
 function localOnly() {
   if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.localOnly')
@@ -241,6 +242,8 @@ export const importExport = internalMutation({
       deletedAt: v.optional(v.number()),
       state: v.optional(v.union(v.literal('draft'), v.literal('live'))),
       publishAt: v.optional(v.number()),
+      /** A plan that did not go online (D103), without its person; absent in older exports. */
+      stopped: v.optional(v.object({ at: v.number(), reason: stopReason })),
       /** When the entry last changed for the public (the bundle's updatedAt); absent in older exports, then the import time. */
       contentAt: v.optional(v.number()),
       /** A collection entry's name and whether it is fixed (D96); absent in older exports, then made like the upgrade does. */
@@ -453,9 +456,16 @@ export const importExport = internalMutation({
         ...names.get(item),
       })
       await putTrees(ctx, site._id, id, trees.json)
-      // A scheduled draft gets its job back (a time in the past runs at once); `contentRev` is not touched.
-      if (row.state === 'draft' && row.publishAt !== undefined && row.deletedAt === undefined) {
-        await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
+      // A planned draft gets its job back, without a person (D102); one whose time has passed is a stopped draft and
+      // does not go online (D107). A stopped plan comes back as it was. `contentRev` is not touched.
+      if (row.state === 'draft' && row.deletedAt === undefined) {
+        if (row.publishAt !== undefined && row.publishAt > Date.now()) {
+          await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
+        } else if (row.publishAt !== undefined) {
+          await ctx.db.patch(id, { stopped: { at: row.publishAt, reason: { code: 'late' } } })
+        } else if (row.stopped) {
+          await ctx.db.patch(id, { stopped: row.stopped })
+        }
       }
       ids.push([row.id, id])
       for (const [name, field] of Object.entries(fields)) {

@@ -84,6 +84,8 @@ async function snapshotOf(ctx: QueryCtx, siteId: Id<'sites'>) {
       // Drafts keep their state in a backup (SPEC 15); a missing state means live.
       ...(e.state === undefined ? {} : { state: e.state }),
       ...(e.publishAt === undefined ? {} : { publishAt: e.publishAt }),
+      // A stopped plan keeps its time and reason, not its person (D107).
+      ...(e.stopped ? { stopped: { at: e.stopped.at, reason: e.stopped.reason } } : {}),
       // What the bundle shows as updatedAt, so a restored site keeps it (an entry from before contentAt counts from its creation).
       contentAt: e.contentAt ?? e._creationTime,
       ...(e.name === undefined ? {} : { name: e.name }),

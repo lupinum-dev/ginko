@@ -236,6 +236,11 @@ const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
         action: { label: t('site.quick.drafts.continue'), to: row.to, run: task ? () => start(task.brick, task.task) : undefined },
       }
     }
+    // A plan that did not go online looks like a change that did not go live; the tile opens the entry (D104).
+    case 'stopped': return {
+      id: `s-${item.row.entry}`, kind: 'notLive', title: textOf(item.row.title, item.row.titleText), sub: textOf(item.row.cause, item.row.causeText),
+      action: { label: t('today.waiting.open'), to: `/s/${s.slug.value}/all/${item.row.brick}/${item.row.entry}` },
+    }
     case 'notLive': return {
       id: `n-${item.p.proposal}`, kind: 'notLive', title: ownLine(item.p),
       sub: t('history.notLiveBecause', { when: whenFull(item.p.at!, s.schema.value?.timeZone ?? 'UTC', format), reason: textOf(item.p.reasonMsg, item.p.reason ?? '') }),

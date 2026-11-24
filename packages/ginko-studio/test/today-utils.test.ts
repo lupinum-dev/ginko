@@ -3,7 +3,7 @@
 import { expect, test } from 'vitest'
 import { ordered, serializeSchema } from '@lupinum/ginko/internal'
 import restaurant from '../../../sites/restaurant/ginko.config.ts'
-import { cardsOf, verdictCount, waitingOf, type LocalDraftRow, type OwnRow } from '../app/utils/today'
+import { cardsOf, verdictCount, waitingOf, type LocalDraftRow, type OwnRow, type StoppedRow } from '../app/utils/today'
 
 const schema = serializeSchema(restaurant)
 const de = (label: unknown) => (typeof label === 'string' ? label : (label as { de: string }).de)
@@ -53,6 +53,7 @@ test.each<[string, Record<string, string[] | '*'>, Record<string, number>, Recor
 })
 
 const own = (proposal: string, over: Partial<OwnRow> = {}) => ({ proposal, task: 'lunch.lunchWeek', via: 'ui', decidedAt: null, at: null, ...over }) as OwnRow
+const stopped = (entry: string, at: number) => ({ entry, at, brick: 'events' }) as StoppedRow
 const draft = (key: string) => ({ key, text: key, label: key, name: key, area: 'Hinweise', time: '14:20', to: `/s/linde/all/notices/${key}` }) satisfies LocalDraftRow
 const NOW = Date.UTC(2026, 9, 20, 12)
 const DAY = 86_400_000
@@ -60,12 +61,14 @@ const DAY = 86_400_000
 // Wrong behaviour caught: a rejected proposal ranks under a draft, staff see "Prüfen", a not-live change from weeks ago
 // stays, or the verdict counts a not-live change (information) or each waiting review instead of one tile.
 test.each<[string, Parameters<typeof waitingOf>[0], string[], string[], number]>([
-  ['rank: rejected (newest first), review, unsaved, not live (newest first)', {
+  // A stopped plan (D104) stays however old it is and, like a change that did not go live, is not counted.
+  ['rank: rejected (newest first), review, unsaved, stopped (newest first), not live (newest first)', {
     manager: true, review: 4, now: NOW,
     rejected: [{ key: 'lunch', p: own('r-old', { decidedAt: NOW - 2 * DAY }) }, { key: 'lunch', p: own('r-new', { decidedAt: NOW - DAY }) }],
     unsaved: [draft('e1'), draft('e2')],
+    stopped: [stopped('s-old', NOW - 30 * DAY), stopped('s-new', NOW - DAY)],
     notLive: [{ key: 'menu', p: own('n-old', { at: NOW - 3 * DAY }) }, { key: 'menu', p: own('n-new', { decidedAt: NOW - DAY }) }],
-  }, [], ['rejected r-new', 'rejected r-old', 'review 4', 'unsaved e1', 'unsaved e2', 'notLive n-new', 'notLive n-old'], 5],
+  }, [], ['rejected r-new', 'rejected r-old', 'review 4', 'unsaved e1', 'unsaved e2', 'stopped s-new', 'stopped s-old', 'notLive n-new', 'notLive n-old'], 5],
   ['staff with a count get no review tile', { manager: false, review: 3, now: NOW, rejected: [], unsaved: [], notLive: [] }, [], [], 0],
   ['a manager with nothing to review gets none', { manager: true, review: 0, now: NOW, rejected: [], unsaved: [], notLive: [] }, [], [], 0],
   ['not live for more than 7 days is dropped; not live never counts', {
@@ -75,6 +78,6 @@ test.each<[string, Parameters<typeof waitingOf>[0], string[], string[], number]>
   ['due areas count once each', { manager: true, review: 2, now: NOW, rejected: [], unsaved: [], notLive: [] }, ['hours', 'lunch'], ['review 2'], 3],
 ])('%s', (_name, input, due, items, count) => {
   const waiting = waitingOf(input)
-  expect(waiting.map((x) => `${x.kind} ${x.kind === 'review' ? x.count : x.kind === 'unsaved' ? x.row.key : x.p.proposal}`)).toEqual(items)
+  expect(waiting.map((x) => `${x.kind} ${x.kind === 'review' ? x.count : x.kind === 'unsaved' ? x.row.key : x.kind === 'stopped' ? x.row.entry : x.p.proposal}`)).toEqual(items)
   expect(verdictCount(waiting, due)).toBe(count)
 })

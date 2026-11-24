@@ -104,8 +104,11 @@ function latestChange(entries: Record<string, StoredEntry[]>, fallback: number):
   return latest
 }
 
-/** The bundle of a site that is known to exist; the agent door's link check builds one per language with it. */
-export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string, overrides?: ReadonlyMap<string, Record<string, Json>>, added: readonly NewItem[] = [], stableFiles = false): Promise<Bundle> {
+/**
+ * The bundle of a site that is known to exist; the agent door's link check builds one per language with it.
+ * `plannedBy` (ms), for the link check of a plan (D106): a draft planned for that time or earlier counts as online.
+ */
+export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string, overrides?: ReadonlyMap<string, Record<string, Json>>, added: readonly NewItem[] = [], stableFiles = false, plannedBy?: number): Promise<Bundle> {
   const schema = site.schema as Schema
   // A missing locale parameter (empty string) means the main language, not an unknown locale.
   const requestedLocale = locale === '' ? schema.locales[0]! : locale
@@ -115,7 +118,7 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     const rows = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', site._id).eq('brick', key).eq('deletedAt', undefined)).collect()
     // Drafts never leave the platform (SPEC 15); their slugs stay reserved in the slugs table.
     // An override (a save that is about to happen) replaces the stored data and also lets a draft through: the link check reads the state after the write.
-    const live = rows.filter((row) => row.state !== 'draft' || overrides?.has(row._id))
+    const live = rows.filter((row) => row.state !== 'draft' || overrides?.has(row._id) || (plannedBy !== undefined && row.publishAt !== undefined && row.publishAt <= plannedBy))
     // An overridden row's stored trees belong to its old data: its texts are parsed, as are those of a row without trees.
     const list: StoredEntry[] = await Promise.all(live.map(async (row) => {
       const override = overrides?.get(row._id)

@@ -255,10 +255,13 @@
     "removeProposal": "Eliminar “{title}”",
     "removed": "Se eliminó “{title}”",
     "restored": "Se restauró “{title}”",
+    "restoredAsDraftInvalid": "Se restauró “{title}” como borrador: {count, plural, one {el campo {fields} falta o no es válido} other {los campos {fields} faltan o no son válidos}}.",
+    "restoredAsDraftBrokenLink": "Se restauró “{title}” como borrador: el enlace “{link}” no lleva a ninguna parte.",
     "purged": "Se eliminó “{title}” definitivamente",
     "publishProposal": "Publicar “{title}”",
     "publishProposalScheduled": "Publicar “{title}”, en línea a partir del {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "publishStoppedBrokenLink": "“{title}” no se publicó: el enlace “{link}” no lleva a ninguna parte.",
+    "publishStoppedInvalid": "“{title}” no se publicó: {count, plural, one {el campo {fields} falta o no es válido} other {los campos {fields} faltan o no son válidos}}.",
     "published": "Se publicó “{title}”",
     "publishedDue": "Se publicó “{title}” (según lo programado)",
     "publishedLate": "Se publicó “{title}” de inmediato (la hora programada ya había pasado al aprobarlo)",
@@ -343,9 +346,26 @@
       "subject": "No se publicó: un cambio programado para {site}",
       "text": "Hola:\n\nun cambio que programaste para “{site}” no se publicó porque ya no encaja:\n\n{what}\n\nEl motivo está en el historial: {path}\n"
     },
+    "stopped": {
+      "subject": "“{title}” no se publicó",
+      "text": "Hola:\n\ntu entrada estaba programada para el {at, date, ::EEEEdMMMM}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}. No se publicó porque {because}\n\nLa entrada está a salvo. Corrígela y luego publícala o dale un nuevo día.\n\nAbrir la entrada: {path}\n"
+    },
     "rejected": {
       "subject": "No aprobado: tu cambio para {site}",
       "text": "Hola:\n\ntu cambio para “{site}” no se aprobó:\n\n{what}\n\nMotivo: “{reason}”\n\nCorregir: {path}\n"
+    }
+  },
+  "stopped": {
+    "title": "“{title}” no se publicó",
+    "cause": {
+      "link": "Enlaza a una página que no existe: {href}",
+      "invalid": "{count, plural, one {Falta {fields} o no es válido.} other {Faltan {fields} o no son válidos.}}",
+      "late": "Su hora ya había pasado cuando se importó el contenido."
+    },
+    "because": {
+      "link": "enlaza a una página que no existe: {href}",
+      "invalid": "{count, plural, one {falta {fields} o no es válido.} other {faltan {fields} o no son válidos.}}",
+      "late": "su hora ya había pasado cuando se importó el contenido."
     }
   },
   "content": {

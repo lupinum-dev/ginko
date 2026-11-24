@@ -17,6 +17,9 @@ export interface Mail {
   text: string
 }
 
+/** What a mail is for: the logs name it with its key, never its subject (a subject can hold a title a client typed). */
+export type MailKind = 'code' | 'invite' | 'notLive' | 'rejected' | 'digest' | 'reminder' | 'stopped' | 'auth'
+
 function mailWay(): 'outbox' | 'resend' | undefined {
   const way = process.env.GINKO_MAIL
   if (way === 'outbox') return 'outbox'
@@ -54,7 +57,7 @@ const CODE_RETRY_MS = [5_000, 30_000, 2 * 60_000]
 const MAIL_RETRY_MS = [60_000, 10 * 60_000, 60 * 60_000]
 
 /** `until`: a sign-in code's end of life; its mail is retried only before that. */
-export async function queueMail(ctx: MutationCtx, mail: Mail, until?: number) {
+export async function queueMail(ctx: MutationCtx, kind: MailKind, mail: Mail, until?: number) {
   const way = mailWay()
   if (!way) fail('INVALID', 'errors.signInNotSetUp')
   if (way === 'outbox' || isTestAddress(mail.to)) {
@@ -63,7 +66,7 @@ export async function queueMail(ctx: MutationCtx, mail: Mail, until?: number) {
   }
   // Sent once this mutation commits, so a refused mutation sends nothing. The mail is not stored in a table.
   // `key` stays the same through every retry, so Resend sends a mail it already took after a 5xx only once.
-  await ctx.scheduler.runAfter(0, internal.mail.send, { ...mail, key: crypto.randomUUID(), ...(until === undefined ? {} : { until }) })
+  await ctx.scheduler.runAfter(0, internal.mail.send, { ...mail, kind, key: crypto.randomUUID(), ...(until === undefined ? {} : { until }) })
 }
 
 /**
@@ -91,18 +94,18 @@ async function deliver(mail: Mail, key: string | undefined): Promise<{ sent: tru
  * code is retried only while it still works. A failure is logged without the mail text, which may hold a code.
  */
 export const send = internalAction({
-  // `key` is optional only for a mail queued before keys existed.
-  args: { to: v.string(), subject: v.string(), text: v.string(), key: v.optional(v.string()), until: v.optional(v.number()), attempt: v.optional(v.number()) },
-  handler: async (ctx, { key, until, attempt = 0, ...mail }) => {
+  // `key` and `kind` are optional only for a mail queued before they existed.
+  args: { to: v.string(), subject: v.string(), text: v.string(), kind: v.optional(v.string()), key: v.optional(v.string()), until: v.optional(v.number()), attempt: v.optional(v.number()) },
+  handler: async (ctx, { kind, key, until, attempt = 0, ...mail }) => {
     const outcome = await deliver(mail, key)
     if (outcome.sent) return
     const wait = (until === undefined ? MAIL_RETRY_MS : CODE_RETRY_MS)[attempt]
     if (outcome.retry && wait !== undefined && (until === undefined || Date.now() + wait < until)) {
-      console.warn(`Mail "${mail.subject}" not sent (${outcome.reason}); retry ${attempt + 1} in ${wait / 1000} s.`)
-      await ctx.scheduler.runAfter(wait, internal.mail.send, { ...mail, key, attempt: attempt + 1, ...(until === undefined ? {} : { until }) })
+      console.warn(`Mail ${kind ?? 'mail'} ${key ?? '-'} not sent (${outcome.reason}); retry ${attempt + 1} in ${wait / 1000} s.`)
+      await ctx.scheduler.runAfter(wait, internal.mail.send, { ...mail, kind, key, attempt: attempt + 1, ...(until === undefined ? {} : { until }) })
       return
     }
-    throw new Error(`Resend refused the mail "${mail.subject}": ${outcome.reason}`)
+    throw new Error(`Resend refused the mail ${kind ?? 'mail'} ${key ?? '-'}: ${outcome.reason}`)
   },
 })
 
@@ -110,7 +113,7 @@ export const send = internalAction({
 export const queue = internalMutation({
   args: { to: v.string(), subject: v.string(), text: v.string() },
   handler: async (ctx, mail) => {
-    await queueMail(ctx, mail)
+    await queueMail(ctx, 'auth', mail)
   },
 })
 
@@ -131,6 +134,6 @@ export const queueCode = internalMutation({
     // invite's language, else German.
     const invite = known ? null : await ctx.db.query('invites').withIndex('by_email', (q) => q.eq('email', email)).order('desc').first()
     const locale = invite?.locale ?? await localeOfUser(ctx, typeof known?.id === 'string' ? known.id : undefined)
-    await queueMail(ctx, { to: email, subject: t(locale, 'mail.code.subject'), text: t(locale, 'mail.code.text', { code: args.otp }) }, Date.now() + CODE_LIFETIME_MS)
+    await queueMail(ctx, 'code', { to: email, subject: t(locale, 'mail.code.subject'), text: t(locale, 'mail.code.text', { code: args.otp }) }, Date.now() + CODE_LIFETIME_MS)
   },
 })

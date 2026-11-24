@@ -168,8 +168,8 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
    * `at` absent: online now, and the message says what the other languages show (`main`: the site's main locale).
    * Undo takes it back to a draft (SPEC 15). `timeZone` words the scheduled time.
    */
-  async function publishEntry(entry: string, lifeRev: number, opts: { at?: number; task?: string; timeZone: string; main: string }) {
-    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, at: opts.at })
+  async function publishEntry(entry: string, lifeRev: number, opts: { at?: number; rev?: number; task?: string; timeZone: string; main: string }) {
+    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, at: opts.at, rev: opts.rev })
     if (isProposal(result)) { sentForApproval(); return result }
     const text = opts.at === undefined
       ? [t('ops.published'), t('ops.liveHint'), noteOf(result.translation, opts.main)].filter(Boolean).join(' ')

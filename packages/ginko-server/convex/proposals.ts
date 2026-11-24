@@ -153,7 +153,7 @@ async function staleReason(ctx: QueryCtx, p: Doc<'proposals'>, touched: Touched 
     if (args.rev === undefined) return staleBecause('history.staleAlreadyLive')
     if (entry.rev !== args.rev || !(await pendingOf(ctx, entry._id))) return retry
   }
-  if (p.op === 'unpublish' && (entry.state ?? 'live') === 'draft' && entry.publishAt === undefined) return staleBecause('history.staleAlreadyDraft')
+  if (p.op === 'unpublish' && (entry.state ?? 'live') === 'draft' && entry.publishAt === undefined && !entry.stopped) return staleBecause('history.staleAlreadyDraft')
   // Taking the time off unpublished changes (the entry stays online): only while they still have one.
   if (p.op === 'unpublish' && (p.after as { state?: string } | undefined)?.state === 'live' && (await pendingOf(ctx, entry._id))?.publishAt === undefined) return retry
   touched.set(entry._id, { roots: seen?.roots ?? new Set(), life: true })
@@ -676,7 +676,7 @@ async function mailNotLive(ctx: MutationCtx, siteId: Id<'sites'>, approver: stri
   const member = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).filter((q) => q.eq(q.field('user'), approver)).first()
   if (!member?.email) return
   const locale = await localeOfUser(ctx, member.user)
-  await queueMail(ctx, {
+  await queueMail(ctx, 'notLive', {
     to: member.email,
     subject: t(locale, 'mail.notLive.subject', { site: site.name }),
     text: t(locale, 'mail.notLive.text', { site: site.name, what: typeof what === 'string' ? what : historyText(what, locale, site.schema as Schema), path: `${siteOrigin()}/s/${site.slug}/history` }),
@@ -696,7 +696,7 @@ async function mailRejected(ctx: MutationCtx, p: Doc<'proposals'>, reason: strin
   const locale = await localeOfUser(ctx, member.user)
   const task = taskOf(p.args)
   const fix = p.via === 'agent' ? '/history' : p.op === 'save' && p.entry && task ? `?task=${encodeURIComponent(task)}&reopen=${p._id}` : ''
-  await queueMail(ctx, {
+  await queueMail(ctx, 'rejected', {
     to: member.email,
     subject: t(locale, 'mail.rejected.subject', { site: site.name }),
     text: t(locale, 'mail.rejected.text', { site: site.name, what: p.msg ? historyText(p.msg as HistoryMsg, locale, site.schema as Schema) : p.sentence, reason, path: `${siteOrigin()}/s/${site.slug}${fix}` }),
@@ -740,7 +740,7 @@ export const sendDigest = internalMutation({
         const via = !w.viaAgent ? '' : ` ${w.ai ? t(locale, 'mail.digest.viaAi', { ai: w.ai }) : t(locale, 'mail.digest.viaAiUnnamed')}`
         return `- ${name}${via}: ${w.msg ? historyText(w.msg, locale, schema) : w.sentence}`
       })
-      await queueMail(ctx, {
+      await queueMail(ctx, 'digest', {
         to: owner.email!,
         subject: t(locale, 'mail.digest.subject', { count: open.length, site: site.name }),
         text: t(locale, 'mail.digest.text', { count: open.length, site: site.name, lines: lines.join('\n'), path: `${siteOrigin()}/s/${site.slug}/review` }),

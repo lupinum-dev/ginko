@@ -1332,7 +1332,8 @@
     "waiting": {
       "label": "Vous attend",
       "more": "{count} de plus",
-      "inHistory": "Voir dans l’historique"
+      "inHistory": "Voir dans l’historique",
+      "open": "Ouvrir"
     },
     "due": {
       "badge": "À faire"

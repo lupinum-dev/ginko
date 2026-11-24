@@ -40,6 +40,7 @@ const EXCEPTIONS: Exception[] = [
   { file: 'packages/ginko-server/convex/lib/list.ts', term: 'plans', until: 'cp3', reason: PLANS },
   { file: 'packages/ginko-server/convex/lib/reminders.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
   { file: 'packages/ginko-server/convex/lib/status.ts', term: 'hours', until: 'cp4', reason: RENDERER },
+  { file: 'packages/ginko-server/convex/lib/status.ts', term: 'opening', until: 'cp4', reason: RENDERER },
   { file: 'packages/ginko-server/convex/lib/status.ts', term: 'plans', until: 'cp3', reason: `${PLANS}; ${RULE_PLANS}` },
   { file: 'packages/ginko-server/convex/reminders.ts', term: 'hour', until: 'stays', reason: CLOCK },
   { file: 'packages/ginko-server/convex/reminders.ts', term: 'hours', until: 'cp4', reason: RENDERER },
@@ -134,5 +135,10 @@ describe('no trade word in the core, the written form and the server (V2 5.9)', 
 
   it('does not read a word in a comment', () => {
     expect([...termsIn('// opening hours\nconst x = 1 /* lunch */')]).toEqual([])
+  })
+
+  // Wrong behaviour caught: a term inside a longer word that is not in the list counts as the term, so plain code fails.
+  it('reads whole words only, not a term inside a longer word', () => {
+    expect([...termsIn('const lunchbox = 1; const dishwasher = 2')]).toEqual([])
   })
 })

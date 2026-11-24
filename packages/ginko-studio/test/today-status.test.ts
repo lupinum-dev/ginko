@@ -64,6 +64,7 @@ vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   if (name === 'sites.today') return { data: ref(states) }
   if (name === 'proposals.count') return { data: computed(() => (skipped() ? undefined : toReview)) }
   if (name === 'proposals.mine') return { data: ref({ open: ownOpen, rejected: [], notLive: [] }) }
+  if (name === 'entries.stoppedPlans') return { data: ref([]) }
   if (name === 'entries.ofBricks') return { data: ref([{ _id: 'h1', brick: 'hours', kind: 'single', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: hoursEntry }]) }
   return { data: computed(() => undefined) }
 })

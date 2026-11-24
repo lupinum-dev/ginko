@@ -2,7 +2,7 @@
 // are v.any() on purpose: every write checks them with the one validator in
 // @lupinum/ginko/core, so nothing unchecked gets in.
 import { defineSchema, defineTable } from 'convex/server'
-import { v } from 'convex/values'
+import { v, type Infer } from 'convex/values'
 
 const role = v.union(v.literal('owner'), v.literal('staff'))
 /**
@@ -11,6 +11,16 @@ const role = v.union(v.literal('owner'), v.literal('staff'))
  * the type is recursive; every write builds them with `msg()`.
  */
 const historyMsg = v.object({ key: v.string(), params: v.optional(v.record(v.string(), v.any())) })
+/**
+ * Why a plan did not go online (D103): a link to a page that does not exist, fields that fail the full check (their
+ * paths), or a time that had passed when the content was imported.
+ */
+export const stopReason = v.union(
+  v.object({ code: v.literal('link'), href: v.string() }),
+  v.object({ code: v.literal('invalid'), fields: v.array(v.string()) }),
+  v.object({ code: v.literal('late') }),
+)
+export type StopReason = Infer<typeof stopReason>
 const scope = v.union(v.literal('release'), v.literal('pull'), v.literal('check'), v.literal('export'))
 
 export default defineSchema({
@@ -108,6 +118,13 @@ export default defineSchema({
     publishAt: v.optional(v.number()),
     /** The scheduled `entries.publishDue` run that belongs to `publishAt`. */
     publishJob: v.optional(v.id('_scheduled_functions')),
+    /** Who planned `publishAt` (user id): written and cleared with it (D102). Absent on a plan that came with an import. */
+    publishBy: v.optional(v.string()),
+    /**
+     * A plan that did not go online (D103): the entry stayed a draft. `at` is the time it had, `by` its planner. Never
+     * set together with `publishAt`; a new plan, a publish, "cancel" (`unpublish`) and removing the entry clear it.
+     */
+    stopped: v.optional(v.object({ at: v.number(), by: v.optional(v.string()), reason: stopReason })),
     /**
      * The staff member (user id) who created the entry through a create task: they may change it later with that
      * task (lib/access.ts `authorize`). Absent for entries of owners and admins, and for entries made before it existed.
@@ -128,7 +145,9 @@ export default defineSchema({
     .index('by_site_brick_order', ['site', 'brick', 'order'])
     .index('by_site_brick_name', ['site', 'brick', 'name'])
     .index('by_site_brick_deleted', ['site', 'brick', 'deletedAt'])
-    .index('by_site_deleted', ['site', 'deletedAt']),
+    .index('by_site_deleted', ['site', 'deletedAt'])
+    // Today's stopped plans (entries `stoppedPlans`).
+    .index('by_site_stopped', ['site', 'stopped.at']),
 
   /**
    * The trees of an entry's Markdown texts (core `markdownTrees`) as JSON text, split into parts below Convex's 1 MiB

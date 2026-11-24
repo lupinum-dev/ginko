@@ -100,7 +100,7 @@ async function remindSite(ctx: MutationCtx, site: Doc<'sites'>, schema: Schema, 
     if (!to) continue
     const locale = await localeOfUser(ctx, member.user)
     for (const item of items) await ctx.db.insert('reminders', { site: site._id, brick: item.key, week, user: member.user, at })
-    await queueMail(ctx, {
+    await queueMail(ctx, 'reminder', {
       to,
       subject: t(locale, 'mail.weekly.subject', { site: site.name, count: items.length }),
       text: t(locale, 'mail.weekly.text', { site: site.name, items: items.map((item) => item.line(locale)).join('\n'), link: `${siteOrigin()}/s/${site.slug}`, settings: `${siteOrigin()}/?all` }),

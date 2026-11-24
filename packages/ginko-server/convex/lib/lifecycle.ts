@@ -45,6 +45,9 @@ export function storageSums(rows: readonly Pick<Doc<'entries'>, 'deletedAt' | 'b
   return { bytes, trashBytes, treeBytes }
 }
 
+/** What a write that ends a draft's plan clears: the time, its job, the planner (D102) and a stopped plan (D103). */
+export const NO_PLAN = { publishAt: undefined, publishJob: undefined, publishBy: undefined, stopped: undefined } as const
+
 /**
  * Soft-deletes one entry (SPEC 4.2 remove): `deletedAt`, lifeRev+1, one change row. Its slug stays reserved and its
  * file references stay; its trees go (the trash keeps none). Its bytes move from `bytes` to `trashBytes`, so removing
@@ -54,7 +57,7 @@ export function storageSums(rows: readonly Pick<Doc<'entries'>, 'deletedAt' | 'b
  */
 export async function softRemove(ctx: MutationCtx, c: Counters, entry: Doc<'entries'>, opId: string, by: By, history: Recorded, at = Date.now()) {
   // rev counts every change of the entry (SPEC 3), structural ones included.
-  await ctx.db.patch(entry._id, { deletedAt: at, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, publishAt: undefined, publishJob: undefined, trees: undefined, treeBytes: 0 })
+  await ctx.db.patch(entry._id, { deletedAt: at, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, ...NO_PLAN, trees: undefined, treeBytes: 0 })
   await dropTrees(ctx, entry._id)
   if (entry.publishJob) await ctx.scheduler.cancel(entry.publishJob)
   // Unpublished changes go with the entry: a restore brings back the live version.

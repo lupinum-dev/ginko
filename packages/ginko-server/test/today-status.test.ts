@@ -106,21 +106,28 @@ describe('sites.today', () => {
   })
 
   // Wrong behaviour caught: the hours line reads a collection that only looks like hour plans (a second set of weeks,
-  // say for the terrace) instead of the plans the hours name, and tells the owner the restaurant is closed today.
-  it('hours: follows the hour plans the status names, not another collection of the same shape', async () => {
+  // say for the terrace) instead of the plans the hours name, and tells the owner the restaurant is closed today; or it
+  // reads no plans at all and misses the closed week the owner planned.
+  it.each([
+    { name: 'a closed week in another collection of the same shape does not count', closedIn: 'terracePlans', today: { ranges: [['11:30', '14:30']] } },
+    { name: 'a closed week in the plans the status names counts', closedIn: 'hourPlans', today: { closed: true } },
+    { name: 'plans of a retired collection do not count', closedIn: 'hourPlans', retired: true, today: { ranges: [['11:30', '14:30']] } },
+  ])('hours: follows the hour plans the status names: $name', async ({ closedIn, retired, today }) => {
     const s = await setup()
     await s.t.run(async (ctx) => {
       const schema = structuredClone((await ctx.db.get(s.site))!.schema) as Schema
       schema.bricks.terracePlans = structuredClone(schema.bricks.hourPlans!)
       schema.bricks.hours!.status = { rule: 'opening-hours', plans: 'hourPlans' }
+      if (retired) schema.bricks.hourPlans!.retired = true
       await ctx.db.patch(s.site, { schema })
     })
     const closedWeek = Object.fromEntries(Object.entries(allWeek).map(([key, day]) => [key, { ...day, closed: true }]))
+    const plan = (label: string, week: object) => ({ data: { label, from: '2026-01-01', yearly: false, week } })
     await replaceEntries(s, 'hours', [{ data: { week: allWeek, exceptions: [] } }])
-    await replaceEntries(s, 'hourPlans', [])
-    await replaceEntries(s, 'terracePlans', [{ data: { label: 'Terrasse geschlossen', from: '2026-01-01', yearly: false, week: closedWeek } }])
+    await replaceEntries(s, 'hourPlans', closedIn === 'hourPlans' ? [plan('Geschlossen', closedWeek)] : [])
+    await replaceEntries(s, 'terracePlans', [closedIn === 'terracePlans' ? plan('Terrasse geschlossen', closedWeek) : plan('Terrasse offen', allWeek)])
     const states = await s.as.owner.query(api.sites.today, { site: 'restaurant' })
-    expect(states.find((x) => x.brick === 'hours')).toEqual({ brick: 'hours', line: { kind: 'rule', rule: 'opening-hours', today: { ranges: [['11:30', '14:30']] } }, due: false })
+    expect(states.find((x) => x.brick === 'hours')).toEqual({ brick: 'hours', line: { kind: 'rule', rule: 'opening-hours', today }, due: false })
   })
 
   // Wrong behaviour caught: staff see the state of areas they have no task on, or other people's drafts.

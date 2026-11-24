@@ -77,6 +77,7 @@ it('a code mail that Resend refuses with 503 goes out on the retry with the same
   const statuses = [503, 200, 400]
   const fetch = vi.fn(async () => new Response('{}', { status: statuses.shift() }))
   vi.stubGlobal('fetch', fetch)
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
   vi.useFakeTimers()
   await s.t.mutation(internal.mail.queueCode, { to: 'wirtin@example.com', otp: '654321' })
   await s.t.finishAllScheduledFunctions(vi.runAllTimers)
@@ -89,6 +90,9 @@ it('a code mail that Resend refuses with 503 goes out on the retry with the same
   expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/)
   expect(keys[1]).toBe(keys[0])
   expect(keys[2]).not.toBe(keys[0])
+  // Wrong behaviour caught: the log holds the subject, which for some mails is a title a client typed.
+  expect(warn.mock.calls.map((call) => String(call[0]))).toEqual([`Mail code ${keys[0]} not sent (503 {}); retry 1 in 5 s.`])
+  warn.mockRestore()
 })
 
 /** POSTs to the Better Auth route as the Studio's auth proxy sends it: the visitor IP, signed with the shared proxy secret. */
