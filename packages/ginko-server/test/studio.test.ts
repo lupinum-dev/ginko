@@ -224,6 +224,23 @@ describe('entries.duplicate', () => {
     expect((await s.row(copy.entry))!.data).toMatchObject({ name: { de: 'Gulasch' }, code: 'G1 (Kopie)' })
   })
 
+  // Wrong behaviour caught: a copy of an entry named by a longtext keeps the same name, so two list rows look alike; or a
+  // date title gets " (Kopie)" and is no date any more.
+  it.each([
+    ['a longtext', { type: 'longtext', label: 'Kürzel', translate: false, max: 200, optional: true }, 'G1', 'G1 (Kopie)'],
+    ['a date', { type: 'date', label: 'Datum', optional: true }, '2026-12-01', '2026-12-01'],
+  ])('marks listing.title when it is %s only if it is text', async (_name, field, value, copied) => {
+    const s = await studioSetup()
+    await s.patchSchema((schema) => {
+      const menu = schema.bricks.menu as unknown as { fields: Record<string, unknown>; listing: { title: string } }
+      menu.fields.code = field
+      menu.listing = { title: 'code' }
+    })
+    const created = await s.as.owner.mutation(api.entries.create, { publish: {}, site, opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: 'Gulasch' }, code: value, price: { amount: 100 }, allergens: [], veg: 'none' } }) as { entry: Id<'entries'> }
+    const copy = await s.as.owner.mutation(api.entries.duplicate, { site, opId: opId(), entry: created.entry }) as { entry: Id<'entries'> }
+    expect((await s.row(copy.entry))!.data).toMatchObject({ name: { de: 'Gulasch' }, code: copied })
+  })
+
   it('leaves a label unchanged when " (Kopie)" would not fit', async () => {
     const s = await studioSetup()
     const long = 'a'.repeat(120)

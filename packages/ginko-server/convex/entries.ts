@@ -967,8 +967,9 @@ function withCopySuffix(field: Field, value: Json, main: string): Json {
 
 /**
  * The data of the copy: live fields only; slugs left out (create makes new, free ones from their source,
- * so "Wildwoche (Kopie)" becomes `wildwoche-kopie`, then `wildwoche-kopie-2`). The copy mark goes on the text field
- * that names an entry (`listing.title`) and on the text a slug is made from.
+ * so "Wildwoche (Kopie)" becomes `wildwoche-kopie`, then `wildwoche-kopie-2`). The copy mark goes on the field that
+ * names an entry (`listing.title`) when it is a text or longtext field (a date title stays a date), and on the text a
+ * slug is made from.
  */
 function copyOf(brick: CollectionBrick, data: Data, opId: string, main: string): Data {
   const slugSources = new Set(Object.values(brick.fields).flatMap((field) => (field.type === 'slug' && !field.retired ? [field.from] : [])))
@@ -977,7 +978,8 @@ function copyOf(brick: CollectionBrick, data: Data, opId: string, main: string):
   for (const [name, field] of Object.entries(brick.fields)) {
     if (field.retired || field.type === 'slug' || data[name] === undefined) continue
     const value = withNewRowIds(field, data[name]!, name, opId)
-    out[name] = field.type === 'text' && (name === label || slugSources.has(name)) ? withCopySuffix(field, value, main) : value
+    const marked = (name === label && (field.type === 'text' || field.type === 'longtext')) || (field.type === 'text' && slugSources.has(name))
+    out[name] = marked ? withCopySuffix(field, value, main) : value
   }
   return out
 }
