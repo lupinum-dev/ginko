@@ -3,7 +3,7 @@
 import { f } from '../core/fields.ts'
 import { single } from '../core/site.ts'
 import { organizationLd, type OrganizationLdInput } from '../core/seo.ts'
-import { sourceOf, t, type BasicsOptions } from './shared.ts'
+import { t, type BasicsOptions } from './shared.ts'
 
 export function site(o: BasicsOptions = {}) {
   const plain = { optional: true, translate: false } as const
@@ -30,7 +30,6 @@ export function site(o: BasicsOptions = {}) {
       'Nombre, dirección y datos de contacto, por ejemplo para el aviso legal y el pie de página.',
       'Nom, adresse et coordonnées, par exemple pour les mentions légales et le pied de page.',
     ),
-    ...sourceOf(o),
     fields,
     tasks: [{
       id: 'edit', kind: 'edit',

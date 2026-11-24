@@ -17,20 +17,13 @@ import { extend } from '../authoring/bricks.ts'
 import { defOf } from '../authoring/from-stored.ts'
 import * as basics from '../basics/index.ts'
 import { t } from '../basics/shared.ts'
-import type { RouteTemplate } from '../core/site.ts'
-import type { Label, Locale } from '../core/types.ts'
+import type { Label } from '../core/types.ts'
 
 /** What every pattern takes. */
 export interface PatternOptions {
   /** Replaces the brick's name in the Studio: a text, or one text per language. */
   label?: Label
 }
-
-/**
- * The 0.18 functions add the address field when they get a `route`. A pattern asks for the field by its own option
- * and passes this in its place; `defOf` drops it (the address is a line in the site's `entries`).
- */
-const anyRoute: Record<Locale, RouteTemplate> = {}
 
 /** Name, address, contact and social links of the organisation. A single. */
 export const site = (o: PatternOptions = {}) => defOf(basics.site(o))
@@ -52,7 +45,7 @@ export function people(o: PatternOptions & { pages?: boolean } = {}) {
   return o.pages ? peopleWithPages(o) : peopleOnly(o)
 }
 const peopleOnly = (o: PatternOptions) => defOf(basics.people({ label: o.label }), { item: person })
-const peopleWithPages = (o: PatternOptions) => defOf(basics.people({ label: o.label, route: anyRoute }), { item: person })
+const peopleWithPages = (o: PatternOptions) => defOf(basics.people({ label: o.label, pages: true }), { item: person })
 
 /**
  * Posts, newest first. `authors` is the key of the brick whose entries write the posts, such as a `people()` brick.

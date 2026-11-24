@@ -1,14 +1,11 @@
 // A blog and a changelog. The stored shape is the one of `@lupinum/ginko-docs/config` (posts with `authors` refs and
 // `tags`, authors, changelog entries), which re-exports these factories: docs sites and basics sites store the same data.
 import { f } from '../core/fields.ts'
-import { collection, type RouteTemplate } from '../core/site.ts'
-import type { Locale } from '../core/types.ts'
+import { collection } from '../core/site.ts'
 import { articleLd } from '../core/seo.ts'
-import { sourceOf, t, type BasicsOptions } from './shared.ts'
+import { t, type BasicsOptions } from './shared.ts'
 
-export interface PostsOptions<R extends Record<Locale, RouteTemplate> | undefined> extends BasicsOptions {
-  /** A page per post, e.g. `{ en: '/blog/[slug]', de: '/de/blog/[slug]' }`. */
-  route?: R
+export interface PostsOptions extends BasicsOptions {
   /** Most posts (default 500). */
   max?: number
   /**
@@ -23,18 +20,16 @@ export interface PostsOptions<R extends Record<Locale, RouteTemplate> | undefine
  * the brick given as the `authors` option (for example `people`).
  * Files: `content/posts/<name>[.<locale>].md`.
  */
-export function posts<const R extends Record<Locale, RouteTemplate> | undefined = undefined>(o: PostsOptions<R> = {}) {
+export function posts(o: PostsOptions = {}) {
   const tag = t('Schlagwort', 'Tag', 'Etiqueta', 'Mot-clé')
   return collection({
     label: o.label ?? t('Beiträge', 'Posts', 'Artículos', 'Articles'),
     listing: { title: 'title', detail: 'date', image: 'image' },
     untranslated: 'hide', // a post without a text in a language has no page there
-    ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
     // The day a post shows. It never hides a post: a post written ahead waits with `$publishAt` in its file.
     publishedOn: 'date',
-    ...(o.route ? { route: o.route as R } : {}),
     body: 'body',
     fields: {
       title: f.text(t('Titel', 'Title', 'Título', 'Titre')),
@@ -55,7 +50,6 @@ export function authors(o: BasicsOptions = {}) {
     label: o.label ?? t('Autorinnen und Autoren', 'Authors', 'Autores', 'Auteurs'),
     listing: { title: 'name', image: 'avatar' },
     untranslated: 'fallback',
-    ...sourceOf(o),
     max: 100,
     order: 'manual',
     fields: {
@@ -82,7 +76,6 @@ export function changelog(o: ChangelogOptions = {}) {
     label: o.label ?? t('Änderungen', 'Changelog', 'Registro de cambios', 'Journal des modifications'),
     listing: { title: 'version', detail: 'date' },
     untranslated: 'fallback',
-    ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
     // The day of the release. It never hides one: a release written ahead waits with `$publishAt` in its file.

@@ -2,7 +2,7 @@
 import { f } from '../core/fields.ts'
 import { collection } from '../core/site.ts'
 import type { Task } from '../core/types.ts'
-import { both, sourceOf, type BasicsOptions } from './hours-bricks.ts'
+import { both, type BasicsOptions } from './hours-bricks.ts'
 
 const noticeFields = () => ({
   text: f.text(both('Text', 'Text'), { max: 140 }),
@@ -21,7 +21,6 @@ export function noticesBrick(opts: BasicsOptions, first: readonly NoticeTask[]) 
     label: opts.label ?? both('Hinweise', 'Notices'),
     listing: { title: 'text', detail: 'until' },
     untranslated: 'fallback',
-    ...sourceOf(opts),
     fields: noticeFields(),
     max: 5,
     order: 'manual',

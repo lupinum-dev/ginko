@@ -3,10 +3,10 @@
 // Every name here is documented on the docs site (Presets page, "Basics").
 export type { BasicsOptions } from './shared.ts'
 export { site, siteJsonLd, type SiteData, type SiteJsonLdOptions } from './site.ts'
-export { legal, legalTypes, type LegalOptions } from './legal.ts'
+export { legal, legalTypes } from './legal.ts'
 export { people, personJsonLd, type PersonJsonLdInput } from './people.ts'
 export { posts, authors, changelog, releaseAnchor, postJsonLd, type PostsOptions, type ChangelogOptions, type PostJsonLdInput } from './posts.ts'
-export { jobs, jobJsonLd, type JobsOptions, type JobJsonLdInput } from './jobs.ts'
+export { jobs, jobJsonLd, type JobJsonLdInput } from './jobs.ts'
 export { faq, faqJsonLd } from './faq.ts'
 export { downloads } from './downloads.ts'
 export { rssXml, type RssFeed, type RssItem } from './rss.ts'

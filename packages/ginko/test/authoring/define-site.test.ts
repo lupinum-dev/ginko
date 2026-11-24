@@ -182,12 +182,13 @@ describe('a config or a brick in the form of 0.18', () => {
     ].join('\n'))
   })
 
-  // Wrong: a preset or the docs theme, which still build stored-form bricks, cannot be used in a site file.
-  it('takes a brick made with the stored-form builders and sets where it lives and its address', () => {
+  // Wrong: a brick of the stored form (Ginko 0.18, an old preset) passes without the checks of the written form, or
+  // stops without saying what to write instead.
+  it('refuses a brick made with the stored-form builders and names the way', () => {
     const news = stored.collection({ untranslated: 'fallback', label: 'News', listing: { title: 'title' }, max: 20, order: 'manual', fields: { title: stored.f.text('Titel'), slug: stored.f.slug('Adresse', { from: 'title' }) } })
-    const site = defineSite({ ...base, locales: ['de', 'en'], bricks: { news }, entries: { news: '/news/[slug]' } })
-    expect(site.bricks.news).toMatchObject({ source: 'files', route: { de: '/news/[slug]', en: '/en/news/[slug]' }, max: 20 })
-    expect(site.site).toBe('halden-pumps')
+    expect(() => defineSite({ ...base, locales: ['de'], bricks: { news } as never, entries: { news: '/news/[slug]' } as never })).toThrow(
+      "- bricks.news is a brick of the stored form (Ginko 0.18). Take its pattern from '@lupinum/ginko/patterns' or from the preset, or write it with `single` or `collection` of '@lupinum/ginko'.",
+    )
   })
 })
 

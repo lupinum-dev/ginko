@@ -10,8 +10,6 @@ import * as patterns from '../src/patterns/index.ts'
 
 const base = { name: 'Halden Pumps', url: 'https://halden.example', timeZone: 'Europe/Vienna', currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, locales: ['de', 'en'] } as const
 
-const route = { de: '/team/[slug]', en: '/en/team/[slug]' } as const
-
 /**
  * A pattern call, the stored brick it must give (the function's brick, plus the Today line a pattern brings) and, for
  * a brick with pages, its line in `entries`.
@@ -22,7 +20,7 @@ const cases: [call: string, name: keyof typeof patterns, pattern: BrickDef, stor
   ['legal()', 'legal', patterns.legal(), basics.legal()],
   ['notices()', 'notices', patterns.notices(), basics.notices()],
   ['people()', 'people', patterns.people(), basics.people()],
-  ['people({ pages: true })', 'people', patterns.people({ pages: true }), basics.people({ route }), '/team/[slug]'],
+  ['people({ pages: true })', 'people', patterns.people({ pages: true }), { ...basics.people({ pages: true }), route: { de: '/team/[slug]', en: '/en/team/[slug]' } }, '/team/[slug]'],
   ['posts({ authors: \'people\' })', 'posts', patterns.posts({ authors: 'people' }), basics.posts({ authors: 'people' })],
   ['posts({ authors: \'team\', max: 50 })', 'posts', patterns.posts({ authors: 'team', max: 50 }), basics.posts({ authors: 'team', max: 50 })],
   ['authors()', 'authors', patterns.authors(), basics.authors()],

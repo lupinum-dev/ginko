@@ -1,9 +1,7 @@
 // `defineSite`: the site file. It says which bricks exist (`bricks`), where their pages are (`pages`, `entries`) and
 // who edits them (`studio`). It returns the site in its stored form (core/site.ts: `SiteInput`), so the schema, the
-// checks, the CLI and the Nuxt module read one form only.
-//
-// A brick in the stored form (made by a preset or the docs theme that still build it that way) may stand next to
-// bricks written with this entry: the site file then sets where it lives and, with `entries`, its address.
+// checks, the CLI and the Nuxt module read one form only. Every brick is written with `single` or `collection` (the
+// patterns and the presets are made that way); a brick in the stored form is refused with a sentence.
 import type { RouteTemplate, SiteInput } from '../core/site.ts'
 import type { Brick, CollectionBrick, Label, Locale, SingleBrick, Task } from '../core/types.ts'
 import { DEF, type BrickDef, type CollectionDef, type SingleDef, type StandardTask, type TaskInput } from './bricks.ts'
@@ -27,7 +25,6 @@ type WithEntryPage<B> = { [K in keyof B]: B[K] extends { kind: 'collection'; fie
 type Compiled<X, R> =
   X extends SingleDef<infer F> ? SingleBrick<F>
   : X extends CollectionDef<infer F> ? CollectionBrick<F, R extends undefined ? undefined : Record<Locale, RouteTemplate>>
-  : X extends CollectionBrick<infer F, infer R0> ? CollectionBrick<F, R extends undefined ? R0 : Record<Locale, RouteTemplate>>
   : X
 type CompiledBricks<B, E> = { [K in keyof B]: Compiled<B[K], K extends keyof E ? (E[K] extends null ? undefined : true) : undefined> }
 
@@ -54,7 +51,7 @@ export interface StudioInput<K extends string = string> {
 }
 
 export function defineSite<
-  const B extends Record<string, Brick | BrickDef>,
+  const B extends Record<string, BrickDef>,
   const L extends string,
   const E extends Partial<Record<WithEntryPage<B>, EntryAddress<NoInfer<L>>>> = {},
   const P extends Record<string, Address<NoInfer<L>, Path>> = {},
@@ -99,27 +96,24 @@ export function defineSite<
 
   // A ready-made brick is a function with options; given without its call it has no fields to read.
   const notCalled = Object.entries(bricks).filter(([, input]) => typeof input === 'function').map(([key]) => `bricks.${key} is a function. Call it: \`${key}: ${key}()\`.`)
-  if (notCalled.length) throw new Error(`ginko.config.ts:\n${notCalled.map((p) => `- ${p}`).join('\n')}`)
+  // A brick object of Ginko 0.18 (`collection()` of '@lupinum/ginko/internal', or an old preset) has no written form to read.
+  const stored = Object.entries(bricks).filter(([, input]) => typeof input !== 'function' && !isDef(input)).map(([key]) => `bricks.${key} is a brick of the stored form (Ginko 0.18). Take its pattern from '@lupinum/ginko/patterns' or from the preset, or write it with \`single\` or \`collection\` of '@lupinum/ginko'.`)
+  if (notCalled.length || stored.length) throw new Error(`ginko.config.ts:\n${[...notCalled, ...stored].map((p) => `- ${p}`).join('\n')}`)
 
   const compiled = Object.fromEntries(Object.entries(bricks).map(([key, input]) => {
     const own: Record<Locale, BrickTexts | undefined> = Object.fromEntries(Object.entries(texts).map(([locale, record]) => [locale, record?.[key]]))
     const text = (pick: (t: BrickTexts) => string | undefined) => Object.fromEntries(Object.entries(own).map(([locale, t]) => [locale, t ? pick(t) : undefined]))
     const label = withTexts(input.label, main, text((t) => t.label))
     const taskTexts = (id: string) => text((t) => t.tasks?.[id])
-    let brick: Brick = isDef(input)
-      ? compileBrick(key, input, label, input.item !== undefined ? withTexts(input.item, main, text((t) => t.item)) : undefined, main, taskTexts, problems)
-      : { ...input, label }
+    let brick: Brick = compileBrick(key, input, label, input.item !== undefined ? withTexts(input.item, main, text((t) => t.item)) : undefined, main, taskTexts, problems)
     brick = translateBrick(key, brick, main, own, problems)
     // Where the brick lives is a fact of the site; the stored form keeps it as `source` on the brick.
     const { source: _source, ...withoutSource } = brick
     brick = inStudio(key) ? withoutSource : { ...withoutSource, source: 'files' }
     const entry = (entries as Record<string, string | Partial<Record<string, string>> | null | undefined>)[key]
     if (brick.kind === 'collection' && Object.values(brick.fields).some((field) => field.type === 'slug')) {
-      if (entry === undefined) {
-        // An address field without a page is nearly always a forgotten line (0.18 asked for `route` on the brick).
-        if (!brick.route) problems.push(`entries: “${key}” has an address field but no line here. Write \`${key}: '/${key}/[slug]'\` for a page per entry, or \`${key}: null\` for none.`)
-      }
-      else if (brick.route) problems.push(`entries.${key}: the brick already has a \`route\`. Write the address in one place.`)
+      // An address field without a page is nearly always a forgotten line (0.18 asked for `route` on the brick).
+      if (entry === undefined) problems.push(`entries: “${key}” has an address field but no line here. Write \`${key}: '/${key}/[slug]'\` for a page per entry, or \`${key}: null\` for none.`)
       else if (entry !== null) brick = { ...brick, route: address(`entries.${key}`, entry) }
     }
     else if (entry !== undefined) problems.push(`entries.${key}: only a collection with an address field (\`f.slug\`) has a page per entry.`)
@@ -139,7 +133,7 @@ export function defineSite<
   return out as Site<B, L, E, P>
 }
 
-const isDef = (brick: Brick | BrickDef): brick is BrickDef => (brick as { [DEF]?: true })[DEF] === true
+const isDef = (brick: unknown): brick is BrickDef => (brick as { [DEF]?: true })[DEF] === true
 
 /** `Halden Pumps` → `halden-pumps`: letters, digits and `-`, as a site id is written. */
 function slugOf(name: string): string {

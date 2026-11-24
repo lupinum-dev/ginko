@@ -1,4 +1,4 @@
-// @lupinum/ginko/basics: the stored names a site's data depends on, `source` only when asked, labels in every Studio
+// @lupinum/ginko/basics: the stored names a site's data depends on, labels in every Studio
 // language, the JSON-LD per type, and a files site with every brick that builds and moves to the platform unchanged.
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -10,8 +10,10 @@ import { authors, changelog, downloads, faq, faqJsonLd, jobJsonLd, jobs, legal, 
 import { checkSite, siteForContent, serializeSchema } from '@lupinum/ginko/internal'
 
 const route = (path: string) => ({ en: `/${path}/[slug]`, de: `/de/${path}/[slug]` }) as const
+/** The brick as a site file stores it when it lives in files, with its address from `entries`. */
+const files = <B extends Brick>(brick: B, address?: ReturnType<typeof route>) => ({ ...brick, source: 'files' as const, ...(address ? { route: address } : {}) })
 
-const factories: Record<string, (o: { source?: 'files' }) => Brick> = {
+const factories: Record<string, () => Brick> = {
   site, legal, people, posts, authors, changelog, jobs, faq, downloads,
 }
 
@@ -30,7 +32,7 @@ describe('basics factories', () => {
     ['faq', ['question: text', 'answer: longtext']],
     ['downloads', ['title: text', 'summary?: longtext', 'date: date', 'file: file', 'language?: text']],
   ])('%s keeps its stored field names and types', (name, expected) => {
-    expect(shape(factories[name]!({}))).toEqual(expected)
+    expect(shape(factories[name]!())).toEqual(expected)
   })
 
   it('keeps the stored choice values of legal texts and jobs', () => {
@@ -41,27 +43,18 @@ describe('basics factories', () => {
     expect(posts().fields.authors).toMatchObject({ to: 'authors', multiple: true })
   })
 
-  it('emits `source` only when it is passed', () => {
-    for (const [name, make] of Object.entries(factories)) {
-      expect(Object.hasOwn(make({}), 'source'), name).toBe(false)
-      expect(make({ source: 'files' }).source, name).toBe('files')
-    }
-  })
-
-  it('takes a route only when one is passed, and a job leaves the site after `validUntil`', () => {
-    expect(legal().route).toBeUndefined()
-    expect(legal({ route: route('legal') }).route).toEqual({ en: '/legal/[slug]', de: '/de/legal/[slug]' })
+  it('leaves a job out after `validUntil`', () => {
     expect(jobs().visible).toEqual({ mode: 'until', field: 'validUntil' })
   })
 
   // Wrong behaviour caught: speaker pages need a slug, but adding one to every people() brick would change the stored
   // shape of each team page; or a route without the slug, which checkSite refuses.
-  it('gives people a slug from the name only with a route', () => {
-    expect(shape(people({ route: route('speakers') }))).toEqual([...shape(people()), 'slug: slug'])
-    expect(people({ route: route('speakers') }).fields.slug).toMatchObject({ from: 'name' })
+  it('gives people a slug from the name only with pages', () => {
+    expect(shape(people({ pages: true }))).toEqual([...shape(people()), 'slug: slug'])
+    expect(people({ pages: true }).fields.slug).toMatchObject({ from: 'name' })
     const site = defineSite({
       site: 'conf', name: 'Conf', url: 'https://conf.example', timeZone: 'Europe/Vienna', locales: ['en', 'de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/', de: '/de' } },
-      bricks: { people: people({ route: route('speakers') }) },
+      bricks: { people: { ...people({ pages: true }), route: route('speakers') } },
     })
     expect(checkSite(site)).toEqual([])
   })
@@ -94,7 +87,7 @@ describe('basics factories', () => {
       }
     }
     for (const [name, make] of Object.entries(factories)) {
-      const brick = make({})
+      const brick = make()
       check(name, brick.label)
       check(`${name}.describe`, brick.describe)
       for (const [key, input] of Object.entries(brick.fields)) field(`${name}.${key}`, input)
@@ -226,15 +219,15 @@ describe('a files site with every basic', () => {
     site: 'basics', name: 'Basics', url: 'https://basics.example', timeZone: 'Europe/Berlin',
     locales: ['en', 'de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/', de: '/de' } },
     bricks: {
-      site: site({ source: 'files' }),
-      legal: legal({ source: 'files', route: route('legal') }),
-      people: people({ source: 'files' }),
-      posts: posts({ source: 'files', route: route('blog') }),
-      authors: authors({ source: 'files' }),
-      changelog: changelog({ source: 'files' }),
-      jobs: jobs({ source: 'files', route: route('jobs') }),
-      faq: faq({ source: 'files' }),
-      downloads: downloads({ source: 'files' }),
+      site: files(site()),
+      legal: files(legal(), route('legal')),
+      people: files(people()),
+      posts: files(posts(), route('blog')),
+      authors: files(authors()),
+      changelog: files(changelog()),
+      jobs: files(jobs(), route('jobs')),
+      faq: files(faq()),
+      downloads: files(downloads()),
     },
   })
 

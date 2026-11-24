@@ -188,21 +188,3 @@ Rules for a new migration:
   `/docs/languages` and `/docs/platform-and-cli`.
 - **Remove when:** together with the German redirects above, and a release after 0.17.0 has the new README
   links on npm.
-
-## Stored-form bricks in the site file (pass-through in `defineSite`)
-
-- **Why:** the gastro preset (`@lupinum/ginko-preset-gastro`), the docs theme (`@lupinum/ginko-docs/config`) and the
-  brick functions of `@lupinum/ginko/basics` still build bricks in the stored form. `defineSite` of `@lupinum/ginko`
-  takes such a brick next to bricks of the written form: it sets where the brick lives and keeps its `route`. The
-  `/v1` entry that once wrote whole configs in that form is gone (D81, the direct cut).
-- **Introduced:** 0.19.0 (November 2026).
-- **Compatibility code:** in `packages/ginko/src/authoring/site.ts` the branch of `defineSite` for a brick that is not a
-  `BrickDef` (`isDef`), and the `route` check next to `entries`; the options `source` and `route` of the basics brick
-  functions and of the gastro preset's `events()`. A stored-form brick takes `preview` by a spread
-  (`{ ...menu(), preview: 'menu' }`), since `extend` takes written-form bricks only (D90).
-- **Dependents:** the gastro preset (`templates/restaurant`, `sites/restaurant`, the gastro starters of
-  `create-ginko`), the docs theme (`templates/docs`, `sites/docs`, the docs starters), the patterns (made from the
-  basics functions, D73).
-- **Remove when:** the gastro preset is a package of patterns (checkpoint 2, part C) and the docs theme's helpers give
-  written-form bricks. Then delete the branch, the `route` and `source` options and this entry.
-- **Tracking issue:** none yet.
