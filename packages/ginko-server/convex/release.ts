@@ -29,7 +29,8 @@ type Entry = Doc<'entries'>
 
 const current = (site: Doc<'sites'>) => ({ schemaRev: site.schemaRev, contentRev: site.contentRev })
 
-async function ownerOf(ctx: QueryCtx, slug: string) {
+/** Owner or admin of the site: the right to make and revoke its push keys (also for `ginko connect`, connect.ts). */
+export async function ownerOf(ctx: QueryCtx, slug: string) {
   const actor = await actorFor(ctx, slug)
   if (actor.role === 'staff') fail('FORBIDDEN', 'errors.onlyOwnersAdminsManageKeys')
   return actor
@@ -71,7 +72,10 @@ export async function insertSingle(ctx: MutationCtx, site: Id<'sites'>, single: 
   await syncEntryRefs(ctx, site, id, await entryUses(ctx, single.fields, single.data, locales))
 }
 
-async function insertPushKey(ctx: MutationCtx, site: Doc<'sites'>, input: { label: string; scopes: ('release' | 'pull' | 'check' | 'export')[]; createdBy: string }) {
+/** The scopes of a publishing key made on the Team page (its "release" purpose); `ginko connect` gives the same. */
+export const PUBLISHING_SCOPES = ['release', 'check', 'pull', 'export'] as const
+
+export async function insertPushKey(ctx: MutationCtx, site: Doc<'sites'>, input: { label: string; scopes: ('release' | 'pull' | 'check' | 'export')[]; createdBy: string }) {
   const label = input.label.trim()
   if (label.length < 1 || label.length > 60) fail('INVALID', 'errors.nameLength1To60')
   const scopes = [...new Set(input.scopes)]

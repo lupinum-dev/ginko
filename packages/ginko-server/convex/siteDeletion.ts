@@ -48,6 +48,7 @@ export const purge = internalMutation({
     await sweep(BATCH, (n) => ctx.db.query('rateWindows').withIndex('by_site_kind_window', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('agentKeys').withIndex('by_site_user', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('pushKeys').withIndex('by_site', (q) => q.eq('site', id)).take(n))
+    await sweep(BATCH, (n) => ctx.db.query('connectRequests').withIndex('by_site', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('invites').withIndex('by_site', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', id)).take(n))
 

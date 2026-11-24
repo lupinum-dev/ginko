@@ -75,8 +75,10 @@ const events = useGinko('events') // typed from ginko.config.ts
   renders at once (no `<Suspense>`), and uses only the components you pass. Pass the site's `components` as
   `registry` too: a component keeps only the props its registry declares.
 - **`ginko`**: the CLI. `ginko check` checks the config and the content links of every site (use it in CI;
-  `--offline` needs no platform key); `release` and `export` work with the hosted platform. Every run prints one
-  JSON line and ends with a documented exit code.
+  `--offline` needs no platform key); `release` and `export` work with the hosted platform; `ginko connect
+  <Studio address>` gets a publishing key for the website folder after you confirm its code in the Studio, and stores
+  it as the GitHub secret `GINKO_KEY` (with `gh`) or shows it once. Every run prints one JSON line and ends with a
+  documented exit code.
 
 ## Stability
 

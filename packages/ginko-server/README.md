@@ -68,7 +68,8 @@ First launch, in this order:
      prints the push key once. It goes into the site's CI as `GINKO_KEY`. To revoke a leaked key, find its id
      with `release:pushKeys '{"site":"linde"}'` (it also shows `lastUsedAt`, stamped at most once an hour) and run
      `release:revokePushKeyAsOperator '{"key":"<id>"}'`. Owners and admins see the live keys on the Studio's Team
-     page and can revoke them there.
+     page and can revoke them there. A developer can also run `npx ginko connect <Studio address>` in the website
+     and confirm its code on the Studio's `/connect` page; the key it gets is labelled `connect: <folder>`.
    - `pnpm exec better-convex-nuxt convex run sites:setRefreshToken '{"slug":"linde","token":"<NUXT_GINKO_REVALIDATE_TOKEN of the site>"}'`
      (at least 32 characters). "Update website now" sends it to the site. A bundle request that carries it
      in `x-ginko-site-token` is not counted in the public rate limit.

@@ -168,6 +168,8 @@ describe('delete site', () => {
     await s.as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'neu@example.com', role: 'staff', grants: [] })
     await s.as.owner.mutation(api.release.createPushKey, { site: 'restaurant', label: 'ci', scopes: ['release'] })
     await s.as.owner.mutation(api.agent.createKey, { site: 'restaurant', label: 'ai' })
+    // An approved `ginko connect` request whose computer has not polled yet.
+    await s.t.run((ctx) => ctx.db.insert('connectRequests', { deviceHash: 'h', userCode: 'RSTAURNT', label: 'linde-website', expiresAt: Date.now() + 60_000, state: 'approved', site: s.site, approvedBy: 'u-wirtin', approvedAt: Date.now() }))
     await s.as.owner.mutation(api.views.save, { site: 'restaurant', brick: 'menu', name: 'V', query: {} })
     await s.as.owner.mutation(api.uploads.prepare, { site: 'restaurant' })
     await s.t.fetch('/bundle/restaurant?format=3&locale=de')

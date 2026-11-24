@@ -381,6 +381,7 @@
       "lede": "Este sitio aún no tiene áreas. Llegan desde el código de la web. Tres pasos las traen aquí.",
       "key": "Crea una clave en «Claves de publicación». El Studio la muestra una sola vez.",
       "keyLink": "Abrir Equipo",
+      "short": "Más corto que el paso 1: ejecuta esto en el proyecto de la web y confirma el código que muestra; guarda la clave por ti:",
       "id": "En el ginko.config.ts de la web, pon este identificador:",
       "release": "Lanza la primera publicación en el proyecto de la web, en un commit que esté subido a main. Pon tu clave en lugar de los puntos:",
       "after": "Después de la publicación, esta página muestra las áreas."
@@ -1341,5 +1342,20 @@
     },
     "nothingOnline": "Ahora no hay nada en el sitio web.",
     "rejectedNote": "{line} · No aprobado, ver arriba."
+  },
+  "connect": {
+    "title": "Conectar una web",
+    "lede": "Un ordenador pide una clave de publicación. Confirma solo si lo has iniciado tú y el código coincide con el de tu terminal.",
+    "code": "Código del terminal",
+    "request": "Solicitud de «{label}», iniciada {minutes, plural, =0 {hace menos de un minuto} one {hace # minuto} other {hace # minutos}}.",
+    "site": "Sitio",
+    "granted": "La clave puede publicar la estructura de contenido de este sitio y hacer copias de seguridad de su contenido, como una clave «Publicar y hacer copias de seguridad». Puedes revocarla en la página Equipo.",
+    "connect": "Conectar",
+    "decline": "Rechazar",
+    "done": "Conectado. Vuelve al terminal.",
+    "declined": "Rechazado. El ordenador no recibe ninguna clave.",
+    "invalid": "Este código no es válido. Empieza de nuevo en el terminal.",
+    "limited": "Demasiados códigos incorrectos. Espera 10 minutos y vuelve a intentarlo.",
+    "noSites": "No gestionas ningún sitio, así que no puedes conectar una web."
   }
 }

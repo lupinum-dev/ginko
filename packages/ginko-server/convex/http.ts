@@ -2,6 +2,7 @@
 import { httpRouter } from 'convex/server'
 import { auth } from './auth'
 import { register as bundle } from './routes/bundle'
+import { register as connect } from './routes/connect'
 import { register as exportSite } from './routes/export'
 import { register as file } from './routes/file'
 import { register as mcp } from './routes/mcp'
@@ -16,4 +17,5 @@ file(http) // GET /file/<site>/<upload>/<storage>, a stable address for a site's
 exportSite(http) // GET /export (SPEC 9, 12)
 upload(http) // POST /upload with a one-time ticket (SPEC 4.3)
 mcp(http) // POST /mcp, the agent door (SPEC 16)
+connect(http) // POST /connect/start, /connect/poll: `ginko connect` (connect.ts)
 export default http

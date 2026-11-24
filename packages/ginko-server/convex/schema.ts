@@ -387,6 +387,27 @@ export default defineSchema({
     lastUsedAt: v.optional(v.number()),
   }).index('by_hash', ['hash']).index('by_site', ['site']),
 
+  /**
+   * `ginko connect` (connect.ts): a computer asks for a publishing key, a person confirms its code in the Studio, the
+   * computer's next poll gets the key. Only the SHA-256 of the device code is stored; the key does not exist before
+   * that poll. `site`, `approvedBy`, `approvedAt` are set by the approval. Rows are deleted after `expiresAt`.
+   */
+  connectRequests: defineTable({
+    deviceHash: v.string(),
+    /** 8 characters without look-alikes, stored without the hyphen. Not a secret: it only names the request. */
+    userCode: v.string(),
+    label: v.string(),
+    expiresAt: v.number(),
+    state: v.union(v.literal('pending'), v.literal('approved'), v.literal('declined'), v.literal('used')),
+    site: v.optional(v.id('sites')),
+    approvedBy: v.optional(v.string()),
+    approvedAt: v.optional(v.number()),
+  }).index('by_device', ['deviceHash']).index('by_code', ['userCode']).index('by_site', ['site']).index('by_state_expires', ['state', 'expiresAt']).index('by_expires', ['expiresAt']),
+
+  /** Wrong connect codes per signed-in person in a fixed 10-minute window (connect.ts); `window` = its start in ms. */
+  connectTries: defineTable({ user: v.string(), window: v.number(), count: v.number() })
+    .index('by_user_window', ['user', 'window']).index('by_window', ['window']),
+
   /** A saved list view of one person (SPEC 4.2 views): a filter and sort of a brick's entry list. Never shared. */
   views: defineTable({
     site: v.id('sites'),
