@@ -195,6 +195,31 @@ describe('f.rows: a fixed table is its own field type', () => {
   })
 })
 
+describe('f.rows: rows of workdays and retired rows', () => {
+  // Wrong: a field-level default on workday rows names rows the week later drops or lacks, so a new workday starts empty.
+  it('refuses a field default on rows of workdays; rows of weekdays keep it', () => {
+    const schema = stored()
+    const days = schema.bricks.lunch!.fields.days as Extract<Schema['bricks'][string]['fields'][string], { type: 'rows' }>
+    days.default = {}
+    expect(checkSchema(schema)).toEqual(["lunch.days: rows of workdays follow the site's week, so they take no default. Give the columns defaults instead (each new row starts with them)."])
+    // Rows of weekdays take a default, so it is checked like any value (here it lacks every row).
+    days.rows = 'weekdays'
+    expect(checkSchema(schema)).toContain('lunch.days.default.su: “Tage”: the row “su” is missing.')
+    expect(checkSchema(schema).filter((p) => p.includes('take no default'))).toEqual([])
+  })
+
+  // Wrong: a retired line that names no row, or a row the field still has, is taken and the release drops live data.
+  it.each([
+    ['lunch.days.fr', { drop: true }, 'retired: “lunch.days.fr” is still a row of the field. Retire a row only when the field no longer has it.'],
+    ['lunch.days.sa', { value: 1 }, 'retired: the row “lunch.days.sa” takes { drop: true }.'],
+    ['hours.closedNote.x', { drop: true }, "retired: “hours.closedNote.x” names no row of a rows field. Write `brick.field.row`, such as 'lunch.days.mo'."],
+  ] as const)('refuses retired “%s” %j', (path, rule, sentence) => {
+    const schema = stored()
+    schema.retired[path] = rule as Schema['retired'][string]
+    expect(checkSchema(schema)).toEqual([sentence])
+  })
+})
+
 describe('body: the field the text of a file fills', () => {
   // Wrong: the text below the front matter goes into the brick's one markdown field although the brick never said so.
   it('is stated on a file brick, and refused when it names no markdown field', () => {

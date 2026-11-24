@@ -182,6 +182,7 @@
     "rowAdded": "Neue Zeile „{row}“ in „{at}“, gefüllt mit den default-Werten der Spalten.",
     "rowWithoutDefault": "Neue Zeile „{row}“ in „{at}“: Eine Pflichtspalte hat kein default.",
     "rowRemoved": "„{at}“: Zeile „{row}“ fehlt.",
+    "rowRetired": "„{at}“: Zeile „{row}“ ist stillgelegt; das Release entfernt sie aus allen gespeicherten Einträgen.",
     "fix": {
       "newField": "Neues Feld anlegen, mit einer Migration füllen und das alte Feld unter `retired` eintragen.",
       "newFieldOnly": "Ein neues Feld anlegen.",
@@ -205,7 +206,7 @@
       "keepMin": "min beibehalten.",
       "minOnGrid": "min so senken, dass der Unterschied ein Vielfaches von step ist.",
       "keepOption": "Option behalten; sie kann umbenannt (label) werden.",
-      "keepRow": "Zeile behalten; ihr label kann sich ändern.",
+      "retireRow": "Zeile behalten, oder {line} schreiben: Dann entfernt das Release sie aus allen gespeicherten Einträgen.",
       "rowDefaults": "Gib jeder Pflichtspalte ein default oder mach sie optional.",
       "factInUse": "Nimm die Angabe zuerst aus diesen Texten oder lass sie in `facts`."
     },

@@ -93,6 +93,11 @@ const allowed: Row[] = [
   // An added row is like a new required field: allowed when the columns' defaults fill it.
   { name: 'a row added to a rows field, filled from the column defaults', prod: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }] }, mutate: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }] } },
   { name: 'a workday added to the site week: the lunch week gains a row filled from the column defaults', mutate: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr', 'sa'] } } },
+  // A removed row is stated in retired, the same place a removed field is stated; the release then drops it.
+  { name: 'a workday removed from the site week, with its retired line', mutate: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }; s.retired['lunch.days.fr'] = { drop: true }; s.retired['lunchPlans.days.fr'] = { drop: true } } },
+  { name: 'a row removed from an own row list, with its retired line', prod: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }] }, mutate: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }]; s.retired['lunch.days.tu'] = { drop: true } } },
+  // The row came back, so its retired line may go: the row is an added row again, filled from the column defaults.
+  { name: 'a retired row that comes back, its retired line removed', prod: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }; s.retired['lunch.days.fr'] = { drop: true }; s.retired['lunchPlans.days.fr'] = { drop: true } }, mutate: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }; delete s.retired['lunch.days.fr']; delete s.retired['lunchPlans.days.fr'] } },
   { name: 'a new locale appended at the end', mutate: (s) => { s.locales = ['de', 'en', 'fr'] } },
   {
     name: 'a route added to a collection that had none',
@@ -214,7 +219,8 @@ const rejected: RejectedRow[] = [
     mutate: (s) => { s.migrations.push(migration('2026-12-seo-title-copy', 'seo', 'title', (e) => e.description)) },
     kind: 'migrationFillsExisting',
   },
-  // A removed row is like a removed option: stored rows would lose their values.
+  // A removed row is like a removed field: stored rows would lose their values unless retired says so.
+  { name: 'a workday removed from the site week without a retired line (lunchPlans has its line)', mutate: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }; s.retired['lunchPlans.days.fr'] = { drop: true } }, kind: 'rowRemoved' },
   { name: 'a row removed from a rows field', prod: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }] }, mutate: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }] }, kind: 'rowRemoved' },
   // An added row is like a new required field: refused when a required column has no default to fill it.
   {
@@ -278,6 +284,18 @@ describe('diffSchema: rejected changes (SPEC 2.4)', () => {
     gone.locales = ['de']
     const removed = diffSchema(base(), gone).rejected.find((r) => r.kind === 'localeRemoved')!
     expect(coreMessage('en', removed.key, removed.params)).toBe('Language “en” cannot be removed.')
+  })
+})
+
+describe('diffSchema: a removed row', () => {
+  // Wrong: the refusal names a fix the developer cannot follow (keep a workday the restaurant no longer opens on).
+  it('is refused with one sentence that shows the retired line to write', () => {
+    const next = base()
+    next.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }
+    next.retired['lunchPlans.days.fr'] = { drop: true }
+    const [change] = diffSchema(base(), next).rejected
+    expect(coreMessage('en', change!.fixMsg!.key, change!.fixMsg!.params)).toBe("Keep the row, or write `retired: { 'lunch.days.fr': { drop: true } }`: the release then removes it from every stored entry.")
+    expect(change!.snippet).toBe("retired: { 'lunch.days.fr': { drop: true } },")
   })
 })
 

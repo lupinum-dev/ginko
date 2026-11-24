@@ -1297,6 +1297,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“ fehlt."
    ],
+   "rowRetired": [
+    "„",
+    [
+     "a",
+     "at"
+    ],
+    "“: Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ ist stillgelegt; das Release entfernt sie aus allen gespeicherten Einträgen."
+   ],
    "fix": {
     "newField": "Neues Feld anlegen, mit einer Migration füllen und das alte Feld unter `retired` eintragen.",
     "newFieldOnly": "Ein neues Feld anlegen.",
@@ -1320,7 +1333,14 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "min beibehalten.",
     "minOnGrid": "min so senken, dass der Unterschied ein Vielfaches von step ist.",
     "keepOption": "Option behalten; sie kann umbenannt (label) werden.",
-    "keepRow": "Zeile behalten; ihr label kann sich ändern.",
+    "retireRow": [
+     "Zeile behalten, oder ",
+     [
+      "a",
+      "line"
+     ],
+     " schreiben: Dann entfernt das Release sie aus allen gespeicherten Einträgen."
+    ],
     "rowDefaults": "Gib jeder Pflichtspalte ein default oder mach sie optional.",
     "factInUse": "Nimm die Angabe zuerst aus diesen Texten oder lass sie in `facts`."
    },
@@ -2657,6 +2677,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "” is missing."
    ],
+   "rowRetired": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: row “",
+    [
+     "a",
+     "row"
+    ],
+    "” is retired; the release removes it from every stored entry."
+   ],
    "fix": {
     "newField": "Add a new field, fill it with a migration and list the old field under `retired`.",
     "newFieldOnly": "Add a new field.",
@@ -2680,7 +2713,14 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Keep min.",
     "minOnGrid": "Lower min so that the difference is a multiple of step.",
     "keepOption": "Keep the option; it can be renamed (label).",
-    "keepRow": "Keep the row; its label can change.",
+    "retireRow": [
+     "Keep the row, or write ",
+     [
+      "a",
+      "line"
+     ],
+     ": the release then removes it from every stored entry."
+    ],
     "rowDefaults": "Give every required column a default, or make it optional.",
     "factInUse": "Take the fact out of these texts first, or keep it in `facts`."
    },
@@ -4019,6 +4059,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”."
    ],
+   "rowRetired": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: la fila “",
+    [
+     "a",
+     "row"
+    ],
+    "” está retirada; la publicación la quita de todas las entradas guardadas."
+   ],
    "fix": {
     "newField": "Añade un campo nuevo, rellénalo con una migración y lista el campo anterior en `retired`.",
     "newFieldOnly": "Añade un campo nuevo.",
@@ -4042,7 +4095,14 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Conserva min.",
     "minOnGrid": "Reduce min para que la diferencia sea un múltiplo de step.",
     "keepOption": "Conserva la opción; se puede renombrar (label).",
-    "keepRow": "Conserva la fila; su label puede cambiar.",
+    "retireRow": [
+     "Conserva la fila, o escribe ",
+     [
+      "a",
+      "line"
+     ],
+     ": la publicación la quita entonces de todas las entradas guardadas."
+    ],
     "rowDefaults": "Da a cada columna obligatoria un valor predeterminado o hazla opcional.",
     "factInUse": "Quita primero el dato de esos textos o déjalo en `facts`."
    },
@@ -5380,6 +5440,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " » est manquante."
    ],
+   "rowRetired": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : la ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " » est retirée ; la publication la supprime de toutes les entrées enregistrées."
+   ],
    "fix": {
     "newField": "Ajoutez un nouveau champ, remplissez-le avec une migration et listez l’ancien champ sous `retired`.",
     "newFieldOnly": "Ajoutez un nouveau champ.",
@@ -5403,7 +5476,14 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Conservez min.",
     "minOnGrid": "Abaissez min pour que la différence soit un multiple de step.",
     "keepOption": "Conservez l’option ; elle peut être renommée (label).",
-    "keepRow": "Conservez la ligne ; son label peut changer.",
+    "retireRow": [
+     "Conservez la ligne, ou écrivez ",
+     [
+      "a",
+      "line"
+     ],
+     " : la publication la supprime alors de toutes les entrées enregistrées."
+    ],
     "rowDefaults": "Donnez une valeur par défaut à chaque colonne obligatoire, ou rendez-la facultative.",
     "factInUse": "Retirez d’abord la donnée de ces textes ou gardez-la dans `facts`."
    },
@@ -6742,6 +6822,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”."
    ],
+   "rowRetired": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: la riga “",
+    [
+     "a",
+     "row"
+    ],
+    "” è ritirata; la pubblicazione la rimuove da tutte le voci salvate."
+   ],
    "fix": {
     "newField": "Aggiungi un nuovo campo, riempilo con una migrazione ed elenca il vecchio campo sotto `retired`.",
     "newFieldOnly": "Aggiungi un nuovo campo.",
@@ -6765,7 +6858,14 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Mantieni min.",
     "minOnGrid": "Abbassa min in modo che la differenza sia un multiplo di step.",
     "keepOption": "Mantieni l’opzione; può essere rinominata (label).",
-    "keepRow": "Mantieni la riga; il suo label può cambiare.",
+    "retireRow": [
+     "Mantieni la riga, oppure scrivi ",
+     [
+      "a",
+      "line"
+     ],
+     ": la pubblicazione la rimuove allora da tutte le voci salvate."
+    ],
     "rowDefaults": "Dai a ogni colonna obbligatoria un valore predefinito o rendila facoltativa.",
     "factInUse": "Togli prima il dato da questi testi o lascialo in `facts`."
    },
@@ -8289,6 +8389,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "» مفقود."
    ],
+   "rowRetired": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: الصف «",
+    [
+     "a",
+     "row"
+    ],
+    "» متقاعد؛ يزيله الإصدار من كل الإدخالات المحفوظة."
+   ],
    "fix": {
     "newField": "أضِف حقلًا جديدًا، واملأه بترحيل، وأدرج الحقل القديم تحت `retired`.",
     "newFieldOnly": "أضِف حقلًا جديدًا.",
@@ -8312,7 +8425,14 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "أبقِ min.",
     "minOnGrid": "اخفض min بحيث يكون الفرق مضاعفًا لـ step.",
     "keepOption": "أبقِ الخيار؛ يمكن إعادة تسميته (label).",
-    "keepRow": "أبقِ الصف؛ يمكن تغيير label الخاص به.",
+    "retireRow": [
+     "أبقِ الصف، أو اكتب ",
+     [
+      "a",
+      "line"
+     ],
+     ": عندها يزيله الإصدار من كل الإدخالات المحفوظة."
+    ],
     "rowDefaults": "أعطِ كل عمود مطلوب قيمة افتراضية أو اجعله اختياريًا.",
     "factInUse": "احذف المعلومة من هذه النصوص أولًا، أو أبقِها في `facts`."
    },

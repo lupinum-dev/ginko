@@ -182,6 +182,7 @@
     "rowAdded": "Nuova riga “{row}” in “{at}”, riempita con i valori predefiniti delle colonne.",
     "rowWithoutDefault": "Nuova riga “{row}” in “{at}”: una colonna obbligatoria non ha un valore predefinito.",
     "rowRemoved": "“{at}”: manca la riga “{row}”.",
+    "rowRetired": "“{at}”: la riga “{row}” è ritirata; la pubblicazione la rimuove da tutte le voci salvate.",
     "fix": {
       "newField": "Aggiungi un nuovo campo, riempilo con una migrazione ed elenca il vecchio campo sotto `retired`.",
       "newFieldOnly": "Aggiungi un nuovo campo.",
@@ -205,7 +206,7 @@
       "keepMin": "Mantieni min.",
       "minOnGrid": "Abbassa min in modo che la differenza sia un multiplo di step.",
       "keepOption": "Mantieni l’opzione; può essere rinominata (label).",
-      "keepRow": "Mantieni la riga; il suo label può cambiare.",
+      "retireRow": "Mantieni la riga, oppure scrivi {line}: la pubblicazione la rimuove allora da tutte le voci salvate.",
       "rowDefaults": "Dai a ogni colonna obbligatoria un valore predefinito o rendila facoltativa.",
       "factInUse": "Togli prima il dato da questi testi o lascialo in `facts`."
     },

@@ -10,7 +10,7 @@ const isRecord = (value: unknown): value is Record<string, Json> => typeof value
 /**
  * The data an existing entry gets in a release: the start values of new required fields, the defaults of new required
  * columns in every row that lacks them, the rows a rows field gains filled from its columns' defaults (diffSchema
- * refuses a gained row they cannot fill), then the migration writes. `roots` names the root fields whose value changed.
+ * refuses a gained row they cannot fill), without the rows it lost (stated in `retired`), then the migration writes. `roots` names the root fields whose value changed.
  * `weeks`: the site's week before and in the release, for the rows of a rows field of days.
  */
 export function releaseData(stored: Fields, next: Fields, data: Record<string, Json>, written: Record<string, Json>, weeks: readonly [SiteWeek, SiteWeek]): { data: Record<string, Json>; roots: string[] } {
@@ -33,10 +33,14 @@ export function releaseData(stored: Fields, next: Fields, data: Record<string, J
       })
     }
     if (field.type === 'rows' && old.type === 'rows' && isRecord(out[name])) {
-      const had = rowKeysOf(old, weeks[0])
+      const [had, now] = [rowKeysOf(old, weeks[0]), rowKeysOf(field, weeks[1])]
       const row = rowDefaults(field.of)
-      const gained = rowKeysOf(field, weeks[1]).filter((key) => !had.includes(key) && (out[name] as Record<string, Json>)[key] === undefined)
-      if (row && gained.length) out[name] = { ...(out[name] as Record<string, Json>), ...Object.fromEntries(gained.map((key) => [key, row])) }
+      const kept = Object.entries(out[name] as Record<string, Json>).filter(([key]) => !had.includes(key) || now.includes(key))
+      const gained = now.filter((key) => !had.includes(key) && (out[name] as Record<string, Json>)[key] === undefined)
+      // A row the field lost is stated in `retired` (diffSchema refuses it otherwise): the release removes it.
+      if (kept.length !== Object.keys(out[name] as Record<string, Json>).length || (row && gained.length)) {
+        out[name] = { ...Object.fromEntries(kept), ...(row ? Object.fromEntries(gained.map((key) => [key, row])) : {}) }
+      }
     }
   }
   Object.assign(out, written)

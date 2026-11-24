@@ -1,4 +1,4 @@
-import { effectiveMax, effectiveMin, effectiveProfile, isTable, isTranslatable, MAX_CENTS } from './fields.ts'
+import { effectiveMax, effectiveMin, effectiveProfile, isTable, isTranslatable, MAX_CENTS, rowKeysOf } from './fields.ts'
 import { isCurrency, isLocale, labelProblem, MAX_LOCALES } from './labels.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { formatMb, limitOf } from './uploads.ts'
@@ -457,12 +457,20 @@ function schemaProblems(schema: Schema): string[] {
     }
   }
   for (const [path, rule] of Object.entries(schema.retired)) {
-    const [brickKey, fieldName] = path.split('.')
+    const [brickKey, fieldName, rowKey, ...rest] = path.split('.')
     const brick = schema.bricks[brickKey ?? '']
     if (!brick) { problems.push(`retired: brick “${brickKey}” is missing.`); continue }
     const keys = typeof rule === 'object' && rule !== null && !Array.isArray(rule) ? Object.keys(rule) : []
     if (keys.length !== 1 || !['from', 'value', 'drop'].includes(keys[0]!) || ('drop' in rule && rule.drop !== true)) {
       problems.push(`retired: “${path}” needs exactly one of { from }, { value } or { drop: true }.`)
+      continue
+    }
+    // `brick.field.row`: a row a rows field no longer has; the release removes it from the stored entries (diffSchema).
+    if (rowKey !== undefined) {
+      const field = fieldName !== undefined && Object.hasOwn(brick.fields, fieldName) ? brick.fields[fieldName] : undefined
+      if (rest.length || field?.type !== 'rows') problems.push(`retired: “${path}” names no row of a rows field. Write \`brick.field.row\`, such as 'lunch.days.mo'.`)
+      else if (!('drop' in rule)) problems.push(`retired: the row “${path}” takes { drop: true }.`)
+      else if (isWeek(schema.week) && rowKeysOf(field, schema.week).includes(rowKey)) problems.push(`retired: “${path}” is still a row of the field. Retire a row only when the field no longer has it.`)
       continue
     }
     if (!fieldName) {
@@ -906,7 +914,9 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       numbersOk = false
     }
   }
-  if (field.default !== undefined) for (const p of checkValueIn(schema, field, field.default, `${path}.default`)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
+  // A default on rows of workdays is refused below with one sentence; checking its rows would only repeat it.
+  const refusedDefault = field.type === 'rows' && field.rows === 'workdays'
+  if (field.default !== undefined && !refusedDefault) for (const p of checkValueIn(schema, field, field.default, `${path}.default`)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
   // Retirement is per top-level field or brick (SPEC 2.5); a list column cannot be retired on its own. A component's
   // prop can: the editor no longer offers it, and texts that have it stay valid.
   if (!topLevel && field.retired && !path.startsWith('components.')) problems.push(`${path}: columns of a list cannot be retired one by one.`)
@@ -952,6 +962,8 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
     case 'rows':
       if (!topLevel) problems.push(`${path}: lists and rows fields cannot be nested.`)
       problems.push(...rowSetProblems(path, field.rows, schema.locales[0] ?? ''))
+      // The rows of workdays follow the site's week, so a value for them all would break when the week changes.
+      if (field.rows === 'workdays' && field.default !== undefined) problems.push(`${path}: rows of workdays follow the site's week, so they take no default. Give the columns defaults instead (each new row starts with them).`)
       for (const [name, inner] of Object.entries(field.of)) {
         if (!/^[a-z][a-zA-Z0-9]{0,40}$/.test(name) || name === '_id' || RESERVED_KEYS.has(name)) problems.push(`${path}: invalid column name “${name}”.`)
         if (isTable(inner)) problems.push(`${path}.${name}: lists and rows fields cannot be nested.`)

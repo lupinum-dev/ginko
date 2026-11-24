@@ -116,8 +116,17 @@ type SingleFieldPath<B> = { [K in keyof B & string]: B[K] extends { kind: 'singl
 /** `facts` names fields of single bricks; a list typed only as `string[]` (built elsewhere) is left to checkSite. */
 type FactsInput<S extends SiteInput> = NonNullable<S['facts']> extends readonly (infer P)[] ? (string extends P ? readonly string[] : readonly SingleFieldPath<S['bricks']>[]) : never
 
-/** `retired` names bricks of the config (they take `{ drop: true }`) and their fields (any rule); anything else fails. */
-type RetiredInput<S extends SiteInput> = { [P in keyof S['retired']]: P extends keyof S['bricks'] ? { drop: true } : P extends RetiredFieldPath<S['bricks']> ? RetiredRule : never }
+/**
+ * The row keys `retired` takes: `lunch.days.mo` for the row `mo` of the rows field `days`. The row is one the field no
+ * longer has, so any key; `checkSchema` checks it.
+ */
+type RetiredRowPath<B> = { [K in keyof B & string]: B[K] extends { fields: infer F } ? { [N in keyof F & string]: F[N] extends { type: 'rows' } ? `${K}.${N}.${string}` : never }[keyof F & string] : never }[keyof B & string]
+
+/**
+ * `retired` names bricks of the config (they take `{ drop: true }`), their fields (any rule) and removed rows of their
+ * rows fields (`{ drop: true }`); anything else fails.
+ */
+type RetiredInput<S extends SiteInput> = { [P in keyof S['retired']]: P extends keyof S['bricks'] ? { drop: true } : P extends RetiredFieldPath<S['bricks']> ? RetiredRule : P extends RetiredRowPath<S['bricks']> ? { drop: true } : never }
 
 export function defineSite<const S extends SiteInput>(site: S & { retired?: RetiredInput<S>; facts?: FactsInput<S> }): S {
   return site

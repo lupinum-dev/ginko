@@ -182,6 +182,7 @@
     "rowAdded": "New row “{row}” in “{at}”, filled with the defaults of the columns.",
     "rowWithoutDefault": "New row “{row}” in “{at}”: a required column has no default.",
     "rowRemoved": "“{at}”: row “{row}” is missing.",
+    "rowRetired": "“{at}”: row “{row}” is retired; the release removes it from every stored entry.",
     "fix": {
       "newField": "Add a new field, fill it with a migration and list the old field under `retired`.",
       "newFieldOnly": "Add a new field.",
@@ -205,7 +206,7 @@
       "keepMin": "Keep min.",
       "minOnGrid": "Lower min so that the difference is a multiple of step.",
       "keepOption": "Keep the option; it can be renamed (label).",
-      "keepRow": "Keep the row; its label can change.",
+      "retireRow": "Keep the row, or write {line}: the release then removes it from every stored entry.",
       "rowDefaults": "Give every required column a default, or make it optional.",
       "factInUse": "Take the fact out of these texts first, or keep it in `facts`."
     },
