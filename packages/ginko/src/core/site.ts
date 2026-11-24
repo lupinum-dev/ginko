@@ -66,7 +66,7 @@ export interface SiteInput {
   bricks: Record<string, Brick>
   /** How the link check (`checkLinks`) rates findings; default: broken `error`, anchors and redirected `warn`; external links are checked only when `external` is set. */
   linkCheck?: LinkConfig
-  /** Old URLs that answer with a redirect (patterns: `:name`, trailing `*`). Not part of the schema contract; entries add theirs with `redirectFrom`. */
+  /** Old URLs that answer with a redirect (patterns: `:name`, trailing `*`). Not part of the schema contract; file entries add theirs with `$redirectFrom`. */
   redirects?: Redirect[]
   /** Site-wide SEO defaults for `useGinkoSeo`. Not part of the schema contract. */
   seo?: {
@@ -210,6 +210,8 @@ export function collection<const F extends Fields, const R extends Record<Locale
    * main language and links to the main-language page. Required when the site has more than one language.
    */
   untranslated?: 'fallback' | 'hide'
+  /** The date field that holds the day an entry was published, such as the date a post shows. */
+  publishedOn?: FieldsOfType<F, 'date'>
   /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`week.firstDay`). */
   plans?: { brick: string; field: FieldsOfType<F, 'date'> }
   /** The status line on the Studio's Today page (see `CollectionStatus`). */

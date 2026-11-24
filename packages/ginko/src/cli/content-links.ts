@@ -25,6 +25,8 @@ export async function checkFileLinks(input: { config: SiteInput; root: string; l
     input.log(content.errorLine(e))
     ok = false
   }
+  // Notes do not fail the check (a `publishedOn` date that does not fit `$publishAt`).
+  for (const n of result.notes) input.log(`Note: ${content.errorLine(n)}`)
   const issues = await fileLinkIssues({ bundles: Object.values(result.bundles) as Bundle[], schema, site: input.config, publicDir, root: input.root, log: input.log, fetch: input.fetch, external: true })
   for (const i of issues) {
     input.log(`content/${i.id}: ${english(i)}`)

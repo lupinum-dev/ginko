@@ -67,7 +67,8 @@ describe('local:files-export', () => {
     expect(exported.schema.bricks.faq).not.toHaveProperty('source')
 
     const [hallo, zweiter, preis] = exported.entries
-    expect(hallo).toMatchObject({ id: 'blog/hallo', brick: 'blog', kind: 'item', order: 0, rev: 1 })
+    // The name is the file name, fixed: an import keeps it (D96).
+    expect(hallo).toMatchObject({ id: 'blog/hallo', brick: 'blog', kind: 'item', order: 0, rev: 1, name: 'hallo', nameFixed: true })
     expect(hallo!.data.title).toEqual({ de: 'Hallo Welt', en: 'Hello world' })
     expect(hallo!.data.slug).toEqual({ de: 'hallo', en: 'hallo' })
     // The platform stores and the Studio edits Markdown as text, not as the site's parsed tree.
@@ -78,15 +79,23 @@ describe('local:files-export', () => {
     expect(preis).toMatchObject({ id: 'faq/preis', order: 0, data: { question: { de: 'Was kostet es?' }, answer: { de: 'Das kommt darauf an.' } } })
   })
 
-  it('leaves out a file marked draft: true, as the build does', async () => {
-    // Wrong behaviour caught: the draft goes into the export with `draft` as a field, and the import refuses all of it.
-    const s = site({ 'content/blog/3.entwurf.md': '---\ntitle: Entwurf\ndraft: true\n---\n\nNoch nicht fertig.\n' })
+  it('leaves out a file marked $draft: true, as the build does', async () => {
+    // Wrong behaviour caught: the draft goes into the export as an online entry.
+    const s = site({ 'content/blog/3.entwurf.md': '---\ntitle: Entwurf\n$draft: true\n---\n\nNoch nicht fertig.\n' })
     const logs: string[] = []
     const { code, json } = await run(['files-export', '--config', s.config, s.out], logs)
     expect(code).toBe(0)
     expect(json).toMatchObject({ entries: 3, bricks: { blog: 2, faq: 1 } })
     // Wrong behaviour caught: the draft vanishes without a word.
     expect(logs).toContain('Warning: 1 entry stays out of the export as drafts, scheduled for later or part of a draft (blog/entwurf); add them in the Studio.')
+  })
+
+  // Wrong behaviour caught: the old paths of `$redirectFrom` vanish without a word when the content moves to the platform.
+  it('names each entry whose $redirectFrom the export does not carry', async () => {
+    const s = site({ 'content/blog/3.umzug.md': '---\ntitle: Umzug\n$redirectFrom: [/alt, /noch-aelter]\n---\n\nText.\n' })
+    const logs: string[] = []
+    expect((await run(['files-export', '--config', s.config, s.out], logs)).code).toBe(0)
+    expect(logs).toContain('Warning: “blog/umzug” has $redirectFrom (/alt, /noch-aelter), which the export does not carry. Add these paths to `redirects` in ginko.config.ts, or they stop forwarding once the entry lives on the platform.')
   })
 
   // Wrong behaviour caught: a self-hoster without the repository cannot export, or `ginko files-export` writes another

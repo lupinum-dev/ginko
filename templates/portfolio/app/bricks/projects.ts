@@ -7,7 +7,7 @@ import { collection, f } from '@lupinum/ginko'
 // have one button below its title (`actionLabel` and `actionUrl`, both needed), for example "Donate now".
 // `projects({ details: true })` is for work that stays online: no end date and no button, but the facts of a
 // commission (client, year, place, scope) and the project's photos, each with its description (the build and the
-// Studio refuse a photo without one). A new project can wait as a draft (`draft: true` in its file), and Today lists
+// Studio refuse a photo without one). A new project can wait as a draft (`$draft: true` in its file), and Today lists
 // the drafts.
 // The address of a project is a line in `entries` of ginko.config.ts: `projects: '/projects/[slug]'`.
 

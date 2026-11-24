@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { DAY_KEYS, createAsks, entryTitle, fileRefsIn, isTranslatable, isVisible, leavesOf, ordered, printOf, slugBases, stableJson, untranslatedMode, urlsFor, weeklyTask, weekStartField, type DayKey, type Schema } from '@lupinum/ginko/internal'
+import { DAY_KEYS, createAsks, entryTitle, fileRefsIn, isTranslatable, isVisible, leavesOf, ordered, printOf, slugBases, slugify, stableJson, untranslatedMode, urlsFor, weeklyTask, weekStartField, type DayKey, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import type { api } from '#convex/api'
 import type { FunctionReturnType } from 'convex/server'
@@ -16,10 +16,11 @@ export type { Task }
 
 /**
  * The addresses a new entry will get, per slug field and language, read from the text each is made of as the server
- * reads it (entries.ts `slugsFor`, core `slugBases`): a language without its own text takes the main language's. The
- * server adds "-2" when an address is taken; the preview of an entry not saved yet does without.
+ * reads it (entries.ts `namedFor`, core `slugBases`): a language without its own text takes the main language's, and
+ * the main language without text takes the brick key (`events`). The server adds "-2" when an address is taken; the
+ * preview of an entry not saved yet does without.
  */
-export function draftSlugs(brick: Brick, locales: readonly Locale[], data: Data): Data {
+export function draftSlugs(brickKey: string, brick: Brick, locales: readonly Locale[], data: Data): Data {
   const out: Data = {}
   for (const [name, field] of Object.entries(brick.fields)) {
     if (field.type !== 'slug' || field.retired) continue
@@ -28,7 +29,7 @@ export function draftSlugs(brick: Brick, locales: readonly Locale[], data: Data)
       const text = from && typeof from === 'object' && !Array.isArray(from) ? from[locale] : undefined
       return [locale, typeof text === 'string' ? text : '']
     }))
-    const bases = slugBases(locales, texts)
+    const bases = slugBases(locales, texts, slugify(brickKey))
     out[name] = Object.fromEntries(locales.map((locale) => [locale, bases[locale] ?? bases[locales[0]!] ?? '']))
   }
   return out

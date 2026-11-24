@@ -52,12 +52,12 @@ links. Other builds (CI, your computer) only print a warning.
 ### Static files
 
 The blog can also be built as static files: `npm run generate` writes every page, the feeds, the sitemap and
-`llms.txt` to `.output/public/`, for any static host. Two things then wait for the next build: a scheduled post (see
+`llms.txt` to `.output/public/`, for any static host. Two things then wait for the next build: a planned post (see
 "Write a post") and the end of a notice. Add the daily rebuild below.
 
 ### A daily rebuild
 
-A post dated in the future goes online with the first build on or after its date, with a server and with static
+A post with `$publishAt` goes online with the first build at or after that time, with a server and with static
 files alike, because the content is part of the build. To publish it on its day without doing anything, rebuild the
 site every morning. On Vercel: create a Deploy Hook (Project → Settings → Git → Deploy Hooks), save its URL as the
 repository secret `DEPLOY_HOOK` on GitHub, and add `.github/workflows/daily-build.yml`:
@@ -115,11 +115,12 @@ image:
 The text, in Markdown. Headings start at `##`.
 ```
 
-- **Draft:** add `draft: true`. The post is on no page, in no list, feed, sitemap or search, until you remove the
+- **Draft:** add `$draft: true`. The post is on no page, in no list, feed, sitemap or search, until you remove the
   line. `npm run dev` shows it, so you can read it first.
-- **Schedule:** give it a `date` in the future. It stays off the site like a draft until the first build on or after
-  that day (see "A daily rebuild"). `npm run dev` shows it.
-- **Publish:** remove the `draft` line and set `date` to the day it goes online (the post shows this date, and lists
+- **Plan:** add `$publishAt: 2027-01-17` (a day) or `$publishAt: 2027-01-17T09:00` (a day and time, in the site's
+  `timeZone`). It stays off the site like a draft until the first build at or after that time (see "A daily
+  rebuild"). `npm run dev` shows it. A `date` in the future alone does not hide a post.
+- **Publish:** remove the `$draft` line and set `date` to the day it goes online (the post shows this date, and lists
   sort by it). Commit and push; the next build puts it online.
 - **Translation:** `swifts-over-the-car-park.de.md` with `title`, `slug` (its German address), `description`, `tags`
   and `image.alt` in German, and the text. Date, authors and the photo come from the main file. A post without a

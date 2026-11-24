@@ -113,8 +113,20 @@ export default defineSchema({
      * task (lib/access.ts `authorize`). Absent for entries of owners and admins, and for entries made before it existed.
      */
     createdBy: v.optional(v.string()),
+    /**
+     * A collection entry's name (D96): the same as a file name, `content/<brick>/<name>.md`, in the shape of a slug.
+     * Unique in the site and brick among all rows, drafts and the trash included. A single has none (its brick key is
+     * its name). Optional only until the upgrade of checkpoint 6 has written one for every stored entry.
+     */
+    name: v.optional(v.string()),
+    /**
+     * The name no longer follows the title (D96): set when the entry is first planned or first goes online, never taken
+     * back. Absent: a save that changes the title makes the name, and the main-language slug, again.
+     */
+    nameFixed: v.optional(v.literal(true)),
   })
     .index('by_site_brick_order', ['site', 'brick', 'order'])
+    .index('by_site_brick_name', ['site', 'brick', 'name'])
     .index('by_site_brick_deleted', ['site', 'brick', 'deletedAt'])
     .index('by_site_deleted', ['site', 'deletedAt']),
 

@@ -61,7 +61,7 @@ export default defineSite({
     legal: legal(),
     // Short lines at the top of every page ("The annual report is online"), each until a date (content/notices/).
     notices: notices(),
-    // News, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never goes
+    // News, newest first (content/posts/). `authors` names entries of `people`. A file with `$draft: true` never goes
     // online; in the Studio, volunteers' posts go live after a check, and Today shows how old the newest post is.
     posts: extend(posts({ authors: 'people' }), {
       status: { show: 'newest', field: 'date' },

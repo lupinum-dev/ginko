@@ -5,7 +5,7 @@ import type {
   Brick, Field, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, imageSizeProps, isTranslatable, printOf, sha256, slugify, slugKeyOf, routeUrls, todayIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, ENTRY_NAME_RULE, imageInfo, imageSizeProps, isEntryName, isTranslatable, printOf, sha256, slugKeyOf, routeUrls, wallClockIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -35,13 +35,12 @@ export function errorLine(e: ContentError): string {
 
 export interface ReadOptions {
   /**
-   * `false` leaves out entries marked `draft: true`, and scheduled entries: in a collection that lists its entries
-   * newest first by a date (`order: { field, dir: 'desc' }`), an entry dated after `today`.
-   * Default `true` (dev shows both).
+   * `false` leaves out entries marked `$draft: true`, and entries whose `$publishAt` is still to come (those are
+   * checked in full first). Default `true` (dev shows both).
    */
   drafts?: boolean
-  /** The build day (`YYYY-MM-DD`) for scheduled entries. Default: today in the schema's time zone. */
-  today?: string
+  /** The time counted as "now": for `$publishAt` (on the site's wall clock) and, in a build, the visibility windows and `generatedAt`. Default: the current time. */
+  now?: Date
   /** `text` keeps each Markdown field as its source text, the form the platform stores and the Studio edits
    * (`pnpm local:files-export`). Default `tree`: the parsed tree the site's bundle carries. */
   markdown?: 'tree' | 'text'
@@ -55,6 +54,8 @@ export interface ReadResult {
   /** Images placed next to Markdown files: served URL (`/_ginko/img/<hash>.<ext>`) to absolute path. */
   images: Map<string, string>
   errors: ContentError[]
+  /** Things worth a look that do not stop a build, such as a `publishedOn` date that does not fit the entry's `$publishAt`. */
+  notes: ContentError[]
 }
 
 type Prints = Record<string, Partial<Record<Locale, string>>>
@@ -100,15 +101,55 @@ function fail(cx: FileCx, path: string, message: string) {
   cx.errors.push({ file: cx.file, path, ...(display !== undefined && display !== path ? { display } : {}), message, ...(cx.line !== undefined ? { line: cx.line } : {}) })
 }
 
-/** The reserved key `redirectFrom`: one old path or a list of them, each starting with `/`. Only the main-language file may set it. */
+/**
+ * The keys of a content file that are no fields: they start with `$`, and a field name never does (V2 5.6). A key
+ * that starts with `$` and is not one of these is a problem.
+ */
+const DOLLAR_KEYS = ['$draft', '$publishAt', '$redirectFrom'] as const
+/** Keys that were reserved before the `$` keys, with the key that replaced each. */
+const RENAMED: Record<string, string> = {
+  draft: '`$draft: true`',
+  redirectFrom: '`$redirectFrom: /old-path`',
+}
+
+/**
+ * Splits a file's data into the fields of the brick and the `$` keys. A `$` key Ginko does not know, and a key that
+ * was reserved before (`draft`, `redirectFrom`) on a brick without a field of that name, are problems, and so is a
+ * `$` key in a translation file; the key is then left out.
+ */
+function splitKeys(cx: FileCx, fields: Fields, data: Record<string, unknown>): { fields: Record<string, unknown>; dollar: Partial<Record<(typeof DOLLAR_KEYS)[number], unknown>> } {
+  const own: Record<string, unknown> = {}
+  const dollar: Partial<Record<(typeof DOLLAR_KEYS)[number], unknown>> = {}
+  for (const [key, value] of Object.entries(data)) {
+    if (key.startsWith('$')) {
+      const known = DOLLAR_KEYS.find((k) => k === key)
+      // They hold one state for all languages, so only the main-language file states them.
+      if (known && !cx.isMain) fail(cx, key, `“${key}” belongs in the main-language file.`)
+      else if (known) dollar[known] = value
+      else fail(cx, key, `“${key}” is not a key Ginko knows. Keys that start with $ are ${DOLLAR_KEYS.join(', ')}; every other key is a field of the brick.`)
+    } else if (Object.hasOwn(RENAMED, key) && !Object.hasOwn(fields, key)) {
+      fail(cx, key, `“${key}” is no field of this brick. Write ${RENAMED[key]}: keys that are no fields start with $.`)
+    } else own[key] = value
+  }
+  return { fields: own, dollar }
+}
+
+/**
+ * `$publishAt`: the day (`2026-12-01`, meaning 00:00) or day and time (`2026-12-01T09:00`) the entry goes online, on
+ * the wall clock of the site's time zone, as `YYYY-MM-DDTHH:MM`. No offset and no seconds: one written form.
+ */
+function publishTime(cx: FileCx, value: unknown): string | undefined {
+  const match = typeof value === 'string' ? /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(value) : null
+  if (match && isDate(match[1]) && Number(match[2] ?? 0) < 24 && Number(match[3] ?? 0) < 60) return `${match[1]}T${match[2] ?? '00'}:${match[3] ?? '00'}`
+  fail(cx, '$publishAt', '“$publishAt” must be a day or a day and time in the site\'s time zone, such as 2026-12-01 or 2026-12-01T09:00 (no offset, no seconds).')
+  return undefined
+}
+
+/** `$redirectFrom`: one old path or a list of them, each starting with `/`. */
 function redirectPaths(cx: FileCx, value: unknown): string[] | undefined {
   const list = Array.isArray(value) ? value : [value]
   if (!list.every((p): p is string => typeof p === 'string' && p.startsWith('/') && !p.startsWith('//'))) {
-    fail(cx, 'redirectFrom', '“redirectFrom” must be a path or a list of paths, each starting with “/”.')
-    return undefined
-  }
-  if (!cx.isMain) {
-    fail(cx, 'redirectFrom', '“redirectFrom” belongs in the main-language file.')
+    fail(cx, '$redirectFrom', '“$redirectFrom” must be a path or a list of paths, each starting with “/”.')
     return undefined
   }
   return list
@@ -382,8 +423,10 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
  */
 export async function readContent(contentDir: string, publicDir: string, schema: Schema, options: ReadOptions = {}): Promise<ReadResult> {
   const drafts = options.drafts ?? true
-  const today = options.today ?? todayIn(schema.timeZone)
+  // `$publishAt` is compared with the site's wall clock, so a time in Vienna means Vienna whatever the build machine.
+  const now = wallClockIn(schema.timeZone, options.now)
   const errors: ContentError[] = []
+  const notes: ContentError[] = []
   const entries: Record<string, StoredEntry[]> = {}
   const files: Record<string, FileInfo> = {}
   const images = new Map<string, string>()
@@ -433,6 +476,10 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const { rel } = src
       const report = (message: string) => errors.push({ file: rel, message, ...(line !== undefined ? { line } : {}) })
       if (parsed.locale !== undefined && parsed.locale === main) return report(`The main language “${main}” takes no suffix in the file name.`)
+      // The name is the same in both homes (D96): an import to the platform keeps it, so it has the shape of a slug.
+      if (folder && !isEntryName(parsed.name)) {
+        return report(src.csv ? `The “slug” cell “${parsed.name}” is no entry name. ${ENTRY_NAME_RULE}` : `The file name gives the entry name “${parsed.name}”. ${ENTRY_NAME_RULE} Rename the file.`)
+      }
       const locale = parsed.locale === undefined ? main : schema.locales.find((l) => l === parsed.locale)
       if (locale === undefined) return report(`Language “${parsed.locale}” is not in the site's locales.`)
       const group = groups.get(parsed.name) ?? { rank, translations: {} }
@@ -484,7 +531,6 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     let next = Math.max(0, ...sorted.map(([, g]) => g.number ?? 0))
 
     const slugKey = slugKeyOf(brick)
-    const dateKey = scheduleKeyOf(brick)
     const slugOwner = new Map<string, string>()
     for (const [name, group] of sorted) {
       if (group.main === undefined) {
@@ -572,10 +618,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
 
       // Values are validated above; they come from JSON-like YAML and parsed Markdown.
       const entry: StoredEntry = { id, data: data as Record<string, Json> }
-      // Old paths of the entry (main-language file only): stored beside the fields so the bundle carries them for `entryRedirects`.
-      if (mainView.redirectFrom?.length) entry.data.redirectFrom = mainView.redirectFrom
-      // Only reachable when drafts are on (dev): the site can mark the entry as a draft.
-      if (mainView.draft) entry.data.draft = true
+      // Old paths of the entry (main-language file only), beside the fields: the bundle forwards them (`oldUrls`).
+      if (mainView.redirectFrom?.length) entry.redirectFrom = mainView.redirectFrom
 
       // A locale without its own slug takes the main one (`routeUrls`), so the URL can clash although the written slugs differ.
       // Every locale counts, translated or not: the entry gets that page as soon as it is translated.
@@ -587,8 +631,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       }
       urlOwners.push({ id, urls })
       for (const t of taken) slugOwner.set(t.key, id)
-      // Checked above like a published entry; a scheduled one stays out until its date.
-      if (mainView.scheduled) { leftOut.add(id); continue }
+      // Checked above like an online entry; a planned one stays out until its `$publishAt`.
+      if (mainView.planned) { leftOut.add(id); continue }
       if (order !== undefined) entry.order = order
       entry.updatedAt = times.updatedAt(Object.values(rels))
       entry.sources = Object.fromEntries(Object.entries(rels).map(([locale, rel]) => [locale, times.source(rel!)]))
@@ -597,11 +641,26 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     }
 
     /**
+     * The two notes on the `publishedOn` date of a main file: it is before the day of `$publishAt` (the entry shows a
+     * day before it goes online), or it is after today and nothing holds the entry back (it is online now; before
+     * `$publishAt`, a date in the future hid it).
+     */
+    function notePublishedOn(src: Src, fields: Record<string, unknown>, publishAt: string | undefined, draft: boolean) {
+      const name = brick.kind === 'collection' ? brick.publishedOn : undefined
+      const day = name === undefined ? undefined : fields[name]
+      if (name === undefined || !isDate(day)) return
+      const note = (message: string) => notes.push({ file: src.rel, path: name, message, ...(src.csv ? { line: src.csv.row.line } : {}) })
+      if (publishAt !== undefined && day < publishAt.slice(0, 10)) note(`“${name}” (publishedOn) is ${day}, before the day of $publishAt (${publishAt.slice(0, 10)}): the entry shows a day before it goes online.`)
+      // A draft (read with drafts on) is not online, whatever its date says.
+      else if (publishAt === undefined && !draft && day > now.slice(0, 10)) note(`“${name}” (publishedOn) is ${day}, after today, and the entry has no $publishAt: it is online now. Add \`$publishAt: ${day}\` to hold it back until that day.`)
+    }
+
+    /**
      * Reads one source: its data converted (Markdown: frontmatter, body text into the brick's markdown field, plus
      * the parsed body; YAML, JSON and CSV: the whole file or row is data and there is no body).
-     * `'draft'` when the entry is marked `draft: true` and drafts are off.
+     * `'draft'` when the entry is marked `$draft: true` and drafts are off.
      */
-    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; draft?: true; scheduled?: true } | 'draft' | undefined> {
+    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; planned?: true } | 'draft' | undefined> {
       const { rel } = src
       const ext = extOf(rel)
       const markdownKey = markdownKeyOf(brick)
@@ -616,7 +675,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         columns.forEach((column, i) => {
           const cell = (row.cells[i] ?? '').trim()
           if (column === '' || column === 'slug' || column === 'locale' || cell === '') return
-          const result = column === 'draft' ? cellValue({ draft: { type: 'boolean', label: 'draft' } }, column, cell) : cellValue(brick.fields, column, cell)
+          // A `$` column is not a field: its cell is kept as written for splitKeys (`$draft` takes `true`).
+          if (column.startsWith('$')) { data[column] = column === '$draft' && cell === 'true' ? true : cell; return }
+          const result = cellValue(brick.fields, column, cell)
           if ('error' in result) fail(cx, column, result.error)
           else data[column] = result.value
         })
@@ -646,17 +707,16 @@ export async function readContent(contentDir: string, publicDir: string, schema:
           data = raw
         }
       }
-      // `draft` and `redirectFrom` are reserved: they are no fields of the brick.
-      const { draft, redirectFrom, ...fields } = data
-      const redirects = redirectFrom === undefined ? undefined : redirectPaths(cx, redirectFrom)
-      if (draft !== undefined && typeof draft !== 'boolean') fail(cx, 'draft', '“draft” must be true or false.')
-      if (draft === true && !drafts && fileErrors.length === 0) return 'draft'
-      // A scheduled entry (dated after the build day) is left out like a draft; the first build on or after its date
-      // publishes it. Only the main file holds the date.
-      // Only a real ISO date schedules: any other text is left to validate(), which reports it. The entry is checked
-      // like a published one (it goes live at a later build nobody watches) and left out of the bundle afterwards.
-      const dateValue = dateKey === undefined ? undefined : fields[dateKey]
-      const scheduled = isMain && !drafts && isDate(dateValue) && dateValue > today
+      const { fields, dollar } = splitKeys(cx, brick.fields, data)
+      const redirects = dollar.$redirectFrom === undefined ? undefined : redirectPaths(cx, dollar.$redirectFrom)
+      if (dollar.$draft !== undefined && dollar.$draft !== true) fail(cx, '$draft', '“$draft” takes only true. Leave it out for an entry that is online.')
+      const draft = dollar.$draft === true
+      const publishAt = dollar.$publishAt === undefined ? undefined : publishTime(cx, dollar.$publishAt)
+      if (draft && dollar.$publishAt !== undefined) fail(cx, '$publishAt', '“$draft” and “$publishAt” together: a draft with a time is `$publishAt` alone. Remove `$draft: true`.')
+      if (draft && !drafts && fileErrors.length === 0) return 'draft'
+      // Before its `$publishAt` an entry is treated as a draft (shown only when drafts are), but it is checked in full
+      // like an online entry: it goes online at a later build nobody watches, so a broken one fails the build now.
+      const planned = !drafts && publishAt !== undefined && publishAt > now
       const view = convertFields(brick.fields, fields, cx)
       const hasBody = parsed !== undefined && parsed.value.nodes.length > 0
       if (parsed === undefined && markdownKey !== undefined) {
@@ -664,10 +724,15 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       }
       if (parsed !== undefined && markdownKey !== undefined && hasBody) view[markdownKey] = parsed.body
       if (markdownKey === undefined && hasBody) fail(cx, 'body', `The text fits no field of “${key}”: the brick states no \`body\` (the markdown field the text of a file fills).`)
-      // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
-      if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
+      // The slug defaults to the entry's name: the file name without its number (CONTENT.md "Slug"), for CSV the `slug` cell.
+      if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.name
       errors.push(...fileErrors)
-      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, draft: draft === true ? true : undefined, scheduled: scheduled ? true : undefined }
+      if (isMain && fileErrors.length === 0) notePublishedOn(src, fields, publishAt, draft)
+      // File content changes only with a build: a time still to come needs a build on that day (spec 5.5, rule 10).
+      if (isMain && fileErrors.length === 0 && publishAt !== undefined && publishAt > now) {
+        notes.push({ file: src.rel, path: '$publishAt', message: `“$publishAt” is ${publishAt}, still to come: the entry goes online at the first build after that time. Build the site on that day, for example with a daily build.`, ...(src.csv ? { line: src.csv.row.line } : {}) })
+      }
+      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, planned: planned ? true : undefined }
     }
   }
 
@@ -686,7 +751,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     }
   }
 
-  return { entries, files, images, errors }
+  return { entries, files, images, errors, notes }
 }
 
 /** A field's label in every language: a plain label is its own only text. */
@@ -807,16 +872,6 @@ async function entryNames(dir: string): Promise<string[]> {
 async function dataNames(dir: string): Promise<string[]> {
   const dirents = await readdir(dir, { withFileTypes: true }).catch(() => [])
   return dirents.filter((d) => d.isFile() && extensions.some((e) => d.name.endsWith(`.${e}`))).map((d) => d.name).sort()
-}
-
-/**
- * The date field that schedules an entry: in a collection that lists its entries newest first by a date (posts, a
- * changelog), an entry dated after the build day is not published yet. A list in date order from the
- * oldest (events) shows coming dates on purpose, so it has none.
- */
-function scheduleKeyOf(brick: Brick): string | undefined {
-  if (brick.kind !== 'collection' || brick.order === 'manual' || brick.order.dir !== 'desc') return undefined
-  return brick.fields[brick.order.field]?.type === 'date' ? brick.order.field : undefined
 }
 
 /** Problems that make every file of a brick unreadable: more than one markdown field. */

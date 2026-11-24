@@ -20,7 +20,7 @@ const WORDS_PER_MINUTE = 200
 
 /**
  * The visible posts in the current language, newest first, with their authors (entries of `people`, by id). A draft
- * (`draft: true` in its file) and a post dated after the build day are never among them: they stay out of the build.
+ * (`$draft: true` in its file) and a post whose `$publishAt` is still to come are never among them: they stay out of the build.
  */
 export function useBlogPosts() {
   const posts = useGinko('posts')

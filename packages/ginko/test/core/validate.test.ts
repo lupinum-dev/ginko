@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import site from '../../../../sites/restaurant/ginko.config.ts'
-import { f, serializeSchema, single, slugify, uniqueSlug, validate, type Issue, type Schema, type ValidateOptions } from '../../src/core/index.ts'
+import { collection, f, isEntryName, namesOf, serializeSchema, single, slugify, uniqueSlug, validate, type Issue, type Schema, type ValidateOptions } from '../../src/core/index.ts'
 
 // Schema of the restaurant acceptance config (SPEC 13), plus a small extra brick
 // for the email and tel formats the restaurant does not use.
@@ -466,7 +466,7 @@ describe('slugify and uniqueSlug (SPEC 2.2)', () => {
     ['Straße', 'strasse'],
     ['Über uns & Team', 'ueber-uns-team'],
     ['Café', 'cafe'],
-    ['***', 'eintrag'],
+    ['***', ''],
   ])('slugify(%j) is %j', (input, expected) => {
     expect(slugify(input)).toBe(expected)
   })
@@ -480,6 +480,18 @@ describe('slugify and uniqueSlug (SPEC 2.2)', () => {
     [['jazz'], 'konzert'],
   ])('uniqueSlug with taken %j', (taken, expected) => {
     expect(uniqueSlug('konzert', (slug) => taken.includes(slug))).toBe(expected)
+  })
+})
+
+describe('namesOf (D96)', () => {
+  // Wrong behaviour caught: the double of a 100-character slug set by hand gets a 102-character name, which the file
+  // reader, the import and the export then refuse.
+  it('cuts the base so that a name with its -2 end stays an entry name', () => {
+    const brick = collection({ label: 'Seiten', max: 10, order: 'manual', listing: { title: 'title' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } })
+    const long = `${'a'.repeat(97)}-bc`
+    const names = namesOf('pages', brick, 'de', [{ slug: { de: long } }, { slug: { de: long } }])
+    expect(names).toEqual([long, `${'a'.repeat(97)}-2`])
+    expect(names.every(isEntryName)).toBe(true)
   })
 })
 

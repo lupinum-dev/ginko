@@ -41,7 +41,6 @@ if (import.meta.server) useResponseHeader('x-nitro-prerender').value = blog.feed
           <div class="docs-post-main">
             <h2>
               <NuxtLink :to="post.url">{{ post.data.title }}</NuxtLink>
-              <span v-if="blog.isDraft(post)" class="docs-tag docs-tag-draft">{{ t('docs.draft') }}</span>
             </h2>
             <p v-if="post.data.description" class="docs-post-teaser" :lang="langOf(post, 'description')">{{ post.data.description }}</p>
             <p v-if="post.data.tags?.length" class="docs-tags">

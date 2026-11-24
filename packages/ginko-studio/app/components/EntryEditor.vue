@@ -622,7 +622,7 @@ const publishQuestionText = computed(() => {
 
 // A new entry has no address yet: the preview gives it the one the server will make from its title (draftSlugs), so
 // the site finds it on its own page. Read after the typing pause, so the page does not reload on every key.
-const newSlugs = computed(() => (props.entry ? undefined : draftSlugs(props.brick, props.schema.locales, typed.value)))
+const newSlugs = computed(() => (props.entry ? undefined : draftSlugs(props.brickKey, props.brick, props.schema.locales, typed.value)))
 const previewData = computed(() => (newSlugs.value ? { ...draft.value, ...newSlugs.value } : draft.value))
 /** The field with the focus (its frame carries path, type and label): the preview outlines where the page shows it. */
 const focused = ref<{ path: string; type: string; label: string }>()

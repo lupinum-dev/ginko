@@ -50,8 +50,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
     if ((error as { code?: string }).code !== 'ERR_MODULE_NOT_FOUND') throw error
     throw new CliError('Install @lupinum/ginko-content to read file content.', 'USAGE')
   }
-  // A file marked `draft: true` stays out, as in the site's build: an export entry has no draft state, and the
-  // platform refuses `draft` as a field.
+  // A file marked `$draft: true` stays out, as in the site's build: an export entry has no draft state.
   const result = await content.readContent(join(root, 'content'), publicDir, filesSchema, { markdown: 'text', drafts: false })
   if (result.errors.length > 0) throw new CliError(`The content has errors:\n${result.errors.map(content.errorLine).join('\n')}`)
   // The same read with drafts on tells which entries stayed out, so the owner is not left wondering.
@@ -61,12 +60,18 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
 
   const entries: ExportEntry[] = []
   const bricks: Record<string, number> = {}
+  // An export has no place for `$redirectFrom`: each entry with old paths is named, so they are not lost without a word.
+  const forwards: string[] = []
   for (const [brick, list] of Object.entries(result.entries)) {
     bricks[brick] = list.length
     list.forEach((entry, index) => {
-      const { updatedAt: _updatedAt, sources: _sources, trees: _trees, ...rest } = entry
+      const { updatedAt: _updatedAt, sources: _sources, trees: _trees, redirectFrom, ...rest } = entry
+      if (redirectFrom?.length) forwards.push(`Warning: “${rest.id}” has $redirectFrom (${redirectFrom.join(', ')}), which the export does not carry. Add these paths to \`redirects\` in ginko.config.ts, or they stop forwarding once the entry lives on the platform.`)
       // `data` holds each translatable field as { de, en } and `prints` marks each translation as fresh: the shape of a platform entry.
-      entries.push({ id: rest.id, brick, kind: plain.bricks[brick]!.kind === 'single' ? 'single' : 'item', order: index, data: rest.data, prints: (rest.prints ?? {}) as ExportEntry['prints'], rev: 1 })
+      const item = plain.bricks[brick]!.kind !== 'single'
+      // An item's name is its file name (`posts/hello` → `hello`), and it is fixed: the file name is the name (D96).
+      const named = item ? { name: rest.id.slice(brick.length + 1), nameFixed: true as const } : {}
+      entries.push({ id: rest.id, brick, kind: item ? 'item' : 'single', order: index, data: rest.data, prints: (rest.prints ?? {}) as ExportEntry['prints'], rev: 1, ...named })
     })
   }
 
@@ -123,6 +128,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
   if (problems.length) throw new CliError(problems.join('\n'))
   await mkdir(join(dir, 'files'), { recursive: true })
   for (const [path, bytes] of bytesOf) await writeFile(join(dir, path), bytes)
+  for (const line of forwards) input.log(line)
   if (drafts.length) input.log(`Warning: ${drafts.length} entr${drafts.length === 1 ? 'y stays' : 'ies stay'} out of the export as drafts, scheduled for later or part of a draft (${drafts.slice(0, 3).join(', ')}); add them in the Studio.`)
   if (missing.length) input.log(`Warning: ${missing.length} image path(s) in Markdown texts point to no file under public/ (${missing.slice(0, 3).join(', ')}). They stay as they are.`)
 

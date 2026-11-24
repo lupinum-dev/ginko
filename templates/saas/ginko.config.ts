@@ -97,7 +97,7 @@ export default defineSite({
     site: site(),
     // Privacy policy, terms of service and imprint: one file per text in content/legal/.
     legal: legal(),
-    // Product news, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
+    // Product news, newest first (content/posts/). `authors` names entries of `people`. A file with `$draft: true` never
     // goes online. In the Studio, "Write a post" on Today.
     posts: extend(posts({ authors: 'people' }), {
       tasks: [{ id: 'write', kind: 'add', label: { de: 'Beitrag schreiben', en: 'Write a post', fr: 'Écrire un article' } }],

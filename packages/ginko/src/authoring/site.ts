@@ -214,6 +214,7 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
     ...(brick.tree ? { tree: brick.tree } : {}),
     ...(until ? { visible: { mode: 'until' as const, field: until.field, ...(until.plusDays !== undefined ? { days: until.plusDays } : {}), ...(until.thenDelete ? { deleteExpired: true } : {}) } } : {}),
     ...(brick.untranslated ? { untranslated: brick.untranslated } : {}),
+    ...(brick.publishedOn ? { publishedOn: brick.publishedOn } : {}),
     ...(brick.plans ? { plans: brick.plans } : {}),
     ...(line ? { status: line.show === 'next' ? { next: line.field } : line.show === 'ending' ? { count: true as const } : line.show === 'missing' ? { missing: line.field } : { age: line.field } } : {}),
   }

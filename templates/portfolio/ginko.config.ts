@@ -60,9 +60,9 @@ export default defineSite({
     notices: notices(),
     // The work, in the studio's order (content/projects/): client, year, place, scope, the text and the photos, each
     // with its description. The home page shows the first three. A project stays online until it is deleted; a new
-    // one can wait as a draft (`draft: true` in its file), and Today lists the drafts.
+    // one can wait as a draft (`$draft: true` in its file), and Today lists the drafts.
     projects: projects({ details: true }),
-    // The journal, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
+    // The journal, newest first (content/posts/). `authors` names entries of `people`. A file with `$draft: true` never
     // goes online; in the Studio, Today shows how old the newest entry is, next to its write task (Today shows only
     // bricks with a task).
     posts: extend(posts({ authors: 'people' }), {

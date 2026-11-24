@@ -679,7 +679,9 @@
           "de": "36aa9082495de6e4fd1583d8127b955a222ef9c947d94b3883523774da64dc7e"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "about",
+      "nameFixed": true
     },
     {
       "id": "pages/contact",
@@ -718,7 +720,9 @@
           "de": "85bdc9562acccdc94b3cfccb581e48e50aaa9e8571d3104d972b4ab96e2c9328"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "contact",
+      "nameFixed": true
     },
     {
       "id": "notices/welcome",
@@ -737,7 +741,9 @@
           "de": "7336a12dcdfc6a7ae9babd4f424cf8d53409b5ec12392e9fd5c978151a59c27a"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "welcome",
+      "nameFixed": true
     },
     {
       "id": "site",
@@ -794,7 +800,9 @@
           "de": "20869d0b0912fe5605a3169b5cb95aef6a3d8ee4894d045237f90b6c603c6c61"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "privacy",
+      "nameFixed": true
     },
     {
       "id": "legal/terms",
@@ -835,7 +843,9 @@
           "de": "2a5ac08e8b2447e22f2e8e9b72486f612734ea6c3e02136051e2fa93069a1f76"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "terms",
+      "nameFixed": true
     },
     {
       "id": "legal/imprint",
@@ -876,7 +886,9 @@
           "de": "d826724accc05cb39f13fa03b535b3dd5fb552407b67f095d42ec5390a30152b"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "imprint",
+      "nameFixed": true
     }
   ],
   "folders": [],

@@ -4,7 +4,7 @@
 import type { Bundle, BundleItem } from './bundle.ts'
 import { msg, type CoreKey, type Msg } from './messages.ts'
 import { entryRedirects, matchRedirect, type Redirect } from './redirects.ts'
-import { isTable, rowsIn } from './fields.ts'
+import { isTable, rowsIn, slugKeyOf } from './fields.ts'
 import type { Fields, Json, Schema } from './types.ts'
 
 export type LinkLevel = 'error' | 'warn' | 'off'
@@ -29,7 +29,7 @@ export interface CheckLinksOptions {
   files?: (path: string) => boolean
   /** Severities; default: broken `error`, anchors and redirected `warn`. Callers pass the site's `linkCheck`. */
   linkCheck?: LinkConfig
-  /** The site's redirect rules (config); entry rules (`redirectFrom`) are read from the bundles. */
+  /** The site's redirect rules (config); entry rules (`oldUrls`) are read from the bundles. */
   redirects?: Redirect[]
 }
 
@@ -57,10 +57,13 @@ export function mapTrees(bundle: Bundle, fn: (tree: Tree, at: { brick: string; i
   return { ...bundle, bricks }
 }
 
-function find(bundle: Bundle, brick: string, ref: string): BundleItem | undefined {
+/** The entry a link `$<brick>.<ref>` names: by its file ID (`<brick>/<ref>`), its ID, or its address in the bundle's locale. */
+function find(bundle: Bundle, schema: Pages, brick: string, ref: string): BundleItem | undefined {
   const b = Object.hasOwn(bundle.bricks, brick) ? bundle.bricks[brick] : undefined
   if (b?.kind !== 'collection') return undefined
-  return b.items.find((i) => i.id === `${brick}/${ref}` || i.id === ref || i.data.slug === ref)
+  const def = Object.hasOwn(schema.bricks, brick) ? schema.bricks[brick] : undefined
+  const slugKey = def ? slugKeyOf(def) : undefined
+  return b.items.find((i) => i.id === `${brick}/${ref}` || i.id === ref || (slugKey !== undefined && i.data[slugKey] === ref))
 }
 
 /** The path a `$…` link points to in the bundle's locale, or undefined. `ref` has no `$` and no `#anchor`. */
@@ -72,7 +75,7 @@ function routeTarget(bundle: Bundle, schema: Pages, ref: string, main: Bundle | 
   if (head === 'page') return Object.hasOwn(schema.pages, rest) ? schema.pages[rest]![bundle.locale] : undefined
   // An entry without its own page in this locale links to its main-language page: listed here under
   // `untranslated: 'fallback'`, or left out of this locale (only in the main-language bundle).
-  const urls = (find(bundle, head, rest) ?? (main && find(main, head, rest)))?.urls
+  const urls = (find(bundle, schema, head, rest) ?? (main && find(main, schema, head, rest)))?.urls
   return urls?.[bundle.locale] ?? urls?.[bundle.mainLocale]
 }
 
@@ -87,7 +90,7 @@ function routeTarget(bundle: Bundle, schema: Pages, ref: string, main: Bundle | 
 export function resolveRouteLinks(bundle: Bundle, schema: Pages, main?: Bundle): Bundle {
   const hasSnippets = Object.hasOwn(schema.bricks, 'snippets') && schema.bricks.snippets!.kind === 'collection'
   const snippetNodes = (name: string): Json[] | undefined => {
-    const body = hasSnippets ? find(bundle, 'snippets', name)?.data.body : undefined
+    const body = hasSnippets ? find(bundle, schema, 'snippets', name)?.data.body : undefined
     return isTree(body) ? body.nodes : undefined
   }
   const resolve = (nodes: Json[], nested: boolean): Json[] => nodes.flatMap((node): Json[] => {

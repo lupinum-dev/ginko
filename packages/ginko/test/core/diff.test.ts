@@ -89,6 +89,7 @@ const allowed: Row[] = [
   { name: 'a number min lowered', mutate: (s) => { field(s, 'hours.holidayNoticeDays').min = -5 } },
   { name: 'a field max raised', mutate: (s) => { field(s, 'seo.title').max = 90 } },
   { name: 'a list max raised', mutate: (s) => { field(s, 'hours.exceptions').max = 25 } },
+  { name: 'unique removed from a list', prod: (s) => { field(s, 'hours.exceptions').unique = 'reason' }, mutate: (s) => { delete field(s, 'hours.exceptions').unique } },
   { name: 'a collection max raised', mutate: (s) => { node(s, 'bricks.menu').max = 200 } },
   // An added row is like a new required field: allowed when the columns' defaults fill it.
   { name: 'a row added to a rows field, filled from the column defaults', prod: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }] }, mutate: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }] } },
@@ -221,6 +222,8 @@ const rejected: RejectedRow[] = [
   },
   // A removed row is like a removed field: stored rows would lose their values unless retired says so.
   { name: 'a workday removed from the site week without a retired line (lunchPlans has its line)', mutate: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th'] }; s.retired['lunchPlans.days.fr'] = { drop: true } }, kind: 'rowRemoved' },
+  { name: 'unique added to a list', mutate: (s) => { field(s, 'hours.exceptions').unique = 'reason' }, kind: 'uniqueChanged' },
+  { name: 'unique changed on a list', prod: (s) => { field(s, 'hours.exceptions').unique = 'reason' }, mutate: (s) => { field(s, 'hours.exceptions').unique = 'when' }, kind: 'uniqueChanged' },
   { name: 'a row removed from a rows field', prod: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }] }, mutate: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }] }, kind: 'rowRemoved' },
   // An added row is like a new required field: refused when a required column has no default to fill it.
   {
@@ -375,6 +378,20 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
     fieldsOf(s, 'seo').titleCopy = { ...field(s, 'seo.title') }
     retire(s, 'seo.title', { from: 'titleCopy' })
     expect(checkSchema(s)).toEqual([])
+  })
+
+  // A unique source only holds values the old, non-unique list also accepts.
+  it('SPEC 2.5: a unique source may mirror an old list without unique', () => {
+    const s = base()
+    const times = (unique?: string) => ({ type: 'list', label: 'Zeiten', itemLabel: 'Zeit', max: 12, optional: true, ...(unique ? { unique } : {}), of: { at: { type: 'time', label: 'Zeit' } } })
+    fieldsOf(s, 'hours').timesOld = times()
+    fieldsOf(s, 'hours').times = times('at')
+    retire(s, 'hours.timesOld', { from: 'times' })
+    expect(checkSchema(s)).toEqual([])
+    // The other way round, the source takes values the old list refuses.
+    field(s, 'hours.timesOld').unique = 'at'
+    delete field(s, 'hours.times').unique
+    expect(checkSchema(s)).toEqual(['retired: “hours.timesOld” cannot mirror “times”: different uniqueness.'])
   })
 
   it.each([

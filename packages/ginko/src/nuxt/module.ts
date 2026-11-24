@@ -103,7 +103,7 @@ export default defineNuxtModule<SiteInput>({
     // The server routes (sitemap hreflang, redirects, Markdown) read the config ginko-i18n resolved, with
     // its strategy, exclude and userLocale, so they never disagree with the module's own routes.
     addServerTemplate({ filename: '#ginko/locales', getContents: () => `export { config as default } from '#ginko-i18n/config.mjs'` })
-    // Redirect rules of the site config (patterns); entries add theirs from `redirectFrom` in the middleware.
+    // Redirect rules of the site config (patterns); file entries add theirs from `$redirectFrom` (bundle `oldUrls`) in the middleware.
     const redirects = site.redirects ?? []
     const redirectIssues = redirectProblems(redirects)
     if (redirectIssues.length) {
