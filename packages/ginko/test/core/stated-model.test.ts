@@ -2,7 +2,7 @@
 // the wrong behaviour it catches: the behaviour coming back from the shape instead of its key.
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
-import { checkSchema, diffSchema, entryTitle, navTree, resolveEntry, resolveToken, serializeSchema, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
+import { checkSchema, checkSite, diffSchema, entryTitle, navTree, resolveEntry, resolveToken, serializeSchema, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
 
 const stored = (): Schema => structuredClone(serializeSchema(restaurant))
 
@@ -189,5 +189,23 @@ describe('body: the field the text of a file fills', () => {
     expect(checkSchema(schema)).toEqual([])
     schema.bricks.about = { ...about, body: 'title' }
     expect(checkSchema(schema)).toContain('about.body: “title” is not a markdown field of this brick.')
+  })
+})
+
+describe('time zone and languages have no default (5.4)', () => {
+  // Wrong: a site without a time zone or languages is read as Vienna and German, or the check crashes on it.
+  it.each([
+    ['locales', "locales is missing. Write the site's languages, the main language first, for example `locales: ['de', 'en']`."],
+    ['timeZone', "timeZone is missing. Write the site's time zone, for example `timeZone: 'Europe/Vienna'`: Ginko counts today, the week and planned dates in it."],
+  ] as const)('a site without %s is refused with one sentence', (key, sentence) => {
+    const site = { ...restaurant } as Record<string, unknown>
+    delete site[key]
+    expect(checkSite(site as unknown as typeof restaurant)).toEqual([sentence])
+  })
+
+  it('a stored schema without a time zone is refused', () => {
+    const schema = stored() as Partial<Schema>
+    delete schema.timeZone
+    expect(checkSchema(schema)).toContain("timeZone is missing. Write the site's time zone, for example `timeZone: 'Europe/Vienna'`: Ginko counts today, the week and planned dates in it.")
   })
 })

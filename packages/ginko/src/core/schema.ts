@@ -256,7 +256,14 @@ const SITE_KEYS = {
  * The Nuxt build, `ginko check` and `ginko release` run it; the platform checks only the schema (checkSchema).
  * `schema` is the site's serialized schema, passed by callers that already have it.
  */
-export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site)): string[] {
+export function checkSite(site: SiteInput, given?: Schema): string[] {
+  // The languages and the time zone have no default (design V2 5.4), and nothing else can be checked without them.
+  const missing = [
+    ...(!Array.isArray(site.locales) || site.locales.length === 0 ? [MISSING_LOCALES] : []),
+    ...(site.timeZone === undefined ? [MISSING_TIME_ZONE] : []),
+  ]
+  if (missing.length) return missing
+  const schema = given ?? serializeSchema(site)
   // A typo in a top-level key (`redirect`) would otherwise change nothing, silently.
   const problems = Object.keys(site).filter((key) => !Object.hasOwn(SITE_KEYS, key)).map((key) => `Unknown key “${key}”. Known keys: ${Object.keys(SITE_KEYS).join(', ')}.`)
   if (site.country !== undefined && !/^[A-Z]{2}$/.test(String(site.country))) problems.push(`country: invalid country “${String(site.country)}” (expected an ISO 3166-1 code such as “AT” or “DE”).`)
@@ -330,7 +337,8 @@ function schemaProblems(schema: Schema): string[] {
   }
   for (const locale of new Set(schema.locales.filter((l, i) => schema.locales.indexOf(l) !== i))) problems.push(`Locale “${locale}” is listed twice.`)
   if (!isSiteUrl(schema.url)) problems.push(`Invalid site url “${String(schema.url)}” (expected an absolute http(s) address such as “https://linde.example”).`)
-  if (!isTimeZone(schema.timeZone)) problems.push(`Invalid time zone “${String(schema.timeZone)}” (expected for example “Europe/Vienna”).`)
+  if (schema.timeZone === undefined) problems.push(MISSING_TIME_ZONE)
+  else if (!isTimeZone(schema.timeZone)) problems.push(`Invalid time zone “${String(schema.timeZone)}” (expected for example “Europe/Vienna”).`)
   if (schema.week !== undefined && !isWeek(schema.week)) problems.push(`week must be { firstDay, workdays }: firstDay one of ${WEEKDAYS.join(', ')}, workdays a whole number from 1 to 7 (the days from firstDay on that are workdays).`)
   else if (schema.week === undefined) {
     // A weekly brick needs the site's week: it decides the first day of every week and when the coming week counts.
@@ -806,6 +814,9 @@ function isPlatformAddress(value: unknown): boolean {
     return false
   }
 }
+
+const MISSING_LOCALES = "locales is missing. Write the site's languages, the main language first, for example `locales: ['de', 'en']`."
+const MISSING_TIME_ZONE = "timeZone is missing. Write the site's time zone, for example `timeZone: 'Europe/Vienna'`: Ginko counts today, the week and planned dates in it."
 
 /** An IANA time zone name this runtime's `Intl` knows, e.g. `Europe/Vienna`. */
 export function isTimeZone(timeZone: unknown): timeZone is string {
