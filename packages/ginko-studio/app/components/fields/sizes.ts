@@ -9,7 +9,7 @@ export const OPTION_CHIP = 'min-h-8 cursor-pointer gap-2 rounded-lg border bg-ca
  * A number or money input with its unit inside the box ("13,50 €", "250 g"). The box draws the border and the focus
  * ring; the input inside has none, so the unit reads as part of the value.
  */
-export const UNIT_BOX = 'flex h-10 w-full cursor-text items-center rounded-lg border border-input bg-background transition-[color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/80 has-[[aria-invalid=true]]:border-destructive dark:bg-input/30 pointer-coarse:h-11'
+export const UNIT_BOX = 'flex h-10 w-full cursor-text items-center rounded-lg border border-input bg-background transition-[color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/80 has-[[aria-invalid=true]]:border-destructive pointer-coarse:h-11'
 export const UNIT_INPUT = 'h-full min-w-0 flex-1 rounded-none border-0 bg-transparent pr-1 shadow-none focus-visible:ring-0 aria-invalid:ring-0 dark:bg-transparent pointer-coarse:h-full'
 /** A click on the unit text puts the cursor in the input of the same box (a mouse convenience). */
 export function focusUnitInput(event: MouseEvent) {

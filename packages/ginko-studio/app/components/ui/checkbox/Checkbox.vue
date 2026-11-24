@@ -21,7 +21,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
     v-bind="forwarded"
     :class="
       // Checked controls are green (--ring), never the button colour: a theme changes the button colour.
-      cn('peer border-input bg-background dark:bg-input/30 data-[state=checked]:bg-ring dark:data-[state=checked]:bg-ring data-[state=checked]:text-background data-[state=checked]:border-ring focus-visible:border-ring focus-visible:ring-ring/80 focus-visible:ring-offset-background aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-[18px] shrink-0 rounded-[5px] border-[1.5px] transition-shadow outline-none focus-visible:ring-3 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+      cn('peer border-input bg-background data-[state=checked]:bg-ring dark:data-[state=checked]:bg-ring data-[state=checked]:text-background data-[state=checked]:border-ring focus-visible:border-ring focus-visible:ring-ring/80 focus-visible:ring-offset-background aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-[18px] shrink-0 rounded-[5px] border-[1.5px] transition-shadow outline-none focus-visible:ring-3 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
          props.class)"
   >
     <CheckboxIndicator
