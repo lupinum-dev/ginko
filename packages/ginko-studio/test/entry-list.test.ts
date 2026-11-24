@@ -51,7 +51,7 @@ vi.stubGlobal('useConvexQuery', (fn: string, args: () => unknown, options?: { ke
   }, { immediate: true })
   return list
 })
-const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: []; pending?: boolean }[]; total: number }) => {
+const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: []; pending?: { since: number } }[]; total: number }) => {
   list.data.value = page
   list.pending.value = false
   list.isStale.value = false

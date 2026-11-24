@@ -44,6 +44,7 @@ export function useI18n<NS extends string = ''>(_namespace?: NS) {
     locale: computed(() => i18nLocale.value),
     locales: i18nLocales,
     t: translator.t,
+    has: translator.has,
     format: createFormatters(current.language, { timeZone: i18nZone }),
   }
 }
