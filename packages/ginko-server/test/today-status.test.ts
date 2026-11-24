@@ -111,12 +111,14 @@ describe('sites.today', () => {
   it.each([
     { name: 'a closed week in another collection of the same shape does not count', closedIn: 'terracePlans', today: { ranges: [['11:30', '14:30']] } },
     { name: 'a closed week in the plans the status names counts', closedIn: 'hourPlans', today: { closed: true } },
-  ])('hours: follows the hour plans the status names: $name', async ({ closedIn, today }) => {
+    { name: 'plans of a retired collection do not count', closedIn: 'hourPlans', retired: true, today: { ranges: [['11:30', '14:30']] } },
+  ])('hours: follows the hour plans the status names: $name', async ({ closedIn, retired, today }) => {
     const s = await setup()
     await s.t.run(async (ctx) => {
       const schema = structuredClone((await ctx.db.get(s.site))!.schema) as Schema
       schema.bricks.terracePlans = structuredClone(schema.bricks.hourPlans!)
       schema.bricks.hours!.status = { rule: 'opening-hours', plans: 'hourPlans' }
+      if (retired) schema.bricks.hourPlans!.retired = true
       await ctx.db.patch(s.site, { schema })
     })
     const closedWeek = Object.fromEntries(Object.entries(allWeek).map(([key, day]) => [key, { ...day, closed: true }]))

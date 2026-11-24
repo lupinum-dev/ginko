@@ -36,10 +36,12 @@ export async function statesOf(ctx: Pick<QueryCtx, 'db'>, site: Doc<'sites'>, ke
     if (!brick || brick.retired) continue
     const rows = (await rowsOf(key)).filter((row) => own === undefined || row.state !== 'draft' || row.createdBy === own)
     const single = brick.kind === 'single' ? rows[0] : undefined
-    // A rule may read the live entries of the collection the status names (`plans`), linked by key.
+    // A rule may read the live entries of the collection the status names (`plans`), linked by key; only while that
+    // brick is a collection that is not retired.
     const plans: Record<string, Json>[] = []
     const link = brick.status && 'rule' in brick.status ? brick.status.plans : undefined
-    if (link !== undefined && Object.hasOwn(schema.bricks, link)) {
+    const target = link !== undefined && Object.hasOwn(schema.bricks, link) ? schema.bricks[link]! : undefined
+    if (link !== undefined && target?.kind === 'collection' && !target.retired) {
       for (const row of await rowsOf(link)) if (row.state !== 'draft') plans.push({ _id: row._id, ...(row.data as Record<string, Json>) })
     }
     const status = brickStatus(brick, rows.map((row) => ({ data: row.data as Record<string, Json>, ...(row.state ? { state: row.state } : {}), ...(row.publishAt !== undefined ? { publishAt: row.publishAt } : {}) })), { today, locales: schema.locales, schema, plans }, statusRules)
