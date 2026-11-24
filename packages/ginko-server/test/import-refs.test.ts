@@ -227,7 +227,7 @@ describe('import keeps what the Studio keeps', () => {
     },
     {
       case: 'a name that is no entry name', entries: [{ ...service('services/a', 'a'), name: 'Ann_Smith' }],
-      cli: 'Entry services/a (services) has the name “Ann_Smith”. An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-menu”.',
+      cli: 'Entry services/a (services) has the name “Ann_Smith”. An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-party”.',
       server: 'Der Eintrag „services/a“ hat den Namen „Ann_Smith“. Ein Name besteht aus 1 bis 100 Kleinbuchstaben (a bis z), Ziffern und einzelnen Bindestrichen dazwischen.',
     },
     {

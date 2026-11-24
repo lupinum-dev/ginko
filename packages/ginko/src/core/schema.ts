@@ -473,7 +473,7 @@ function schemaProblems(schema: Schema): string[] {
     // `brick.field.row`: a row a rows field no longer has; the release removes it from the stored entries (diffSchema).
     if (rowKey !== undefined) {
       const field = fieldName !== undefined && Object.hasOwn(brick.fields, fieldName) ? brick.fields[fieldName] : undefined
-      if (rest.length || field?.type !== 'rows') problems.push(`retired: “${path}” names no row of a rows field. Write \`brick.field.row\`, such as 'lunch.days.mo'.`)
+      if (rest.length || field?.type !== 'rows') problems.push(`retired: “${path}” names no row of a rows field. Write \`brick.field.row\`, such as 'team.shifts.mo'.`)
       else if (!('drop' in rule)) problems.push(`retired: the row “${path}” takes { drop: true }.`)
       else if (isWeek(schema.week) && rowKeysOf(field, schema.week).includes(rowKey)) problems.push(`retired: “${path}” is still a row of the field. Retire a row only when the field no longer has it.`)
       continue

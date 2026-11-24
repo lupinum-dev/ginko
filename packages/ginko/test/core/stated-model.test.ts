@@ -229,7 +229,7 @@ describe('f.rows: rows of workdays and retired rows', () => {
   it.each([
     ['lunch.days.fr', { drop: true }, 'retired: “lunch.days.fr” is still a row of the field. Retire a row only when the field no longer has it.'],
     ['lunch.days.sa', { value: 1 }, 'retired: the row “lunch.days.sa” takes { drop: true }.'],
-    ['hours.closedNote.x', { drop: true }, "retired: “hours.closedNote.x” names no row of a rows field. Write `brick.field.row`, such as 'lunch.days.mo'."],
+    ['hours.closedNote.x', { drop: true }, "retired: “hours.closedNote.x” names no row of a rows field. Write `brick.field.row`, such as 'team.shifts.mo'."],
   ] as const)('refuses retired “%s” %j', (path, rule, sentence) => {
     const schema = stored()
     schema.retired[path] = rule as Schema['retired'][string]

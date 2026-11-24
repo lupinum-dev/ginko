@@ -399,7 +399,7 @@ describe('checks that never hide a broken entry', () => {
   // entry changes its name, and so every link by name, when the site moves its content to the platform.
   it('refuses a file name that is no entry name', async () => {
     const r = await readBlog({ 'content/authors/Ann_Smith.yml': 'name: Ann' })
-    expect(r.errors).toEqual([{ file: 'authors/Ann_Smith.yml', message: 'The file name gives the entry name “Ann_Smith”. An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-menu”. Rename the file.' }])
+    expect(r.errors).toEqual([{ file: 'authors/Ann_Smith.yml', message: 'The file name gives the entry name “Ann_Smith”. An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-party”. Rename the file.' }])
   })
 
   // Wrong behaviour caught: rows are matched by position, so an extra main row shifts every translated reason by one.
