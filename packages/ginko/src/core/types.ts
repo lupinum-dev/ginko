@@ -182,6 +182,8 @@ export interface SingleBrick<F extends Fields = Fields> {
   fields: F
   /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
   body?: string
+  /** The key of the page (`pages`) the Studio's preview opens for an entry; only for a brick without `route`. */
+  preview?: string
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
@@ -210,6 +212,8 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   fields: F
   /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
   body?: string
+  /** The key of the page (`pages`) the Studio's preview opens for an entry; only for a brick without `route`. */
+  preview?: string
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]

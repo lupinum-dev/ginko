@@ -3,7 +3,7 @@
 // how to book and find it, in English (main) and German. Every brick reads Markdown from content/, so the site runs
 // without an account. To let the practice change a brick in Ginko Studio later, name it in `studio.bricks`
 // (README, "Move to the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
+import { defineSite, extend, f, single } from '@lupinum/ginko'
 import { faq, gallery, hourPlans, hours, legal, notices, people, site } from '@lupinum/ginko/patterns'
 import { pages } from './app/bricks/pages.ts'
 import { services } from './app/bricks/services.ts'
@@ -82,7 +82,7 @@ export default defineSite({
       ],
     }),
     // Questions and answers: prescription and insurance, what to bring, cancelling (content/faq/).
-    faq: faq(),
+    faq: extend(faq(), { preview: 'faq' }),
     // Photos of the practice on the contact page (content/gallery.md).
     gallery: gallery(),
     // The first screen of the home page: the practice's name, one line about it and an optional photo (content/home.md).

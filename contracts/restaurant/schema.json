@@ -1149,6 +1149,7 @@
           "needsApproval": true
         }
       ],
+      "preview": "lunch",
       "pos": 3
     },
     "lunchPlans": {
@@ -1826,6 +1827,7 @@
           "kind": "remove"
         }
       ],
+      "preview": "menu",
       "pos": 5
     },
     "events": {
@@ -2015,6 +2017,7 @@
           ]
         }
       ],
+      "preview": "gallery",
       "pos": 7
     },
     "contact": {

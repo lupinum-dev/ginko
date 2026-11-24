@@ -209,3 +209,17 @@ describe('time zone and languages have no default (5.4)', () => {
     expect(checkSchema(schema)).toContain("timeZone is missing. Write the site's time zone, for example `timeZone: 'Europe/Vienna'`: Ginko counts today, the week and planned dates in it.")
   })
 })
+
+describe('preview: the page the Studio opens for an entry', () => {
+  // Wrong: a brick's preview names a page the site does not have, or a brick with pages of its own names another page,
+  // and the preview opens the start page or the wrong page without a word.
+  it('names a key of pages, and only on a brick without route', () => {
+    const schema = stored()
+    expect(schema.bricks.menu!.preview).toBe('menu')
+    schema.bricks.menu = { ...schema.bricks.menu!, preview: 'karte' }
+    expect(checkSchema(schema)).toEqual([`menu.preview: “karte” is not a key of pages. Write one of ${Object.keys(schema.pages).join(', ')}.`])
+    schema.bricks.menu = { ...schema.bricks.menu!, preview: 'menu' }
+    schema.bricks.events = { ...schema.bricks.events!, preview: 'menu' }
+    expect(checkSchema(schema)).toEqual(['events.preview: the entries of “events” have pages of their own (route), so the preview opens them. Leave preview out.'])
+  })
+})

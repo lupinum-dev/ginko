@@ -26,7 +26,7 @@ export const SCHEMA_KEYS = new Set(['format', 'site', 'name', 'url', 'timeZone',
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
@@ -374,6 +374,11 @@ function schemaProblems(schema: Schema): string[] {
     if (brick.body !== undefined) {
       const field = typeof brick.body === 'string' && Object.hasOwn(brick.fields, brick.body) ? brick.fields[brick.body] : undefined
       if (field?.type !== 'markdown' || field.retired) problems.push(`${key}.body: “${String(brick.body)}” is not a markdown field of this brick.`)
+    }
+    if (brick.preview !== undefined) {
+      const pageKeys = Object.keys(schema.pages ?? {})
+      if (brick.kind === 'collection' && brick.route) problems.push(`${key}.preview: the entries of “${key}” have pages of their own (route), so the preview opens them. Leave preview out.`)
+      else if (typeof brick.preview !== 'string' || !Object.hasOwn(schema.pages ?? {}, brick.preview)) problems.push(`${key}.preview: “${String(brick.preview)}” is not a key of pages. Write one of ${pageKeys.length ? pageKeys.join(', ') : '(no pages yet)'}.`)
     }
     // Markdown in the front matter is not read yet: a file brick's markdown field is the text of its file, stated by `body`.
     if (brick.source === 'files') {

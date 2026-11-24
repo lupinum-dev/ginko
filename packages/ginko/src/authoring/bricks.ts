@@ -99,6 +99,8 @@ interface Common<F extends Fields> {
   fields: F
   /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
   body?: MarkdownKey<F>
+  /** The key of the page (`pages`) the Studio's preview opens for an entry. Only for a brick whose entries have no page of their own. */
+  preview?: string
   /** How the form groups its fields. Default `'sections'`. */
   layout?: 'sections' | 'tabs'
   /** The owner's buttons, in order; the first is the main one. A Studio brick with a task is on the Today page. */
@@ -129,7 +131,7 @@ export interface CollectionInput<F extends Fields> extends Common<F> {
 }
 
 /** What `single` and `collection` return. The names in tasks and keys are typed by `F` where they are written and kept as plain names. */
-interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; body?: string; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields> }
+interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; body?: string; preview?: string; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields> }
 export interface SingleDef<F extends Fields = Fields> extends Def<F> { kind: 'single'; status?: SingleStatusInput }
 export interface CollectionDef<F extends Fields = Fields> extends Def<F> {
   kind: 'collection'
@@ -159,8 +161,8 @@ export function collection<const F extends Fields>(input: CollectionInput<F>): C
 type Merge<F, G> = Fields extends G ? F : { [K in keyof F | keyof G]: K extends keyof G ? G[K] : K extends keyof F ? F[K] : never }
 
 /**
- * A ready-made brick with your changes: another label or word for one entry, more fields, other tasks, another line
- * on Today. Fields are added, never replaced; `tasks` replaces the brick's tasks and may name the added fields.
+ * A ready-made brick with your changes: another label or word for one entry, the page its preview opens (`preview`),
+ * more fields, other tasks, another line on Today. Fields are added, never replaced; `tasks` replaces the brick's tasks and may name the added fields.
  *
  * ```ts
  * jobs: extend(jobs(), {
@@ -171,7 +173,7 @@ type Merge<F, G> = Fields extends G ? F : { [K in keyof F | keyof G]: K extends 
  */
 export function extend<const F extends Fields, const G extends Fields = {}>(
   brick: SingleDef<F>,
-  change: { label?: Label; describe?: Label; item?: Label; fields?: G; tasks?: readonly TaskInput<Merge<F, G>>[]; status?: SingleStatusInput },
+  change: { label?: Label; describe?: Label; item?: Label; preview?: string; fields?: G; tasks?: readonly TaskInput<Merge<F, G>>[]; status?: SingleStatusInput },
 ): SingleDef<Merge<F, G>>
 export function extend<const F extends Fields, const G extends Fields = {}>(
   brick: CollectionDef<F>,
@@ -179,12 +181,13 @@ export function extend<const F extends Fields, const G extends Fields = {}>(
     label?: Label
     describe?: Label
     item?: Label
+    preview?: string
     fields?: G
     tasks?: readonly TaskInput<Merge<F, G>>[]
     status?: CollectionStatusInput<DateKey<Merge<F, G>>, keyof Merge<F, G> & string>
   },
 ): CollectionDef<Merge<F, G>>
-export function extend(brick: BrickDef, change: { label?: Label; describe?: Label; item?: Label; fields?: Fields; tasks?: readonly TaskInput[]; status?: object }): BrickDef {
+export function extend(brick: BrickDef, change: { label?: Label; describe?: Label; item?: Label; preview?: string; fields?: Fields; tasks?: readonly TaskInput[]; status?: object }): BrickDef {
   if (typeof brick === 'function') throw new Error('extend: the first argument is a function. Call it: `extend(posts({ authors: \'people\' }), { … })`.')
   if ((brick as { [DEF]?: true })[DEF] !== true) throw new Error('extend: the first argument is a brick made with `single` or `collection` of \'@lupinum/ginko\', such as a brick of \'@lupinum/ginko/patterns\'.')
   const { fields, ...rest } = change

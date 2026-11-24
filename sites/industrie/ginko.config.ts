@@ -140,6 +140,7 @@ export default defineSite({
       ],
     }),
     events: collection({
+      preview: 'events',
       listing: { title: 'title', detail: 'when' },
       untranslated: 'fallback',
       label: 'Messen und Termine',
@@ -207,6 +208,7 @@ export default defineSite({
       ],
     }),
     certificates: collection({
+      preview: 'certificates',
       listing: { title: 'title', detail: 'validUntil' },
       untranslated: 'fallback',
       label: 'Zertifikate',

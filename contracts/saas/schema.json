@@ -205,6 +205,7 @@
           "pos": 7
         }
       },
+      "preview": "pricing",
       "tasks": [
         {
           "id": "add",
@@ -282,6 +283,7 @@
           "pos": 3
         }
       },
+      "preview": "changelog",
       "tasks": [
         {
           "id": "add",
@@ -491,6 +493,7 @@
           "pos": 1
         }
       },
+      "preview": "faq",
       "tasks": [
         {
           "id": "add",

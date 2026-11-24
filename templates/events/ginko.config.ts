@@ -71,7 +71,7 @@ export default defineSite({
       status: { show: 'missing', field: 'bio' },
     }),
     // Questions and answers: getting there, access, food, the code of conduct (content/faq/).
-    faq: faq(),
+    faq: extend(faq(), { preview: 'faq' }),
     // Sponsor and partner logos on the home page (content/logos/, the files in public/logos/).
     logos,
     // Photos of last year's conference on the home page (content/gallery.md).

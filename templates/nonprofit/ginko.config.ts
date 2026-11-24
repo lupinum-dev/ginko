@@ -73,7 +73,7 @@ export default defineSite({
     // last day; the home page and Get involved show the next one, and so does Today.
     events: events(),
     // Reports and other PDFs, newest first (content/downloads/, the files in public/files/).
-    downloads: downloads(),
+    downloads: extend(downloads(), { preview: 'downloads' }),
     // Partner logos on the home page (content/logos/, the files in public/logos/).
     logos,
     // Short quotes of members and partners on the home page (content/quotes/).

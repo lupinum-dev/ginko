@@ -547,6 +547,7 @@
           "pos": 3
         }
       },
+      "preview": "events",
       "tasks": [
         {
           "id": "add",
@@ -795,6 +796,7 @@
           "pos": 2
         }
       },
+      "preview": "certificates",
       "tasks": [
         {
           "id": "add",

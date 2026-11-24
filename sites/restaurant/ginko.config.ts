@@ -37,12 +37,12 @@ export default defineSite({
     hourPlans: hourPlans(),
     notices: notices(),
     // The cook enters the week's lunch menu; it goes live once the owner approves it (SPEC 17).
-    lunch: lunch({ weekOf: '2026-10-05', needsApproval: true }),
+    lunch: { ...lunch({ weekOf: '2026-10-05', needsApproval: true }), preview: 'lunch' },
     // Lunch weeks planned ahead, shown from their first day of the week (lunchWeekOn).
     lunchPlans: lunchPlans(),
-    menu: menu(),
+    menu: { ...menu(), preview: 'menu' },
     events: events(),
-    gallery: gallery(),
+    gallery: { ...gallery(), preview: 'gallery' },
     // A rare job (moving, new number): no quick task, found under this label in Alles bearbeiten.
     contact: single({
       label: 'Adresse und Kontakt',

@@ -51,6 +51,7 @@ export default defineSite({
     // The reservations page: title, lead and the text below the call and email buttons and the opening hours
     // (content/reservations.md).
     reservations: single({
+      preview: 'reservations',
       label: { en: 'Reservations', de: 'Reservierung' },
       body: 'body',
       fields: {
@@ -71,14 +72,14 @@ export default defineSite({
     // Other weekly hours for a date range, such as winter hours that repeat every year.
     hourPlans: hourPlans(),
     // The menu: one file per dish with category, price, allergens (EU letters A–R) and vegetarian or vegan.
-    menu: menu(),
+    menu: { ...menu(), preview: 'menu' },
     // This week's lunch, Monday to Friday. In the Studio the cook enters the week and the owner approves it.
     // `weekOf`: the start value of the lunch week on the platform (a Monday); the weekly task sets the current week.
-    lunch: lunch({ weekOf: '2026-10-12', needsApproval: true }),
+    lunch: { ...lunch({ weekOf: '2026-10-12', needsApproval: true }), preview: 'lunch' },
     // Wine evenings, cooking classes and the like. An event leaves the site after its last day.
     events: events(),
     // Photos of the house, the food and the garden.
-    gallery: gallery(),
+    gallery: { ...gallery(), preview: 'gallery' },
     // Free pages such as About: content/pages/.
     pages,
   },

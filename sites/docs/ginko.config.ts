@@ -157,5 +157,5 @@ export default defineSite({
     ]),
     { from: '/de/changelog', to: '/changelog' },
   ],
-  bricks: { home: docsHome(), docs: docsCollection({ locales }), ...blogCollections({ locales }), changelog: changelogCollection() },
+  bricks: { home: docsHome(), docs: docsCollection({ locales }), ...blogCollections({ locales }), changelog: { ...changelogCollection(), preview: 'changelog' } },
 })

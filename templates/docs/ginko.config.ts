@@ -33,6 +33,6 @@ export default defineSite({
     // The pages, in the order of their file numbers; `section` in a page starts a group (content/docs/).
     docs: docsCollection({ locales }),
     // One entry per release with version and date, newest first on /changelog (content/changelog/).
-    changelog: changelogCollection(),
+    changelog: { ...changelogCollection(), preview: 'changelog' },
   },
 })

@@ -48,6 +48,7 @@ export default defineSite({
       },
     }),
     pricing: collection({
+      preview: 'pricing',
       listing: { title: 'name' },
       untranslated: 'fallback',
       label: 'Preise',
@@ -66,6 +67,7 @@ export default defineSite({
       tasks: ['add', { id: 'price', label: 'Preis ändern', fields: ['priceEur', 'priceChf', 'yearEur', 'yearChf', 'note'] }, 'remove'],
     }),
     changelog: collection({
+      preview: 'changelog',
       listing: { title: 'version', detail: 'date' },
       untranslated: 'fallback',
       label: 'Changelog',
@@ -122,6 +124,7 @@ export default defineSite({
       tasks: ['add', 'edit', 'remove'],
     }),
     faq: collection({
+      preview: 'faq',
       listing: { title: 'question' },
       untranslated: 'fallback',
       label: 'Fragen und Antworten',

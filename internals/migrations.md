@@ -198,7 +198,8 @@ Rules for a new migration:
 - **Introduced:** 0.19.0 (November 2026).
 - **Compatibility code:** in `packages/ginko/src/authoring/site.ts` the branch of `defineSite` for a brick that is not a
   `BrickDef` (`isDef`), and the `route` check next to `entries`; the options `source` and `route` of the basics brick
-  functions and of the gastro preset's `events()`.
+  functions and of the gastro preset's `events()`. A stored-form brick takes `preview` by a spread
+  (`{ ...menu(), preview: 'menu' }`), since `extend` takes written-form bricks only (D90).
 - **Dependents:** the gastro preset (`templates/restaurant`, `sites/restaurant`, the gastro starters of
   `create-ginko`), the docs theme (`templates/docs`, `sites/docs`, the docs starters), the patterns (made from the
   basics functions, D73).
