@@ -1,6 +1,5 @@
 // The field builders a site developer writes with. Every builder returns a stored-form field (core/types.ts). Only
-// what differs from the stored form is defined here: defaults for number, file and list, and the names `fields` and
-// `item` of a list.
+// what differs from the builders of 0.18 is defined here: defaults for number, file and list.
 import { f as stored, type ValueInput } from '../core/fields.ts'
 import type { Fields, FileField, Label, ListField, NumberField } from '../core/types.ts'
 import { limitOf } from '../core/uploads.ts'
@@ -18,8 +17,8 @@ type FileOpts = Partial<Pick<FileField, 'accept' | 'maxBytes'>> & Omit<Opt<FileF
 type ListOpts<G extends Fields> = Omit<Opt<ListField>, 'of' | 'itemLabel' | 'max'> & {
   /** The columns of one row. */
   fields: G
-  /** The word for one row ("Fact"). Default: "Entry" in the editor's language. */
-  item?: Label
+  /** The label of one row ("Fact"). Default: "Entry" in the editor's language. */
+  itemLabel?: Label
   /** Most rows. Default 50. */
   max?: number
   default?: readonly ({ _id: string } & RowInput<G>)[]
@@ -37,9 +36,8 @@ export const f = {
     ({ type: 'file', label, accept: ['pdf'], maxBytes: limitOf('file'), ...o }) as FileField & O,
   /** A list of rows with the same columns (`fields`). `max` defaults to 50. */
   list: <const G extends Fields, const O extends ListOpts<G>>(label: Label, o: O & { fields: G }) => {
-    const { fields, item, ...rest } = o
-    const old = ['of', 'itemLabel'].filter((key) => Object.hasOwn(o, key))
-    if (old.length || fields === undefined) throw new Error('f.list: the columns are `fields` (0.18: `of`) and the word for one row is `item` (0.18: `itemLabel`). To keep a config of 0.18 as it is, import from \'@lupinum/ginko/v1\'.')
-    return { type: 'list', label, itemLabel: item ?? ENTRY, of: fields, max: 50, ...rest } as unknown as ListField<G> & Omit<O, 'fields' | 'item' | 'default'>
+    const { fields, itemLabel, ...rest } = o
+    if (fields === undefined) throw new Error('f.list: the columns of one row are `fields`.')
+    return { type: 'list', label, itemLabel: itemLabel ?? ENTRY, of: fields, max: 50, ...rest } as unknown as ListField<G> & Omit<O, 'fields' | 'itemLabel' | 'default'>
   },
 }

@@ -39,10 +39,10 @@ export default defineSite({
     // About, Contact and any other page: content/pages/.
     pages,
     // Short notices above the header, each until a date (content/notices/).
-    notices,
+    notices: notices(),
     // Name, address and contact for the footer and search engines (content/site.md).
-    site,
+    site: site(),
     // Privacy policy, terms and imprint at /legal/<slug> (content/legal/).
-    legal,
+    legal: legal(),
   },
 })

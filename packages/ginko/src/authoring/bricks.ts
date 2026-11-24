@@ -20,8 +20,8 @@ export type StandardTask = 'add' | 'edit' | 'remove'
 type Prefill<F extends Fields> = Fields extends F ? { readonly [name: string]: unknown } : { readonly [P in keyof F]?: ValueInput<F[P]> }
 
 interface TaskOptions<F extends Fields> {
-  /** `'edit'` (default), `'create'` or `'remove'`. The standard ids `add` and `remove` have their own kind. */
-  kind?: 'edit' | 'create' | 'remove'
+  /** What the task does: `'edit'` (default) changes an entry, `'add'` makes a new one, `'remove'` deletes one. The standard ids `add` and `remove` have their own kind. */
+  kind?: 'edit' | 'add' | 'remove'
   /** The fields of the form. Default: all fields of the brick but the address (`f.slug`). */
   fields?: readonly (keyof F & string)[]
   /** Values set when the form opens. */
@@ -66,6 +66,13 @@ interface Common<F extends Fields> {
   label: Label
   /** One sentence below the name. */
   describe?: Label
+  /**
+   * The words for one entry (for a single: for the brick) as they stand in a task. The standard tasks are named with
+   * them, and they are put in as written, in every language: `{ de: 'Leistung', en: 'a service', fr: 'une prestation' }`
+   * gives "Leistung hinzufügen", "Add a service", "Ajouter une prestation". Without it a collection says "Eintrag" /
+   * "an entry" and a single uses its label. A task with its own `label` does not use it.
+   */
+  item?: Label
   fields: F
   /** How the form groups its fields. Default `'sections'`. */
   layout?: 'sections' | 'tabs'
@@ -77,11 +84,6 @@ interface Common<F extends Fields> {
 export interface SingleInput<F extends Fields> extends Common<F> { status?: SingleStatusInput }
 
 export interface CollectionInput<F extends Fields> extends Common<F> {
-  /**
-   * The word for one entry ("Leistung"). The standard tasks are named with it: "Leistung hinzufügen". English gets its
-   * article by itself ("Add a service"); in French and Spanish write the article with the word ("une prestation").
-   */
-  item?: Label
   /** Most entries. Default 500. */
   max?: number
   /** Default `'manual'`: the owner's order. */
@@ -98,11 +100,10 @@ export interface CollectionInput<F extends Fields> extends Common<F> {
 }
 
 /** What `single` and `collection` return. The names in tasks and keys are typed by `F` where they are written and kept as plain names. */
-interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields> }
+interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields> }
 export interface SingleDef<F extends Fields = Fields> extends Def<F> { kind: 'single'; status?: SingleStatusInput }
 export interface CollectionDef<F extends Fields = Fields> extends Def<F> {
   kind: 'collection'
-  item?: Label
   max?: number
   order?: 'manual' | { field: string; dir?: 'asc' | 'desc' }
   showUntil?: ShowUntil
@@ -131,7 +132,7 @@ type Merge<F, G> = Fields extends G ? F : { [K in keyof F | keyof G]: K extends 
  * on Today. Fields are added, never replaced; `tasks` replaces the brick's tasks and may name the added fields.
  *
  * ```ts
- * jobs: extend(jobs, {
+ * jobs: extend(jobs(), {
  *   fields: { team: f.text('Team', { optional: true }) },
  *   tasks: ['add', 'edit', { id: 'team', label: 'Team ändern', fields: ['team'] }, 'remove'],
  * })
@@ -139,7 +140,7 @@ type Merge<F, G> = Fields extends G ? F : { [K in keyof F | keyof G]: K extends 
  */
 export function extend<const F extends Fields, const G extends Fields = {}>(
   brick: SingleDef<F>,
-  change: { label?: Label; describe?: Label; fields?: G; tasks?: readonly TaskInput<Merge<F, G>>[]; status?: SingleStatusInput },
+  change: { label?: Label; describe?: Label; item?: Label; fields?: G; tasks?: readonly TaskInput<Merge<F, G>>[]; status?: SingleStatusInput },
 ): SingleDef<Merge<F, G>>
 export function extend<const F extends Fields, const G extends Fields = {}>(
   brick: CollectionDef<F>,
@@ -153,6 +154,7 @@ export function extend<const F extends Fields, const G extends Fields = {}>(
   },
 ): CollectionDef<Merge<F, G>>
 export function extend(brick: BrickDef, change: { label?: Label; describe?: Label; item?: Label; fields?: Fields; tasks?: readonly TaskInput[]; status?: object }): BrickDef {
+  if (typeof brick === 'function') throw new Error('extend: the first argument is a function. Call it: `extend(posts({ authors: \'people\' }), { … })`.')
   if ((brick as { [DEF]?: true })[DEF] !== true) throw new Error('extend: the first argument is a brick made with `single` or `collection` of \'@lupinum/ginko\', such as a brick of \'@lupinum/ginko/patterns\'.')
   const { fields, ...rest } = change
   const twice = Object.keys(fields ?? {}).filter((name) => Object.hasOwn(brick.fields, name))

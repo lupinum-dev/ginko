@@ -33,7 +33,7 @@ describe('defineSite writes the stored form', () => {
     pages: { home: '/', contact: { de: '/kontakt', en: '/contact' } },
     entries: { services: { de: '/leistungen/[slug]', en: '/services/[slug]', it: '/servizi/[slug]' } },
     studio: { id: 'halden', url: 'https://cms.example.com', bricks: ['services'] },
-    texts: { en: { services: { label: 'Services', item: 'service', tasks: { price: 'Change a price' } } } },
+    texts: { en: { services: { label: 'Services', item: 'a service', tasks: { price: 'Change a price' } } } },
   })
 
   // Wrong: a brick outside `studio.bricks` is stored as a Studio brick, so the owner gets a form for content in files.
@@ -88,11 +88,12 @@ describe('the labels of the standard tasks', () => {
     defineSite({ ...base, locales, texts, bricks: { faq: collection({ label: 'FAQ', item, fields: { question: f.text('Frage') }, tasks: ['add', 'edit', 'remove'] }) } })
       .bricks.faq.tasks!.map((task) => task.label)
 
-  // Wrong: English reads "Add event" or "Add a event"; French and Spanish lose the article the translator wrote.
+  // Wrong: Ginko changes the words the developer wrote (an added article, a lowered letter), so a label reads
+  // "Add a the menu" or "Add faq", and the rule differs by language.
   it.each([
-    [['en'], 'Event', {}, ['Add an event', 'Edit an event', 'Remove an event']],
-    [['en'], 'FAQ', {}, ['Add a FAQ', 'Edit a FAQ', 'Remove a FAQ']],
-    [['en'], 'the menu', {}, ['Add the menu', 'Edit the menu', 'Remove the menu']],
+    [['en'], 'an event', {}, ['Add an event', 'Edit an event', 'Remove an event']],
+    [['en'], 'the FAQ', {}, ['Add the FAQ', 'Edit the FAQ', 'Remove the FAQ']],
+    [['en'], undefined, {}, ['Add an entry', 'Edit an entry', 'Remove an entry']],
     [['de'], undefined, {}, ['Eintrag hinzufügen', 'Eintrag bearbeiten', 'Eintrag entfernen']],
     [['de', 'fr', 'es'], 'Frage', { fr: { faq: { item: 'une question' } }, es: { faq: { item: 'una pregunta' } } }, [
       { de: 'Frage hinzufügen', fr: 'Ajouter une question', es: 'Añadir una pregunta' },
@@ -108,6 +109,13 @@ describe('the labels of the standard tasks', () => {
   ] as const)('%j with item %j', (locales, item, texts, expected) => {
     expect(labelsOf(locales, item, texts)).toEqual(expected)
   })
+
+  // Wrong: a single has no way to say its words, so English reads "Edit Home page".
+  it('names the task of a single with its `item`, else with its label', () => {
+    const home = (item?: string) => defineSite({ ...base, locales: ['en'], bricks: { home: single({ label: 'Home page', item, fields: { title: f.text('Title') }, tasks: ['edit'] }) } }).bricks.home.tasks![0]!.label
+    expect(home('the home page')).toBe('Edit the home page')
+    expect(home()).toBe('Edit Home page')
+  })
 })
 
 describe('label files', () => {
@@ -117,7 +125,7 @@ describe('label files', () => {
       street: f.text('Straße', { group: 'Adresse' }),
       city: f.text('Ort', { group: 'Adresse', hint: 'Mit Postleitzahl.' }),
       kind: f.choice('Art', { options: [{ value: 'shop', label: 'Laden' }, { value: 'office', label: 'Büro' }] }),
-      facts: f.list('Fakten', { item: 'Fakt', fields: { text: f.text('Text') } }),
+      facts: f.list('Fakten', { itemLabel: 'Fakt', fields: { text: f.text('Text') } }),
     },
   })
 
@@ -127,7 +135,7 @@ describe('label files', () => {
       ...base, locales: ['de', 'en'], bricks: { contact },
       texts: { en: { contact: { label: 'Contact', groups: { Adresse: 'Address' }, fields: {
         street: 'Street', city: { label: 'City', hint: 'With postcode.' }, kind: { label: 'Kind', options: { shop: 'Shop', office: 'Office' } },
-        facts: { label: 'Facts', item: 'Fact', fields: { text: 'Text' } },
+        facts: { label: 'Facts', itemLabel: 'Fact', fields: { text: 'Text' } },
       } } } },
     })
     const { street, city, kind, facts } = site.bricks.contact.fields
@@ -162,15 +170,15 @@ describe('a config or a brick in the form of 0.18', () => {
   })
 
   it('names the new place of a moved key', () => {
-    const brick = collection({ label: 'News', fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) }, ...({ source: 'files', route: { de: '/news/[slug]' }, status: { age: 'date' } } as object) })
-    expect(() => defineSite({ ...base, locales: ['de', 'en'], bricks: { news: brick }, pages: { news: { de: '/news', en: '/en/news' } } })).toThrow([
+    const brick = collection({ label: 'News', fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) }, ...({ source: 'files', route: { de: '/news/[slug]' }, status: { age: 'date' }, tasks: [{ id: 'write', label: 'Schreiben', kind: 'create' }] } as object) })
+    expect(() => defineSite({ ...base, locales: ['de', 'en'], bricks: { news: brick }, entries: { news: '/news/[slug]' }, pages: { news: { de: '/news', en: '/en/news' } } })).toThrow([
       'ginko.config.ts:',
       '- news.source: where a brick lives is `studio.bricks` in the site file. (To keep a brick of 0.18 as it is, import from \'@lupinum/ginko/v1\'.)',
       '- news.route: the address of an entry is `entries` in the site file. (To keep a brick of 0.18 as it is, import from \'@lupinum/ginko/v1\'.)',
+      '- news.tasks.write: write `kind: \'add\'`.',
       '- news.status: write `{ show: … }`, such as `{ show: \'next\', field: \'when\' }`.',
       '- pages.news.en: write the path without the language prefix (“/news”). Ginko adds “/en”.',
     ].join('\n'))
-    expect(() => f.list('Fakten', { of: { text: f.text('Text') } } as never)).toThrow(/the columns are `fields`/)
   })
 
   // Wrong: a preset or a brick file that still uses the 0.18 builders cannot be used in a new site file.
@@ -179,6 +187,25 @@ describe('a config or a brick in the form of 0.18', () => {
     const site = defineSite({ ...base, locales: ['de', 'en'], bricks: { news }, entries: { news: '/news/[slug]' } })
     expect(site.bricks.news).toMatchObject({ source: 'files', route: { de: '/news/[slug]', en: '/en/news/[slug]' }, max: 20 })
     expect(site.site).toBe('halden-pumps')
+  })
+})
+
+describe('what the site file must say', () => {
+  const news = collection({ label: 'News', fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) }, tasks: [{ id: 'write', label: 'Schreiben', kind: 'add' }] })
+
+  // Wrong: a forgotten line in `entries` gives a site without the pages of its entries, and no message.
+  it('asks for the page of a brick with an address field, or `null` for none', () => {
+    expect(() => defineSite({ ...base, locales: ['de'], bricks: { news } })).toThrow('- entries: “news” has an address field but no line here. Write `news: \'/news/[slug]\'` for a page per entry, or `news: null` for none.')
+    const site = defineSite({ ...base, locales: ['de'], bricks: { news }, entries: { news: null } })
+    expect(site.bricks.news.route).toBeUndefined()
+    expect(site.bricks.news.tasks).toEqual([{ id: 'write', label: 'Schreiben', kind: 'create' }])
+  })
+
+  // Wrong: a ready-made brick given without its call stops with "Cannot convert undefined or null to object".
+  it('names a brick function that was not called', () => {
+    const notices = () => news
+    expect(() => defineSite({ ...base, locales: ['de'], bricks: { notices } as never })).toThrow('- bricks.notices is a function. Call it: `notices: notices()`.')
+    expect(() => extend(notices as never, {})).toThrow(/is a function\. Call it/)
   })
 })
 

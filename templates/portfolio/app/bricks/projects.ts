@@ -5,22 +5,23 @@ import { collection, f } from '@lupinum/ginko'
 // translations `1.my-project.de.md`). The number sets the order. A campaign has an end date (`ends`): it leaves the
 // site after that day by itself, and the Studio's Today page lists campaigns that end within 7 days. A project may
 // have one button below its title (`actionLabel` and `actionUrl`, both needed), for example "Donate now".
-// `projectsWithDetails` is for work that stays online: no end date and no button, but the facts of a commission
-// (client, year, place, scope) and the project's photos, each with its description (the build and the Studio refuse a
-// photo without one). A new project can wait as a draft (`draft: true` in its file), and Today lists the drafts.
+// `projects({ details: true })` is for work that stays online: no end date and no button, but the facts of a
+// commission (client, year, place, scope) and the project's photos, each with its description (the build and the
+// Studio refuse a photo without one). A new project can wait as a draft (`draft: true` in its file), and Today lists
+// the drafts.
 // The address of a project is a line in `entries` of ginko.config.ts: `projects: '/projects/[slug]'`.
 
 const photo = { de: 'Foto', en: 'Photo', fr: 'Photo' }
 
-/** What both kinds share. The tasks are named with `item`: "Projekt bearbeiten", "Edit a project". */
+/** What both kinds share. `item`: the words for one entry as they stand in a task ("Projekt bearbeiten", "Edit a project"). */
 const common = {
   label: { de: 'Projekte', en: 'Projects', fr: 'Projets' },
-  item: { de: 'Projekt', en: 'project', fr: 'un projet' },
+  item: { de: 'Projekt', en: 'a project', fr: 'un projet' },
   max: 50,
 } as const
 
 /** Projects and campaigns: a campaign leaves the site after its last day. */
-export const projects = collection({
+const campaigns = () => collection({
   ...common,
   fields: { ...fields(), ...campaign(), body: body() },
   showUntil: 'ends',
@@ -29,7 +30,7 @@ export const projects = collection({
 })
 
 /** Finished work with its facts and photos. */
-export const projectsWithDetails = collection({
+const detailed = () => collection({
   ...common,
   fields: { ...fields(), ...details(), body: body() },
   tasks: [
@@ -38,6 +39,13 @@ export const projectsWithDetails = collection({
     'add',
   ],
 })
+
+/** The projects brick: campaigns with an end date, or with `details: true` finished work with its facts and photos. */
+export function projects(o: { details: true }): ReturnType<typeof detailed>
+export function projects(o?: { details?: false }): ReturnType<typeof campaigns>
+export function projects(o: { details?: boolean } = {}) {
+  return o.details ? detailed() : campaigns()
+}
 
 function fields() {
   return {
@@ -85,7 +93,7 @@ function details() {
     }),
     // More photos after `image`, each with its description (required, so no photo goes online without one).
     photos: f.list({ de: 'Fotos', en: 'Photos', fr: 'Photos' }, {
-      item: photo,
+      itemLabel: photo,
       fields: { image: f.image(photo, { hint: { de: 'Beschreibe, was das Foto zeigt: Der Text steht darunter und wird vorgelesen.', en: 'Describe what the photo shows: the text is shown below it and read out.', fr: 'Décrivez ce que montre la photo : le texte s’affiche dessous et est lu à voix haute.' } }) },
       max: 24,
       optional: true,

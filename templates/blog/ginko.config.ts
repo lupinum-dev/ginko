@@ -48,19 +48,16 @@ export default defineSite({
     // The posts, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
     // goes online, and a post dated after the day of the build waits for the first build on or after its date.
     // In the Studio, Today lists the drafts and the scheduled posts.
-    posts: extend(posts, {
-      tasks: [{ id: 'write', kind: 'create', label: { en: 'Write a post', de: 'Beitrag schreiben', fr: 'Écrire un article' } }],
+    posts: extend(posts({ authors: 'people' }), {
+      tasks: [{ id: 'write', kind: 'add', label: { en: 'Write a post', de: 'Beitrag schreiben', fr: 'Écrire un article' } }],
     }),
     // The two writers, each with a page that lists their posts (content/people/). No photos: the site shows initials.
-    people: extend(people, {
-      label: { en: 'Authors', de: 'Autorinnen und Autoren', fr: 'Auteurs' },
-      fields: { slug: f.slug({ de: 'Adresse', en: 'Address', es: 'Dirección', fr: 'Adresse' }, { from: 'name' }) },
-    }),
+    people: people({ pages: true, label: { en: 'Authors', de: 'Autorinnen und Autoren', fr: 'Auteurs' } }),
     // Name and email for the footer and the imprint (content/site.md).
-    site,
+    site: site(),
     // Privacy policy, terms and imprint at /legal/<slug> (content/legal/).
-    legal,
+    legal: legal(),
     // Short lines above every page, each until a date (content/notices/).
-    notices,
+    notices: notices(),
   },
 })

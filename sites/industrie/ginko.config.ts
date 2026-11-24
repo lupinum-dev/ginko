@@ -44,7 +44,7 @@ export default defineSite({
       label: 'Empfang und Erreichbarkeit',
       fields: {
         week: f.list('Wochenplan', {
-          item: 'Tag',
+          itemLabel: 'Tag',
           fields: {
             day: f.choice('Tag', { options: weekdays }),
             closed: f.boolean('Geschlossen'),
@@ -56,7 +56,7 @@ export default defineSite({
           min: 7, max: 7, unique: 'day', default: weekDefault,
         }),
         exceptions: f.list('Betriebsferien und Ausnahmen', {
-          item: 'Ausnahme',
+          itemLabel: 'Ausnahme',
           fields: {
             when: f.daterange('Zeitraum'),
             reason: f.text('Grund', { max: 140 }),
@@ -102,7 +102,7 @@ export default defineSite({
       order: { field: 'date', dir: 'desc' },
       tasks: [
         'add',
-        { id: 'edit', label: 'Beitrag bearbeiten', fields: ['title', 'slug', 'date', 'image', 'body', 'pressPdf'] },
+        { id: 'edit', fields: ['title', 'slug', 'date', 'image', 'body', 'pressPdf'] },
         'remove',
       ],
     }),
@@ -158,9 +158,9 @@ export default defineSite({
         name: f.text('Name', { max: 120 }),
         slug: f.slug('Adresse', { from: 'name' }),
         summary: f.longtext('Kurztext', { max: 500 }),
-        images: f.list('Bilder', { item: 'Bild', fields: { image: f.image('Bild') }, max: 6 }),
+        images: f.list('Bilder', { itemLabel: 'Bild', fields: { image: f.image('Bild') }, max: 6 }),
         specs: f.list('Technische Daten', {
-          item: 'Merkmal',
+          itemLabel: 'Merkmal',
           fields: {
             name: f.text('Merkmal', { max: 80 }),
             value: f.text('Wert', { max: 80 }),
@@ -173,7 +173,7 @@ export default defineSite({
       max: 80,
       tasks: [
         'add',
-        { id: 'edit', label: 'Produkt bearbeiten', fields: ['name', 'slug', 'summary', 'images', 'specs', 'datasheet'] },
+        { id: 'edit', fields: ['name', 'slug', 'summary', 'images', 'specs', 'datasheet'] },
         'remove',
       ],
     }),

@@ -54,26 +54,26 @@ export default defineSite({
       },
     }),
     // Name, address, register entry, phone and email for the footer, the imprint and the NGO JSON-LD (content/site.md).
-    site,
+    site: site(),
     // Privacy policy, terms of use and imprint: one file per text in content/legal/.
-    legal,
+    legal: legal(),
     // Short lines at the top of every page ("The annual report is online"), each until a date (content/notices/).
-    notices,
+    notices: notices(),
     // News, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never goes
     // online; in the Studio, volunteers' posts go live after a check, and Today shows how old the newest post is.
-    posts: extend(posts, {
+    posts: extend(posts({ authors: 'people' }), {
       status: { show: 'newest', field: 'date' },
-      tasks: [{ id: 'write', kind: 'create', label: { en: 'Write a news post', de: 'Neuigkeit schreiben', fr: 'Écrire une actualité' }, needsApproval: true }],
+      tasks: [{ id: 'write', kind: 'add', label: { en: 'Write a news post', de: 'Neuigkeit schreiben', fr: 'Écrire une actualité' }, needsApproval: true }],
     }),
     // What the association works on, and campaigns that end on a date (content/projects/).
-    projects,
+    projects: projects(),
     // The board and the staff (content/people/). No photos: the site shows initials.
-    people,
+    people: people(),
     // Cleanups, meetings and other dates (content/events/), each on its own page. An event leaves the site after its
     // last day; the home page and Get involved show the next one, and so does Today.
-    events,
+    events: events(),
     // Reports and other PDFs, newest first (content/downloads/, the files in public/files/).
-    downloads,
+    downloads: downloads(),
     // Partner logos on the home page (content/logos/, the files in public/logos/).
     logos,
     // Short quotes of members and partners on the home page (content/quotes/).

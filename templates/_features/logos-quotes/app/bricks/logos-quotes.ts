@@ -4,7 +4,7 @@ import { collection, f } from '@lupinum/ginko'
 // public/logos/ (an SVG or a PNG on a transparent background); the number sets the order.
 export const logos = collection({
   label: { de: 'Logos', en: 'Logos', fr: 'Logos' },
-  item: { de: 'Logo', en: 'logo', fr: 'un logo' },
+  item: { de: 'Logo', en: 'a logo', fr: 'un logo' },
   max: 24,
   fields: {
     // A name is the same in every language; the image's description (`alt`) is translated.
@@ -19,7 +19,7 @@ export const logos = collection({
 // One file each in content/quotes/; the number sets the order, and the home page shows the first one.
 export const quotes = collection({
   label: { de: 'Zitate', en: 'Quotes', fr: 'Citations' },
-  item: { de: 'Zitat', en: 'quote', fr: 'une citation' },
+  item: { de: 'Zitat', en: 'a quote', fr: 'une citation' },
   max: 24,
   fields: {
     text: f.longtext({ de: 'Zitat', en: 'Quote', fr: 'Citation' }, { max: 300 }),

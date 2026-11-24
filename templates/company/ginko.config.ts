@@ -7,7 +7,7 @@ import { defineSite, extend, f, single } from '@lupinum/ginko'
 import { downloads, events, jobs, legal, notices, people, posts, site } from '@lupinum/ginko/patterns'
 import { logos, quotes } from './app/bricks/logos-quotes.ts'
 import { pages } from './app/bricks/pages.ts'
-import { servicesWithSheets } from './app/bricks/services.ts'
+import { services } from './app/bricks/services.ts'
 import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'
 
@@ -72,30 +72,30 @@ export default defineSite({
     }),
     // Legal name, address, register entry, VAT number, phone and email for the footer, the imprint, the enquiry and
     // application emails and the Organization JSON-LD (content/site.md).
-    site,
+    site: site(),
     // Privacy policy, terms of sale and imprint: one file per text in content/legal/.
-    legal,
+    legal: legal(),
     // Short lines at the top of every page ("Meet us at the Municipal Water Forum"), each until a date (content/notices/).
-    notices,
+    notices: notices(),
     // Products and services, each with a fixed price or "on request", key facts and a product sheet (content/services/).
-    services: servicesWithSheets,
+    services: services({ downloads: 'downloads' }),
     // Open jobs (content/jobs/). Each needs `validUntil`: the day after it the job leaves the list, its page, the
     // sitemap and search engines by itself. In the Studio, Today lists jobs that end within 7 days.
-    jobs,
+    jobs: jobs(),
     // News, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never goes
     // online; in the Studio, Today shows how old the newest post is and has a button to write one.
-    posts: extend(posts, {
+    posts: extend(posts({ authors: 'people' }), {
       status: { show: 'newest', field: 'date' },
-      tasks: [{ id: 'write', kind: 'create', label: { en: 'Write a news post', de: 'Neuigkeit schreiben' } }],
+      tasks: [{ id: 'write', kind: 'add', label: { en: 'Write a news post', de: 'Neuigkeit schreiben' } }],
     }),
     // Sales, service and the other contacts, with phone and email (content/people/). No photos: the site shows initials.
-    people,
+    people: people(),
     // Trade fairs where the company shows (content/events/): hall and stand as the place. A fair leaves the site after
     // its last day; the home page shows the next one, and so does Today.
-    events,
+    events: events(),
     // Product sheets and other PDFs, newest first (content/downloads/, the files in public/sheets/). A product names
     // its sheet with `sheet`.
-    downloads,
+    downloads: downloads(),
     // Customer logos on the home page (content/logos/, the files in public/logos/).
     logos,
     // What customers say, on the home page (content/quotes/), with their permission.

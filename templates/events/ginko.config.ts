@@ -54,30 +54,28 @@ export default defineSite({
       },
     }),
     // Name, address, register entry, phone and email for the footer, the imprint and the JSON-LD (content/site.md).
-    site,
+    site: site(),
     // Privacy policy, terms of use and imprint: one file per text in content/legal/.
-    legal,
+    legal: legal(),
     // Short lines at the top of every page ("Room 2 moves to the main hall"), each until a date (content/notices/).
-    notices,
+    notices: notices(),
     // The conference and other dates, with place, ticket link and price (content/events/). An event leaves the site
     // after its last day; the home page shows the next one, and so does Today in the Studio.
-    events,
+    events: events(),
     // The programme: one file per session with its event, day, start and end time, room, speakers and state
     // (content/sessions/). A session leaves the site after its day.
-    sessions,
+    sessions: sessions({ events: 'events', people: 'people' }),
     // The speakers, each with a page (content/people/). No photos: the site shows initials. Today counts the speakers
     // without a short bio.
-    people: extend(people, {
-      label: { de: 'Vortragende', en: 'Speakers', es: 'Ponentes', fr: 'Intervenants' },
-      fields: { slug: f.slug({ de: 'Adresse', en: 'Address', es: 'Dirección', fr: 'Adresse' }, { from: 'name' }) },
+    people: extend(people({ pages: true, label: { de: 'Vortragende', en: 'Speakers', es: 'Ponentes', fr: 'Intervenants' } }), {
       status: { show: 'missing', field: 'bio' },
     }),
     // Questions and answers: getting there, access, food, the code of conduct (content/faq/).
-    faq,
+    faq: faq(),
     // Sponsor and partner logos on the home page (content/logos/, the files in public/logos/).
     logos,
     // Photos of last year's conference on the home page (content/gallery.md).
-    gallery,
+    gallery: gallery(),
     // Venue, code of conduct, sponsoring and any other page (content/pages/).
     pages,
   },

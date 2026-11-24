@@ -9,9 +9,6 @@ import { pages } from './app/bricks/pages.ts'
 import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'
 
-// `weekOf`: the start value of the lunch week on the platform (a Monday); the weekly task sets the current week.
-const lunchBrick = lunch({ weekOf: '2026-10-12' })
-
 export default defineSite({
   name: 'Gasthaus zur Linde',
   // `color` fills the share cards: the light `--brand` of app/assets/css/main.css.
@@ -61,9 +58,9 @@ export default defineSite({
     }),
     // Legal name, address, phone and email. One entry, used in the footer, the imprint, the reservation links and the
     // Restaurant JSON-LD. The country comes from `country` above.
-    site,
+    site: site(),
     // Privacy policy, terms and imprint: one file per text in content/legal/.
-    legal,
+    legal: legal(),
     // Short lines at the top of every page ("Fully booked tonight"), each until a date.
     notices: notices(),
     // The usual week (two periods a day), closures such as the summer holiday, and what happens on public holidays.
@@ -73,9 +70,10 @@ export default defineSite({
     // The menu: one file per dish with category, price, allergens (EU letters A–R) and vegetarian or vegan.
     menu: menu(),
     // This week's lunch, Monday to Friday. In the Studio the cook enters the week and the owner approves it.
-    lunch: { ...lunchBrick, tasks: lunchBrick.tasks?.map((task) => ({ ...task, needsApproval: true })) },
+    // `weekOf`: the start value of the lunch week on the platform (a Monday); the weekly task sets the current week.
+    lunch: lunch({ weekOf: '2026-10-12', needsApproval: true }),
     // Wine evenings, cooking classes and the like. An event leaves the site after its last day.
-    events,
+    events: events(),
     // Photos of the house, the food and the garden.
     gallery: gallery(),
     // Free pages such as About: content/pages/.

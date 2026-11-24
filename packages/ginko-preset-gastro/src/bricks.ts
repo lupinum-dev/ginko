@@ -135,7 +135,11 @@ function lunchDays<A extends AllergenSet>(allergens: A | undefined) {
     : f.list(both('Tage', 'Days'), { ...list, fields: columns, default: lunchDefault })) as ListField<typeof columns & AllergenFields<A>>
 }
 
-export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { weekOf?: string; allergens?: A } = {}) {
+/**
+ * This week's lunch. `weekOf`: the start value of the week on the platform (a Monday). `needsApproval`: the week a
+ * staff member enters waits for the owner's yes.
+ */
+export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { weekOf?: string; allergens?: A; needsApproval?: boolean } = {}) {
   return single({
     label: both('Mittagsmenü', 'Lunch menu'),
     ...sourceOf(opts),
@@ -147,7 +151,7 @@ export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & 
       pdf: f.file(both('Mittagsmenü als PDF', 'Lunch menu as PDF'), { accept: ['pdf'], maxBytes: 5 * 1024 * 1024, optional: true }),
     },
     tasks: [
-      { id: 'lunchWeek', label: both('Mittagsmenü dieser Woche', 'This week’s lunch menu'), kind: 'edit', fields: ['weekOf', 'days', 'note'], prefill: { weekOf: '@workWeek' } },
+      { id: 'lunchWeek', label: both('Mittagsmenü dieser Woche', 'This week’s lunch menu'), kind: 'edit', fields: ['weekOf', 'days', 'note'], prefill: { weekOf: '@workWeek' }, ...(opts.needsApproval ? { needsApproval: true } : {}) },
     ],
   })
 }

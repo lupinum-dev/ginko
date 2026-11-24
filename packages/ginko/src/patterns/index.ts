@@ -1,64 +1,101 @@
-// @lupinum/ginko/patterns: ready-made bricks for the content most sites have. A pattern is a finished brick: put it
-// into `bricks` as it is. Where it lives and the address of its entries are in the site file (`studio`, `entries`);
-// `extend` of '@lupinum/ginko' changes its label, adds fields or replaces its tasks.
+// @lupinum/ginko/patterns: ready-made bricks for the content most sites have. A pattern is a function that returns a
+// finished brick. What a site can choose is an option, and a brick that points to another brick takes that brick's
+// key as an option: nothing is named for you.
 //
-//   import { events, notices, site } from '@lupinum/ginko/patterns'
-//   bricks: { site, notices, events },
-//   entries: { events: '/events/[slug]' },
+//   import { events, notices, people, posts, site } from '@lupinum/ginko/patterns'
+//   bricks: { site: site(), notices: notices(), team: people(), posts: posts({ authors: 'team' }), events: events() },
+//   entries: { posts: '/news/[slug]', events: '/events/[slug]' },
+//
+// Where a brick lives and the address of its entries are in the site file (`studio`, `entries`). `extend` of
+// '@lupinum/ginko' adds fields to a pattern, replaces its tasks or changes its line on Today.
 //
 // Each pattern has the stored names, limits and tasks of its function in '@lupinum/ginko/basics', so a site that
-// changes from `notices({ source: 'files' })` to `notices` keeps its model. The rules and the JSON-LD for these
+// changes from `notices({ source: 'files' })` to `notices()` keeps its model. The rules and the JSON-LD for these
 // bricks (`hoursOn`, `eventJsonLd`, …) stay in '@lupinum/ginko/basics'.
 // Every name here is documented on the docs site (page "Patterns").
 import { extend } from '../authoring/bricks.ts'
 import { defOf } from '../authoring/from-stored.ts'
 import * as basics from '../basics/index.ts'
 import { t } from '../basics/shared.ts'
+import type { RouteTemplate } from '../core/site.ts'
+import type { Label, Locale } from '../core/types.ts'
 
-/** Name, address, contact and social links of the organisation. A single. */
-export const site = defOf(basics.site())
-
-/** Legal texts (imprint, privacy, terms), each with its date. Give them pages with `entries: { legal: '/legal/[slug]' }`. */
-export const legal = defOf(basics.legal(), { item: t('Rechtstext', 'legal text', 'un texto legal', 'un texte juridique') })
-
-/** At most 5 short notices in the owner's order; a notice with a date leaves the site after that day and is then deleted. */
-export const notices = defOf(basics.notices(), { item: t('Hinweis', 'notice', 'un aviso', 'un avis') })
+/** What every pattern takes. */
+export interface PatternOptions {
+  /** Replaces the brick's name in the Studio: a text, or one text per language. */
+  label?: Label
+}
 
 /**
- * People in the owner's order. They have no page of their own; for one, add the address field:
- * `extend(people, { fields: { slug: f.slug('Address', { from: 'name' }) } })` and a line in `entries`.
+ * The 0.18 functions add the address field when they get a `route`. A pattern asks for the field by its own option
+ * and passes this in its place; `defOf` drops it (the address is a line in the site's `entries`).
  */
-export const people = defOf(basics.people(), { item: t('Person', 'person', 'una persona', 'une personne') })
+const anyRoute: Record<Locale, RouteTemplate> = {}
 
-/** Posts, newest first. `authors` names entries of the brick `people`. */
-export const posts = defOf(basics.posts({ authors: 'people' }), { item: t('Beitrag', 'post', 'un artículo', 'un article') })
+/** Name, address, contact and social links of the organisation. A single. */
+export const site = (o: PatternOptions = {}) => defOf(basics.site(o))
 
-/** Releases of a product, newest first. */
-export const changelog = defOf(basics.changelog(), { item: t('Version', 'release', 'una versión', 'une version') })
+/** Legal texts (imprint, privacy, terms), each with its date. Their pages: `entries: { legal: '/legal/[slug]' }`. */
+export const legal = (o: PatternOptions = {}) => defOf(basics.legal(o), { item: t('Rechtstext', 'a legal text', 'un texto legal', 'un texte juridique') })
+
+/** At most 5 short notices in the owner's order; a notice with a date leaves the site after that day and is then deleted. */
+export const notices = (o: PatternOptions = {}) => defOf(basics.notices(o), { item: t('Hinweis', 'a notice', 'un aviso', 'un avis') })
+
+const person = t('Person', 'a person', 'una persona', 'une personne')
+/**
+ * People in the owner's order. `pages: true` gives each person an address field (made from the name); the address
+ * itself is a line in the site's `entries`: `people: '/team/[slug]'`.
+ */
+export function people(o: PatternOptions & { pages: true }): ReturnType<typeof peopleWithPages>
+export function people(o?: PatternOptions & { pages?: false }): ReturnType<typeof peopleOnly>
+export function people(o: PatternOptions & { pages?: boolean } = {}) {
+  return o.pages ? peopleWithPages(o) : peopleOnly(o)
+}
+const peopleOnly = (o: PatternOptions) => defOf(basics.people({ label: o.label }), { item: person })
+const peopleWithPages = (o: PatternOptions) => defOf(basics.people({ label: o.label, route: anyRoute }), { item: person })
+
+/**
+ * Posts, newest first. `authors` is the key of the brick whose entries write the posts, such as a `people()` brick.
+ * `max`: most posts (default 500).
+ */
+export const posts = (o: PatternOptions & { authors: string; max?: number }) => defOf(basics.posts(o), { item: t('Beitrag', 'a post', 'un artículo', 'un article') })
+
+/** Releases of a product, newest first. `max`: most releases. */
+export const changelog = (o: PatternOptions & { max?: number } = {}) => defOf(basics.changelog(o), { item: t('Version', 'a release', 'una versión', 'une version') })
 
 /** Job ads that leave the site after their last day. Today shows how many end soon. */
-export const jobs = extend(defOf(basics.jobs(), { item: t('Stelle', 'job', 'una oferta', 'une offre') }), { status: { show: 'ending' } })
+export const jobs = (o: PatternOptions = {}) => extend(defOf(basics.jobs(o), { item: t('Stelle', 'a job', 'una oferta', 'une offre') }), { status: { show: 'ending' } })
 
 /** Events with date, place and booking; past events leave the site. Today shows the next one. */
-export const events = extend(defOf(basics.events({}), { item: t('Veranstaltung', 'event', 'un evento', 'un événement') }), { status: { show: 'next', field: 'when' } })
+export const events = (o: PatternOptions = {}) => extend(defOf(basics.events(o), { item: t('Veranstaltung', 'an event', 'un evento', 'un événement') }), { status: { show: 'next', field: 'when' } })
 
-/** The programme of an event: sessions that name an entry of `events` and speakers of the brick `people`. */
-export const sessions = defOf(basics.sessions({ people: 'people' }), { item: t('Programmpunkt', 'session', 'una sesión', 'une session') })
+const session = t('Programmpunkt', 'a session', 'una sesión', 'une session')
+/**
+ * The programme of an event: one entry per session. `events` is the key of the events brick a session belongs to.
+ * `people` is the key of the brick with the speakers; without it the speakers are a text.
+ */
+export function sessions(o: PatternOptions & { events: string; people: string }): ReturnType<typeof sessionsWithPeople>
+export function sessions(o: PatternOptions & { events: string; people?: undefined }): ReturnType<typeof sessionsWithText>
+export function sessions(o: PatternOptions & { events: string; people?: string }) {
+  return o.people !== undefined ? sessionsWithPeople({ ...o, people: o.people }) : sessionsWithText(o)
+}
+const sessionsWithPeople = (o: PatternOptions & { events: string; people: string }) => defOf(basics.sessions(o), { item: session })
+const sessionsWithText = (o: PatternOptions & { events: string }) => defOf(basics.sessions({ label: o.label, events: o.events }), { item: session })
 
 /** Files for download, in the owner's order. */
-export const downloads = defOf(basics.downloads(), { item: t('Datei', 'file', 'un archivo', 'un fichier') })
+export const downloads = (o: PatternOptions = {}) => defOf(basics.downloads(o), { item: t('Datei', 'a file', 'un archivo', 'un fichier') })
 
 /** Questions and answers in the owner's order. */
-export const faq = defOf(basics.faq(), { item: t('Frage', 'question', 'una pregunta', 'une question') })
+export const faq = (o: PatternOptions = {}) => defOf(basics.faq(o), { item: t('Frage', 'a question', 'una pregunta', 'une question') })
 
 /** One list of photos, in the owner's order. A single. */
-export const gallery = defOf(basics.gallery())
+export const gallery = (o: PatternOptions = {}) => defOf(basics.gallery(o))
 
 /**
  * Weekly opening hours, closures, a closed day and the choice for public holidays. A single. Today shows today's
- * hours and follows the brick `hourPlans`; a site without hour plans writes `extend(hours, { status: { show: 'opening-hours' } })`.
+ * hours. `plans` is the key of an `hourPlans()` brick: its entries then replace the week for their dates.
  */
-export const hours = defOf(basics.hours({ plans: 'hourPlans' }))
+export const hours = (o: PatternOptions & { plans?: string } = {}) => defOf(basics.hours(o))
 
-/** Own weekly hours for a date range: a season, or new hours from a date. */
-export const hourPlans = defOf(basics.hourPlans(), { item: t('Zeitraum', 'period', 'un periodo', 'une période') })
+/** Own weekly hours for a date range: a season, or new hours from a date. The `hours()` brick names this brick in `plans`. */
+export const hourPlans = (o: PatternOptions = {}) => defOf(basics.hourPlans(o), { item: t('Zeitraum', 'a period', 'un periodo', 'une période') })

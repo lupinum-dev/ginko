@@ -8,8 +8,8 @@ import { collection, f } from '@lupinum/ginko'
 // The address of a page is a line in `entries` of ginko.config.ts: `pages: '/[slug]'`.
 export const pages = collection({
   label: { de: 'Seiten', en: 'Pages', fr: 'Pages' },
-  // The word for one entry: the tasks are named with it ("Seite bearbeiten", "Edit a page", "Modifier une page").
-  item: { de: 'Seite', en: 'page', fr: 'une page' },
+  // The words for one entry as they stand in a task: "Seite bearbeiten", "Edit a page", "Modifier une page".
+  item: { de: 'Seite', en: 'a page', fr: 'une page' },
   max: 50,
   fields: {
     title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 80 }),

@@ -7,11 +7,11 @@ import { collection, f } from '@lupinum/ginko'
 // (`pricing: onRequest`, no price shown); the build and the Studio refuse a fixed price without its amount.
 // `duration` (minutes) is for a service that takes a set time. `specs` are short facts as label and value
 // ("Warranty", "two years"). `contact` names the person in the site's `people` brick who answers enquiries about the
-// entry (the service desk for a repair, sales for a product). A site with a `downloads` brick takes
-// `servicesWithSheets`: an entry can then point to its product sheet.
-const sheet = f.ref({ de: 'Produktblatt', en: 'Product sheet', fr: 'Fiche produit' }, { to: 'downloads', optional: true })
+// entry (the service desk for a repair, sales for a product). `services({ downloads: 'downloads' })` names the site's
+// downloads brick by its key: an entry can then point to its product sheet there.
+const sheetIn = (downloads: string) => f.ref({ de: 'Produktblatt', en: 'Product sheet', fr: 'Fiche produit' }, { to: downloads, optional: true })
 
-/** The fields before the text; `servicesWithSheets` puts the product sheet between them and the text. */
+/** The fields before the text; with `downloads` the product sheet stands between them and the text. */
 const head = {
   title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 80 }),
   slug: f.slug({ de: 'Adresse', en: 'Address', fr: 'Adresse' }, { from: 'title' }),
@@ -33,7 +33,7 @@ const head = {
   specs: f.list({ de: 'Eckdaten', en: 'Key facts', fr: 'Caractéristiques' }, {
     optional: true,
     max: 12,
-    item: { de: 'Angabe', en: 'Fact', fr: 'Donnée' },
+    itemLabel: { de: 'Angabe', en: 'Fact', fr: 'Donnée' },
     hint: { de: 'Kurz, zum Beispiel „Garantie“ und „zwei Jahre“.', en: 'Short, for example “Warranty” and “two years”.', fr: 'Bref, par exemple « Garantie » et « deux ans ».' },
     fields: {
       label: f.text({ de: 'Bezeichnung', en: 'Label', fr: 'Libellé' }, { max: 40 }),
@@ -48,11 +48,12 @@ const head = {
   image: f.image({ de: 'Bild', en: 'Image', fr: 'Image' }, { optional: true }),
 }
 
-const body =f.markdown({ de: 'Text', en: 'Text', fr: 'Texte' }, { profile: 'page' })
+const body = f.markdown({ de: 'Text', en: 'Text', fr: 'Texte' }, { profile: 'page' })
 
 const common = {
   label: { de: 'Leistungen', en: 'Services', fr: 'Prestations' },
-  item: { de: 'Leistung', en: 'service', fr: 'une prestation' },
+  // The words for one entry as they stand in a task: "Leistung bearbeiten", "Edit a service", "Modifier une prestation".
+  item: { de: 'Leistung', en: 'a service', fr: 'une prestation' },
   max: 50,
   tasks: [
     { id: 'price', label: { de: 'Preis ändern', en: 'Change a price', fr: 'Modifier un prix' }, fields: ['pricing', 'price'] },
@@ -61,8 +62,15 @@ const common = {
   ],
 } as const
 
-/** The address of a service is a line in `entries` of ginko.config.ts: `services: '/services/[slug]'`. */
-export const services = collection({ ...common, fields: { ...head, body } })
+const plain = () => collection({ ...common, fields: { ...head, body } })
+const withSheets = (downloads: string) => collection({ ...common, fields: { ...head, sheet: sheetIn(downloads), body } })
 
-/** For a site with a `downloads` brick: an entry can point to its product sheet there. */
-export const servicesWithSheets = collection({ ...common, fields: { ...head, sheet, body } })
+/**
+ * The services brick. `downloads` is the key of the site's downloads brick; with it an entry has a `sheet` field.
+ * The address of a service is a line in `entries` of ginko.config.ts: `services: '/services/[slug]'`.
+ */
+export function services(o: { downloads: string }): ReturnType<typeof withSheets>
+export function services(o?: { downloads?: undefined }): ReturnType<typeof plain>
+export function services(o: { downloads?: string } = {}) {
+  return o.downloads !== undefined ? withSheets(o.downloads) : plain()
+}

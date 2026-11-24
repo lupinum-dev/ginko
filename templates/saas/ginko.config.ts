@@ -58,19 +58,19 @@ export default defineSite({
     // One file per release (content/changelog/), newest first: version, date and the text, which starts with one
     // sentence (the summary on the home page and in the feed), then `<!-- more -->`, then the changes under the
     // headings New, Improved and Fixed. In the Studio, Today shows how old the newest entry is.
-    changelog: extend(changelog, {
+    changelog: extend(changelog(), {
       status: { show: 'newest', field: 'date' },
       tasks: [
-        { id: 'add', kind: 'create', label: { de: 'Änderung eintragen', en: 'Add a release', fr: 'Ajouter une version' } },
+        { id: 'add', kind: 'add', label: { de: 'Änderung eintragen', en: 'Add a release', fr: 'Ajouter une version' } },
         { id: 'edit', fields: ['version', 'date', 'body'], label: { de: 'Eintrag bearbeiten', en: 'Edit a release', fr: 'Modifier une version' } },
       ],
     }),
     // Short lines at the top of every page ("New in 4.6: …"), each until a date (content/notices/).
-    notices,
+    notices: notices(),
     // The plans, each with a price per month and per year in `currency`, or "on request" (content/pricing/).
     pricing,
     // Questions and answers: billing, cancellation, data export, data location (content/faq/).
-    faq,
+    faq: faq(),
     // The first screen of the home page and its lists (content/home.md): what the product does and for whom, the link
     // to the free trial in the app, a picture of the product, its main features and the facts about security and data.
     home: single({
@@ -85,22 +85,22 @@ export default defineSite({
           default: 'https://app.planwerk.example/signup',
           hint: { de: 'Die Anmeldeseite der App.', en: 'The sign-up page of the app.', fr: 'La page d’inscription de l’application.' },
         }),
-        features: f.list({ de: 'Funktionen', en: 'Features', fr: 'Fonctionnalités' }, { max: 6, item: { de: 'Funktion', en: 'Feature', fr: 'Fonctionnalité' }, fields: point, default: [] }),
-        facts: f.list({ de: 'Sicherheit und Daten', en: 'Security and data', fr: 'Sécurité et données' }, { max: 4, item: { de: 'Punkt', en: 'Fact', fr: 'Point' }, fields: point, default: [] }),
+        features: f.list({ de: 'Funktionen', en: 'Features', fr: 'Fonctionnalités' }, { max: 6, itemLabel: { de: 'Funktion', en: 'Feature', fr: 'Fonctionnalité' }, fields: point, default: [] }),
+        facts: f.list({ de: 'Sicherheit und Daten', en: 'Security and data', fr: 'Sécurité et données' }, { max: 4, itemLabel: { de: 'Punkt', en: 'Fact', fr: 'Point' }, fields: point, default: [] }),
       },
     }),
     // Legal name, address, register entry, VAT number, phone and email for the footer, the imprint, the email of the
     // plan on request and the Organization JSON-LD (content/site.md).
-    site,
+    site: site(),
     // Privacy policy, terms of service and imprint: one file per text in content/legal/.
-    legal,
+    legal: legal(),
     // Product news, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
     // goes online. In the Studio, "Write a post" on Today.
-    posts: extend(posts, {
-      tasks: [{ id: 'write', kind: 'create', label: { de: 'Beitrag schreiben', en: 'Write a post', fr: 'Écrire un article' } }],
+    posts: extend(posts({ authors: 'people' }), {
+      tasks: [{ id: 'write', kind: 'add', label: { de: 'Beitrag schreiben', en: 'Write a post', fr: 'Écrire un article' } }],
     }),
     // The people who write the posts (content/people/). No photos: the site shows initials.
-    people,
+    people: people(),
     // Customer logos on the home page (content/logos/, the files in public/logos/).
     logos,
     // What customers say, on the home page (content/quotes/), with their permission.

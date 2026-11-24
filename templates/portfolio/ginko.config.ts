@@ -5,7 +5,7 @@
 import { defineSite, extend, f, single } from '@lupinum/ginko'
 import { legal, notices, people, posts, site } from '@lupinum/ginko/patterns'
 import { pages } from './app/bricks/pages.ts'
-import { projectsWithDetails } from './app/bricks/projects.ts'
+import { projects } from './app/bricks/projects.ts'
 import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'
 
@@ -50,26 +50,26 @@ export default defineSite({
     }),
     // Legal name, address, phone and email for the footer, the imprint, the "Start a project" email and the studio's
     // JSON-LD (content/site.md).
-    site,
+    site: site(),
     // Privacy policy and imprint: one file per text in content/legal/.
-    legal,
+    legal: legal(),
     // Short lines at the top of every page ("The Holm chair can now be made to order"), each until a date
     // (content/notices/).
-    notices,
+    notices: notices(),
     // The work, in the studio's order (content/projects/): client, year, place, scope, the text and the photos, each
     // with its description. The home page shows the first three. A project stays online until it is deleted; a new
     // one can wait as a draft (`draft: true` in its file), and Today lists the drafts.
-    projects: projectsWithDetails,
+    projects: projects({ details: true }),
     // The journal, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
     // goes online; in the Studio, Today shows how old the newest entry is, next to its write task (Today shows only
     // bricks with a task).
-    posts: extend(posts, {
+    posts: extend(posts({ authors: 'people' }), {
       label: { de: 'Journal', en: 'Journal' },
       status: { show: 'newest', field: 'date' },
-      tasks: [{ id: 'write', kind: 'create', label: { de: 'Journalbeitrag schreiben', en: 'Write a journal entry' } }],
+      tasks: [{ id: 'write', kind: 'add', label: { de: 'Journalbeitrag schreiben', en: 'Write a journal entry' } }],
     }),
     // The people of the studio (content/people/). No photos: the site shows initials.
-    people,
+    people: people(),
     // How a project runs, and any other page (content/pages/).
     pages,
   },

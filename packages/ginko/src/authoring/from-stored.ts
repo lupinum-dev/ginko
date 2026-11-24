@@ -11,7 +11,7 @@ import { DEF, type BrickDef, type CollectionDef, type CollectionStatusInput, typ
 function taskOf(task: Task, collection: boolean): TaskInput {
   const more = { ...('prefill' in task && task.prefill ? { prefill: task.prefill } : {}), ...(task.needsApproval ? { needsApproval: true } : {}) }
   if (task.kind === 'remove') return { id: task.id, label: task.label, kind: 'remove', ...more }
-  if (task.kind === 'create') return { id: task.id, label: task.label, kind: 'create', ...(task.fields ? { fields: task.fields } : {}), ...more }
+  if (task.kind === 'create') return { id: task.id, label: task.label, kind: 'add', ...(task.fields ? { fields: task.fields } : {}), ...more }
   // The written form asks "which entry" before every edit of a collection; a stored task without `pick` would change.
   if (collection !== (task.pick === true)) throw new Error(`defOf: the edit task “${task.id}” ${collection ? 'of a collection has no `pick: true`' : 'of a single has `pick`'}.`)
   return { id: task.id, label: task.label, kind: 'edit', fields: task.fields, ...more }

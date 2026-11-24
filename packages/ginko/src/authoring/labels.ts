@@ -8,8 +8,8 @@ import type { StandardTask } from './bricks.ts'
 export interface FieldTexts {
   label?: string
   hint?: string
-  /** The word for one row of a list. */
-  item?: string
+  /** The label of one row of a list. */
+  itemLabel?: string
   /** Labels of choice options by value. */
   options?: Record<string, string>
   /** The columns of a list. */
@@ -18,7 +18,7 @@ export interface FieldTexts {
 /** The texts of one brick in one language. */
 export interface BrickTexts {
   label?: string
-  /** The word for one entry of a collection. In French and Spanish with its article: "une prestation". */
+  /** The word for one entry as it stands in a task: "a service", "une prestation". */
   item?: string
   describe?: string
   fields?: Record<string, string | FieldTexts>
@@ -89,7 +89,7 @@ function translateField(field: Field, texts: ByLocale<FieldTexts>, path: string,
     out.options = out.options.map((o) => ({ ...o, label: withTexts(o.label, main, each(options, (t) => t[o.value])) }))
   }
   if (out.type === 'list') {
-    out.itemLabel = withTexts(out.itemLabel, main, each(texts, (t) => t.item))
+    out.itemLabel = withTexts(out.itemLabel, main, each(texts, (t) => t.itemLabel))
     out.of = translateFields(out.of, sub(texts, (t) => t.fields), path, ctx)
   }
   return out
@@ -110,22 +110,16 @@ export function translateBrick(key: string, brick: Brick, main: Locale, texts: B
   }
 }
 
-/** "Service" → "service", but "FAQ" stays. */
-const lower = (noun: string) => (/^\p{Lu}\p{Ll}/u.test(noun) ? noun[0]!.toLowerCase() + noun.slice(1) : noun)
-/** "service" → "a service", "event" → "an event". A word that brings its article or is written as a name keeps it. */
-const withArticle = (noun: string) => (/^(a|an|the|your|our) /i.test(noun) ? lower(noun) : `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${lower(noun)}`)
-
 /**
- * The words of the standard tasks, in the languages of the Studio. Measured on the hand-written labels of the 14
- * example sites (Nov 2026): German is "Hinweis hinzufügen", English "Add a notice", French "Ajouter une prestation",
- * Spanish "Añadir una persona". English gets its article here; French and Spanish need the word's gender, so there
- * the word is written with its article.
+ * The sentences of the standard tasks, in the languages of the Studio. The word for one entry (`item`) is put in as
+ * it is written, in every language: German "Hinweis" gives "Hinweis hinzufügen", English "a notice" gives "Add a
+ * notice", French "une prestation" gives "Ajouter une prestation". No article is added and no letter is changed.
  */
-const WORDS: Record<string, { entry: string } & Record<StandardTask, (noun: string, one: boolean) => string>> = {
-  de: { entry: 'Eintrag', add: (n) => `${n} hinzufügen`, edit: (n) => `${n} bearbeiten`, remove: (n) => `${n} entfernen` },
-  en: { entry: 'entry', add: (n, one) => `Add ${one ? withArticle(n) : lower(n)}`, edit: (n, one) => `Edit ${one ? withArticle(n) : lower(n)}`, remove: (n, one) => `Remove ${one ? withArticle(n) : lower(n)}` },
-  es: { entry: 'una entrada', add: (n) => `Añadir ${lower(n)}`, edit: (n) => `Editar ${lower(n)}`, remove: (n) => `Eliminar ${lower(n)}` },
-  fr: { entry: 'une entrée', add: (n) => `Ajouter ${lower(n)}`, edit: (n) => `Modifier ${lower(n)}`, remove: (n) => `Retirer ${lower(n)}` },
+const WORDS: Record<string, { entry: string } & Record<StandardTask, (words: string) => string>> = {
+  de: { entry: 'Eintrag', add: (w) => `${w} hinzufügen`, edit: (w) => `${w} bearbeiten`, remove: (w) => `${w} entfernen` },
+  en: { entry: 'an entry', add: (w) => `Add ${w}`, edit: (w) => `Edit ${w}`, remove: (w) => `Remove ${w}` },
+  es: { entry: 'una entrada', add: (w) => `Añadir ${w}`, edit: (w) => `Editar ${w}`, remove: (w) => `Eliminar ${w}` },
+  fr: { entry: 'une entrée', add: (w) => `Ajouter ${w}`, edit: (w) => `Modifier ${w}`, remove: (w) => `Retirer ${w}` },
 }
 const wordsOf = (locale: Locale) => WORDS[locale.split('-')[0] ?? '']
 
@@ -133,14 +127,13 @@ const wordsOf = (locale: Locale) => WORDS[locale.split('-')[0] ?? '']
 export const entryWord = (main: Locale): string => (wordsOf(main) ?? WORDS.en!).entry
 
 /**
- * The label of a standard task in every language the noun has: "Leistung hinzufügen", "Add a service". `one` says
- * that the noun is the word for one entry of a collection (else it is the label of a single). A language without
- * words gets no text; the Studio then shows the main language.
+ * The label of a standard task in every language `item` has: "Leistung hinzufügen", "Add a service". A language
+ * without words gets no text; the Studio then shows the main language.
  */
-export function standardLabel(id: StandardTask, noun: Label, main: Locale, one: boolean): Label {
-  const record = typeof noun === 'string' ? { [main]: noun } : noun
-  const made = Object.fromEntries(Object.entries(record).flatMap(([locale, word]) => (wordsOf(locale) ? [[locale, wordsOf(locale)![id](word, one)]] : [])))
-  // The main language always has a text: without words for it, the English form with the main-language noun.
-  if (!Object.hasOwn(made, main)) made[main] = WORDS.en![id](record[main] ?? Object.values(record)[0] ?? '', one)
-  return typeof noun === 'string' ? made[main]! : made
+export function standardLabel(id: StandardTask, item: Label, main: Locale): Label {
+  const record = typeof item === 'string' ? { [main]: item } : item
+  const made = Object.fromEntries(Object.entries(record).flatMap(([locale, words]) => (wordsOf(locale) ? [[locale, wordsOf(locale)![id](words)]] : [])))
+  // The main language always has a text: without words for it, the English sentence with the main-language word.
+  if (!Object.hasOwn(made, main)) made[main] = WORDS.en![id](record[main] ?? Object.values(record)[0] ?? '')
+  return typeof item === 'string' ? made[main]! : made
 }

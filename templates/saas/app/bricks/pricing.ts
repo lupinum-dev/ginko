@@ -31,7 +31,7 @@ const fields = {
   }),
   included: f.list({ de: 'Enthalten', en: 'Included', fr: 'Inclus' }, {
     max: 12,
-    item: { de: 'Punkt', en: 'Item', fr: 'Élément' },
+    itemLabel: { de: 'Punkt', en: 'Item', fr: 'Élément' },
     hint: { de: 'Kurz, ein Punkt pro Zeile.', en: 'Short, one item per row.', fr: 'Bref, un élément par ligne.' },
     fields: { item: f.text({ de: 'Punkt', en: 'Item', fr: 'Élément' }, { max: 100 }) },
   }),
@@ -47,7 +47,7 @@ const fields = {
 
 export const pricing = collection({
   label: { de: 'Preise', en: 'Pricing', fr: 'Tarifs' },
-  item: { de: 'Tarif', en: 'plan', fr: 'une offre' },
+  item: { de: 'Tarif', en: 'a plan', fr: 'une offre' },
   max: 6,
   fields,
   tasks: [

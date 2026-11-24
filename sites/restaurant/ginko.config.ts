@@ -3,8 +3,6 @@
 import { defineSite, f, single } from '@lupinum/ginko'
 import { events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '@lupinum/ginko-preset-gastro'
 
-const lunchBrick = lunch({ weekOf: '2026-10-05' })
-
 export default defineSite({
   name: 'Gasthaus zur Linde',
   url: 'https://ginko-demo-restaurant.vercel.app',
@@ -37,7 +35,7 @@ export default defineSite({
     hourPlans: hourPlans(),
     notices: notices(),
     // The cook enters the week's lunch menu; it goes live once the owner approves it (SPEC 17).
-    lunch: { ...lunchBrick, tasks: lunchBrick.tasks?.map((task) => ({ ...task, needsApproval: true })) },
+    lunch: lunch({ weekOf: '2026-10-05', needsApproval: true }),
     // Lunch weeks planned ahead, shown from their first day of the week (lunchWeekOn).
     lunchPlans: lunchPlans(),
     menu: menu(),

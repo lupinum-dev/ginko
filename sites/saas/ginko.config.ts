@@ -38,7 +38,7 @@ export default defineSite({
       fields: {
         headline: f.text('Überschrift', { max: 120, optional: true }),
         items: f.list('Funktionen', {
-          item: 'Funktion',
+          itemLabel: 'Funktion',
           fields: {
             title: f.text('Titel', { max: 80 }),
             text: f.longtext('Text', { max: 300 }),
@@ -58,7 +58,7 @@ export default defineSite({
         yearEur: f.money('Preis je Jahr (EUR)', { currency: 'EUR', optional: true }),
         yearChf: f.money('Preis je Jahr (CHF)', { currency: 'CHF', optional: true }),
         featured: f.boolean('Als beliebt markieren'),
-        features: f.list('Funktionen', { item: 'Funktion', fields: { text: f.text('Funktion', { max: 120 }) }, max: 20 }),
+        features: f.list('Funktionen', { itemLabel: 'Funktion', fields: { text: f.text('Funktion', { max: 120 }) }, max: 20 }),
         note: f.text('Hinweis zum Preis', { max: 120, optional: true }),
       },
       tasks: ['add', { id: 'price', label: 'Preis ändern', fields: ['priceEur', 'priceChf', 'yearEur', 'yearChf', 'note'] }, 'remove'],
