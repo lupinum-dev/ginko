@@ -1,9 +1,10 @@
 # Ginko
 
 Ginko is a content system for Nuxt websites. A site lists its content types in `ginko.config.ts` and
-reads its content from Markdown and data files in its own repository, or from the platform that
-Lupinum hosts, where owners, staff and AI agents edit it together. Languages, SEO, sitemaps, search
-and a link check come with it.
+reads its content from Markdown and data files in its own repository, or from the Ginko platform,
+where owners, staff and AI agents edit it together. You host the platform yourself: see [Host the
+platform](https://ginko.lupinum.com/docs/host-the-platform).
+Languages, SEO, sitemaps, search and a link check come with it.
 
 ```bash
 npm create ginko@latest my-site
@@ -27,10 +28,10 @@ Documentation: [ginko.lupinum.com](https://ginko.lupinum.com). Requirements: Nod
 | [`@lupinum/ginko-preset-gastro`](packages/ginko-preset-gastro) | Ready-made content types for restaurants: hours, menus, lunch, events |
 | [`create-ginko`](packages/create-ginko) | `npm create ginko`: starts a new site |
 
-The hosted platform lives here too, but is not published: `packages/ginko-server` (Convex backend),
-`packages/ginko-studio` (the editing app), `packages/ginko-editor` (its rich text editor)
-and `apps/platform` (the host). `sites/` holds the demo sites and
-`contracts/` their published schemas.
+The platform lives here too: `packages/ginko-server` (Convex backend), `packages/ginko-studio` (the
+editing app), `packages/ginko-editor` (its rich text editor) and `apps/platform` (the host of
+Lupinum's own platform). `npm create ginko@latest my-cms -- --platform` creates a project that
+runs it. `sites/` holds the demo sites and `contracts/` their published schemas.
 
 ## Work on it
 

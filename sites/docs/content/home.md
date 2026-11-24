@@ -1,6 +1,6 @@
 ---
 title: Content for Nuxt sites that owners keep current themselves.
-description: Ginko keeps a site apart from its content. Developers build with plain Nuxt. Owners change opening hours, menus and texts in the Studio, with approval and scheduling. Lupinum hosts the Studio and opens it by invitation; without it, the same bricks read Markdown from the repository.
+description: Ginko keeps a site apart from its content. Developers build with plain Nuxt. Owners change opening hours, menus and texts in the Studio, with approval and scheduling. You host the Studio yourself; without it, the same bricks read Markdown from the repository.
 install: npm create ginko@latest my-site -- --template starter
 links:
   - label: Get started
@@ -22,7 +22,7 @@ features:
     href: /docs/add-a-language
   - icon: lucide:shield-check
     title: Approval before it goes live
-    description: Changes can need a yes, go live at a set time, and can be taken back. The Studio is hosted by Lupinum, by invitation.
+    description: Changes can need a yes, go live at a set time, and can be taken back, in a Studio you host yourself.
     href: /docs/platform-for-owners
   - icon: lucide:component
     title: Components for Markdown

@@ -228,11 +228,11 @@ The menu and the opening hours are the core of this template; the home page and 
 
 ## Move to the Studio
 
-Ginko Studio is Lupinum's hosted editor: the owner marks "closed today", "fully booked tonight" or a dish as sold out
-from the phone at the pass, the cook enters the lunch week and the owner approves it, all without Git. It is open by
-invitation, and Lupinum moves your content with you. The site stays the same code: each brick in `ginko.config.ts`
-loses its `source: 'files'`, and its content then comes from the Studio. Until then, everything here works without
-it. Ask at [lupinum.com](https://lupinum.com).
+Ginko Studio is the editor of the Ginko platform: the owner marks "closed today", "fully booked tonight" or a dish as
+sold out from the phone at the pass, the cook enters the lunch week and the owner approves it, all without Git. You
+host the platform yourself: see [Host the platform](https://ginko.lupinum.com/docs/host-the-platform). The site stays
+the same code: each brick in `ginko.config.ts` loses its `source: 'files'`, and its content then comes from the
+Studio. Until then, everything here works without it.
 
 ## Updating
 

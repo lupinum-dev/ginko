@@ -1,6 +1,6 @@
 # Every pull request and push to main: types, unit tests, the demo sites' published schemas, and the
 # release gate (pack the released packages, install a new site from the tarballs, build and serve it).
-# Pull requests also run the platform e2e.
+# Pull requests also run the platform e2e and the install of a new platform project.
 name: ci
 
 on:
@@ -36,6 +36,34 @@ jobs:
       - run: pnpm test
       - run: pnpm check:contracts
       - run: pnpm check:pack
+
+  # convex/_generated of ginko-server is committed and ships in the package, so it must match the code. Codegen needs a
+  # deployment, so this pushes once to a fresh local anonymous backend (no account), then fails on any changed file.
+  server-codegen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec convex dev --once --typecheck disable
+        working-directory: packages/ginko-server
+        env:
+          CONVEX_AGENT_MODE: anonymous
+      - run: |
+          if [ -n "$(git status --porcelain -- packages/ginko-server/convex)" ]; then
+            git status --short -- packages/ginko-server/convex
+            git diff -- packages/ginko-server/convex
+            echo "::error::packages/ginko-server/convex/_generated is stale. Run 'CONVEX_AGENT_MODE=anonymous npx convex dev --once' in packages/ginko-server and commit the result."
+            exit 1
+          fi
 
   # Only production advisories that reach a published package block releases (scripts/audit-deps.mjs).
   audit:
@@ -144,12 +172,43 @@ jobs:
             ${{ runner.temp }}/e2e-logs
           if-no-files-found: ignore
 
+  # A person's first walk with the platform (scripts/check-platform-install.ts): `create-ginko --platform` from the packed
+  # packages in a folder outside the checkout, `npm install` from the tarballs, `npm run dev` (ginko-platform dev), sign-in
+  # as the admin with the code the terminal shows, a new site on the "New site" page. The logs and a screenshot are kept.
+  platform-install:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm check:platform-install
+        env:
+          GINKO_NO_LOAD_WAIT: '1'
+          GINKO_PLATFORM_INSTALL_LOGS: ${{ runner.temp }}/platform-install
+      - if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: platform-install-evidence
+          path: ${{ runner.temp }}/platform-install
+          if-no-files-found: ignore
+
   # The one required status check for the main branch ruleset, and the check release.yml waits for
-  # before it publishes. i18n-browser and platform-e2e are skipped outside pull requests, so `skipped` counts as passing.
+  # before it publishes. i18n-browser, platform-e2e and platform-install are skipped outside pull requests, so `skipped`
+  # counts as passing.
   ci:
     name: ci
     if: always()
-    needs: [check, audit, nuxt5, i18n-browser, platform-e2e]
+    needs: [check, server-codegen, audit, nuxt5, i18n-browser, platform-e2e, platform-install]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

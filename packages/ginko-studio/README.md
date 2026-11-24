@@ -1,6 +1,8 @@
 # @lupinum/ginko-studio
 
-> Internal: this package is not published to npm. It runs only on the Ginko platform that Lupinum hosts.
+You do not install this package by hand. A platform project from `npm create ginko@latest my-cms -- --platform`
+extends it, and `ginko-platform setup` deploys it to Vercel: the guide [Host the platform](https://ginko.lupinum.com/docs/host-the-platform) has the steps.
+The sections below are the reference for the layer, its environment variables and work on this repository.
 
 The Ginko platform UI as a [Nuxt layer](https://nuxt.com/docs/guide/going-further/layers): sign-in,
 quick tasks, full editor, preview and history. It talks to the Convex backend in
@@ -40,3 +42,10 @@ staging deployment, or preview builds turned off. See the
 | `BCN_AUTH_PROXY_IP_SECRET` | Required outside local development. The same secret as on the Convex deployment. |
 
 Prefer the `NUXT_PUBLIC_*` names on a host; when both names are set, they win.
+
+The Studio serves a public discovery document at `/.well-known/ginko-platform`: `{ "backend": <the Convex HTTP
+actions URL>, "version": <this package's version> }`. The `ginko` CLI reads it once per run, so a website's
+`GINKO_PLATFORM` can be the Studio's address; it sends releases to `backend`.
+
+`/connect` confirms `ginko connect`: the person types the code from the terminal, picks a site they manage (owner or
+admin) and confirms; the computer then gets a publishing key. The code is never part of the address.

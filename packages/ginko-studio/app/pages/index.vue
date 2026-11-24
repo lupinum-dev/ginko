@@ -3,7 +3,7 @@ import { api } from '#convex/api'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
-import { ChevronRightIcon, MailIcon, SearchIcon } from '@lucide/vue'
+import { ChevronRightIcon, MailIcon, PlusIcon, SearchIcon } from '@lucide/vue'
 import { readRecentSites } from '../composables/useRecentEntries'
 import { bySiteName, siteHost, siteMatches } from '../utils/sites'
 
@@ -12,6 +12,8 @@ const { t, locale } = useI18n()
 useHead(() => ({ title: `${t('sites.title')} · Ginko` }))
 
 const { data: sites, error } = await useConvexQuery(api.sites.mine)
+// Platform admins create sites. `sites.mine` cannot tell who is one while the platform has no site.
+const { data: mayCreate } = useConvexQuery(api.sites.mayCreate, {})
 // Open invitations for the signed-in address: signing in proves it, so no link is needed.
 const { data: invites } = useConvexQuery(api.invites.mine, {})
 const { mutate: acceptMine } = useConvexMutation(api.invites.acceptMine)
@@ -61,9 +63,12 @@ const groups = computed(() => [
         <h1 class="text-[22px] font-semibold tracking-tight">{{ t('sites.title') }}</h1>
         <p class="text-[15px] text-muted-foreground min-[900px]:text-sm">{{ t('sites.lede') }}</p>
       </div>
-      <div v-if="many" class="relative w-full sm:w-64">
-        <SearchIcon class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-        <Input v-model="search" type="search" class="pl-9" :aria-label="t('sites.search')" :placeholder="t('sites.search')" />
+      <div v-if="many || (mayCreate && sorted.length)" class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+        <div v-if="many" class="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
+          <SearchIcon class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input v-model="search" type="search" class="pl-9" :aria-label="t('sites.search')" :placeholder="t('sites.search')" />
+        </div>
+        <Button v-if="mayCreate && sorted.length" as-child variant="outline"><NuxtLink to="/new"><PlusIcon class="size-4" aria-hidden="true" />{{ t('sites.new.title') }}</NuxtLink></Button>
       </div>
     </div>
     <p v-if="problem" class="text-destructive" role="alert">{{ problem }}</p>
@@ -78,7 +83,12 @@ const groups = computed(() => [
       </ul>
     </section>
     <p v-if="error" class="text-destructive">{{ opErrorOf(error).message }}</p>
-    <p v-else-if="sites && sites.length === 0 && invites?.length === 0" class="text-muted-foreground">{{ t('sites.empty') }}</p>
+    <!-- A new platform: its admin starts with the first site. Anyone else without a site waits for an invitation. -->
+    <div v-else-if="sites && sites.length === 0 && mayCreate" class="grid justify-items-start gap-3 rounded-xl border bg-card px-4 py-5 sm:px-6">
+      <p class="max-w-[65ch] text-[15px] min-[900px]:text-sm">{{ t('sites.new.first') }}</p>
+      <Button as-child><NuxtLink to="/new"><PlusIcon class="size-4" aria-hidden="true" />{{ t('sites.new.title') }}</NuxtLink></Button>
+    </div>
+    <p v-else-if="sites && sites.length === 0 && invites?.length === 0 && mayCreate === false" class="text-muted-foreground">{{ t('sites.empty') }}</p>
     <template v-else-if="sorted.length">
       <section v-for="g in groups" :key="g.id" class="grid gap-2" :aria-labelledby="g.heading ? `sites-${g.id}` : undefined">
         <h2 v-if="g.heading" :id="`sites-${g.id}`" class="text-[13px] font-medium text-muted-foreground">{{ g.heading }}</h2>

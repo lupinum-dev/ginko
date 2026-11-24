@@ -1,5 +1,33 @@
 # @lupinum/ginko
 
+## 0.18.0
+
+### Minor Changes
+
+- [#150](https://github.com/lupinum-dev/ginko/pull/150) [`05c6945`](https://github.com/lupinum-dev/ginko/commit/05c69459b076ca87e9fee376098c10f3b15f66f7) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `ginko connect <address>`: after you confirm its code in the Studio, the website folder gets a publishing key, stored as the GitHub secret `GINKO_KEY` or shown once.
+
+- [#152](https://github.com/lupinum-dev/ginko/pull/152) [`ab3b70e`](https://github.com/lupinum-dev/ginko/commit/ab3b70e6ceb230f2de490c818553a4cde78d626c) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the `ginko files-export` command: it saves the schema and the content/ files of a site, with their images, as an export folder that a platform can import.
+
+- [#149](https://github.com/lupinum-dev/ginko/pull/149) [`d89413d`](https://github.com/lupinum-dev/ginko/commit/d89413d2b7ab21863e349bd91c3704587f44b808) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the `ginko-platform build` command: it builds the Studio of a platform project and, in production, first deploys the backend and starts its data migrations.
+
+- [#152](https://github.com/lupinum-dev/ginko/pull/152) [`ab3b70e`](https://github.com/lupinum-dev/ginko/commit/ab3b70e6ceb230f2de490c818553a4cde78d626c) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add a demo site to `ginko-platform dev`: the first start of a local backend without sites loads the site "Demo", so the Studio has content to edit at once. `--no-demo` leaves it out.
+
+- [#147](https://github.com/lupinum-dev/ginko/pull/147) [`103d424`](https://github.com/lupinum-dev/ginko/commit/103d4243c63e3ad0e9507a9efb0173eb1b3b4573) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the `ginko-platform dev` command: in a platform project made by `create-ginko --platform`, it starts a local backend without a Convex account and the Studio on http://localhost:3100, and prints the sign-in codes in the terminal.
+
+- [#149](https://github.com/lupinum-dev/ginko/pull/149) [`d89413d`](https://github.com/lupinum-dev/ginko/commit/d89413d2b7ab21863e349bd91c3704587f44b808) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change `GINKO_PLATFORM` to accept the Studio's address: `ginko release`, `check` and `export` read the Studio's discovery document and send their calls to the backend it names. The backend's own address keeps working.
+
+- [#152](https://github.com/lupinum-dev/ginko/pull/152) [`ab3b70e`](https://github.com/lupinum-dev/ginko/commit/ab3b70e6ceb230f2de490c818553a4cde78d626c) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the `ginko-platform import` command: in a platform project, it loads an export folder into a site without content, on the local backend or with `--prod` on the production deployment of `ginko-platform setup`.
+
+- [#149](https://github.com/lupinum-dev/ginko/pull/149) [`d89413d`](https://github.com/lupinum-dev/ginko/commit/d89413d2b7ab21863e349bd91c3704587f44b808) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the `ginko-platform setup` command: it puts a platform project online on Convex and Vercel, with sign-in mail through Resend, after four questions. `--dry-run` prints the steps first.
+
+- [#149](https://github.com/lupinum-dev/ginko/pull/149) [`d89413d`](https://github.com/lupinum-dev/ginko/commit/d89413d2b7ab21863e349bd91c3704587f44b808) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add a version note to `ginko release` and `ginko check`: when the platform runs an older Ginko minor than the site, they say so on stderr and in `warnings`, and continue.
+
+### Patch Changes
+
+- [#154](https://github.com/lupinum-dev/ginko/pull/154) [`ed2eb8e`](https://github.com/lupinum-dev/ginko/commit/ed2eb8ebc757f20bbfee8077fc6a3ecc690c38e5) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change ginko-platform build to say which rights the deploy key lacks when it cannot start the data migrations.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.18.0
+
 ## 0.17.1
 
 ### Patch Changes

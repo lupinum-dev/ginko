@@ -29,6 +29,9 @@ async function fixtures(s: S) {
   const invite = (await s.as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'geheim@example.com', role: 'staff', grants: [] }) as { invite: string }).invite
   const pushKey = await s.as.owner.mutation(api.release.createPushKey, { site: 'restaurant', label: 'ci', scopes: ['release'] })
   const agentKey = await s.as.owner.mutation(api.agent.createKey, { site: 'restaurant', label: 'ownerkey' })
+  // A computer's pending `ginko connect` request; the stranger knows its code but may approve it only for their own site.
+  const connectCode = 'RSTA-URNT'
+  await s.t.run((ctx) => ctx.db.insert('connectRequests', { deviceHash: 'h', userCode: 'RSTAURNT', label: 'linde-website', expiresAt: Date.now() + 60_000, state: 'pending' }))
   const view = (await s.as.owner.mutation(api.views.save, { site: 'restaurant', brick: 'menu', name: 'GEHEIM-VIEW', query: {} }) as { id: string }).id
   // A removed entry for entries.purge, and a notice that points at the Saibling, so entries.usedBy has a use to leak.
   const removed = s.entries['menu-schnitzel']!
@@ -43,7 +46,7 @@ async function fixtures(s: S) {
     await ctx.db.patch(user, { data: { ...row.data, dish: entry } })
   })
   expect(await s.as.owner.query(api.entries.usedBy, { site: 'restaurant', entry })).toMatchObject([{ entry: user }])
-  return { entry, file: file as string, folder: folder as string, change: save.change, proposal: proposal.proposal, release, member: member as string, invite, pushKey, agentKey, view, removed, user }
+  return { entry, file: file as string, folder: folder as string, change: save.change, proposal: proposal.proposal, release, member: member as string, invite, pushKey, agentKey, view, removed, user, connectCode }
 }
 
 type Fx = Awaited<ReturnType<typeof fixtures>>
@@ -108,6 +111,7 @@ const calls: Call[] = [
   { fn: 'entries.titles', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
   { fn: 'entries.ofBricks', kind: 'query', args: (site) => ({ site, bricks: ['menu', 'hours', 'notices'] }) },
   { fn: 'release.createPushKey', kind: 'mutation', args: (site) => ({ site, label: 'x', scopes: ['release', 'export'] }) },
+  { fn: 'connect.approve', kind: 'mutation', args: (site, f) => ({ site, code: f.connectCode }) },
   { fn: 'release.revokePushKey', kind: 'mutation', args: (site, f) => ({ site, key: f.pushKey.id }) },
   { fn: 'members.list', kind: 'query', args: (site) => ({ site }) },
   { fn: 'members.setGrants', kind: 'mutation', args: (site, f) => ({ site, member: f.member, grants: [] }) },
@@ -157,7 +161,7 @@ const SECRETS = ['GEHEIM', 'Saibling', 'Frittaten', 'Gasthaus', 'koch@example.co
 async function snapshot(s: S) {
   return s.t.run(async (ctx) => {
     const out: Record<string, string[]> = {}
-    for (const table of ['sites', 'entries', 'memberships', 'invites', 'agentKeys', 'pushKeys', 'uploads', 'folders', 'proposals', 'releases', 'views', 'changes', 'fileRefs', 'admins', 'uploadTickets'] as const) {
+    for (const table of ['sites', 'entries', 'memberships', 'invites', 'agentKeys', 'pushKeys', 'connectRequests', 'uploads', 'folders', 'proposals', 'releases', 'views', 'changes', 'fileRefs', 'admins', 'uploadTickets'] as const) {
       const rows = await ctx.db.query(table).collect()
       out[table] = rows.filter((r) => (r as { site?: unknown }).site === s.site || table === 'sites' && r._id === s.site || table === 'admins').map((r) => JSON.stringify(r)).sort()
     }
@@ -212,7 +216,10 @@ const NO_SITE: Record<string, string> = {
   'invites.mine': "invites to the caller's own address",
   'sites.mine': "the caller's own memberships",
   'sites.create': 'makes a new site for the caller',
+  'sites.mayCreate': 'answers only whether the caller is a platform admin',
   'mail.signInAvailable': 'answers only whether mail is set up',
+  'connect.lookup': 'names a computer request by the code the caller typed; it holds no site (connect.approve is probed above)',
+  'connect.decline': 'ends a computer request by the code the caller typed; it holds no site and makes no key',
 }
 
 // Wrong behaviour caught: a new public function ships without a tenant probe, because nobody added it to `calls`.

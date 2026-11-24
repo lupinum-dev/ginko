@@ -12,6 +12,7 @@ vi.mock('node:child_process', async (original) => ({ ...(await original<typeof i
 vi.mock('../../src/cli/local.ts', async (original) => ({ ...(await original<typeof import('../../src/cli/local.ts')>()), runOnce: vi.fn() }))
 
 const { runDev } = await import('../../src/cli/dev.ts')
+const { main: platformMain } = await import('../../src/cli/ginko-platform.ts')
 const { runOnce } = await import('../../src/cli/local.ts')
 
 const CORE = pathToFileURL(join(import.meta.dirname, '../../src/core/index.ts')).href
@@ -71,7 +72,7 @@ const atomicSave = (source: string) => {
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'ginko-dev-'))
   mkdirSync(join(dir, 'packages/ginko-server'), { recursive: true })
-  writeFileSync(join(dir, 'packages/ginko-server/package.json'), '{"name":"@lupinum/ginko-server"}\n')
+  writeFileSync(join(dir, 'packages/ginko-server/convex.json'), '{"functions":"convex/"}\n')
   mkdirSync(join(dir, 'sites/demo'), { recursive: true })
   configPath = join(dir, 'sites/demo/ginko.config.ts')
   writeFileSync(configPath, config())
@@ -83,7 +84,7 @@ beforeEach(() => {
   fakeConvex()
 })
 
-const start = () => { finished = runDev({ configPath, log: (line) => lines.push(line) }) }
+const start = () => { finished = runDev({ configPath, backendDir: join(dir, 'packages/ginko-server'), log: (line) => lines.push(line) }) }
 
 afterEach(async () => {
   process.emit('SIGINT')
@@ -148,10 +149,57 @@ describe('local:dev watches the config', { timeout: 60_000 }, () => {
   })
 })
 
-describe('local:dev with another target than the local one', () => {
-  it('stops before it starts any process', async () => {
-    vi.stubEnv('CONVEX_DEPLOYMENT', 'dev:something-cloud')
-    await expect(runDev({ configPath, log: () => undefined })).rejects.toThrow(/stopped.*dev:something-cloud/)
+// Wrong behaviour caught: under `npm run dev` a Ctrl-C arrives twice (npm forwards it). With the listeners gone after
+// the first, Node's default action ends the process before the SIGKILL fallback, and a child that ignores SIGTERM keeps
+// its ports. Signals are emitted here, so the default action itself cannot run: the test checks that the listeners stay
+// until the children ended and that the fallback kills the child.
+describe('stopping', () => {
+  it('keeps the signal listeners and sends SIGKILL to a child that ignores SIGTERM', { timeout: 20_000 }, async () => {
+    const kill = vi.spyOn(process, 'kill').mockImplementation(() => true)
+    let pid = 4000
+    spawn.mockImplementation(() => {
+      const child = Object.assign(new EventEmitter(), { stdout: new PassThrough(), stderr: new PassThrough(), exitCode: null, signalCode: null, pid: ++pid })
+      setImmediate(() => child.stdout.write('Convex functions ready!\n'))
+      return child
+    })
+    try {
+      start()
+      await waitFor(() => pushes.length === 1, 'first push')
+      pushes[0]!.finish()
+      await waitFor(() => lines.some((l) => l.includes('local:dev is running')), 'ready')
+      const listeners = process.listenerCount('SIGINT')
+      process.emit('SIGINT')
+      process.emit('SIGINT')
+      expect(await finished).toBe(0)
+      expect(process.listenerCount('SIGINT')).toBe(listeners)
+      expect(kill.mock.calls.filter(([, signal]) => signal === 'SIGTERM').map(([target]) => target)).toEqual([-4001, -4002, -4003])
+      await waitFor(() => kill.mock.calls.some(([, signal]) => signal === 'SIGKILL'), 'the SIGKILL fallback')
+      expect(kill.mock.calls.filter(([, signal]) => signal === 'SIGKILL').map(([target]) => target)).toEqual([-4001, -4002, -4003])
+    } finally {
+      kill.mockRestore()
+    }
+  })
+})
+
+// Wrong behaviour caught: a local command writes the sign-in secrets into a cloud deployment, or `convex dev` first
+// contacts it. Both layouts: the monorepo (packages/ginko-server) and a platform project (convex.json at its root).
+describe('another target than the local one', () => {
+  beforeEach(() => { vi.stubEnv('CONVEX_DEPLOYMENT', 'dev:something-cloud') })
+
+  it('local:dev in the monorepo stops before it starts any process', async () => {
+    await expect(runDev({ configPath, backendDir: join(dir, 'packages/ginko-server'), log: () => undefined })).rejects.toThrow(/stopped.*dev:something-cloud/)
+    expect(spawn).not.toHaveBeenCalled()
+    expect(runOnce).not.toHaveBeenCalled()
+  })
+
+  it('ginko-platform dev in a platform project stops before it starts any process', async () => {
+    const host = join(dir, 'my-cms')
+    mkdirSync(host)
+    writeFileSync(join(host, 'convex.json'), '{"functions":"node_modules/@lupinum/ginko-server/convex/"}\n')
+    const errors: string[] = []
+    const code = await platformMain(['dev'], { cwd: host, log: () => undefined, error: (line) => errors.push(line) })
+    expect(code).toBe(2)
+    expect(errors.join('\n')).toMatch(/ginko-platform dev stopped.*dev:something-cloud/)
     expect(spawn).not.toHaveBeenCalled()
     expect(runOnce).not.toHaveBeenCalled()
   })

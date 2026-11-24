@@ -233,11 +233,12 @@ Links in the content name pages by their key (`[contact]($page.team)`). After yo
 
 ## Move to the Studio
 
-Ginko Studio is Lupinum's hosted editor: your team posts a job ad or a news post from the browser, changes a price or
-uploads a new product sheet, and the Today page lists the jobs that end within 7 days (also by email on Sundays) and
-how old the newest post is. It is open by invitation, and Lupinum moves your content with you. The site stays the same
-code: each brick in `ginko.config.ts` loses its `source: 'files'`, and its content then comes from the Studio. Until
-then, everything here works without it. Ask at [lupinum.com](https://lupinum.com).
+Ginko Studio is the editor of the Ginko platform: your team posts a job ad or a news post from the browser, changes a
+price or uploads a new product sheet, and the Today page lists the jobs that end within 7 days (also by email on
+Sundays) and how old the newest post is. You host the platform yourself: see [Host the
+platform](https://ginko.lupinum.com/docs/host-the-platform). The site stays the same code: each brick in
+`ginko.config.ts` loses its `source: 'files'`, and its content then comes from the Studio. Until then, everything here
+works without it.
 
 ## Updating
 

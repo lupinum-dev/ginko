@@ -82,7 +82,7 @@ describe('local:import', () => {
   // Wrong behaviour caught: every import prints a schema warning header with nothing under it, which reads like an error.
   it('prints no schema warning when the schema push has none', async () => {
     const { logs } = await roundTrip(answer([file('up1')]))
-    expect(logs).toEqual(['Schema “linde” pushed to the local platform.', '1 files in local storage.', 'Entries: 1/1'])
+    expect(logs).toEqual(['Schema “linde” pushed to the local platform.', '1 files stored.', 'Entries: 1/1'])
   })
 })
 

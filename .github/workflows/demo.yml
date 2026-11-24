@@ -1,12 +1,15 @@
 # The demo platform lupinum-ginko-demo (internals/decisions.md D55): every template runs there as a site with its
 # content in the Studio. Its Vercel project is linked to main: each production build deploys the Convex backend, then
-# the Studio (apps/platform/scripts/vercel-build.sh); the template sites deploy through their own Vercel Git links.
-# Here, on each push to main, every template site gets its schema (`ginko release` with GINKO_CONTENT=platform, the
-# path a client site takes too); a release that needs backend code the Vercel build has not deployed yet fails, and a
+# the Studio (`ginko-platform build` in apps/platform); the template sites deploy through their own Vercel Git links.
+# The platform and the sites build only when main holds a new release (D70, scripts/vercel-ignore-template.ts). Here,
+# on those same pushes, every template site gets its schema (`ginko release` with GINKO_CONTENT=platform, the path a
+# client site takes too); a release that needs backend code the Vercel build has not deployed yet fails, and a
 # run by hand repeats it. Every Monday night, and when started by hand, the template sites get their content back from
 # git with this week's dates (`pnpm templates demo-reset`). The Monday run resets every site and releases none. By hand,
 # the input `site` picks one template (release and reset of that site only) or `all` (release and reset of every site).
 # A reset also ends the access the demos gave: members and invites without a `.test` address go (D65).
+# A run by hand or by the schedule works from the commit of the last release, not from main: that is the code the
+# demo runs, so the schema and the content fit it.
 # Environment `demo`: secret DEMO_CONVEX_DEPLOY_KEY (the demo deployment only, for the reset), one push key per
 # template site, DEMO_GINKO_KEY_<TEMPLATE>, named one by one in the release step, and variable DEMO_PLATFORM (the
 # platform's address: the demo Convex deployment's .convex.site URL). One whole secret per key: GitHub masks a secret
@@ -50,14 +53,33 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          # The whole history: the next step looks for the last release in it.
+          fetch-depth: 0
+      # Not a push: work from the commit of the last release (the last change of the version), see the top.
+      - if: github.event_name != 'push'
+        run: |
+          git checkout --detach "$(git log -1 --format=%H -G '"version":' -- packages/ginko/package.json)"
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           check-latest: true
           package-manager-cache: false
-      - run: corepack enable pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter ./templates/${{ matrix.template }} exec ginko release
+      # A push releases the schemas only when it holds a release, because the sites and the platform build only then.
+      # The script is their Vercel ignore step: exit 1 means "build". A run by hand always releases.
+      - id: go
+        run: |
+          if [ "$EVENT" != push ] || ! node scripts/vercel-ignore-template.ts; then echo "release=true" >> "$GITHUB_OUTPUT"; fi
+        env:
+          EVENT: ${{ github.event_name }}
+          VERCEL_ENV: production
+          VERCEL_GIT_PREVIOUS_SHA: ${{ github.event.before }}
+          VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
+      - if: steps.go.outputs.release == 'true'
+        run: corepack enable pnpm
+      - if: steps.go.outputs.release == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.go.outputs.release == 'true'
+        run: pnpm --filter ./templates/${{ matrix.template }} exec ginko release
         env:
           GINKO_CONTENT: platform
           # The site's address in the released schema (site-url.ts): the template's Vercel production address.
@@ -77,6 +99,12 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          # The whole history: the next step looks for the last release in it.
+          fetch-depth: 0
+      # Not a push: work from the commit of the last release (the last change of the version), see the top.
+      - if: github.event_name != 'push'
+        run: |
+          git checkout --detach "$(git log -1 --format=%H -G '"version":' -- packages/ginko/package.json)"
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
@@ -119,6 +147,12 @@ jobs:
         with:
           path: ginko
           persist-credentials: false
+          fetch-depth: 0
+      # The tooling of the last release, like the jobs above.
+      - if: steps.key.outputs.set == 'true'
+        run: |
+          git checkout --detach "$(git log -1 --format=%H -G '"version":' -- packages/ginko/package.json)"
+        working-directory: ginko
       - if: steps.key.outputs.set == 'true'
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:

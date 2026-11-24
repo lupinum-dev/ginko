@@ -1,0 +1,6 @@
+{
+  "functions": "node_modules/@lupinum/ginko-server/convex/",
+  "node": {
+    "externalPackages": ["sharp"]
+  }
+}

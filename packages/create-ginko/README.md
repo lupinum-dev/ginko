@@ -47,6 +47,28 @@ The command always says which starter and languages it used. An unknown option, 
 with exit code 2 (a usage error, as in the `ginko` CLI) and creates nothing. A folder that exists and is not
 empty stops with exit code 1.
 
+## A platform project
+
+`--platform` creates a folder that runs the Ginko platform, the Studio and its backend, instead of a site:
+
+```bash
+npm create ginko@latest my-cms -- --platform
+cd my-cms
+npm install
+npm run dev
+```
+
+`npm run dev` runs `ginko-platform dev`: a local Convex backend (no Convex account needed) and the Studio on
+http://localhost:3100. Sign in as `admin@example.test`; the sign-in code appears in the terminal. The first start
+loads a demo site to edit at once (`npm run dev -- --no-demo` leaves it out).
+`npm run dev -- --verbose` shows all output of the backend and the Studio from the start. The folder holds
+`package.json` (`@lupinum/ginko`, `@lupinum/ginko-server` and `@lupinum/ginko-studio` at this release's version),
+`nuxt.config.ts`, `convex.json` (the functions come from `node_modules/@lupinum/ginko-server/convex/`),
+`pnpm-workspace.yaml` (pnpm must install with `nodeLinker: hoisted`), `vercel.json`, `.gitignore`, `.vercelignore` and a `README.md`. npm is tested;
+yarn and bun are not. `--platform` takes no other option. `npx ginko-platform setup` puts the platform online
+(Convex, Vercel and Resend accounts needed; the project's README explains it). `npx ginko-platform import` loads the
+content of a website (from `npx ginko files-export`) into one of its sites.
+
 ## Presets (deprecated)
 
 `--preset` still works for now and prints a note; use `--template` instead.

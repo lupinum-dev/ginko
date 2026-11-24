@@ -1,5 +1,6 @@
-// `pnpm local:files-export` (monorepo only): the Markdown/YAML files of a site as a `ginko export` folder, so that
-// `pnpm local:import` can load them into the local platform and the Studio shows the site's file content.
+// `ginko files-export` (and `pnpm local:files-export` in the monorepo): the Markdown/YAML files of a site as a
+// `ginko export` folder, so that `ginko-platform import` (or `pnpm local:import`) can load them into a site of a platform
+// and the Studio shows the site's file content.
 // The files are read by the same code as the site's build (@lupinum/ginko-content readContent); nothing is parsed here.
 // Every brick of the config counts as file content from `content/<key>/` next to the config, whatever its `source` is:
 // the site will move those bricks to the platform afterwards, so the exported schema has no `source`.
@@ -114,9 +115,9 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
     })
   }
   const problems = [
-    ...(heic.length ? [`The Files library cannot read HEIC photos: ${heic.join(', ')}. Save each photo as JPEG (on an iPhone: Settings › Camera › Formats › “Most Compatible”) and run local:files-export again.`] : []),
-    ...(refused.length ? [`These images cannot go into the Files library (it takes JPEG, PNG and WebP images and PDF files): ${refused.join(', ')}. Convert them, for example to WebP, and run local:files-export again.`] : []),
-    ...(tooLarge.length ? [`These files are larger than the Files library takes (images ${limitOf('image') / 1024 / 1024} MB, PDF files ${limitOf('file') / 1024 / 1024} MB): ${tooLarge.join(', ')}. Make them smaller and run local:files-export again.`] : []),
+    ...(heic.length ? [`The Files library cannot read HEIC photos: ${heic.join(', ')}. Save each photo as JPEG (on an iPhone: Settings › Camera › Formats › “Most Compatible”) and run files-export again.`] : []),
+    ...(refused.length ? [`These images cannot go into the Files library (it takes JPEG, PNG and WebP images and PDF files): ${refused.join(', ')}. Convert them, for example to WebP, and run files-export again.`] : []),
+    ...(tooLarge.length ? [`These files are larger than the Files library takes (images ${limitOf('image') / 1024 / 1024} MB, PDF files ${limitOf('file') / 1024 / 1024} MB): ${tooLarge.join(', ')}. Make them smaller and run files-export again.`] : []),
   ]
   // Nothing is written before every file passed: a refused export leaves the folder as it was.
   if (problems.length) throw new CliError(problems.join('\n'))

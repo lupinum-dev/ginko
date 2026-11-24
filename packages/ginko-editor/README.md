@@ -1,6 +1,7 @@
 # @lupinum/ginko-editor
 
-> Internal: this package is not published to npm. It runs only on the Ginko platform that Lupinum hosts.
+You do not install this package by hand: the Studio ([`@lupinum/ginko-studio`](../ginko-studio)) depends on it. To
+run the platform, see [Host the platform](https://ginko.lupinum.com/docs/host-the-platform).
 
 The editing logic for [Ginko](https://github.com/lupinum-dev/ginko/tree/main/packages/ginko) bricks,
 without any UI. The form components (one per field type, built on shadcn-vue) live in the Studio

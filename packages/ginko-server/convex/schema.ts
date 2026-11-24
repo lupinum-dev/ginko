@@ -274,6 +274,7 @@ export default defineSchema({
     decidedAt: v.optional(v.number()),
   }).index('by_site_status', ['site', 'status']).index('by_decided', ['decidedAt']),
 
+  /** Content migrations that a site's own config sent with a release (SPEC 5.1), per site. Not the server's own data migrations: those are `serverMigrations`. */
   migrationsApplied: defineTable({
     site: v.id('sites'),
     id: v.string(),
@@ -282,6 +283,27 @@ export default defineSchema({
     fingerprint: v.string(),
     schemaRev: v.number(),
   }).index('by_site_id', ['site', 'id']),
+
+  /**
+   * One row per run of a one-time data migration of the platform (lib/migrations.ts, started after each deploy by
+   * `migrations:runPending`). A stopped run (failed or canceled) is not a state here: it is the state of `job`.
+   */
+  serverMigrations: defineTable({
+    /** The migration's name in the list (`MIGRATIONS`), never reused. */
+    name: v.string(),
+    state: v.union(v.literal('running'), v.literal('done')),
+    /** Where the next page starts; null: from the beginning. */
+    cursor: v.union(v.string(), v.null()),
+    /** The scheduled next page while running. */
+    job: v.optional(v.id('_scheduled_functions')),
+    pages: v.number(),
+    /** The first start plus every restart after a stop. */
+    attempts: v.number(),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+    /** Recorded as done on a fresh deployment: there was nothing to migrate, nothing ran. */
+    baseline: v.optional(v.boolean()),
+  }),
 
   /** A one-time upload ticket (SPEC 4.3): who may store one file for which site, until when. Only its hash is kept. */
   uploadTickets: defineTable({
@@ -364,6 +386,27 @@ export default defineSchema({
     /** When a CLI route last accepted the key, stamped at most once an hour (routes/key.ts). */
     lastUsedAt: v.optional(v.number()),
   }).index('by_hash', ['hash']).index('by_site', ['site']),
+
+  /**
+   * `ginko connect` (connect.ts): a computer asks for a publishing key, a person confirms its code in the Studio, the
+   * computer's next poll gets the key. Only the SHA-256 of the device code is stored; the key does not exist before
+   * that poll. `site`, `approvedBy`, `approvedAt` are set by the approval. Rows are deleted after `expiresAt`.
+   */
+  connectRequests: defineTable({
+    deviceHash: v.string(),
+    /** 8 characters without look-alikes, stored without the hyphen. Not a secret: it only names the request. */
+    userCode: v.string(),
+    label: v.string(),
+    expiresAt: v.number(),
+    state: v.union(v.literal('pending'), v.literal('approved'), v.literal('declined'), v.literal('used')),
+    site: v.optional(v.id('sites')),
+    approvedBy: v.optional(v.string()),
+    approvedAt: v.optional(v.number()),
+  }).index('by_device', ['deviceHash']).index('by_code', ['userCode']).index('by_site', ['site']).index('by_state_expires', ['state', 'expiresAt']).index('by_expires', ['expiresAt']),
+
+  /** Wrong connect codes per signed-in person in a fixed 10-minute window (connect.ts); `window` = its start in ms. */
+  connectTries: defineTable({ user: v.string(), window: v.number(), count: v.number() })
+    .index('by_user_window', ['user', 'window']).index('by_window', ['window']),
 
   /** A saved list view of one person (SPEC 4.2 views): a filter and sort of a brick's entry list. Never shared. */
   views: defineTable({

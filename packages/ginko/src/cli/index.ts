@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// The `ginko` command: `ginko check | release | export | prepare-import`. Output and exit codes: run.ts.
+// The `ginko` command: `ginko check | release | export | files-export | prepare-import | connect`. Output and exit
+// codes: run.ts.
 // Reads GINKO_PLATFORM (or NUXT_PUBLIC_GINKO_PLATFORM), GINKO_KEY, GINKO_COMMIT (or GITHUB_SHA), GINKO_BRANCH and
 // GINKO_REMOTE from the environment; it does not read .env files.
 import { existsSync, readFileSync } from 'node:fs'
@@ -7,12 +8,15 @@ import { readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { loadConfig } from './config.ts'
 import { check } from './check.ts'
+import { connect, realConnectIO, type ConnectIO } from './connect.ts'
 import { exportSite, siteOfKey } from './export.ts'
+import { filesExport } from './files-export.ts'
 import { defaultDir } from './model.ts'
 import { CliError } from './model.ts'
 import { prepareImport } from './prepare-import.ts'
 import { release } from './release.ts'
-import { connectPlatform, env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ExitCode } from './run.ts'
+import { versionNote } from './platform.ts'
+import { connectPlatform, env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ConnectedPlatform, type ExitCode } from './run.ts'
 
 const USAGE = `Usage: ginko <command> [--config <file>]
 
@@ -24,11 +28,18 @@ Commands:
                      GINKO_COMMIT (or GITHUB_SHA). Deploy the site only when it prints "deploy":true.
   export [folder]    Save the schema, entries and files from production to a new or empty folder
                      (default: ginko-export-<site>-<yyyy-mm-dd>). Needs GINKO_PLATFORM and GINKO_KEY.
+  files-export [folder]
+                     Save the schema and the content/ files (with the images they use) to a new or empty folder in
+                     the export format (default: ginko-export-<site>-files). Writes nothing else. Load it into a
+                     site of your platform with \`ginko-platform import\`, in the platform project.
   prepare-import <folder> --map <map.json>
-                     Turn a folder in the export format, filled from an old site, into one that Lupinum can import:
-                     downloads images into files/, renames Markdown components, writes redirects.json. Rewrites
+                     Turn a folder in the export format, filled from an old site, into one that
+                     \`ginko-platform import\` can load: downloads images into files/, renames Markdown components, writes redirects.json. Rewrites
                      export.json (backup: export.json.bak); a second run changes nothing. Needs --config for
                      redirects to entries and for the list of unknown components. Exit 1 when an image failed.
+  connect <address>  Get a publishing key for this website folder from the Studio at <address>: confirm the code it
+                     shows on the page of the Studio, then it stores the key as the GitHub secret GINKO_KEY (with gh, after
+                     a yes) or shows it once. Writes no file.
 
 Options:
   --map <file>       JSON map for prepare-import (all keys optional): { "images": { "folder" },
@@ -37,6 +48,7 @@ Options:
   -h, --help         Show this help
   --version          Show the version
 
+GINKO_PLATFORM is the Studio's address; the backend's own address (https://<deployment>.convex.site) works too.
 Every run prints one JSON line on stdout. Exit codes: 0 ok, 1 invalid or rejected, 2 usage,
 3 platform unavailable (run again), 4 key not allowed.
 `
@@ -66,7 +78,15 @@ async function branchHead(deps: CliDeps): Promise<string> {
 
 const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms))
 
-export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCode> {
+/** The version note (versionNote) on stderr, and for the JSON line's `warnings`. Uses the run's one discovery call. */
+async function versionWarnings(platform: ConnectedPlatform, deps: CliDeps): Promise<string[]> {
+  const note = versionNote((await platform.discovery()).version, version())
+  if (!note) return []
+  deps.log(note)
+  return [note]
+}
+
+export function main(argv: string[], deps: CliDeps = realDeps(), io: ConnectIO = realConnectIO()): Promise<ExitCode> {
   const configPathOf = (args: Args) => resolve(args.config ?? 'ginko.config.ts')
 
   return runCli(argv, deps, {
@@ -83,16 +103,19 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const offline = args.flags.has('--offline')
           const platformBricks = Object.values(config.bricks).some((b) => b.source !== 'files')
           const compared = platformBricks && !offline
+          // Set only when check reached the comparison (it connects after the local checks passed).
+          const connected: ConnectedPlatform[] = []
           const ok = await check({
             config,
-            connect: compared ? () => connectPlatform(deps) : undefined,
+            connect: compared ? () => { connected.push(connectPlatform(deps)); return connected[0]! } : undefined,
             root: dirname(configPath),
             fetch: deps.fetch,
             log: deps.log,
           })
           if (platformBricks && offline) deps.log('Skipped the comparison with production (--offline).')
+          const warnings = connected[0] ? await versionWarnings(connected[0], deps) : []
           if (!ok) throw new CliError('ginko check found problems. Each one is listed on stderr.')
-          return { compared }
+          return { compared, ...(warnings.length ? { warnings } : {}) }
         },
       },
       release: {
@@ -101,7 +124,11 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const commit = env(deps, ...COMMIT_ENV)
           if ((await branchHead(deps)) !== commit) return { deploy: false, reason: 'superseded' }
           const config = await loadConfig(configPathOf(args))
-          return release({ config, commit, platform: connectPlatform(deps), branchHead: () => branchHead(deps), sleep, log: deps.log })
+          const platform = connectPlatform(deps)
+          // Before the release: when an older platform rejects it, the sentence is already on stderr.
+          const warnings = await versionWarnings(platform, deps)
+          const result = await release({ config, commit, platform, branchHead: () => branchHead(deps), sleep, log: deps.log })
+          return { ...result, ...(warnings.length ? { warnings } : {}) }
         },
       },
       // Works on the hosted content only, so it needs no config.
@@ -112,6 +139,10 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const site = siteOfKey(env(deps, 'GINKO_KEY'))
           return exportSite({ platform, site, dir: args.folder ?? defaultDir(site, new Date()), fetch: deps.fetch, log: deps.log })
         },
+      },
+      'files-export': {
+        folder: 'optional',
+        run: (args) => filesExport({ config: configPathOf(args), ...(args.folder ? { dir: args.folder } : {}), log: deps.log }),
       },
       'prepare-import': {
         folder: 'required',
@@ -129,6 +160,11 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const config = args.config !== undefined || existsSync(path) ? await loadConfig(path) : undefined
           return prepareImport({ dir: args.folder!, map, config, fetch: deps.fetch, log: deps.log })
         },
+      },
+      // The positional argument is the Studio's address, not a folder.
+      connect: {
+        folder: 'optional',
+        run: (args) => connect({ address: args.folder, configPath: args.config && resolve(args.config), deps, io }),
       },
     },
   })

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // npm create ginko <folder> [-- --template <name>] [--locales a,b]: copies a template into a new folder and sets the
 // site id and the Ginko versions. The Ginko packages release together, so they get this package's own version.
+// --platform: a platform project from platform/ instead (the Studio and its backend, run by `ginko-platform`), no site.
 // --template: a complete site from templates/<name> (bundled by build.mjs from the repository's templates/). Its
 // languages are pruned to --locales (template-files.mjs), its sample dates move to this week, and its site id is set.
 // Without --template: the plain starter in template/ (German: template-de/ over it). --preset (deprecated) copies a
@@ -25,12 +26,15 @@ const templates = existsSync(templatesDir) ? readdirSync(templatesDir).filter((n
 const templateLocales = Object.fromEntries(templates.map((name) => [name, JSON.parse(readFileSync(new URL(`${name}.json`, templatesDir), 'utf8')).locales]))
 const command = 'npm create ginko@latest'
 const usage = `Usage: ${command} <folder> -- [--template <name>] [--locales <codes>]
+       ${command} <folder> -- --platform
 
 Creates a Nuxt site with Ginko that reads its content from Markdown files.
 
   --template <name>   start from a template: ${templates.join(', ') || '(none bundled)'}
   --locales <codes>   the languages to keep, comma-separated; the first is the main language
                       (default: all of the template's; without --template: en or de)
+  --platform          create a platform project instead of a site: the Studio and its backend,
+                      to run on your computer (no other option)
   --preset <name>     deprecated: the older starters gastro (restaurant) and docs (documentation)
   --locale <code>     deprecated: use --locales
   -h, --help          show this help
@@ -45,12 +49,14 @@ function fail(message) {
 
 const args = process.argv.slice(2)
 const options = { '--template': undefined, '--locales': undefined, '--preset': undefined, '--locale': undefined }
+let platform = false
 let target
 for (let i = 0; i < args.length; i++) {
   const arg = args[i]
   // pnpm and yarn may pass the `--` of `pnpm create ginko my-site -- --template starter` through.
   if (arg === '--') continue
   if (arg === '-h' || arg === '--help') { console.log(usage); process.exit(0) }
+  if (arg === '--platform') { platform = true; continue }
   const [name, inline] = arg.startsWith('--') && arg.includes('=') ? [arg.slice(0, arg.indexOf('=')), arg.slice(arg.indexOf('=') + 1)] : [arg, undefined]
   if (Object.hasOwn(options, name)) {
     const value = inline ?? args[++i]
@@ -66,6 +72,7 @@ for (let i = 0; i < args.length; i++) {
   else fail(`Unexpected argument "${arg}". Give one folder name.`)
 }
 const { '--template': template, '--preset': preset } = options
+if (platform && Object.values(options).some((value) => value !== undefined)) fail('--platform creates a platform project, not a site, so it takes no --template, --preset or --locales.')
 // The old flags still work for one minor release; each says what replaces it.
 if (preset !== undefined) console.warn(`Note: --preset is deprecated and will be removed; use --template <name> (${templates.join(', ')}).`)
 if (options['--locale'] !== undefined) console.warn('Note: --locale is deprecated and will be removed; use --locales.')
@@ -98,15 +105,20 @@ if (existsSync(dir) && readdirSync(dir).length) {
   console.error(`The folder ${target} exists and is not empty. Choose another name.`)
   process.exit(1)
 }
+const own = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+// A warning, not an error: the site is still created, and the user may run it on another Node.
+if (!supportsNode(process.versions.node, own.engines.node)) {
+  console.warn(`Warning: Ginko needs Node ${own.engines.node}, but this is Node ${process.versions.node}. The ${platform ? 'project' : 'site'} is created, but install and dev may fail or print warnings. Switch to a supported Node version before you run "install".\n`)
+}
+// The next steps name the package manager that ran us (npm, pnpm, yarn or bun), and quote a folder a shell would split.
+const agent = (process.env.npm_config_user_agent ?? '').split('/')[0]
+const pm = ['pnpm', 'yarn', 'bun'].includes(agent) ? agent : 'npm'
+const cd = /^[\w./-]+$/.test(target) ? target : `'${target.replaceAll('\'', '\'\\\'\'')}'`
+if (platform) createPlatform()
 const site = basename(dir).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'my-site'
 if (!/^[a-z]/.test(site)) {
   console.error(`The site id "${site}" must start with a letter. Choose another folder name.`)
   process.exit(1)
-}
-const own = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
-// A warning, not an error: the site is still created, and the user may run it on another Node.
-if (!supportsNode(process.versions.node, own.engines.node)) {
-  console.warn(`Warning: Ginko needs Node ${own.engines.node}, but this is Node ${process.versions.node}. The site is created, but install and dev may fail or print warnings. Switch to a supported Node version before you run "install".\n`)
 }
 /** A language's English name (`de` → German), for the messages. */
 const languageName = (code) => langs[code] ?? new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code
@@ -183,10 +195,6 @@ else {
 // The share cards (nuxt-og-image) sign their URLs with this secret; `nuxt dev` and `nuxt preview` read .env.
 writeFileSync(join(dir, '.env'), `# Signs the share card URLs. Set the same variable where the site runs.\nNUXT_APP_SECRET=${randomBytes(32).toString('hex')}\n`)
 
-// The next steps name the package manager that ran us (npm, pnpm, yarn or bun), and quote a folder a shell would split.
-const agent = (process.env.npm_config_user_agent ?? '').split('/')[0]
-const pm = ['pnpm', 'yarn', 'bun'].includes(agent) ? agent : 'npm'
-const cd = /^[\w./-]+$/.test(target) ? target : `'${target.replaceAll('\'', '\'\\\'\'')}'`
 const from = template ? `the ${template} template` : preset ? `the ${preset} preset` : 'the plain starter'
 console.log(`Created ${target} from ${from} in ${chosen.map(languageName).join(' and ').replace(/ and (?=.* and )/g, ', ')}.`)
 if (site !== basename(dir)) console.log(`The site id is "${site}": the folder name in lower case, with other characters replaced by "-", at most 40 characters. Change \`site\` in ginko.config.ts to use another one.`)
@@ -208,3 +216,29 @@ Next:
 Before you deploy, set NUXT_APP_SECRET where the site runs (any 32 or more random characters, .env has one).
 Without it, the share cards of a server-rendered site answer with an error; a static build needs none.
 `)
+
+/** --platform: copies platform/ with this release's version of the three platform packages, prints the next steps and exits. */
+function createPlatform() {
+  cpSync(new URL('./platform', import.meta.url), dir, { recursive: true })
+  // npm drops .gitignore from published packages, so the template carries it as `gitignore` (and `vercelignore` alike).
+  renameSync(join(dir, 'gitignore'), join(dir, '.gitignore'))
+  renameSync(join(dir, 'vercelignore'), join(dir, '.vercelignore'))
+  // An npm package name: lower case, no spaces.
+  const name = basename(dir).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'ginko-platform'
+  for (const file of ['package.json', 'README.md']) {
+    const path = join(dir, file)
+    writeFileSync(path, readFileSync(path, 'utf8').replaceAll('{{NAME}}', name).replaceAll('{{VERSION}}', own.version))
+  }
+  console.log(`Created ${target}: a Ginko platform project (the Studio and its backend, version ${own.version}).
+${pm === 'yarn' || pm === 'bun' ? `\nNote: ${pm} is not tested with the platform. npm is; pnpm works with the pnpm-workspace.yaml in the folder.\n` : ''}
+Next:
+
+  cd ${cd}
+  ${pm} install
+  ${pm} run dev
+
+"${pm} run dev" starts a local backend (no Convex account needed) and the Studio on http://localhost:3100.
+Sign in as admin@example.test; the sign-in code appears in the terminal. README.md says more.
+`)
+  process.exit(0)
+}

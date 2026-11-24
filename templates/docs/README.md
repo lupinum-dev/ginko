@@ -233,12 +233,12 @@ prefix.
 
 ## Move to the Studio
 
-Ginko Studio is Lupinum's hosted editor: people who do not use Git change pages and changelog entries in the
-browser, and see which translations are behind under **Inhalte > Übersetzungen**. It is open by invitation, and
-Lupinum moves your content with you and switches the bricks of `ginko.config.ts` from files to the Studio
-(`source: 'platform'` in `docsHome`, `docsCollection` and `changelogCollection`); the pages and their code stay the
-same, and the search box finds a page from the Studio within a minute of its publication. Until you move, everything
-here works without it. Ask at [lupinum.com](https://lupinum.com).
+Ginko Studio is the editor of the Ginko platform: people who do not use Git change pages and changelog entries in the
+browser, and see which translations are behind under **Inhalte > Übersetzungen**. You host the platform yourself: see
+[Host the platform](https://ginko.lupinum.com/docs/host-the-platform). The bricks of `ginko.config.ts` then switch
+from files to the Studio (`source: 'platform'` in `docsHome`, `docsCollection` and `changelogCollection`); the pages
+and their code stay the same, and the search box finds a page from the Studio within a minute of its publication.
+Until you move, everything here works without it.
 
 ## Updating
 

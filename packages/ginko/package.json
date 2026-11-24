@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/ginko",
-  "version": "0.17.1",
+  "version": "0.18.0",
   "description": "Ginko: a typed, file-based content model for Nuxt sites (core, CLI and Nuxt module).",
   "license": "MIT",
   "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
@@ -25,7 +25,8 @@
     "./nuxt": "./src/nuxt/module.ts"
   },
   "bin": {
-    "ginko": "./src/cli/index.ts"
+    "ginko": "./src/cli/index.ts",
+    "ginko-platform": "./src/cli/ginko-platform.ts"
   },
   "files": [
     "dist",
@@ -70,7 +71,8 @@
     "main": "./dist/index.mjs",
     "types": "./dist/index.d.mts",
     "bin": {
-      "ginko": "./dist/cli/index.mjs"
+      "ginko": "./dist/cli/index.mjs",
+      "ginko-platform": "./dist/cli/ginko-platform.mjs"
     }
   },
   "scripts": {
