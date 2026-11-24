@@ -37,6 +37,7 @@ import type * as lib_input from "../lib/input.js";
 import type * as lib_library from "../lib/library.js";
 import type * as lib_lifecycle from "../lib/lifecycle.js";
 import type * as lib_list from "../lib/list.js";
+import type * as lib_migrations from "../lib/migrations.js";
 import type * as lib_names from "../lib/names.js";
 import type * as lib_pending from "../lib/pending.js";
 import type * as lib_policy from "../lib/policy.js";
@@ -110,6 +111,7 @@ declare const fullApi: ApiFromModules<{
   "lib/library": typeof lib_library;
   "lib/lifecycle": typeof lib_lifecycle;
   "lib/list": typeof lib_list;
+  "lib/migrations": typeof lib_migrations;
   "lib/names": typeof lib_names;
   "lib/pending": typeof lib_pending;
   "lib/policy": typeof lib_policy;

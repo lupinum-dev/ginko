@@ -1,13 +1,29 @@
-// One-time migrations of stored content, run by hand (`npx convex run migrations:<name>`). Each works in small pages,
-// schedules itself and is safe to run again. Every one has its entry in internals/migrations.md; remove both together.
+// One-time data migrations of the platform, run by themselves after each deploy: the build script calls
+// `migrations:runPending` right after `convex deploy`. The list and the runner are in lib/migrations.ts; every
+// migration has its entry in internals/migrations.md. Progress: `npx convex run ops:status`.
 import { carryPrints, entryBytes, mapMarkdownTexts, stableJson, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
-import { internal } from './_generated/api'
 import { internalMutation, type MutationCtx } from './_generated/server'
 import { treesOf, type Data, type Prints } from './lib/content'
+import { advance as advanceRun, runPending as startPending, stepArgs } from './lib/migrations'
 import { putTrees } from './lib/trees'
 import { entryUses, syncEntryRefs } from './lib/write'
+
+/**
+ * Starts what is pending after a deploy and returns one line for the build log (lib/migrations.ts `runPending`).
+ * `npx convex run --prod migrations:runPending` in the build script; safe to call at any time.
+ */
+export const runPending = internalMutation({
+  args: {},
+  handler: (ctx): Promise<string> => startPending(ctx),
+})
+
+/** The end of an action step's page (mutation steps call lib/migrations.ts `advance` in their own transaction). */
+export const advance = internalMutation({
+  args: { run: v.id('serverMigrations'), next: v.union(v.string(), v.null()) },
+  handler: (ctx, args): Promise<null> => advanceRun(ctx, args.run, args.next),
+})
 
 /** A storage address in a text, with or without its host: group 1 is its token (everything after `/api/storage/`). */
 const STORAGE_URL = /(?:https?:\/\/[^\s()<>"'\]]+?)?\/api\/storage\/([^\s()<>"']+)/g
@@ -21,15 +37,14 @@ const tokenOf = (url: string | null) => (url ? /\/api\/storage\/([^\s()<>"']+)/.
  * it, Trash warns, backups take it) and the address no longer depends on the host it was written on. An address is
  * matched by its token against the current addresses of the site's uploads (original, processed file, variants);
  * an address that matches none stays as it is. Changed entries get new trees and file references; at the end the
- * site counters are recounted (`entries:recountStorage`). 10 entries per run.
+ * site counters are recounted (the list runs `entries:recountStorage` after it). A migration step, 10 entries per page.
  */
 export const markdownStorageUrls = internalMutation({
-  args: { cursor: v.optional(v.union(v.string(), v.null())) },
-  handler: async (ctx, args): Promise<{ changed: number }> => {
-    const page = await ctx.db.query('entries').paginate({ cursor: args.cursor ?? null, numItems: 10 })
+  args: stepArgs,
+  handler: async (ctx, args): Promise<null> => {
+    const page = await ctx.db.query('entries').paginate({ cursor: args.cursor, numItems: 10 })
     const sites = new Map<Id<'sites'>, { site: Doc<'sites'> | null } & TokenScan>()
     const touched = new Set<Id<'sites'>>()
-    let changed = 0
     for (const row of page.page) {
       if (!sites.has(row.site)) sites.set(row.site, { site: await ctx.db.get(row.site), found: new Map() })
       const known = sites.get(row.site)!
@@ -57,16 +72,13 @@ export const markdownStorageUrls = internalMutation({
       await putTrees(ctx, row.site, row._id, trees.json)
       await syncEntryRefs(ctx, row.site, row._id, await entryUses(ctx, brick.fields, data, schema.locales))
       if (row.deletedAt === undefined && row.state !== 'draft') touched.add(row.site)
-      changed++
     }
     // The bundle now serves the files' sizes and variants: its caches must refresh.
     for (const id of touched) {
       const site = await ctx.db.get(id)
       if (site) await ctx.db.patch(id, { contentRev: site.contentRev + 1 })
     }
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.markdownStorageUrls, { cursor: page.continueCursor })
-    else await ctx.scheduler.runAfter(0, internal.entries.recountStorage, {})
-    return { changed }
+    return advanceRun(ctx, args.run, page.isDone ? null : page.continueCursor)
   },
 })
 

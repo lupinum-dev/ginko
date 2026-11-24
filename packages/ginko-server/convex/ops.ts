@@ -1,8 +1,10 @@
 // Operator tools (internal; run with `convex run ops:<name>`): what state the uploads are in, so a stuck or
-// failed upload can be found and repaired (`uploads:retry`) without reading Convex's tables by hand.
+// failed upload can be found and repaired (`uploads:retry`) without reading Convex's tables by hand, and how far the
+// data migrations that run after each deploy are.
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalQuery, type QueryCtx } from './_generated/server'
+import { migrationStatus } from './lib/migrations'
 import { isStale } from './uploads'
 
 const LIST_MAX = 50
@@ -20,7 +22,8 @@ async function describe(ctx: QueryCtx, row: Doc<'uploads'>, slugs: Map<string, s
  * Upload counts per status and, for the rows that need a look, up to 50 stuck `processing` uploads (uploads.isStale)
  * and up to 50 `failed` ones (oldest first). `site` is a slug; leave it out for every site. Ready uploads are counted
  * for one site only: across the platform they are too many for one query.
- * Open migrations are not listed: `migrations.ts` records no runs (see internals/migrations.md).
+ * `migrations`: how many are done, which are pending, and the one running or stopped (with its error); a stopped one
+ * starts again from where it stopped with the next deploy (lib/migrations.ts).
  */
 export const status = internalQuery({
   args: { site: v.optional(v.string()) },
@@ -42,6 +45,6 @@ export const status = internalQuery({
     for (const row of rows.filter((r) => isStale(r, now)).slice(0, LIST_MAX)) stuck.push(await describe(ctx, row, slugs, now))
     const failed = []
     for (const row of rows.filter((r) => r.status === 'failed').slice(0, LIST_MAX)) failed.push(await describe(ctx, row, slugs, now))
-    return { counts, stuck, failed }
+    return { counts, stuck, failed, migrations: await migrationStatus(ctx) }
   },
 })

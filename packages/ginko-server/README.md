@@ -102,7 +102,7 @@ for a whole site. Run these in `packages/ginko-server` like the other operator c
 form works on a local backend):
 
 ```bash
-pnpm exec better-convex-nuxt convex run ops:status '{}'                       # counts, stuck and failed rows (add "site":"<slug>")
+pnpm exec better-convex-nuxt convex run ops:status '{}'                       # counts, stuck and failed rows (add "site":"<slug>"), migrations
 pnpm exec better-convex-nuxt convex run uploads:retry '{"site":"<slug>"}'     # dry run: lists what would be queued
 pnpm exec better-convex-nuxt convex run uploads:retry '{"site":"<slug>","dryRun":false}'
 ```
@@ -111,25 +111,37 @@ pnpm exec better-convex-nuxt convex run uploads:retry '{"site":"<slug>","dryRun"
 with 0 attempts and schedules one run per row, 2 seconds apart. A row whose stored original is gone is not touched; it
 is listed in `missing`. The daily sweep removes failed uploads that no content uses after 24 hours.
 
-`ops:status` does not list open migrations: `migrations.ts` records no runs; see
+## Data migrations
+
+One-time data migrations run by themselves after a deploy: the production build calls
+`npx convex run --prod migrations:runPending` right after `convex deploy` and prints one line, for example
+`Migrations: all 5 done.` or `Migrations: started <name> (2 pending)`. They run in the background, one after the
+other, and nobody runs them by hand. A fresh deployment records them all as done without running any. If you deploy
+without `apps/platform/scripts/vercel-build.sh`, run the same two commands:
+
+```bash
+npx convex deploy
+npx convex run --prod migrations:runPending
+```
+
+`ops:status` shows `migrations`: how many are done, which are pending, the running one, and a stopped one with its
+error. A stopped migration starts again from where it stopped with the next deploy. Take a backup in the Convex
+dashboard before an update whose changelog names a migration. Rules for writing one:
 [internals/migrations.md](../../internals/migrations.md).
 
 ## Image variants (srcset)
 
 New image uploads get WebP copies at 480, 960 and 1600 px wide (only those narrower than the image). Images
-uploaded before that have none; make them once per deployment with
-`pnpm exec better-convex-nuxt convex run images:backfillVariants '{}'` (for production, in the production checkout). It
-works through 20 files at a time and schedules itself until all are done; running it again is safe.
+uploaded before that get them from a data migration after the deploy (20 files per page).
 
 ## Markdown trees
 
 Every live entry stores the parsed trees of its Markdown texts in the `entryTrees` table, so the public bundle parses
-nothing. An entry keeps the trees of the parser it was saved with. After an update that changes the parser's output
-(comark, its plugins or Ginko's Markdown rules), write them again once per deployment with
-`pnpm exec better-convex-nuxt convex run entries:migrateStorage '{}'` (for production, in the production checkout). It
-works through 10 entries at a time and schedules itself until all are done, then recounts every site's byte
-counters; running it again is safe. `pnpm exec better-convex-nuxt convex run entries:storageStatus '{}'` checks the
-result, one site per call (pass the returned `cursor`).
+nothing. An entry keeps the trees of the parser it was saved with. A release that changes the parser's output (comark, its
+plugins or Ginko's Markdown rules) adds a data migration that writes them again (`entries:migrateStorage`, 10 entries
+per page, then the byte counters are recounted), so every deployment gets it with its next deploy.
+`pnpm exec better-convex-nuxt convex run entries:storageStatus '{}'` checks the result, one site per call (pass the
+returned `cursor`).
 
 ## Environment variables
 
