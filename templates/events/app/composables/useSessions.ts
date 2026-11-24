@@ -18,7 +18,7 @@ export interface SessionEntry {
   speakers: { id: string, name: string, to?: string }[]
 }
 
-// A stored status this code does not know (`UnknownChoice`: added by a later release of basics) shows as open.
+// A stored status this code does not know (`UnknownChoice`: added by a later release of the patterns) shows as open.
 const STATUSES: SessionStatus[] = ['open', 'soldOut', 'cancelled']
 
 /**

@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test'
 import { job, studio } from '../../../../../scripts/templates/e2e/studio.ts'
 
 // The template's names for this job come from "notice": { createTask, textField } in
-// templates/_studio/<template>/jobs.json: createTask = the label of the notices create task (basics notices():
+// templates/_studio/<template>/jobs.json: createTask = the label of the notices create task (the notices() pattern:
 // "Hinweis hinzufügen"), textField = regex for the label of the notice text.
 const NOTICE = job('notice', ['createTask', 'textField'])
 

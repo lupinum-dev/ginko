@@ -84,7 +84,7 @@ export default defineNuxtModule<SiteInput>({
       // The language tag per locale (`languages`, else the code): numbers, money and dates of facts.
       languages: Object.fromEntries(schema.locales.map((code) => [code, site.languages?.[code] ?? code])),
       timeZone: schema.timeZone,
-      // ISO country code or ''; the hours rules of the basics take it as `country`, JSON-LD as `addressCountry`.
+      // ISO country code or ''; the hours rules of the patterns take it as `country`, JSON-LD as `addressCountry`.
       country: site.country ?? '',
       // The resolved holiday calendar (`schema.holidays`) or '': `custom` means the site passes its own `calendar`.
       holidays: schema.holidays ?? '',

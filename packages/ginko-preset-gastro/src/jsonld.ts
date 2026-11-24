@@ -1,6 +1,6 @@
 // schema.org Restaurant and Event for search engines. The opening hours come from the same rule as the page (`hoursOn`),
 // so Google never shows "open" on a day the site says "closed". The builders live in `@lupinum/ginko/patterns`.
-import { eventJsonLd as basicsEventJsonLd, openingHoursJsonLd, type EventJsonLdInput as BasicsEventInput, type HoursContext } from '@lupinum/ginko/patterns'
+import { eventJsonLd as patternEventJsonLd, openingHoursJsonLd, type EventJsonLdInput as PatternEventInput, type HoursContext } from '@lupinum/ginko/patterns'
 import { offerPrice, postalAddress } from '@lupinum/ginko/internal'
 import type { MarkdownTree } from '@lupinum/ginko'
 import { withDefault } from './hours.ts'
@@ -88,7 +88,7 @@ export function restaurantJsonLd(input: RestaurantJsonLdInput): Record<string, u
 /** schema.org Event for one event of the events brick. Offers are given with a price, or to say it is fully booked. */
 export function eventJsonLd(input: EventJsonLdInput): Record<string, unknown> {
   const { timeZone, ...rest } = input
-  const ld = basicsEventJsonLd({ ...rest, timeZone: timeZone ?? 'UTC' } satisfies BasicsEventInput)
+  const ld = patternEventJsonLd({ ...rest, timeZone: timeZone ?? 'UTC' } satisfies PatternEventInput)
   // 0.4 output without a time zone: the start as local time, the end as a date.
   return timeZone ? ld : { ...ld, startDate: input.start ? `${input.when.from}T${input.start}` : input.when.from }
 }

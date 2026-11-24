@@ -1,5 +1,5 @@
 // Synced from templates/_features/downloads/app/composables/useDownloads.ts by `pnpm templates sync`. Edit the source, not this copy.
-/** What the downloads feature reads of a document: its file and, optionally, its language (`downloads()` of basics). */
+/** What the downloads feature reads of a document: its file and, optionally, its language (the `downloads()` pattern). */
 export interface DownloadFacts {
   file: { name: string, size: number }
   language?: string | null

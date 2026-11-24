@@ -52,7 +52,7 @@ export function isLunchPlaceholder(dish: unknown): boolean {
 
 const soldOutText = { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked today.' }
 
-// The restaurant wording of the hours bricks (the basics are neutral): pinned here, because labels and hints are part
+// The restaurant wording of the hours bricks (the patterns are neutral): pinned here, because labels and hints are part
 // of every gastro site's stored schema.
 const hoursTexts: HoursTexts = {
   hours: both('Öffnungszeiten', 'Opening hours'),
