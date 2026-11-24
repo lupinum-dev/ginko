@@ -178,9 +178,9 @@ Rules for a new migration:
 ## Docs site: redirects from the pages that the rewrite split (`sites/docs/ginko.config.ts` `movedDocs`)
 
 - **Why:** the rewrite of the docs in November 2026 split seven long pages into guides and reference pages:
-  Languages, Presets, SEO and agents, Deploy, Platform and CLI, Docs sites and Docs layer exports. Their addresses
-  no longer have a page.
-- **Introduced:** 22 November 2026.
+  Languages, Presets, SEO and agents, Deploy, Platform and CLI, Docs sites and Docs layer exports. On 23 November the
+  tutorial in five chapters absorbed Build a site by hand. Their addresses no longer have a page.
+- **Introduced:** 22 November 2026 (seven pages), 23 November 2026 (`build-a-site-by-hand` → `tutorial`).
 - **Compatibility code:** `movedDocs` in `sites/docs/ginko.config.ts` and the rules made from it: `/docs/<old>` and
   `/en/docs/<old>` go to the page that now holds most of the content, and so does `/de/docs/<old German slug>`
   (through `german` in the same file).
