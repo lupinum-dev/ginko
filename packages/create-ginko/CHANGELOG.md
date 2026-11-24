@@ -1,5 +1,19 @@
 # create-ginko
 
+## 0.18.0
+
+### Minor Changes
+
+- [#149](https://github.com/lupinum-dev/ginko/pull/149) [`d89413d`](https://github.com/lupinum-dev/ginko/commit/d89413d2b7ab21863e349bd91c3704587f44b808) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add a `build` script and a `vercel.json` to the platform project, so Vercel builds it with `ginko-platform build`.
+
+- [#149](https://github.com/lupinum-dev/ginko/pull/149) [`d89413d`](https://github.com/lupinum-dev/ginko/commit/d89413d2b7ab21863e349bd91c3704587f44b808) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add "Put it online" to the platform project's README, and a `.vercelignore` that keeps the local backend's data out of a Vercel deploy.
+
+- [#147](https://github.com/lupinum-dev/ginko/pull/147) [`103d424`](https://github.com/lupinum-dev/ginko/commit/103d4243c63e3ad0e9507a9efb0173eb1b3b4573) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `--platform`: `npm create ginko@latest my-cms -- --platform` creates a platform project that runs the Studio and a local backend with `npm run dev`.
+
+### Patch Changes
+
+- [#139](https://github.com/lupinum-dev/ginko/pull/139) [`dbd5628`](https://github.com/lupinum-dev/ginko/commit/dbd5628856cc0d5219bbd0269e8587aaca02f651) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix leftovers in a site from a template: the labels of the bricks keep only the languages of the site, `--locales` also removes the texts in `app/app.config.ts` and the message files in the folders of `i18n/` and names the languages in the README, and the files no longer start with a "Synced from templates/_features" line of the Ginko repository.
+
 ## 0.17.1
 
 ### Patch Changes
