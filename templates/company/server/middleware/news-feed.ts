@@ -1,5 +1,5 @@
 // Synced from templates/_features/blog/server/middleware/news-feed.ts by `pnpm templates sync`. Edit the source, not this copy.
-import { rssXml } from '@lupinum/ginko/basics'
+import { rssXml } from '@lupinum/ginko/patterns'
 import { defineEventHandler, getRequestURL, useRuntimeConfig } from 'nuxt/server'
 import site from '../../ginko.config'
 

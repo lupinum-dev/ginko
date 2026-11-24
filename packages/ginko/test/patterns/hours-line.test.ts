@@ -3,7 +3,7 @@
 // when it cannot know (a holiday calendar in the site's code, no stored calendar on a holiday, broken data), and a holiday
 // is told apart from the owner's own closure text.
 import { describe, expect, it } from 'vitest'
-import { hoursLine, type HoursLineContext } from '../../src/basics/index.ts'
+import { hoursLine, type HoursLineContext } from '../../src/patterns/index.ts'
 
 const days = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const
 const week = Object.fromEntries(days.map((day) => [day, day === 'mo'
@@ -27,7 +27,7 @@ describe('hoursLine', () => {
     // 1 Nov 2026 (a Sunday) is All Saints' Day in Austria.
     ['a public holiday, closed', hours(), at('2026-11-01T08:00:00Z', { holidays: 'AT' }), { state: 'closed', holiday: { de: 'Allerheiligen', en: 'All Saints’ Day' } }],
     ['the same day with no public holidays', hours(), at('2026-11-01T08:00:00Z', { holidays: 'none' }), { state: 'open', ranges: both }],
-    // No stored calendar: a gastro site released before `country` still closes on Austrian holidays, a basics site does not.
+    // No stored calendar: a gastro site released before `country` still closes on Austrian holidays, a site of the hours pattern does not.
     ['the same day, no calendar stored', hours(), at('2026-11-01T08:00:00Z'), { state: 'unknown', calendar: true }],
     ['no row for that day, no calendar stored', hours({ week: without('su') }), at('2026-11-01T08:00:00Z'), { state: 'unknown' }],
     ['the same day, no calendar stored, open on holidays', hours({ holidays: 'normal' }), at('2026-11-01T08:00:00Z'), { state: 'open', ranges: both }],

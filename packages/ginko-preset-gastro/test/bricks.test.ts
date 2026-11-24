@@ -1,11 +1,12 @@
 // Every label comes in German and English, so an English café owner sees English and an Austrian one German; the Austrian demo must keep its schema (`pnpm check:contracts`).
-import { defineSite } from '@lupinum/ginko/internal'
+import { defineSite, extend } from '@lupinum/ginko'
 import { checkSchema, serializeSchema } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { allergensEU, events, isLunchPlaceholder, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '../src/index.ts'
 
 const siteWith = (bricks: Record<string, any>) =>
-  defineSite({ site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' }, bricks })
+  defineSite({ studio: { id: 'cafe', bricks: 'all' }, name: 'Café', url: 'https://cafe.example', timeZone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' }, bricks })
 
 describe('labels', () => {
   it('brick, field, task and option labels come in German and English, whatever the site locales are', () => {
@@ -32,17 +33,15 @@ describe('labels', () => {
     // even when the site has both of the preset's languages as well.
     const swiss = serializeSchema({ ...siteWith({ lunch: lunch(), notices: notices() }), locales: ['fr', 'de', 'en'], timeZone: 'Europe/Zurich' })
     expect(swiss.bricks.lunch!.fields.days!.default).toBeUndefined()
-    expect(checkSchema(swiss)).toEqual([])
+    expect(checkSchema(swiss, statusRules)).toEqual([])
   })
   it('a Spanish site built from the preset passes checkSchema (labels fall back to English)', () => {
     const site = defineSite({
-      site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Madrid', locales: ['es'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
-      bricks: {
-        hours: hours(), hourPlans: hourPlans(), notices: notices(), lunch: lunch(), lunchPlans: lunchPlans(), menu: menu(),
-        events: events({ route: { es: '/eventos/[slug]' } }), gallery: gallery(),
-      },
+      studio: { id: 'cafe', bricks: 'all' }, name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Madrid', locales: ['es'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
+      bricks: { hours: hours(), hourPlans: hourPlans(), notices: notices(), lunch: lunch(), lunchPlans: lunchPlans(), menu: menu(), events: events(), gallery: gallery() },
+      entries: { events: '/eventos/[slug]' },
     })
-    expect(checkSchema(serializeSchema(site))).toEqual([])
+    expect(checkSchema(serializeSchema(site), statusRules)).toEqual([])
   })
 })
 
@@ -51,7 +50,7 @@ describe('allergens', () => {
   it('"none" leaves the field out of menu and lunch, and the schema is valid', () => {
     const site = siteWith({ menu: menu({ allergens: 'none' }), lunch: lunch({ allergens: 'none' }), lunchPlans: lunchPlans({ allergens: 'none' }), notices: notices() })
     expect(JSON.stringify(serializeSchema(site))).not.toMatch(/llergen/)
-    expect(checkSchema(serializeSchema(site))).toEqual([])
+    expect(checkSchema(serializeSchema(site), statusRules)).toEqual([])
   })
   it('a custom list replaces the EU codes', () => {
     const json = fieldsOf({ menu: menu({ allergens: [{ value: 'nut', label: 'Nuts' }] }) })
@@ -71,12 +70,17 @@ describe('allergens', () => {
   })
 })
 
-describe('options', () => {
-  it('source: files reaches the brick on every factory, and no source means the platform', () => {
-    const files = { source: 'files' } as const
-    const bricks = { hours: hours(files), hourPlans: hourPlans(files), notices: notices(files), lunch: lunch(files), lunchPlans: lunchPlans(files), menu: menu(files), events: events({ ...files, route: { en: '/events/[slug]' } }), gallery: gallery(files) }
-    expect(Object.values(bricks).map((b) => b.source)).toEqual(Array(8).fill('files'))
-    expect(hours()).not.toHaveProperty('source')
+describe('patterns', () => {
+  // Wrong behaviour caught: a gastro brick is a stored brick again, so `extend` refuses it and a site cannot add a preview.
+  it('extend changes a gastro brick, and the rest of the brick stays as it was', () => {
+    const plain = serializeSchema(siteWith({ menu: menu() })).bricks.menu!
+    const extended = serializeSchema(siteWith({ menu: extend(menu(), { preview: 'menu' }) })).bricks.menu!
+    expect(extended).toEqual({ ...plain, preview: 'menu' })
+  })
+  // Wrong behaviour caught: a brick the site keeps in files is stored as a platform brick (or the other way round).
+  it('studio.bricks says where a gastro brick lives', () => {
+    const site = defineSite({ studio: { id: 'cafe', bricks: ['menu'] }, name: 'Café', url: 'https://cafe.example', timeZone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, bricks: { menu: menu(), gallery: gallery() } })
+    expect([site.bricks.menu.source, site.bricks.gallery.source]).toEqual([undefined, 'files'])
   })
 })
 

@@ -14,6 +14,7 @@ import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
 import { rebuildOnContentChange, restartOnConfigChange } from './watch.ts'
 import { checkSite, siteForContent, coreMessage, entryRedirects, fileMarkdownRef, redirectProblems, serializeSchema, withMarkdownRefs, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
+import { statusRules } from '../patterns/rules.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
@@ -45,7 +46,7 @@ export default defineNuxtModule<SiteInput>({
     const site: SiteInput = siteForContent(options, process.env.GINKO_CONTENT)
     // The serialized schema is the site's own contract: checked at build (the same check as `ginko check`), used at runtime for defaults.
     const schema = serializeSchema(site)
-    const problems = checkSite(site, schema)
+    const problems = checkSite(site, statusRules, schema)
     if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
     // Dev: a saved ginko.config.ts restarts the dev server when it passes the checks above, and reports its error when it
     // does not (watch.ts). Texts in i18n/*.json reload by themselves (ginko-i18n).
@@ -83,7 +84,7 @@ export default defineNuxtModule<SiteInput>({
       // The language tag per locale (`languages`, else the code): numbers, money and dates of facts.
       languages: Object.fromEntries(schema.locales.map((code) => [code, site.languages?.[code] ?? code])),
       timeZone: schema.timeZone,
-      // ISO country code or ''; the hours rules of the basics take it as `country`, JSON-LD as `addressCountry`.
+      // ISO country code or ''; the hours rules of the patterns take it as `country`, JSON-LD as `addressCountry`.
       country: site.country ?? '',
       // The resolved holiday calendar (`schema.holidays`) or '': `custom` means the site passes its own `calendar`.
       holidays: schema.holidays ?? '',

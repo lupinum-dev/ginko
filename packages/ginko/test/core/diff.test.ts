@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
   checkSchema, coreMessage, diffSchema, migrationFingerprint, ordered, serializeSchema,
@@ -370,14 +371,14 @@ describe('serializeSchema', () => {
 
 describe('checkSchema: retired fields (SPEC 2.5)', () => {
   it('accepts the untouched restaurant config', () => {
-    expect(checkSchema(base())).toEqual([])
+    expect(checkSchema(base(), statusRules)).toEqual([])
   })
 
   it('accepts a mirror whose source is an identical copy', () => {
     const s = base()
     fieldsOf(s, 'seo').titleCopy = { ...field(s, 'seo.title') }
     retire(s, 'seo.title', { from: 'titleCopy' })
-    expect(checkSchema(s)).toEqual([])
+    expect(checkSchema(s, statusRules)).toEqual([])
   })
 
   // A unique source only holds values the old, non-unique list also accepts.
@@ -387,11 +388,11 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
     fieldsOf(s, 'hours').timesOld = times()
     fieldsOf(s, 'hours').times = times('at')
     retire(s, 'hours.timesOld', { from: 'times' })
-    expect(checkSchema(s)).toEqual([])
+    expect(checkSchema(s, statusRules)).toEqual([])
     // The other way round, the source takes values the old list refuses.
     field(s, 'hours.timesOld').unique = 'at'
     delete field(s, 'hours.times').unique
-    expect(checkSchema(s)).toEqual(['retired: “hours.timesOld” cannot mirror “times”: different uniqueness.'])
+    expect(checkSchema(s, statusRules)).toEqual(['retired: “hours.timesOld” cannot mirror “times”: different uniqueness.'])
   })
 
   it.each([
@@ -466,7 +467,7 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
   ])('reports: $name', ({ mutate, problems }) => {
     const s = base()
     mutate(s)
-    expect(checkSchema(s)).toEqual(problems)
+    expect(checkSchema(s, statusRules)).toEqual(problems)
   })
 })
 
@@ -539,13 +540,13 @@ describe('checkSchema: limits and structure (SPEC 2.1)', () => {
   ])('reports: $name', ({ mutate, problems }) => {
     const s = base()
     mutate(s)
-    expect(checkSchema(s)).toEqual(problems)
+    expect(checkSchema(s, statusRules)).toEqual(problems)
   })
 
   // SPEC 2.1: Schema-JSON ≤ 256 KiB (bytes); code does compare JSON.stringify(...).length, i.e. UTF-16 characters, so multi-byte text is under-counted.
   it('SPEC 2.1: the 256 KiB limit counts bytes, so 140 000 umlauts (280 000 bytes) fail', () => {
     const s = base()
     node(s, 'bricks.hours').label = 'ä'.repeat(140_000)
-    expect(checkSchema(s)).toEqual(['The schema is too large (at most 256 KiB).'])
+    expect(checkSchema(s, statusRules)).toEqual(['The schema is too large (at most 256 KiB).'])
   })
 })

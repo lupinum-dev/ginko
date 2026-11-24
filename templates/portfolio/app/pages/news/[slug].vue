@@ -1,7 +1,7 @@
 <!-- Synced from templates/_features/blog/app/pages/news/[slug].vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { postJsonLd } from '@lupinum/ginko/basics'
+import { postJsonLd } from '@lupinum/ginko/patterns'
 import { ArrowLeft, ArrowRight } from '@lucide/vue'
 
 // One post: title, summary, date and reading time, authors (initials and role, linked to their page when people have

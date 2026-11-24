@@ -7,6 +7,7 @@ import {
 } from '../core/index.ts'
 import { type Candidate, isObject, type ReleaseState, type Write } from './model.ts'
 import { english, kib } from './report.ts'
+import { statusRules } from '../patterns/rules.ts'
 
 /**
  * Builds the release candidate from the stored state and the local config. Runs every migration
@@ -15,7 +16,7 @@ import { english, kib } from './report.ts'
  * `schema` is the platform schema of `site` (without file bricks, CONTENT.md); `plan()` passes the one it built.
  */
 export async function buildCandidate(state: ReleaseState, site: SiteInput, schema: Schema): Promise<Candidate> {
-  const problems = checkSite(site, schema)
+  const problems = checkSite(site, statusRules, schema)
   const applied = new Set([...state.schema.migrations, ...state.migrations].map((m) => m.id))
   const fresh = schema.migrations.filter((m) => !applied.has(m.id))
 

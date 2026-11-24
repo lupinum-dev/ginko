@@ -1,7 +1,7 @@
 // Docs template: the documentation of "Orbit SDK", a fictional TypeScript client for the fictional Orbit API, in
 // English and German. The bricks of the docs layer read Markdown from content/, so the site runs without an account.
 // Moving to Ginko Studio later is done together with Lupinum (README, "Move to the Studio").
-import { defineSite } from '@lupinum/ginko'
+import { defineSite, extend } from '@lupinum/ginko'
 import { changelogCollection, components, docsCollection, docsHome } from '@lupinum/ginko-docs/config'
 import { siteUrl } from './site-url.ts'
 
@@ -25,6 +25,8 @@ export default defineSite({
     home: '/',
     changelog: '/changelog',
   },
+  // The page of one docs page: /docs/<slug>, and /de/docs/<slug> in German.
+  entries: { docs: '/docs/[slug]' },
   // The Markdown components of the pages (::callout, ::tabs, ::steps …); Ginko checks every tag and prop against them.
   components,
   // No brick is edited in the Studio: every page is a Markdown file in content/.
@@ -33,8 +35,8 @@ export default defineSite({
     // The start page: title, install command, two buttons, the cards and a short text (content/home.md).
     home: docsHome(),
     // The pages, in the order of their file numbers; `section` in a page starts a group (content/docs/).
-    docs: docsCollection({ locales }),
+    docs: docsCollection(),
     // One entry per release with version and date, newest first on /changelog (content/changelog/).
-    changelog: { ...changelogCollection(), preview: 'changelog' },
+    changelog: extend(changelogCollection(), { preview: 'changelog' }),
   },
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { releaseAnchor as anchor } from '@lupinum/ginko/basics'
+import { releaseAnchor as anchor } from '@lupinum/ginko/patterns'
 import { markdownComponents } from '../lib/markdownComponents'
 // The changelog: one page, one section per release, newest first (the collection's order). Each version has an anchor.
 const { t, language } = useI18n()

@@ -50,13 +50,15 @@ export default defineSite({
     legal: localized('/legal/[slug]'),
     posts: localized('/news/[slug]'),
     pages: localized('/[slug]'),
+    // The help center: /help/<slug> in every language (Ginko adds the language prefix).
+    docs: '/help/[slug]',
   },
   // The order of the bricks is the order of the Studio's Today page: the weekly changelog entry first, then the
   // notice, the prices and the questions.
   components,
   bricks: {
     // The help center (content/docs/, pages from @lupinum/ginko-docs) at /help; app/pages/help/index.vue is its start page.
-    docs: docsCollection({ locales, base: '/help' }),
+    docs: docsCollection(),
     // One file per release (content/changelog/), newest first: version, date and the text, which starts with one
     // sentence (the summary on the home page and in the feed), then `<!-- more -->`, then the changes under the
     // headings New, Improved and Fixed. In the Studio, Today shows how old the newest entry is.

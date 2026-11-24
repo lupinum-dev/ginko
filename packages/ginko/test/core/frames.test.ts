@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import { checkSchema, diffSchema, frameFit, resolveEntry, serializeSchema, type Schema } from '../../src/core/index.ts'
 
@@ -21,7 +22,7 @@ describe('aspect in the schema check', () => {
   ])('accepts %s', (_name, aspect) => {
     const s = base()
     eventImage(s).aspect = aspect
-    expect(checkSchema(s)).toEqual([])
+    expect(checkSchema(s, statusRules)).toEqual([])
   })
 
   it.each([
@@ -36,13 +37,13 @@ describe('aspect in the schema check', () => {
   ])('rejects %s', (_name, aspect, problem) => {
     const s = base()
     eventImage(s).aspect = aspect
-    expect(checkSchema(s).join('\n')).toContain(problem)
+    expect(checkSchema(s, statusRules).join('\n')).toContain(problem)
   })
 
   it('rejects aspect on a field that is no image', () => {
     const s = base()
     ;(s.bricks.seo!.fields.title as unknown as Record<string, unknown>).aspect = '3:2'
-    expect(checkSchema(s)).toContain('seo.title.aspect: only image fields have a frame.')
+    expect(checkSchema(s, statusRules)).toContain('seo.title.aspect: only image fields have a frame.')
   })
 })
 

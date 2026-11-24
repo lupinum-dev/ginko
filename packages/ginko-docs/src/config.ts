@@ -1,52 +1,28 @@
-// The bricks for ginko.config.ts. Docs pages live at <base>/<slug> in every locale (main locale
-// unprefixed); the layer serves its page at that address. The start page, the blog and the changelog are optional.
-import { collection, f, single, type BrickSource, type Locale } from '@lupinum/ginko/internal'
-import { authors, changelog, posts } from '@lupinum/ginko/basics'
-import { labelsIn } from '@lupinum/ginko/internal'
-import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
+// The bricks for ginko.config.ts, as patterns: each function returns a brick of the written form, so a site changes it
+// with `extend` of '@lupinum/ginko'. The address of a docs page is a line in the site's `entries`
+// (`entries: { docs: '/docs/[slug]' }`); the layer serves its page there. Where a brick lives is `studio.bricks`. The
+// start page, the blog and the changelog are optional. Each brick is made from a private builder of the stored form
+// and turned into the written form by `defOf`, so its stored model is exactly what it was.
+import { authorsBrick, changelogBrick, collection, defOf, f, labelsIn, postsBrick, single } from '@lupinum/ginko/internal'
 
 /** The registry of the Markdown components the layer renders, for `components` in `defineSite`. */
 export { components } from '@lupinum/ginko-components/registry'
-
-/** The site's locales, main locale first. The same list as `locales` in `defineSite`, as a plain array or a tuple. */
-type Locales = readonly Locale[]
-
-/**
- * Where a brick's content comes from: `'files'` (the default) reads Markdown from `content/`, `'platform'` keeps it on
- * the Ginko platform, where people edit it in Ginko Studio. Unlike the bricks of `@lupinum/ginko/basics`, docs bricks
- * read files unless they are told otherwise: docs usually live in Git.
- */
-export type DocsSource = BrickSource | 'platform'
-
-/** The brick's `source` key: `'files'` by default, none (the platform) for `'platform'`. */
-const sourceOf = (source: DocsSource = 'files') => (source === 'files' ? { source } : {})
-
-/**
- * `path` in every locale: `{ en: '/blog', de: '/de/blog' }` when `en` is the main locale. The main locale has no
- * prefix; every other locale gets `/<locale>` in front (ginko-i18n's rule).
- */
-function localized<P extends `/${string}`>(locales: Locales, path: P): Record<Locale, P> {
-  const [main] = locales
-  if (main === undefined) throw new Error('[ginko-docs] `locales` is empty. Fix: pass the same list as `locales` in defineSite.')
-  // `/<locale>` + a path still matches the path's pattern, e.g. `/${string}/[slug]`. The root of another locale is
-  // `/<locale>` without a trailing slash, its canonical address (ginko-i18n redirects `/de/` to `/de`).
-  const address: string = path
-  return Object.fromEntries(locales.map((l) => [l, l === main ? path : address === '/' ? `/${l}` : `/${l}${path}`])) as Record<Locale, P>
-}
 
 /** A label in the languages of the Studio, so editors read the fields in their language (de, en, es, fr). */
 const l = (de: string, en: string, es: string, fr: string) => ({ de, en, es, fr })
 const NAVIGATION = l('Navigation', 'Navigation', 'Navegación', 'Navigation')
 
 /**
- * `base`: where the docs live, default `/docs` (e.g. `/handbook` inside a larger site). `source`: see `DocsSource`.
- * `navExtras: false` leaves out Tab, Badge and Icon, which most sites do not use: editors then see only the text and
- * where the page sits (section, parent page, short title). `brick`: the key of this brick in `bricks`, default `docs`;
- * a site that names it otherwise (`wissen`) sets the same key as `ginkoDocs: { brick }` in nuxt.config.ts.
+ * The docs pages. Their address is a line in `entries`: `docs: '/docs/[slug]'` (or `/handbook/[slug]` inside a larger
+ * site). `navExtras: false` leaves out Tab, Badge and Icon, which most sites do not use: editors then see only the text
+ * and where the page sits (section, parent page, short title). `brick`: the key of this brick in `bricks`, default
+ * `docs`; a site that names it otherwise (`wissen`) sets the same key as `ginkoDocs: { brick }` in nuxt.config.ts.
  */
-export function docsCollection(opts: { locales: Locales; label?: string; max?: number; base?: `/${string}`; source?: DocsSource; navExtras?: boolean; brick?: string }) {
-  const { locales } = opts
-  const base = opts.base ?? '/docs'
+export function docsCollection(opts: { label?: string; max?: number; navExtras?: boolean; brick?: string } = {}) {
+  return defOf(storedDocs(opts), { item: l('Seite', 'a page', 'una página', 'une page') })
+}
+
+function storedDocs(opts: { label?: string; max?: number; navExtras?: boolean; brick?: string }) {
   return collection({
     label: opts.label ?? 'Docs',
     listing: { title: 'title' },
@@ -54,10 +30,8 @@ export function docsCollection(opts: { locales: Locales; label?: string; max?: n
     // The side navigation: pages nest by `parent`, `section` starts a heading, `navTitle` is the short name; `tab` starts a
     // tab and `badge` shows a badge (both left out with `navExtras: false`).
     tree: { parent: 'parent', section: 'section', label: 'navTitle', ...(opts.navExtras !== false ? { tab: 'tab', badge: 'badge' } : {}) },
-    ...sourceOf(opts.source),
     max: opts.max ?? 500,
     order: 'manual',
-    route: localized(locales, `${base}/[slug]`),
     body: 'body',
     fields: withExtras(opts.navExtras !== false, {
       title: f.text(l('Titel', 'Title', 'Título', 'Titre')),
@@ -99,13 +73,15 @@ function withExtras<F extends { tab: unknown; badge: unknown; icon: unknown }>(e
 /**
  * The optional start page: one Markdown file `content/home[.<locale>].md`. The frontmatter fills the hero (title,
  * description, install command, up to two links) and the feature grid; the text below the frontmatter follows them and
- * may use every component. Without it, `/` opens the first docs page. Add `home: homePages({ locales })` to `pages`.
- * `source`: see `DocsSource`.
+ * may use every component. Without it, `/` opens the first docs page. Add `home: '/'` to `pages`.
  */
-export function docsHome(opts: { source?: DocsSource } = {}) {
+export function docsHome() {
+  return defOf(storedHome())
+}
+
+function storedHome() {
   return single({
     label: 'Start page',
-    ...sourceOf(opts.source),
     body: 'body',
     fields: {
       title: f.text('Title', { max: 120, default: 'Documentation' }),
@@ -130,35 +106,25 @@ export function docsHome(opts: { source?: DocsSource } = {}) {
 }
 
 /**
- * The optional blog: `{ posts, authors }`, spread into `bricks` in ginko.config.ts. Posts live at
- * /blog/<slug> (main locale unprefixed, `/<l>/blog/<slug>` otherwise) and come out newest first.
- * Authors have no page; a post names them in `authors`. Files: `content/posts/<n>.<name>[.<locale>].md`
- * and `content/authors/<name>[.<locale>].yml`. Add `blog: blogPages({ locales })` to `pages` as well.
- * The bricks are `posts()` and `authors()` of `@lupinum/ginko/basics` with the English labels docs sites store.
- * `source` (both bricks): see `DocsSource`.
+ * The optional blog: `{ posts, authors }`, spread into `bricks` in ginko.config.ts. Posts come out newest first; their
+ * page is a line in `entries`: `posts: '/blog/[slug]'`. Authors have no page; a post names them in `authors`. Files:
+ * `content/posts/<n>.<name>[.<locale>].md` and `content/authors/<name>[.<locale>].yml`. Add `blog: '/blog'` to `pages`
+ * as well. The bricks are the `posts` and `authors` patterns with the English labels docs sites store.
  */
-export function blogCollections(opts: { locales: Locales; max?: number; source?: DocsSource }) {
-  const { locales } = opts
+export function blogCollections(opts: { max?: number } = {}) {
   return {
-    posts: labelsIn(posts({ ...sourceOf(opts.source), max: opts.max, route: localized(locales, `${BLOG_PATH}/[slug]`) }), 'en'),
-    authors: labelsIn(authors(sourceOf(opts.source)), 'en'),
+    posts: defOf(labelsIn(postsBrick({ max: opts.max }), 'en'), { item: 'a post' }),
+    authors: defOf(labelsIn(authorsBrick(), 'en'), { item: 'an author' }),
   }
 }
 
 /**
  * The optional changelog: one page at /changelog with one entry per release, newest first. Entries have no
  * page of their own, the page links to each by anchor. Files: `content/changelog/<name>[.<locale>].md`
- * with `version` and `date` in the frontmatter (a dot in the name would read as a language: use `v1-2-0.md`). Add `changelog: changelogPages({ locales })` to `pages` as well.
- * The brick is `changelog()` of `@lupinum/ginko/basics` with the English labels docs sites store. `source`: see
- * `DocsSource`.
+ * with `version` and `date` in the frontmatter (a dot in the name would read as a language: use `v1-2-0.md`). Add
+ * `changelog: '/changelog'` to `pages` as well. The brick is the `changelog` pattern with the English labels docs
+ * sites store.
  */
-export function changelogCollection(opts: { max?: number; source?: DocsSource } = {}) {
-  return labelsIn(changelog({ ...sourceOf(opts.source), max: opts.max }), 'en')
+export function changelogCollection(opts: { max?: number } = {}) {
+  return defOf(labelsIn(changelogBrick({ max: opts.max }), 'en'), { item: 'a release' })
 }
-
-/** The start page by locale, for `pages` in ginko.config.ts: the main locale at `/`, the others at `/<locale>`. */
-export const homePages = (opts: { locales: Locales }) => localized(opts.locales, '/')
-
-/** The list pages by locale, for `pages` in ginko.config.ts: the sitemap and the static build know them from there. */
-export const blogPages = (opts: { locales: Locales }) => localized(opts.locales, BLOG_PATH)
-export const changelogPages = (opts: { locales: Locales }) => localized(opts.locales, CHANGELOG_PATH)

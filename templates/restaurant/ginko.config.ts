@@ -2,7 +2,7 @@
 // a gallery and a few free pages, in English (main), German and Italian.
 // Every brick reads Markdown from content/, so the site runs without an account.
 // To let the owner change a brick in Ginko Studio instead, name it in `studio.bricks` (README, "Move to the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
+import { defineSite, extend, f, single } from '@lupinum/ginko'
 import { events, legal, site } from '@lupinum/ginko/patterns'
 import { gallery, hourPlans, hours, lunch, menu, notices } from '@lupinum/ginko-preset-gastro'
 import { pages } from './app/bricks/pages.ts'
@@ -72,14 +72,14 @@ export default defineSite({
     // Other weekly hours for a date range, such as winter hours that repeat every year.
     hourPlans: hourPlans(),
     // The menu: one file per dish with category, price, allergens (EU letters A–R) and vegetarian or vegan.
-    menu: { ...menu(), preview: 'menu' },
+    menu: extend(menu(), { preview: 'menu' }),
     // This week's lunch, Monday to Friday. In the Studio the cook enters the week and the owner approves it.
     // `weekOf`: the start value of the lunch week on the platform (a Monday); the weekly task sets the current week.
-    lunch: { ...lunch({ weekOf: '2026-10-12', needsApproval: true }), preview: 'lunch' },
+    lunch: extend(lunch({ weekOf: '2026-10-12', needsApproval: true }), { preview: 'lunch' }),
     // Wine evenings, cooking classes and the like. An event leaves the site after its last day.
     events: events(),
     // Photos of the house, the food and the garden.
-    gallery: { ...gallery(), preview: 'gallery' },
+    gallery: extend(gallery(), { preview: 'gallery' }),
     // Free pages such as About: content/pages/.
     pages,
   },

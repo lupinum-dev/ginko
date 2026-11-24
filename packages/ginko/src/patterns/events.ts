@@ -2,15 +2,14 @@
 // sessions (a programme: one row per talk or slot), with schema.org Event JSON-LD.
 import { f } from '../core/fields.ts'
 import { plainText, type MarkdownTree } from '../core/markdown.ts'
-import { collection, type RouteTemplate } from '../core/site.ts'
+import { collection } from '../core/site.ts'
 import { zonedDateTime } from '../core/time.ts'
-import type { Field, Fields, Label, Locale, Task } from '../core/types.ts'
-import { both, sourceOf, type BasicsOptions } from './hours-bricks.ts'
+import type { Field, Fields, Label, Task } from '../core/types.ts'
+import { both, type BasicsOptions } from './hours-bricks.ts'
 import { offerPrice, postalAddress, type Money, type PostalAddressInput } from './offer.ts'
 
-/** Options of `events()`: the detail page per locale. Without `route` the events have no pages (no links, no
- *  sitemap entries); a site can still list them, and the Studio's Today page still shows the next one. */
-export interface EventsOptions extends BasicsOptions { route?: Record<Locale, RouteTemplate> }
+/** Options of `events()`. The page of an event is a line in the site's `entries`. */
+export type EventsOptions = BasicsOptions
 
 /**
  * @internal The events collection with a preset's booking label and the fields it adds after `start`; sites use
@@ -42,14 +41,12 @@ export function eventsBrick<const E extends Fields, const B extends Fields = Rec
     label: opts.label ?? both('Veranstaltungen', 'Events'),
     listing: { title: 'title', detail: 'when', image: 'image' },
     untranslated: 'hide', // events have pages: an event without a text in a language has none there
-    ...sourceOf(opts),
     body: 'description',
     fields,
     max: 30,
     order: { field: 'when', dir: 'asc' },
     // `extra` keeps the fields generic, so the type cannot see that `when` is still the daterange.
     visible: { mode: 'until', field: 'when' as never },
-    ...(opts.route ? { route: opts.route } : {}),
     tasks: tasks as unknown as readonly Task<typeof fields>[],
   })
 }
@@ -58,7 +55,7 @@ export function eventsBrick<const E extends Fields, const B extends Fields = Rec
  * Events with a detail page: dates, start and end time (site time zone), a place and/or an online address, price,
  * booking link and "fully booked". An event leaves the site after its last day.
  */
-export function events(opts: EventsOptions) {
+export function events(opts: EventsOptions = {}) {
   return eventsBrick(opts, both('Buchungs-Link', 'Booking link'), {
     // The clock time of the last day.
     end: f.time(both('Ende', 'Ends at'), { optional: true }),
@@ -81,7 +78,6 @@ function sessionsBrick<S extends Field>(opts: BasicsOptions & { events?: string 
     label: opts.label ?? both('Programmpunkte', 'Sessions'),
     listing: { title: 'title', detail: 'date' },
     untranslated: 'fallback',
-    ...sourceOf(opts),
     fields: {
       event: f.ref(both('Veranstaltung', 'Event'), { to: opts.events ?? 'events' }),
       date: f.date(both('Datum', 'Date')),

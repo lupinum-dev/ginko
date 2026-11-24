@@ -9,6 +9,7 @@ import { CliError } from './model.ts'
 import { plan } from './plan.ts'
 import type { Platform } from './platform.ts'
 import { explainChanges, explainProblems, explainRejected, kib } from './report.ts'
+import { statusRules } from '../patterns/rules.ts'
 
 /**
  * Prints the report and returns true when the config is valid, the content files have no broken links and a
@@ -25,7 +26,7 @@ export async function check(input: {
   log: (line: string) => void
 }): Promise<boolean> {
   // The same check as the Nuxt build, first: an invalid config fails here in CI, not later in `nuxt build`.
-  const problems = checkSite(input.config)
+  const problems = checkSite(input.config, statusRules)
   if (problems.length > 0) {
     input.log('ginko.config.ts is invalid:')
     for (const problem of problems) input.log(`  ✗ ${problem}`)

@@ -77,7 +77,7 @@ export interface SiteInput {
     image?: string
     /** The brand colour, `#rrggbb` or `#rgb`: the background of generated share cards (nuxt-og-image). */
     color?: string
-    /** The home page's Organization JSON-LD. A page with its own (`siteJsonLd` of `@lupinum/ginko/basics`) gets none from here. */
+    /** The home page's Organization JSON-LD. A page with its own (`siteJsonLd` of `@lupinum/ginko/patterns`) gets none from here. */
     organization?: { logo?: string; sameAs?: string[] }
     /**
      * Keys of `pages` that stay out of search, such as a thank-you page after a form: they leave the sitemap and
@@ -117,7 +117,7 @@ type SingleFieldPath<B> = { [K in keyof B & string]: B[K] extends { kind: 'singl
 type FactsInput<S extends SiteInput> = NonNullable<S['facts']> extends readonly (infer P)[] ? (string extends P ? readonly string[] : readonly SingleFieldPath<S['bricks']>[]) : never
 
 /**
- * The row keys `retired` takes: `lunch.days.mo` for the row `mo` of the rows field `days`. The row is one the field no
+ * The row keys `retired` takes: `team.shifts.mo` for the row `mo` of the rows field `shifts`. The row is one the field no
  * longer has, so any key; `checkSchema` checks it.
  */
 type RetiredRowPath<B> = { [K in keyof B & string]: B[K] extends { fields: infer F } ? { [N in keyof F & string]: F[N] extends { type: 'rows' } ? `${K}.${N}.${string}` : never }[keyof F & string] : never }[keyof B & string]

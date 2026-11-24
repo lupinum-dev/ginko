@@ -169,7 +169,7 @@ test('the verdict waits for the state of the areas before it says nothing needs 
 // Wrong behaviour caught: with "Heute geschlossen" set for today the page says it twice (flag sentence and hours line,
 // or the reason in the line and again under it), or the hours line takes "Aufheben" with it.
 test('the hours line replaces the today flag sentence and keeps Aufheben', async () => {
-  states = [{ brick: 'hours', line: { kind: 'hours', today: { closed: true, reason: 'Wasserrohrbruch' } }, due: false }]
+  states = [{ brick: 'hours', line: { kind: 'rule', rule: 'opening-hours', today: { closed: true, reason: 'Wasserrohrbruch' } }, due: false }]
   hoursEntry = { closedOn: TODAY, closedNote: 'Wasserrohrbruch' }
   const wrapper = await page()
   const hours = section(wrapper, 'hours')
@@ -181,7 +181,7 @@ test('the hours line replaces the today flag sentence and keeps Aufheben', async
   expect(hours.attributes('data-tint')).toBeUndefined()
   wrapper.unmount()
   // Without the flag the hours line stands under the heading: one sentence, also where the times stand large.
-  states = [{ brick: 'hours', line: { kind: 'hours', today: { ranges: [['11:30', '14:30'], ['17:30', '22:00']] } }, due: false }]
+  states = [{ brick: 'hours', line: { kind: 'rule', rule: 'opening-hours', today: { ranges: [['11:30', '14:30'], ['17:30', '22:00']] } }, due: false }]
   hoursEntry = {}
   const open = await page()
   expect(section(open, 'hours').get('[data-test="status"]').text()).toBe('Heute geöffnet 11:30–14:30, 17:30–22:00')
@@ -195,7 +195,7 @@ test.each<[string, HoursToday, boolean, string]>([
   ['a public holiday names it', { closed: true, reason: { de: 'Nationalfeiertag', en: 'Austrian National Day' } }, false, 'Heute geschlossen · Nationalfeiertag'],
   ['no hours for today is due', { unknown: true }, true, 'Für heute sind keine Öffnungszeiten eingetragen.'],
 ])('hours line: %s', async (_name, today, due, text) => {
-  states = [{ brick: 'hours', line: { kind: 'hours', today }, due }]
+  states = [{ brick: 'hours', line: { kind: 'rule', rule: 'opening-hours', today }, due }]
   hoursEntry = {}
   const wrapper = await page()
   const line = section(wrapper, 'hours').get('[data-test="status"]')

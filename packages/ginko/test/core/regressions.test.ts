@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
   buildBundle, checkSchema, diffSchema, isSafeHref, migrationFingerprint, printOf, resolveEntry,
@@ -234,7 +235,7 @@ describe('schema.ts:48 checkSchema rejects invalid executable contracts', () => 
   ] as const)('%s', (_name, mutate, problems) => {
     const s = base()
     mutate(s)
-    expect(checkSchema(s)).toEqual(problems)
+    expect(checkSchema(s, statusRules)).toEqual(problems)
   })
 })
 
@@ -243,7 +244,7 @@ describe('schema.ts:138 a mirror with the same effective money limit is compatib
     const s = base()
     fieldsOf(s, 'menu').priceOld = { type: 'money', label: 'Alter Preis', max: 100000000, optional: true, retired: true }
     s.retired['menu.priceOld'] = { from: 'price' }
-    expect(checkSchema(s)).toEqual([])
+    expect(checkSchema(s, statusRules)).toEqual([])
   })
 })
 
@@ -295,7 +296,7 @@ describe('Astra phase 4 re-review', () => {
     before.retired['menu.rows'] = { value: [] }
     const after = structuredClone(before)
     ;(after.bricks.menu!.fields.rows as { of: Fields }).of.name!.retired = true
-    expect(checkSchema(after)).toContain('menu.rows.name: columns of a list cannot be retired one by one.')
+    expect(checkSchema(after, statusRules)).toContain('menu.rows.name: columns of a list cannot be retired one by one.')
     expect(diffSchema(before, after).rejected.map((r) => r.kind)).toContain('retiredFieldChanged')
   })
 
@@ -306,18 +307,18 @@ describe('Astra phase 4 re-review', () => {
     const a = make({ name: text })
     const b = structuredClone(a)
     mutate(b)
-    expect(checkSchema(b).some((p) => p.includes('unknown property “future”'))).toBe(true)
+    expect(checkSchema(b, statusRules).some((p) => p.includes('unknown property “future”'))).toBe(true)
     expect(diffSchema(a, b).rejected.map((r) => r.kind)).toContain('unknownChange')
   })
 
   it('schema.ts:65 validates defaults of list columns', () => {
-    expect(checkSchema(make({ rows: list({ name: { ...text, default: 123 } as unknown as Field }) })).length).toBeGreaterThan(0)
+    expect(checkSchema(make({ rows: list({ name: { ...text, default: 123 } as unknown as Field }) }), statusRules).length).toBeGreaterThan(0)
   })
 
   it('schema.ts:140 an explicit EUR mirrors the implicit site currency EUR', () => {
     const s = make({ old: { type: 'money', label: 'Old', currency: 'EUR', retired: true }, current: { type: 'money', label: 'Current' } })
     s.retired['menu.old'] = { from: 'current' }
-    expect(checkSchema(s)).toEqual([])
+    expect(checkSchema(s, statusRules)).toEqual([])
   })
 })
 
@@ -329,6 +330,6 @@ describe('Astra phase 5 re-review: release.ts:253 / :220', () => {
     const s = serializeSchema(restaurant)
     s.bricks.menu!.fields.attachment = field as unknown as Field
     s.retired['menu.attachment'] = { value: null }
-    expect(checkSchema(s).some((p) => p.includes('cannot have a fixed value'))).toBe(true)
+    expect(checkSchema(s, statusRules).some((p) => p.includes('cannot have a fixed value'))).toBe(true)
   })
 })

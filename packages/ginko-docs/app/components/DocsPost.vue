@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { markdownComponents } from '../lib/markdownComponents'
 // One blog post: title, date, authors, text. BlogPosting JSON-LD names the authors and carries both dates.
-import { postJsonLd } from '@lupinum/ginko/basics'
+import { postJsonLd } from '@lupinum/ginko/patterns'
 import type { Post } from '../lib/blogTypes'
 
 const props = defineProps<{ post: Post }>()

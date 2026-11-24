@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { personJsonLd } from '@lupinum/ginko/basics'
+import { personJsonLd } from '@lupinum/ginko/patterns'
 import { ArrowLeft } from '@lucide/vue'
 
 // One speaker: photo or initials, name, role, short bio, and their sessions with day, time and room, read from the

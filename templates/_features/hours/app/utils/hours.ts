@@ -1,6 +1,6 @@
-// The rules behind "open now" without Vue or Nuxt: plain functions of dates, times and the hours line of the basics.
+// The rules behind "open now" without Vue or Nuxt: plain functions of dates, times and the hours line of `@lupinum/ginko/patterns`.
 // useHours and the components use them (auto-imported from app/utils/); tests import this file directly.
-import { spansText, type HoursLine, type Span } from '@lupinum/ginko/basics'
+import { spansText, type HoursLine, type Span } from '@lupinum/ginko/patterns'
 
 /** `YYYY-MM-DD` plus `days`. */
 export function plusDays(date: string, days: number): string {
@@ -36,7 +36,7 @@ export type HoursNow =
   | { kind: 'unknown' }
 
 /**
- * Today's state at `clock` from the hours line of the basics (`hoursLine`). A span that ends at or before it starts
+ * Today's state at `clock` from the hours line of the patterns (`hoursLine`). A span that ends at or before it starts
  * runs past midnight: today's from its start on, and `yesterday`'s (the previous day's spans) until its end, whatever
  * today holds, so at 01:00 after a Saturday 18:00–02:00 the place is still open.
  */

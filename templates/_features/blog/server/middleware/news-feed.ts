@@ -1,4 +1,4 @@
-import { rssXml } from '@lupinum/ginko/basics'
+import { rssXml } from '@lupinum/ginko/patterns'
 import { defineEventHandler, getRequestURL, useRuntimeConfig } from 'nuxt/server'
 import site from '../../ginko.config'
 

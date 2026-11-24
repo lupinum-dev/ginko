@@ -13,6 +13,7 @@ import { isPrefillToken, LISTING_DETAIL_TYPES, LISTING_TITLE_TYPES, PREFILL_TOKE
 import { coreMessage } from './messages.ts'
 import { aspectProblems } from './frames.ts'
 import { checkValue } from './validate.ts'
+import type { RuleField, StatusRules } from './status.ts'
 
 // Keys that would resolve to Object.prototype members in plain-object lookups, plus `prototype`.
 const RESERVED_KEYS = new Set([...Object.getOwnPropertyNames(Object.prototype), 'prototype'])
@@ -262,9 +263,10 @@ const SITE_KEYS = {
 /**
  * Problems of a site config: those of its schema, plus the options that stay out of the schema (`country`, `calendar`).
  * The Nuxt build, `ginko check` and `ginko release` run it; the platform checks only the schema (checkSchema).
- * `schema` is the site's serialized schema, passed by callers that already have it.
+ * `rules`: the status rules the caller knows (`statusRules` of `@lupinum/ginko/patterns`). `schema` is the site's
+ * serialized schema, passed by callers that already have it.
  */
-export function checkSite(site: SiteInput, given?: Schema): string[] {
+export function checkSite(site: SiteInput, rules: StatusRules, given?: Schema): string[] {
   // The languages and the time zone have no default (design V2 5.4), and nothing else can be checked without them.
   const missing = [
     ...(!Array.isArray(site.locales) || site.locales.length === 0 ? [MISSING_LOCALES] : []),
@@ -298,27 +300,28 @@ export function checkSite(site: SiteInput, given?: Schema): string[] {
       if (site.facts.length > 50) problems.push('facts: at most 50.')
     }
   }
-  return [...problems, ...checkSchema(schema)]
+  return [...problems, ...checkSchema(schema, rules)]
 }
 
 /**
  * Structural problems of a schema itself (not of content). Empty when usable. The platform gets
- * schemas from the network (release, devPush), so any value is a problem list, never a crash.
+ * schemas from the network (release, devPush), so any value is a problem list, never a crash. `rules`: the status
+ * rules the caller knows; a status that names another rule is a problem.
  */
-export function checkSchema(schema: unknown): string[] {
+export function checkSchema(schema: unknown, rules: StatusRules): string[] {
   if (typeof schema !== 'object' || schema === null || Array.isArray(schema)) return ['The schema is not an object.']
   // Every other rule belongs to one form; a schema of another form would get a list of problems that are not its own.
   const format = (schema as { format?: unknown }).format
   if (format === undefined) return [`The schema has no format number, so it was written by a Ginko older than this one. Update @lupinum/ginko in the site to the version of the platform (format ${SCHEMA_FORMAT}) and release again.`]
   if (format !== SCHEMA_FORMAT) return [`The schema has format ${JSON.stringify(format)}, and this Ginko reads format ${SCHEMA_FORMAT} only. Use the same version of Ginko in the site and on the platform.`]
   try {
-    return schemaProblems(schema as Schema)
+    return schemaProblems(schema as Schema, rules)
   } catch {
     return ['The schema has an invalid structure.']
   }
 }
 
-function schemaProblems(schema: Schema): string[] {
+function schemaProblems(schema: Schema, rules: StatusRules): string[] {
   // Values that never made it into the schema: every other check would only repeat the damage.
   const lost = lostValues(schema, [])
   if (lost.length) return lost
@@ -422,7 +425,7 @@ function schemaProblems(schema: Schema): string[] {
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
     }
     if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
-    if (brick.status !== undefined) problems.push(...statusProblems(key, brick, schema))
+    if (brick.status !== undefined) problems.push(...statusProblems(key, brick, schema, rules))
     if (brick.kind === 'single' && 'plans' in brick) problems.push(`${key}: plans are only allowed for collections.`)
     if (brick.kind === 'single' && 'publishedOn' in brick) problems.push(`${key}: publishedOn is only allowed for collections.`)
     if (brick.kind === 'collection') {
@@ -473,7 +476,7 @@ function schemaProblems(schema: Schema): string[] {
     // `brick.field.row`: a row a rows field no longer has; the release removes it from the stored entries (diffSchema).
     if (rowKey !== undefined) {
       const field = fieldName !== undefined && Object.hasOwn(brick.fields, fieldName) ? brick.fields[fieldName] : undefined
-      if (rest.length || field?.type !== 'rows') problems.push(`retired: “${path}” names no row of a rows field. Write \`brick.field.row\`, such as 'lunch.days.mo'.`)
+      if (rest.length || field?.type !== 'rows') problems.push(`retired: “${path}” names no row of a rows field. Write \`brick.field.row\`, such as 'team.shifts.mo'.`)
       else if (!('drop' in rule)) problems.push(`retired: the row “${path}” takes { drop: true }.`)
       else if (isWeek(schema.week) && rowKeysOf(field, schema.week).includes(rowKey)) problems.push(`retired: “${path}” is still a row of the field. Retire a row only when the field no longer has it.`)
       continue
@@ -698,60 +701,62 @@ function plansProblems(key: string, plans: unknown, fields: Fields, schema: Sche
   return problems
 }
 
-/** The fields `{ hours: true }` reads, with their types: the stored names of the hours brick. */
-const HOURS_FIELDS = { week: 'rows', exceptions: 'list', closedOn: 'date', holidays: 'choice' } as const
-/** The fields of an hour plan (`hourPlans()`), with their types: what `{ hours: { plans } }` reads of each entry. */
-const HOUR_PLAN_FIELDS = { week: 'rows', from: 'date', yearly: 'boolean' } as const
-/** The hours read `week` by day key, so it is a rows field of the seven weekdays. */
-const weekOfDays = (field: Field) => field.type === 'rows' && field.rows === 'weekdays'
+/** A rule's field as words: “a date field”, “a rows field of weekdays”. */
+const ruleFieldText = (need: RuleField) => `a ${need.type} field${need.rows ? ` of ${need.rows}` : ''}`
 
-/** True when `brick` is a live collection with the live fields of `hourPlans()`. */
-export function isHourPlans(brick: Brick): boolean {
-  return brick.kind === 'collection' && !brick.retired
-    && Object.entries(HOUR_PLAN_FIELDS).every(([name, type]) => Object.hasOwn(brick.fields, name) && !brick.fields[name]!.retired && brick.fields[name]!.type === type)
-    && weekOfDays(brick.fields.week!)
-}
+/** True when `field` is live and what `need` says. */
+const meets = (field: Field | undefined, need: RuleField) => !!field && !field.retired && field.type === need.type && (need.rows === undefined || (field.type === 'rows' && field.rows === need.rows))
 
 /**
- * A status line (`status`): exactly one kind; a collection takes next, count, missing or age, a single takes hours. The
- * field it names must be live (a retired field needs the status removed first) and of the right type. `hours` may
- * name the hour plans: a live collection of the site with the fields of `hourPlans()`.
+ * A status line (`status`): exactly one kind. A collection takes next, count, missing or age: the field it names must be
+ * live (a retired field needs the status removed first) and of the right type. A single takes the rule of a name in
+ * `rules`, with every field the rule states; `plans` names a live collection of the site with the fields the rule states
+ * for plans.
  */
-function statusProblems(key: string, brick: Brick, schema: Schema): string[] {
+function statusProblems(key: string, brick: Brick, schema: Schema, rules: StatusRules): string[] {
   const status: unknown = brick.status
-  const kinds = brick.kind === 'collection' ? ['next', 'count', 'missing', 'age'] : ['hours']
-  const shape = brick.kind === 'collection' ? '{ next }, { count: true }, { missing } or { age }' : '{ hours: true } or { hours: { plans } }'
+  if (brick.kind === 'single') return ruleProblems(key, brick, schema, rules)
+  const shape = '{ next }, { count: true }, { missing } or { age }'
   if (typeof status !== 'object' || status === null || Array.isArray(status)) return [`${key}: status must be ${shape}.`]
   const entries = Object.entries(status)
-  if (entries.length !== 1 || !kinds.includes(entries[0]![0])) return [`${key}: status must be ${shape}.`]
+  if (entries.length !== 1 || !['next', 'count', 'missing', 'age'].includes(entries[0]![0])) return [`${key}: status must be ${shape}.`]
   const [kind, value] = entries[0]!
   if (kind === 'count') {
     if (value !== true) return [`${key}: status.count must be true.`]
     const vis = (brick as CollectionBrick).visible
     return vis?.mode === 'until' ? [] : [`${key}: status { count: true } needs visible: { mode: 'until' }.`]
   }
-  if (kind === 'hours') {
-    const problems: string[] = []
-    if (value !== true) {
-      const plans = typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 1 ? (value as { plans?: unknown }).plans : undefined
-      if (typeof plans !== 'string') return [`${key}: status.hours must be true or { plans: '<key of the hour plans>' }.`]
-      const target = Object.hasOwn(schema.bricks, plans) ? schema.bricks[plans]! : undefined
-      if (!target || target.retired) problems.push(`${key}: status.hours.plans names “${plans}”, which is not a live brick of the site.`)
-      else if (!isHourPlans(target)) problems.push(`${key}: status.hours.plans names “${plans}”, which is not a collection of hour plans (hourPlans(): rows of weekdays “week”, a date “from” and a switch “yearly”).`)
-    }
-    for (const [name, type] of Object.entries(HOURS_FIELDS)) {
-      const field = Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
-      if (!field || field.retired) problems.push(`${key}: status { hours } needs the live field “${name}”.`)
-      else if (field.type !== type) problems.push(`${key}: status { hours } needs “${name}” to be a ${type} field.`)
-      else if (name === 'week' && !weekOfDays(field)) problems.push(`${key}: status { hours } needs “week” to have the rows 'weekdays'.`)
-    }
-    return problems
-  }
   const field = typeof value === 'string' && Object.hasOwn(brick.fields, value) ? brick.fields[value] : undefined
   if (!field) return [`${key}: status.${kind} names “${String(value)}”, which is not a field of the brick.`]
   if (field.retired) return [`${key}: status.${kind} names the retired field “${value}”; remove the status or name another field.`]
   if (kind === 'missing') return field.optional && field.default === undefined ? [] : [`${key}: status.missing needs an optional field without a default, “${value}” is not.`]
   return field.type === 'date' || field.type === 'daterange' ? [] : [`${key}: status.${kind} needs a date or daterange field, “${value}” is a ${field.type} field.`]
+}
+
+/** The status of a single: `{ rule }` or `{ rule, plans }`, a rule the caller knows, with the fields it states. */
+function ruleProblems(key: string, brick: Brick, schema: Schema, rules: StatusRules): string[] {
+  const status: unknown = brick.status
+  const known = Object.keys(rules).join(', ') || 'none'
+  const isShape = typeof status === 'object' && status !== null && !Array.isArray(status)
+    && typeof (status as { rule?: unknown }).rule === 'string'
+    && Object.keys(status).every((k) => k === 'rule' || (k === 'plans' && typeof (status as { plans?: unknown }).plans === 'string'))
+  if (!isShape) return [`${key}: status must be { rule: '<name>' } or { rule: '<name>', plans: '<key of a collection>' }. Known rules: ${known}.`]
+  const { rule: name, plans } = status as { rule: string; plans?: string }
+  const rule = Object.hasOwn(rules, name) ? rules[name]! : undefined
+  if (!rule) return [`${key}: status.rule “${name}” is no rule Ginko knows. Known rules: ${known}.`]
+  const problems: string[] = []
+  for (const [field, need] of Object.entries(rule.inputs)) {
+    if (!meets(Object.hasOwn(brick.fields, field) ? brick.fields[field] : undefined, need)) problems.push(`${key}: status.rule “${name}” needs the live field “${field}” (${ruleFieldText(need)}).`)
+  }
+  if (plans !== undefined) {
+    const target = Object.hasOwn(schema.bricks, plans) ? schema.bricks[plans]! : undefined
+    if (!rule.plans) problems.push(`${key}: status.rule “${name}” takes no plans; remove status.plans.`)
+    else if (!target || target.retired) problems.push(`${key}: status.plans names “${plans}”, which is not a live brick of the site.`)
+    else if (target.kind !== 'collection' || !Object.entries(rule.plans).every(([field, need]) => meets(Object.hasOwn(target.fields, field) ? target.fields[field] : undefined, need))) {
+      problems.push(`${key}: status.plans names “${plans}”, which is not a collection with the fields the rule “${name}” needs (${Object.entries(rule.plans).map(([field, need]) => `${field}: ${ruleFieldText(need)}`).join(', ')}).`)
+    }
+  }
+  return problems
 }
 
 /**

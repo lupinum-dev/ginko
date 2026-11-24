@@ -1,5 +1,5 @@
 import type { MarkdownTree, MarkdownValue } from '@lupinum/ginko'
-import { releaseAnchor, rssXml } from '@lupinum/ginko/basics'
+import { releaseAnchor, rssXml } from '@lupinum/ginko/patterns'
 import { defineEventHandler, getRequestURL, serverFetch, useRuntimeConfig } from 'nuxt/server'
 import site from '../../ginko.config'
 import { releaseSummary } from '#shared/utils/changelog'

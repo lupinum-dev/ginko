@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
+import { defineSite } from '../../ginko/src/index.ts'
 import { lunch } from '../../ginko-preset-gastro/src/index.ts'
 import { manifestOf, pruneLocales, sampleDates, shiftDates } from '../template-files.mjs'
 
@@ -197,7 +198,8 @@ describe('shiftDates', () => {
   })
 
   it('manifestOf moves the lunch week of the gastro preset', () => {
-    expect(manifestOf({ locales: ['en'], bricks: { lunch: lunch({ source: 'files' }) } }).shift).toEqual({ lunch: ['weekOf'] })
+    const cafe = defineSite({ name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, bricks: { lunch: lunch() } })
+    expect(manifestOf(cafe).shift).toEqual({ lunch: ['weekOf'] })
   })
 
   it('moves the frontmatter dates of those fields, in every language, and leaves body text and other keys alone', () => {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component, ComputedRef } from 'vue'
 import { safeHref } from '@lupinum/ginko'
-import type { SessionJsonLdInput } from '@lupinum/ginko/basics'
+import type { SessionJsonLdInput } from '@lupinum/ginko/patterns'
 import { ArrowLeft } from '@lucide/vue'
 
 // One event: date with weekday and time (site time zone), place (its location, else the online link, else the

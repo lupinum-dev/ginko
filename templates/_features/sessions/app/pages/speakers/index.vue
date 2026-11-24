@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { personJsonLd } from '@lupinum/ginko/basics'
+import { personJsonLd } from '@lupinum/ginko/patterns'
 
 // Everyone who speaks (content/people/), in the owner's order, each linked to their page with their sessions. The
 // address per language comes from `pages.speakers` in ginko.config.ts.

@@ -1,6 +1,6 @@
 <!-- Synced from templates/_features/sessions/app/pages/speakers/[slug].vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
-import { personJsonLd } from '@lupinum/ginko/basics'
+import { personJsonLd } from '@lupinum/ginko/patterns'
 import { ArrowLeft } from '@lucide/vue'
 
 // One speaker: photo or initials, name, role, short bio, and their sessions with day, time and room, read from the

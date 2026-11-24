@@ -1,10 +1,9 @@
 // Job ads. Each ad needs `validUntil` and leaves lists, pages, the sitemap and the JSON-LD after that day by itself
 // (`visible until validUntil`), so an expired job cannot stay online.
 import { f } from '../core/fields.ts'
-import { collection, type RouteTemplate } from '../core/site.ts'
-import type { Locale } from '../core/types.ts'
+import { collection } from '../core/site.ts'
 import { compact, postalAddressLd } from '../core/seo.ts'
-import { sourceOf, t, type BasicsOptions } from './shared.ts'
+import { t, type BasicsOptions } from './shared.ts'
 
 const employmentTypes = [
   { value: 'fullTime', label: t('Vollzeit', 'Full time', 'Jornada completa', 'Temps plein') },
@@ -20,20 +19,13 @@ const workPlaces = [
   { value: 'remote', label: t('Remote', 'Remote', 'Remoto', 'À distance') },
 ] as const
 
-export interface JobsOptions<R extends Record<Locale, RouteTemplate> | undefined> extends BasicsOptions {
-  /** A page per job, e.g. `{ en: '/jobs/[slug]', de: '/de/jobs/[slug]' }`. */
-  route?: R
-}
-
-export function jobs<const R extends Record<Locale, RouteTemplate> | undefined = undefined>(o: JobsOptions<R> = {}) {
+export function jobs(o: BasicsOptions = {}) {
   return collection({
     label: o.label ?? t('Stellen', 'Jobs', 'Empleos', 'Offres d’emploi'),
     listing: { title: 'title', detail: 'validUntil' },
     untranslated: 'hide',
-    ...sourceOf(o),
     max: 30,
     order: { field: 'title', dir: 'asc' },
-    ...(o.route ? { route: o.route as R } : {}),
     visible: { mode: 'until', field: 'validUntil' },
     tasks: [
       { id: 'add', kind: 'create', label: t('Stelle ausschreiben', 'Post a job', 'Publicar una oferta', 'Publier une offre') },

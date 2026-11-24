@@ -26,7 +26,7 @@ const INSTRUCTIONS = 'Ginko maintains the content of one website for one person.
   + 'When you retry a change, send the same request_id, so it runs only once. '
   + 'Texts that belong to the website stay in the language of the website; answer the person in their own language. '
   + 'Owners and admins also build and fill the site: ginko_schema shows every field, ginko_write, ginko_create and ginko_import write them (ginko_import with dry_run first), ginko_upload adds files. '
-  + 'Values the site keeps in one place (a price, opening days, the phone number) are listed as facts in ginko_overview: in a Markdown text, write the fact\'s quote (:fact{name="practice.price"}) instead of the value, so the text stays right when the value changes; change the value in its own field.'
+  + 'Values the site keeps in one place (a price, the phone number, the address) are listed as facts in ginko_overview: in a Markdown text, write the fact\'s quote (:fact{name="practice.price"}) instead of the value, so the text stays right when the value changes; change the value in its own field.'
 
 type Rpc = { jsonrpc: '2.0'; id?: string | number | null; method: string; params?: Record<string, Json> }
 

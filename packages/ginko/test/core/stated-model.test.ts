@@ -1,6 +1,7 @@
 // The stored model states what Ginko once concluded from shape, order or name (design V2, section 3.2). Each test names
 // the wrong behaviour it catches: the behaviour coming back from the shape instead of its key.
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import { checkSchema, checkSite, diffSchema, entryTitle, f, navTree, resolveEntry, resolveToken, serializeSchema, single, validate, withoutUnknownRows, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
 
@@ -17,7 +18,7 @@ describe('format: the form of the stored model', () => {
     const schema = stored() as unknown as Record<string, unknown>
     if (format === undefined) delete schema.format
     else schema.format = format
-    expect(checkSchema(schema)).toEqual([sentence])
+    expect(checkSchema(schema, statusRules)).toEqual([sentence])
   })
 
   // Wrong: a release moves a stored model of the old form to the new one without the platform's upgrade, so its
@@ -55,10 +56,10 @@ describe('listing: how an entry appears in lists', () => {
   it('is required on a collection, and each key names a field of the fitting type', () => {
     const schema = stored()
     delete (schema.bricks.menu as Partial<CollectionBrick>).listing
-    expect(checkSchema(schema)).toEqual(['menu: listing is missing. Write `listing: { title: \'<field>\' }` with the field that names an entry (a text, longtext or date field).'])
+    expect(checkSchema(schema, statusRules)).toEqual(['menu: listing is missing. Write `listing: { title: \'<field>\' }` with the field that names an entry (a text, longtext or date field).'])
     const grouped = stored()
     ;(grouped.bricks.menu as CollectionBrick).listing = { title: 'price', group: 'name' }
-    expect(checkSchema(grouped)).toEqual([
+    expect(checkSchema(grouped, statusRules)).toEqual([
       'menu.listing.title: “price” is a money field. Name a text, longtext or date field.',
       'menu.listing.group: “name” is a text field. Name a choice field.',
     ])
@@ -93,7 +94,7 @@ describe('tree: a collection states its navigation tree', () => {
     events.fields.up = { type: 'ref', label: 'Oben', to: 'menu' }
     events.tree = { parent: 'up', section: 'title' }
     events.order = { field: 'title' }
-    expect(checkSchema(schema)).toEqual([
+    expect(checkSchema(schema, statusRules)).toEqual([
       'events.tree.parent: “up” is not a ref field to events itself (one entry).',
       'events.tree: a navigation tree is sorted by hand. Write `order: \'manual\'`.',
     ])
@@ -107,10 +108,10 @@ describe('one address field per collection', () => {
     const schema = stored()
     const events = schema.bricks.events as CollectionBrick
     events.fields.short = { type: 'slug', label: 'Kurzadresse', from: 'title' }
-    expect(checkSchema(schema)).toEqual(['events: a collection has one address (slug) field, not 2 (slug, short). Keep one and retire the others.'])
+    expect(checkSchema(schema, statusRules)).toEqual(['events: a collection has one address (slug) field, not 2 (slug, short). Keep one and retire the others.'])
     ;(events.fields.short as { retired?: true }).retired = true
     schema.retired['events.short'] = { from: 'slug' }
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
   })
 })
 
@@ -118,7 +119,7 @@ describe('task ids', () => {
   const withTasks = (tasks: unknown[]) => {
     const schema = stored()
     ;(schema.bricks.events as unknown as { tasks: unknown[] }).tasks = tasks
-    return checkSchema(schema)
+    return checkSchema(schema, statusRules)
   }
   const edit = (id: string, fields = ['title']) => ({ id, label: 'Bearbeiten', kind: 'edit', pick: true, fields })
 
@@ -152,9 +153,9 @@ describe('untranslated: what an entry does in a language it has no text in', () 
   it('is required when the site has more than one language', () => {
     const schema = stored()
     delete (schema.bricks.menu as CollectionBrick).untranslated
-    expect(checkSchema(schema)).toEqual(['menu: untranslated is missing. The site has more than one language, so say what an entry does in a language it has no text in: \'hide\' leaves it out there, \'fallback\' shows the main language.'])
+    expect(checkSchema(schema, statusRules)).toEqual(['menu: untranslated is missing. The site has more than one language, so say what an entry does in a language it has no text in: \'hide\' leaves it out there, \'fallback\' shows the main language.'])
     // With one language no entry is ever untranslated, so the key may stay out.
-    expect(checkSchema({ ...schema, locales: ['de'] }).filter((p) => p.includes('untranslated'))).toEqual([])
+    expect(checkSchema({ ...schema, locales: ['de'] }, statusRules).filter((p) => p.includes('untranslated'))).toEqual([])
   })
 })
 
@@ -163,7 +164,7 @@ describe('week: the site states its week', () => {
   // week from Sunday although it states Monday.
   it('follows `week`, not the language', () => {
     const schema = serializeSchema({ ...restaurant, languages: { de: 'en-US', en: 'en-US' } })
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
     // Wednesday 14 October 2026.
     expect(resolveToken('@workWeek', schema.timeZone, schema.week, new Date('2026-10-14T10:00:00Z'))).toBe('2026-10-12')
     expect(resolveToken('@workWeek', schema.timeZone, { firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] }, new Date('2026-10-14T10:00:00Z'))).toBe('2026-10-11')
@@ -174,7 +175,7 @@ describe('week: the site states its week', () => {
   it('is required on every site', () => {
     const { week: _week, ...noWeek } = stored()
     const plain: Schema = { ...noWeek, bricks: { hours: { ...noWeek.bricks.hours!, status: undefined } } } as unknown as Schema
-    expect(checkSchema(plain)).toEqual(["week is missing. Write the site's week, for example `week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`: the calendar and planned weeks start on firstDay, and rows of workdays are the workdays."])
+    expect(checkSchema(plain, statusRules)).toEqual(["week is missing. Write the site's week, for example `week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`: the calendar and planned weeks start on firstDay, and rows of workdays are the workdays."])
   })
 })
 
@@ -191,7 +192,7 @@ describe('f.rows: a fixed table is its own field type', () => {
     expect((await validate(schema, 'slots', asRows, { mode: 'create' })).errors.map((e) => [e.path, e.code])).toEqual([['days', 'TYPE']])
     const withUnique = structuredClone(schema)
     ;(withUnique.bricks.slots!.fields.days as unknown as Record<string, unknown>).unique = 'day'
-    expect(checkSchema(withUnique)).toEqual([])
+    expect(checkSchema(withUnique, statusRules)).toEqual([])
     expect((await validate(withUnique, 'slots', asRows, { mode: 'create' })).errors.map((e) => [e.path, e.code])).toEqual([['days', 'TYPE']])
   })
 
@@ -202,13 +203,13 @@ describe('f.rows: a fixed table is its own field type', () => {
       ...restaurant,
       bricks: { practice: single({ label: 'Praxis', fields: { times: f.list('Zeiten', { itemLabel: 'Zeit', min: 1, max: 12, unique: 'time', fields: { time: f.time('Zeit') } }) } }) },
     })
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
     const times = (...values: string[]) => ({ times: values.map((time, i) => ({ _id: `time00000${i}`, time })) })
     expect((await validate(schema, 'practice', times('09:00', '10:00'), { mode: 'create' })).errors).toEqual([])
     expect((await validate(schema, 'practice', times('09:00', '09:00'), { mode: 'create' })).errors.map((e) => [e.path, e.code])).toEqual([['times', 'DUPLICATE']])
     const rows = stored()
     ;(rows.bricks.lunch!.fields.days as unknown as Record<string, unknown>).unique = 'dish'
-    expect(checkSchema(rows)).toContain('lunch.days: unknown property “unique”.')
+    expect(checkSchema(rows, statusRules)).toContain('lunch.days: unknown property “unique”.')
   })
 })
 
@@ -218,22 +219,22 @@ describe('f.rows: rows of workdays and retired rows', () => {
     const schema = stored()
     const days = schema.bricks.lunch!.fields.days as Extract<Schema['bricks'][string]['fields'][string], { type: 'rows' }>
     days.default = {}
-    expect(checkSchema(schema)).toEqual(["lunch.days: rows of workdays follow the site's week, so they take no default. Give the columns defaults instead (each new row starts with them)."])
+    expect(checkSchema(schema, statusRules)).toEqual(["lunch.days: rows of workdays follow the site's week, so they take no default. Give the columns defaults instead (each new row starts with them)."])
     // Rows of weekdays take a default, so it is checked like any value (here it lacks every row).
     days.rows = 'weekdays'
-    expect(checkSchema(schema)).toContain('lunch.days.default.su: “Tage”: the row “su” is missing.')
-    expect(checkSchema(schema).filter((p) => p.includes('take no default'))).toEqual([])
+    expect(checkSchema(schema, statusRules)).toContain('lunch.days.default.su: “Tage”: the row “su” is missing.')
+    expect(checkSchema(schema, statusRules).filter((p) => p.includes('take no default'))).toEqual([])
   })
 
   // Wrong: a retired line that names no row, or a row the field still has, is taken and the release drops live data.
   it.each([
     ['lunch.days.fr', { drop: true }, 'retired: “lunch.days.fr” is still a row of the field. Retire a row only when the field no longer has it.'],
     ['lunch.days.sa', { value: 1 }, 'retired: the row “lunch.days.sa” takes { drop: true }.'],
-    ['hours.closedNote.x', { drop: true }, "retired: “hours.closedNote.x” names no row of a rows field. Write `brick.field.row`, such as 'lunch.days.mo'."],
+    ['hours.closedNote.x', { drop: true }, "retired: “hours.closedNote.x” names no row of a rows field. Write `brick.field.row`, such as 'team.shifts.mo'."],
   ] as const)('refuses retired “%s” %j', (path, rule, sentence) => {
     const schema = stored()
     schema.retired[path] = rule as Schema['retired'][string]
-    expect(checkSchema(schema)).toEqual([sentence])
+    expect(checkSchema(schema, statusRules)).toEqual([sentence])
   })
 })
 
@@ -263,11 +264,11 @@ describe('body: the field the text of a file fills', () => {
     const schema = stored()
     const about: Brick = { kind: 'single', label: 'Seite', source: 'files', fields: { title: { type: 'text', label: 'Titel' }, story: { type: 'markdown', label: 'Text' } } }
     schema.bricks.about = about
-    expect(checkSchema(schema)).toEqual(["about.story: in a file brick, a markdown field is the text of the file. Write `body: 'story'` (one markdown field per file brick)."])
+    expect(checkSchema(schema, statusRules)).toEqual(["about.story: in a file brick, a markdown field is the text of the file. Write `body: 'story'` (one markdown field per file brick)."])
     schema.bricks.about = { ...about, body: 'story' }
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
     schema.bricks.about = { ...about, body: 'title' }
-    expect(checkSchema(schema)).toContain('about.body: “title” is not a markdown field of this brick.')
+    expect(checkSchema(schema, statusRules)).toContain('about.body: “title” is not a markdown field of this brick.')
   })
 })
 
@@ -279,13 +280,13 @@ describe('time zone and languages have no default (5.4)', () => {
   ] as const)('a site without %s is refused with one sentence', (key, sentence) => {
     const site = { ...restaurant } as Record<string, unknown>
     delete site[key]
-    expect(checkSite(site as unknown as typeof restaurant)).toEqual([sentence])
+    expect(checkSite(site as unknown as typeof restaurant, statusRules)).toEqual([sentence])
   })
 
   it('a stored schema without a time zone is refused', () => {
     const schema = stored() as Partial<Schema>
     delete schema.timeZone
-    expect(checkSchema(schema)).toContain("timeZone is missing. Write the site's time zone, for example `timeZone: 'Europe/Vienna'`: Ginko counts today, the week and planned dates in it.")
+    expect(checkSchema(schema, statusRules)).toContain("timeZone is missing. Write the site's time zone, for example `timeZone: 'Europe/Vienna'`: Ginko counts today, the week and planned dates in it.")
   })
 })
 
@@ -295,10 +296,10 @@ describe('preview: the page the Studio opens for an entry', () => {
   it('names a key of pages, and only on a brick without route', () => {
     const schema = stored()
     schema.bricks.menu = { ...schema.bricks.menu!, preview: 'karte' }
-    expect(checkSchema(schema)).toEqual([`menu.preview: “karte” is not a key of pages. Write one of ${Object.keys(schema.pages).join(', ')}.`])
+    expect(checkSchema(schema, statusRules)).toEqual([`menu.preview: “karte” is not a key of pages. Write one of ${Object.keys(schema.pages).join(', ')}.`])
     schema.bricks.menu = { ...schema.bricks.menu!, preview: 'menu' }
     schema.bricks.events = { ...schema.bricks.events!, preview: 'menu' }
-    expect(checkSchema(schema)).toEqual(['events.preview: the entries of “events” have pages of their own (route), so the preview opens them. Leave preview out.'])
+    expect(checkSchema(schema, statusRules)).toEqual(['events.preview: the entries of “events” have pages of their own (route), so the preview opens them. Leave preview out.'])
   })
 })
 
@@ -309,8 +310,8 @@ describe('publishedOn: the day an entry was published', () => {
     const schema = stored()
     const events = schema.bricks.events as CollectionBrick
     schema.bricks.events = { ...events, publishedOn: 'when' }
-    expect(checkSchema(schema)).toEqual(["events.publishedOn: “when” is no date field of the brick. Name the date field that holds the day an entry was published, such as 'date'."])
+    expect(checkSchema(schema, statusRules)).toEqual(["events.publishedOn: “when” is no date field of the brick. Name the date field that holds the day an entry was published, such as 'date'."])
     schema.bricks.events = { ...events, fields: { ...events.fields, published: { type: 'date', label: 'Veröffentlicht' } }, publishedOn: 'published' }
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
   })
 })

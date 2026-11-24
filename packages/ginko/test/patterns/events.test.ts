@@ -1,9 +1,11 @@
-// Events and sessions of the basics. Wrong behaviour caught: search engines show an event an hour off (no offset, or
+// Events and sessions of the patterns. Wrong behaviour caught: search engines show an event an hour off (no offset, or
 // the winter offset in summer), a cancelled session still looks scheduled, a session that ends before it starts is
 // saved, and the sessions brick does not pass the platform's schema check.
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { collection, coreMessage, defineSite, f, serializeSchema, checkSchema, validate, type Issue } from '../../src/core/index.ts'
-import { eventJsonLd, events, sessions, sessionsInOrder, type EventJsonLdInput } from '../../src/basics/index.ts'
+import { events, sessions } from '../../src/patterns/functions.ts'
+import { eventJsonLd, sessionsInOrder, type EventJsonLdInput } from '../../src/patterns/index.ts'
 
 const event = (over: Partial<EventJsonLdInput> = {}): EventJsonLdInput => ({
   title: 'Open Data Days', url: 'https://odd.example/en/events/odd', when: { from: '2026-12-03', to: '2026-12-04' }, timeZone: 'Europe/Vienna', ...over,
@@ -59,7 +61,7 @@ describe('eventJsonLd', () => {
 const site = (withPeople: boolean) => defineSite({
   site: 'odd', name: 'Open Data Days', url: 'https://odd.example', timeZone: 'Europe/Vienna', locales: ['en', 'de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
   bricks: {
-    events: events({ route: { en: '/events/[slug]', de: '/de/veranstaltungen/[slug]' } }),
+    events: { ...events(), route: { en: '/events/[slug]', de: '/de/veranstaltungen/[slug]' } },
     ...(withPeople ? { people: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'People', max: 100, order: 'manual', fields: { name: f.text('Name') } }), sessions: sessions({ people: 'people' }) } : { sessions: sessions() }),
   },
 })
@@ -68,7 +70,7 @@ const pairs = (issues: Issue[]) => issues.map((i) => [i.path, i.code])
 describe('sessions', () => {
   it.each([['with a people collection', true], ['with speakers as text', false]])('passes the schema check %s', (_, withPeople) => {
     const schema = serializeSchema(site(withPeople))
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
     expect(schema.bricks.sessions!.fields.speakers).toMatchObject(withPeople ? { type: 'ref', to: 'people', multiple: true } : { type: 'text' })
   })
 
@@ -94,7 +96,7 @@ describe('sessions', () => {
       ...site(false),
       bricks: { slots: collection({ untranslated: 'fallback', listing: { title: 'day' }, label: 'Slots', max: 5, order: 'manual', fields: { day: f.date('Day'), to: f.time('To', { after: 'day' }) } }) },
     }))
-    expect(checkSchema(schema)).toEqual(['slots.to.after: “day” is not another time field of the brick.'])
+    expect(checkSchema(schema, statusRules)).toEqual(['slots.to.after: “day” is not another time field of the brick.'])
   })
 
   it('sessionsInOrder sorts by date, then start time', () => {

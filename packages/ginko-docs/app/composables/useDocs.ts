@@ -37,7 +37,7 @@ export function useDocs() {
   /** The first page of the docs in this language: where `/docs` (and `/` without a start page) lead. */
   const first = computed(() => nodes.value[0]?.path)
 
-  /** Where the docs live in this language (docsCollection's `base`, `/docs` by default), e.g. `/de/docs`. */
+  /** Where the docs live in this language (the `docs` line in `entries` of the site file, `/docs` by default), e.g. `/de/docs`. */
   const { localePath } = useI18n()
   const { mainLocale } = useGinkoSite()
   const route = ((schema.bricks as Record<string, unknown>)[brick] as { route?: Record<string, string> } | undefined)?.route?.[mainLocale]

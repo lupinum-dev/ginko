@@ -1,6 +1,7 @@
 // Facts (`facts` in the site config, `:fact{name="…"}` in texts): what a fact says, where the config is wrong, and
 // that search and the Markdown twin show the value instead of a gap.
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import {
   bundleFactResolver, checkSchema, checkSite, collection, defineSite, entryMarkdown, f, factCopies, factCopiesInMarkdown, factNamesIn, factText, factValues, parseMarkdown, serializeSchema, single,
   type Bundle, type FactContext, type SiteInput,
@@ -98,11 +99,11 @@ describe('facts in the site config', () => {
     ['practice.note', 'a markdown field'],
     ['practice.rows', 'a list field'],
   ])('reports %s', (path, problem) => {
-    expect(checkSite(site({ facts: [path] })).join('\n')).toContain(problem)
+    expect(checkSite(site({ facts: [path] }), statusRules).join('\n')).toContain(problem)
   })
 
   it('reports a retired field', () => {
-    expect(checkSite(site({ retired: { 'practice.minutes': { drop: true } } })).join('\n')).toContain('“practice.minutes” is retired')
+    expect(checkSite(site({ retired: { 'practice.minutes': { drop: true } } }), statusRules).join('\n')).toContain('“practice.minutes” is retired')
   })
 
   // Wrong behaviour caught: turning on facts made every text strict, so a site without components of its own could no
@@ -119,7 +120,7 @@ describe('facts in the site config', () => {
 
   it('reports a site component named fact next to facts', () => {
     const components = { fact: { kind: 'inline' as const, label: 'Fakt', describe: 'Eigener', props: {} } }
-    expect(checkSite(site({ components })).join('\n')).toContain('“fact” is the component of facts')
+    expect(checkSite(site({ components }), statusRules).join('\n')).toContain('“fact” is the component of facts')
   })
 })
 
@@ -159,8 +160,8 @@ describe('facts for editors and agents', () => {
   it('stores the language tags and passes the platform check', () => {
     const schema = serializeSchema(site({ languages: { de: 'de-AT' } }))
     expect(schema.languages).toEqual({ de: 'de-AT' })
-    expect(checkSchema(schema)).not.toContainEqual(expect.stringMatching(/open|languages/))
-    expect(checkSchema({ ...schema, languages: { de: 'not a tag', en: 'en-US' } }).join('\n')).toMatch(/languages\.de: invalid language[\s\S]*locale “en” is not in locales/)
+    expect(checkSchema(schema, statusRules)).not.toContainEqual(expect.stringMatching(/open|languages/))
+    expect(checkSchema({ ...schema, languages: { de: 'not a tag', en: 'en-US' } }, statusRules).join('\n')).toMatch(/languages\.de: invalid language[\s\S]*locale “en” is not in locales/)
   })
 
   it.each([

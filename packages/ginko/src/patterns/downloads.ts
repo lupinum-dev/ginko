@@ -2,14 +2,13 @@
 import { f } from '../core/fields.ts'
 import { collection } from '../core/site.ts'
 import { limitOf } from '../core/uploads.ts'
-import { sourceOf, t, type BasicsOptions } from './shared.ts'
+import { t, type BasicsOptions } from './shared.ts'
 
 export function downloads(o: BasicsOptions = {}) {
   return collection({
     label: o.label ?? t('Downloads', 'Downloads', 'Descargas', 'Téléchargements'),
     listing: { title: 'title', detail: 'date' },
     untranslated: 'fallback',
-    ...sourceOf(o),
     max: 100,
     order: { field: 'date', dir: 'desc' },
     tasks: [

@@ -4,10 +4,10 @@
 import { f } from '../core/fields.ts'
 import { collection, single } from '../core/site.ts'
 import type { Label } from '../core/types.ts'
-import { sourceOf, type BasicsOptions } from './shared.ts'
+import type { BasicsOptions } from './shared.ts'
 import { weekdayKeys, type Weekday } from './weekdays.ts'
 
-export { sourceOf, type BasicsOptions }
+export type { BasicsOptions }
 
 /** Options of `hours()`. */
 export interface HoursOptions extends BasicsOptions {
@@ -104,10 +104,9 @@ function weekField(t: HoursTexts, week: WeekDefault) {
 export function hoursBrick(t: HoursTexts, week: WeekDefault, opts: HoursOptions) {
   return single({
     label: opts.label ?? t.hours,
-    ...sourceOf(opts),
     // Today's hours on the Studio's Today page (closed, open from … to …, or due when nothing is entered for today),
     // with the hour plans when the site names them.
-    status: { hours: opts.plans ? { plans: opts.plans } : true },
+    status: { rule: 'opening-hours', ...(opts.plans ? { plans: opts.plans } : {}) },
     fields: {
       week: weekField(t, week),
       exceptions: f.list(t.exceptions, {
@@ -150,7 +149,6 @@ export function hourPlansBrick(t: HoursTexts, week: WeekDefault, opts: BasicsOpt
     label: opts.label ?? t.plans,
     listing: { title: 'label', detail: 'from' },
     untranslated: 'fallback',
-    ...sourceOf(opts),
     fields: {
       label: f.text(t.planName, { max: 80 }),
       from: f.date(t.planFrom),

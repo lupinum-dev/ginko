@@ -128,24 +128,6 @@ Rules for a new migration:
   because an import still fills it later.
 - **Tracking issue:** none yet.
 
-## Hour plans found by shape (`hourPlanKeys` in `convex/lib/status.ts`)
-
-- **Why:** the hours single now names its hour plans in the stored schema (`status: { hours: { plans: '<key>' } }`,
-  basics and gastro `hours({ plans })`), and the server reads the plans of that key only. A schema stored before the
-  link has `status: { hours: true }` and no key; for it the server still takes every live collection shaped like
-  `hourPlans()` (a list `week`, a date `from`, a switch `yearly`), as it did before.
-- **Introduced:** 16 October 2026.
-- **Compatibility code:** the `{ hours: true }` branch of `hourPlanKeys` in `packages/ginko-server/convex/lib/status.ts`.
-  `{ hours: true }` itself stays valid: a site without hour plans keeps it.
-- **Dependents:** sites whose config has `hours()` and `hourPlans()` but no `plans` option: the templates with opening
-  hours (restaurant, local-business) until they pass `hours({ plans: 'hourPlans' })`, and every hosted or local site
-  whose last pushed schema predates its config's `plans` (nothing changes for it until its next push).
-- **Removal condition:** every template and site in this repository that has `hourPlans()` passes `plans` to
-  `hours()`, and a query over hosted production (and local backends that keep their data) finds no site whose stored
-  schema has `status: { hours: true }` together with a live collection of the hour-plan shape. Then the branch returns
-  no keys for `{ hours: true }`; delete it, this entry and the shape lookup's mention in the doc comment.
-- **Tracking issue:** none yet.
-
 ## The figure's edge choice `focus` (retired prop and its CSS)
 
 - **Why:** a figure now keeps the focus point of its library picture in view (D57), so the editor no longer offers
@@ -188,21 +170,3 @@ Rules for a new migration:
   `/docs/languages` and `/docs/platform-and-cli`.
 - **Remove when:** together with the German redirects above, and a release after 0.17.0 has the new README
   links on npm.
-
-## Stored-form bricks in the site file (pass-through in `defineSite`)
-
-- **Why:** the gastro preset (`@lupinum/ginko-preset-gastro`), the docs theme (`@lupinum/ginko-docs/config`) and the
-  brick functions of `@lupinum/ginko/basics` still build bricks in the stored form. `defineSite` of `@lupinum/ginko`
-  takes such a brick next to bricks of the written form: it sets where the brick lives and keeps its `route`. The
-  `/v1` entry that once wrote whole configs in that form is gone (D81, the direct cut).
-- **Introduced:** 0.19.0 (November 2026).
-- **Compatibility code:** in `packages/ginko/src/authoring/site.ts` the branch of `defineSite` for a brick that is not a
-  `BrickDef` (`isDef`), and the `route` check next to `entries`; the options `source` and `route` of the basics brick
-  functions and of the gastro preset's `events()`. A stored-form brick takes `preview` by a spread
-  (`{ ...menu(), preview: 'menu' }`), since `extend` takes written-form bricks only (D90).
-- **Dependents:** the gastro preset (`templates/restaurant`, `sites/restaurant`, the gastro starters of
-  `create-ginko`), the docs theme (`templates/docs`, `sites/docs`, the docs starters), the patterns (made from the
-  basics functions, D73).
-- **Remove when:** the gastro preset is a package of patterns (checkpoint 2, part C) and the docs theme's helpers give
-  written-form bricks. Then delete the branch, the `route` and `source` options and this entry.
-- **Tracking issue:** none yet.

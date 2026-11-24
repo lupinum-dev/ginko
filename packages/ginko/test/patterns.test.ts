@@ -1,16 +1,15 @@
-// @lupinum/ginko/patterns: each pattern in a site file gives the stored brick its function of '@lupinum/ginko/basics'
+// @lupinum/ginko/patterns: each pattern in a site file gives the stored brick its function of '@lupinum/ginko/patterns'
 // gives. Wrong behaviour this catches: a pattern differs from its function in a name, a limit, a label or a task, so
 // a site that takes the pattern in place of the function call gets a changed model, which a release reports or refuses.
 import { describe, expect, it } from 'vitest'
-import * as basics from '../src/basics/index.ts'
+import { statusRules } from '@lupinum/ginko/patterns'
+import * as basics from '../src/patterns/functions.ts'
 import { checkSite } from '../src/core/index.ts'
 import type { Brick } from '../src/core/types.ts'
 import { defineSite, extend, f, type BrickDef } from '../src/index.ts'
-import * as patterns from '../src/patterns/index.ts'
+import * as patterns from '../src/patterns/bricks.ts'
 
 const base = { name: 'Halden Pumps', url: 'https://halden.example', timeZone: 'Europe/Vienna', currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, locales: ['de', 'en'] } as const
-
-const route = { de: '/team/[slug]', en: '/en/team/[slug]' } as const
 
 /**
  * A pattern call, the stored brick it must give (the function's brick, plus the Today line a pattern brings) and, for
@@ -22,9 +21,10 @@ const cases: [call: string, name: keyof typeof patterns, pattern: BrickDef, stor
   ['legal()', 'legal', patterns.legal(), basics.legal()],
   ['notices()', 'notices', patterns.notices(), basics.notices()],
   ['people()', 'people', patterns.people(), basics.people()],
-  ['people({ pages: true })', 'people', patterns.people({ pages: true }), basics.people({ route }), '/team/[slug]'],
+  ['people({ pages: true })', 'people', patterns.people({ pages: true }), { ...basics.people({ pages: true }), route: { de: '/team/[slug]', en: '/en/team/[slug]' } }, '/team/[slug]'],
   ['posts({ authors: \'people\' })', 'posts', patterns.posts({ authors: 'people' }), basics.posts({ authors: 'people' })],
   ['posts({ authors: \'team\', max: 50 })', 'posts', patterns.posts({ authors: 'team', max: 50 }), basics.posts({ authors: 'team', max: 50 })],
+  ['authors()', 'authors', patterns.authors(), basics.authors()],
   ['changelog()', 'changelog', patterns.changelog(), basics.changelog()],
   ['jobs()', 'jobs', patterns.jobs(), { ...basics.jobs(), status: { count: true } }],
   ['events()', 'events', patterns.events(), { ...basics.events({}), status: { next: 'when' } }],
@@ -73,7 +73,7 @@ describe('patterns', () => {
       },
       entries: { legal: '/legal/[slug]', news: '/news/[slug]', jobs: null, fairs: '/fairs/[slug]', team: { de: '/team/[slug]', en: '/people/[slug]' } },
     })
-    expect(checkSite(config)).toEqual([])
+    expect(checkSite(config, statusRules)).toEqual([])
     expect(config.bricks.team.route).toEqual({ de: '/team/[slug]', en: '/en/people/[slug]' })
     expect(config.bricks.jobs.route).toBeUndefined()
     expect(config.bricks.team.tasks!.map((task) => task.label)).toEqual([

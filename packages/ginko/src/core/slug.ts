@@ -34,7 +34,7 @@ export function isEntryName(value: unknown): value is string {
 }
 
 /** The rule of `isEntryName` as one sentence, for the messages that refuse a name. */
-export const ENTRY_NAME_RULE = 'An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-menu”.'
+export const ENTRY_NAME_RULE = 'An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-party”.'
 
 /**
  * `base` with the number `n` as an end `-n` (none for 1), cut so that the whole is at most `ENTRY_NAME_MAX` characters

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { faqJsonLd } from '@lupinum/ginko/basics'
+import { faqJsonLd } from '@lupinum/ginko/patterns'
 
 // The FAQ page (page key `faq`): the questions and answers of content/faq/ in the owner's order, as an accordion whose
 // questions are the page's h2, with FAQPage JSON-LD. Below them, one line leads to a person for a question that is not

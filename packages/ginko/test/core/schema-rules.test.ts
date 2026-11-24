@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import { plan } from '../../src/cli/plan.ts'
 import {
@@ -23,7 +24,7 @@ function site(fields: Fields = {}, over: Partial<SiteInput> = {}): SiteInput {
     ...over,
   })
 }
-const problemsOf = (input: SiteInput) => checkSchema(serializeSchema(input))
+const problemsOf = (input: SiteInput) => checkSchema(serializeSchema(input), statusRules)
 
 describe('1. number options must be finite', () => {
   it.each([
@@ -34,7 +35,7 @@ describe('1. number options must be finite', () => {
       const s = base()
       const [brick, name] = path.split('.')
       node(s, `bricks.${brick}.fields.${name}`)[key] = bad
-      expect(checkSchema(s), `${path}.${key} = ${bad}`).toContain(`${path}: ${key} must be a finite number.`)
+      expect(checkSchema(s, statusRules), `${path}.${key} = ${bad}`).toContain(`${path}: ${key} must be a finite number.`)
     }
   })
 
@@ -79,7 +80,7 @@ describe('2. values lost in serializeSchema', () => {
       ['column', site({ rows: column }), 'invalid column name'],
     ]
     for (const [what, input, word] of cases) {
-      const problems = checkSchema(serializeSchema(input))
+      const problems = checkSchema(serializeSchema(input), statusRules)
       expect(problems.join('\n'), `${what} ${key}`).toContain(`${word} “${key}”`)
     }
   })
@@ -87,7 +88,7 @@ describe('2. values lost in serializeSchema', () => {
   // Wrong behaviour caught: a brick named `page` or `file` would make `$page.menu` or `$file.<id>` in a text mean two things.
   it.each(['page', 'file'])('a brick named %s is refused: the name belongs to Markdown references', (key) => {
     const brick = single({ label: 'X', fields: { t: f.text('T', optional) } })
-    const problems = checkSchema(serializeSchema(site({}, { bricks: { ...site().bricks, ...Object.fromEntries([[key, brick]]) } as Bricks })))
+    const problems = checkSchema(serializeSchema(site({}, { bricks: { ...site().bricks, ...Object.fromEntries([[key, brick]]) } as Bricks })), statusRules)
     expect(problems.join('\n')).toContain(`The brick name “${key}” is reserved`)
   })
 })
@@ -136,7 +137,7 @@ describe('4. locales and currency', () => {
     [{ fr: 'fr-FR' }, ['languages: locale “fr” is not in locales.']],
     [{ de: 'de_AT' }, ['languages.de: invalid language “de_AT” (expected a canonical language tag such as “de-AT” or “en-US”).']],
   ])('languages %j', (languages, expected) => {
-    expect(checkSite(site({}, { languages }))).toEqual(expected)
+    expect(checkSite(site({}, { languages }), statusRules)).toEqual(expected)
   })
 
   it.each([
@@ -144,7 +145,7 @@ describe('4. locales and currency', () => {
     ['rgb(4,120,87)', ['seo.color: invalid colour “rgb(4,120,87)” (expected “#rrggbb” or “#rgb”).']],
     ['#047857ff', ['seo.color: invalid colour “#047857ff” (expected “#rrggbb” or “#rgb”).']],
   ])('seo.color %s', (color, expected) => {
-    expect(checkSite(site({}, { seo: { color } }))).toEqual(expected)
+    expect(checkSite(site({}, { seo: { color } }), statusRules)).toEqual(expected)
   })
 
   // Wrong behaviour caught: a platform with a path or plain http would send every content request to a wrong address,
@@ -154,7 +155,7 @@ describe('4. locales and currency', () => {
     ['https://cms.example.com/s/linde', ['platform: invalid address “https://cms.example.com/s/linde” (expected the Studio\'s https:// origin, such as “https://cms.example.com”; http:// only for localhost).']],
     ['http://cms.example.com', ['platform: invalid address “http://cms.example.com” (expected the Studio\'s https:// origin, such as “https://cms.example.com”; http:// only for localhost).']],
   ])('platform %s', (platform, expected) => {
-    expect(checkSite(site({}, { platform }))).toEqual(expected)
+    expect(checkSite(site({}, { platform }), statusRules)).toEqual(expected)
   })
 
   // Wrong behaviour caught: a typo in seo.noindex keeps the page in the sitemap and in search, without a word.
@@ -162,7 +163,7 @@ describe('4. locales and currency', () => {
     [['home'], []],
     [['thanks'], ['seo.noindex: “thanks” is not a key of pages.']],
   ])('seo.noindex %j', (noindex, expected) => {
-    expect(checkSite(site({}, { seo: { noindex } }))).toEqual(expected)
+    expect(checkSite(site({}, { seo: { noindex } }), statusRules)).toEqual(expected)
   })
 })
 
@@ -450,7 +451,7 @@ describe('drafts, no option since 0.13', () => {
   it('a stored schema with drafts passes checkSchema', () => {
     const stored = serializeSchema(site({}, { bricks: { menu: menu as never } }))
     ;(stored.bricks.menu as { drafts?: boolean }).drafts = false
-    expect(checkSchema(stored)).toEqual([])
+    expect(checkSchema(stored, statusRules)).toEqual([])
   })
 })
 
@@ -504,7 +505,7 @@ describe('defaults in the stored form', () => {
     const components = defineComponents({ box: { kind: 'block', label: 'Box', describe: 'Box', props: { title: f.text('T', { optional: true, default: 'Hallo' }) } } })
     const input = site({}, { components })
     expect(serializeSchema(input).components!.box!.props.title!.default).toEqual({ de: 'Hallo' })
-    expect(checkSite(input)).toEqual([])
+    expect(checkSite(input, statusRules)).toEqual([])
   })
 })
 
@@ -594,7 +595,7 @@ describe('approvals (SPEC 17)', () => {
     const schema = serializeSchema(withTasks(true, { agents: { review: true, description: 'Karte' } }))
     expect(schema.bricks.menu!.tasks).toEqual([{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', needsApproval: true }])
     expect(schema.agents).toEqual({ review: true })
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
   })
 
   it('a schema without the flags has no agents key', () => {
@@ -608,13 +609,13 @@ describe('approvals (SPEC 17)', () => {
   it.each([['yes', ['agents.review must be true or false.']], [undefined, []]])('agents.review %j', (review, expected) => {
     const s = serializeSchema(site())
     ;(s as unknown as Record<string, unknown>).agents = { review }
-    expect(checkSchema(s)).toEqual(expected)
+    expect(checkSchema(s, statusRules)).toEqual(expected)
   })
 
   it('an unknown agents property is refused', () => {
     const s = serializeSchema(site())
     ;(s as unknown as Record<string, unknown>).agents = { review: true, speed: 1 }
-    expect(checkSchema(s)).toEqual(['agents: unknown property “speed”.'])
+    expect(checkSchema(s, statusRules)).toEqual(['agents: unknown property “speed”.'])
   })
 })
 
@@ -622,7 +623,7 @@ describe('ref fields (SPEC 2.2)', () => {
   const withRef = (field: Record<string, unknown>) => {
     const s = base()
     node(s, 'bricks.menu.fields').side = { type: 'ref', label: 'Beilage', optional: true, ...field }
-    return checkSchema(s)
+    return checkSchema(s, statusRules)
   }
 
   // Wrong behaviour caught: a ref to a missing brick or a single brick is released, so no entry could ever be picked.
@@ -683,7 +684,7 @@ describe('group and layout (display only)', () => {
     })
     const schema = serializeSchema(input)
     expect(schema.bricks.menu).toMatchObject({ layout: 'tabs', fields: { name: { group: 'Basis' } } })
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
   })
   it.each([
     ['empty group', { group: '' }, 'menu.note.group: label is empty.'],
@@ -752,12 +753,14 @@ describe('status (Today page status line)', () => {
     ['age on a daterange', set('events', { age: 'when' }), []],
     ['missing on an optional field without a default', set('events', { missing: 'image' }), []],
     ['count on a collection with visible until', set('notices', { count: true }), []],
-    ['hours on the hours single', set('hours', { hours: true }), []],
-    ['hours linked to the hour plans', set('hours', { hours: { plans: 'hourPlans' } }), []],
-    ['hours linked to a missing brick', set('hours', { hours: { plans: 'seasons' } }), ['hours: status.hours.plans names “seasons”, which is not a live brick of the site.']],
-    ['hours linked to a collection that is not hour plans', set('hours', { hours: { plans: 'events' } }), ['hours: status.hours.plans names “events”, which is not a collection of hour plans (hourPlans(): rows of weekdays “week”, a date “from” and a switch “yearly”).']],
-    ['hours linked to hour plans without yearly', (s) => { node(s, 'bricks.hourPlans.fields.yearly').type = 'text'; set('hours', { hours: { plans: 'hourPlans' } })(s) }, ['hours: status.hours.plans names “hourPlans”, which is not a collection of hour plans (hourPlans(): rows of weekdays “week”, a date “from” and a switch “yearly”).']],
-    ['hours with a link of another form', set('hours', { hours: 'hourPlans' }), ['hours: status.hours must be true or { plans: \'<key of the hour plans>\' }.']],
+    ['the opening-hours rule on the hours single', set('hours', { rule: 'opening-hours' }), []],
+    ['the rule linked to the hour plans', set('hours', { rule: 'opening-hours', plans: 'hourPlans' }), []],
+    ['a rule Ginko does not know', set('hours', { rule: 'opening-times' }), ['hours: status.rule “opening-times” is no rule Ginko knows. Known rules: opening-hours.']],
+    ['the rule linked to a missing brick', set('hours', { rule: 'opening-hours', plans: 'seasons' }), ['hours: status.plans names “seasons”, which is not a live brick of the site.']],
+    ['the rule linked to a collection without the plans fields', set('hours', { rule: 'opening-hours', plans: 'events' }), ['hours: status.plans names “events”, which is not a collection with the fields the rule “opening-hours” needs (week: a rows field of weekdays, from: a date field, yearly: a boolean field).']],
+    ['the rule linked to hour plans without yearly', (s) => { node(s, 'bricks.hourPlans.fields.yearly').type = 'text'; set('hours', { rule: 'opening-hours', plans: 'hourPlans' })(s) }, ['hours: status.plans names “hourPlans”, which is not a collection with the fields the rule “opening-hours” needs (week: a rows field of weekdays, from: a date field, yearly: a boolean field).']],
+    ['the old stored shape', set('hours', { hours: true }), ["hours: status must be { rule: '<name>' } or { rule: '<name>', plans: '<key of a collection>' }. Known rules: opening-hours."]],
+    ['a link of another form', set('hours', { rule: 'opening-hours', plans: 1 }), ["hours: status must be { rule: '<name>' } or { rule: '<name>', plans: '<key of a collection>' }. Known rules: opening-hours."]],
     ['next on a missing field', set('events', { next: 'date' }), ['events: status.next names “date”, which is not a field of the brick.']],
     ['age on a text field', set('events', { age: 'title' }), ['events: status.age needs a date or daterange field, “title” is a text field.']],
     ['missing on a required field', set('events', { missing: 'title' }), ['events: status.missing needs an optional field without a default, “title” is not.']],
@@ -765,10 +768,10 @@ describe('status (Today page status line)', () => {
     ['count without visible until', set('menu', { count: true }), ['menu: status { count: true } needs visible: { mode: \'until\' }.']],
     ['count that is not true', set('notices', { count: 1 }), ['notices: status.count must be true.']],
     ['two kinds at once', set('events', { next: 'when', age: 'when' }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
-    ['hours on a collection', set('events', { hours: true }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
-    ['next on a single', set('hours', { next: 'closedOn' }), ['hours: status must be { hours: true } or { hours: { plans } }.']],
-    ['hours on a single without the hours fields', set('contact', { hours: true }), ['week', 'exceptions', 'closedOn', 'holidays'].map((name) => `contact: status { hours } needs the live field “${name}”.`)],
-    ['hours with closedOn of another type', (s) => { node(s, 'bricks.hours.fields.closedOn').type = 'text'; set('hours', { hours: true })(s) }, ['hours: status { hours } needs “closedOn” to be a date field.']],
+    ['a rule on a collection', set('events', { rule: 'opening-hours' }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
+    ['next on a single', set('hours', { next: 'closedOn' }), ["hours: status must be { rule: '<name>' } or { rule: '<name>', plans: '<key of a collection>' }. Known rules: opening-hours."]],
+    ['the rule on a single without its fields', set('contact', { rule: 'opening-hours' }), [['week', 'a rows field of weekdays'], ['exceptions', 'a list field'], ['closedOn', 'a date field'], ['holidays', 'a choice field']].map(([name, need]) => `contact: status.rule “opening-hours” needs the live field “${name}” (${need}).`)],
+    ['the rule with closedOn of another type', (s) => { node(s, 'bricks.hours.fields.closedOn').type = 'text'; set('hours', { rule: 'opening-hours' })(s) }, ['hours: status.rule “opening-hours” needs the live field “closedOn” (a date field).']],
     ['a field retired while the status still names it', (s) => {
       set('events', { missing: 'image' })(s)
       node(s, 'bricks.events.fields.image').retired = true
@@ -777,7 +780,7 @@ describe('status (Today page status line)', () => {
   ])('%s', (_name, mutate, expected) => {
     const s = base()
     mutate(s)
-    const problems = checkSchema(s).filter((p) => p.includes('status'))
+    const problems = checkSchema(s, statusRules).filter((p) => p.includes('status'))
     expect(problems).toEqual(expected)
   })
 

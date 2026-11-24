@@ -3,7 +3,8 @@
 Restaurant bricks for [Ginko](https://github.com/lupinum-dev/ginko) sites, with the owner's quick tasks
 built in: "Closed today", "Fully booked today", "Dish sold out today", the lunch menu of the week, a price change.
 
-- **Bricks:** `hours()`, `hourPlans()`, `notices()`, `lunch()`, `lunchPlans()`, `menu()`, `events({ route })`, `gallery()`.
+- **Bricks:** `hours()`, `hourPlans()`, `notices()`, `lunch()`, `lunchPlans()`, `menu()`, `events()`, `gallery()`. Each one is a pattern: a brick of the
+  site file's form, which `extend` of `@lupinum/ginko` changes (`extend(menu(), { preview: 'menu' })`).
 - **Allergens:** the 14 EU allergens with the Austrian letter codes (`allergensEU`), and visitor names in
   German and English (`allergenNames`).
 - **Opening hours:** `todayState({ hours, plans }, today)` says open (with the times), closed (with the owner's
@@ -20,41 +21,40 @@ npm install @lupinum/ginko @lupinum/ginko-preset-gastro
 
 ## Options
 
-Every factory takes `source`, plus its own options:
-
 | Option | Default | What it does |
 |---|---|---|
-| `source` | the platform | `'files'` reads the brick from Markdown in `content/`, so it runs without the platform. |
 | `allergens` (`menu`, `lunch`, `lunchPlans`) | `'EU'` | `'EU'`, `'none'` (no allergen field), or your own `[{ value, label }]`. |
 | `weekOf` (`lunch`) | none | Required for a platform `lunch()`: the week the first menu starts (`YYYY-MM-DD`). Without it, `ginko check` rejects the new single. A platform `lunch()` also needs the main locale `de` or `en` (see [Outside Austria](#outside-austria)). |
 | `lunchBrick` (`lunchPlans`) | `'lunch'` | The key of the `lunch()` brick that planned weeks belong to. |
-| `route` (`events`, required) | none | The event page per locale, e.g. `{ en: '/events/[slug]' }`. |
+| `plans` (`hours`) | none | The key of the `hourPlans()` brick. The Studio's line for today then follows the plan of that day. |
 
-These bricks read from the Ginko platform. Without a running platform the dev server answers 503: add
-`source: 'files'` to each factory (`hours({ source: 'files' })`) to read Markdown from `content/` instead.
+The site file says where each brick lives: a brick named in `studio.bricks` is edited in Ginko Studio (without a
+running platform the dev server answers 503 for it); every other brick reads Markdown from `content/`. The page of an
+event is a line in `entries`.
 
 ```ts
 // ginko.config.ts
-import { defineSite } from '@lupinum/ginko'
+import { defineSite, extend } from '@lupinum/ginko'
 import { events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '@lupinum/ginko-preset-gastro'
 
 export default defineSite({
-  site: 'gasthaus',
+  studio: { id: 'gasthaus', bricks: 'all' },
   name: 'Gasthaus zur Linde',
   url: 'https://example.com',
   timeZone: 'Europe/Vienna',
   week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales: ['de', 'en'],
   currency: 'EUR',
-  pages: { home: { de: '/', en: '/en' } },
+  pages: { home: '/' },
+  entries: { events: { de: '/veranstaltungen/[slug]', en: '/events/[slug]' } },
   bricks: {
-    hours: hours(),
+    hours: hours({ plans: 'hourPlans' }),
     hourPlans: hourPlans(),
     notices: notices(),
     lunch: lunch({ weekOf: '2026-10-05' }),
     lunchPlans: lunchPlans(),
-    menu: menu(),
-    events: events({ route: { de: '/veranstaltungen/[slug]', en: '/en/events/[slug]' } }),
+    menu: extend(menu(), { preview: 'menu' }),
+    events: events(),
     gallery: gallery(),
   },
 })
@@ -110,8 +110,8 @@ Types: `HoursData`, `HoursContext`, `DayHours`, `DayRule` (what `hoursOn` return
 
 Defaults are Austrian (German and English labels, Austrian holidays, the 14 EU allergens). Change them per site:
 
-- Labels and prefilled texts (such as the lunch placeholder) come in German and English. The site keeps the texts of its own locales when its main locale is `de` or `en`; otherwise it starts without the prefilled texts. A platform `lunch()` cannot start without them: its days need the placeholder dish, so with another main locale `ginko check` rejects the new single. Use `lunch({ source: 'files' })` there. A code with a region such as `de-CH` does not count as `de`.
-- `calendar` in the context of the hours rules: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting, and not part of `hours()`. Pass it to every call that reads holidays: `hoursOn({ hours, calendar }, date)`, `todayState({ hours, calendar }, today)`, `upcomingClosures` and `upcomingHolidayClosures`. Instead of `calendar` you can pass `country` (`useRuntimeConfig().public.ginko.country`, from `country` in `ginko.config.ts`): its calendar counts, and a country without one counts none. A call with neither counts Austrian holidays. Keep the value in one constant of your site so all calls agree. Set `country` (or `calendar`) in `ginko.config.ts` too: the schema then stores the calendar (`holidays`), so the Studio and the reminder mail use the same holidays as the site. These bricks and rules now live in `@lupinum/ginko/basics` (without the Austrian default and the restaurant wording); the names here stay. The stored field `holidays` (the owner's choice for those days: like Sunday, closed, normal) is a different thing and keeps its name.
+- Labels and prefilled texts (such as the lunch placeholder) come in German and English. The site keeps the texts of its own locales when its main locale is `de` or `en`; otherwise it starts without the prefilled texts. A platform `lunch()` cannot start without them: its days need the placeholder dish, so with another main locale `ginko check` rejects the new single. Keep `lunch` in files there: leave it out of `studio.bricks`. A code with a region such as `de-CH` does not count as `de`.
+- `calendar` in the context of the hours rules: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting, and not part of `hours()`. Pass it to every call that reads holidays: `hoursOn({ hours, calendar }, date)`, `todayState({ hours, calendar }, today)`, `upcomingClosures` and `upcomingHolidayClosures`. Instead of `calendar` you can pass `country` (`useRuntimeConfig().public.ginko.country`, from `country` in `ginko.config.ts`): its calendar counts, and a country without one counts none. A call with neither counts Austrian holidays. Keep the value in one constant of your site so all calls agree. Set `country` (or `calendar`) in `ginko.config.ts` too: the schema then stores the calendar (`holidays`), so the Studio and the reminder mail use the same holidays as the site. These bricks and rules now live in `@lupinum/ginko/patterns` (without the Austrian default and the restaurant wording); the names here stay. The stored field `holidays` (the owner's choice for those days: like Sunday, closed, normal) is a different thing and keeps its name.
 - Singapore's lunar, Islamic and Hindu holidays are a table for 2026 and 2027 (source: [MOM](https://www.mom.gov.sg/employment-practices/public-holidays)). Add a row each year; other years only know the fixed dates.
 - `allergens` on `menu()`, `lunch()` and `lunchPlans()`: `'EU'` (default), `'none'` (no field), or your own `[{ value, label }]`.
 - `restaurantJsonLd` has no default currency or country: pass `currency` and `address.country`.
@@ -124,7 +124,7 @@ import type { HolidaysOption } from '@lupinum/ginko-preset-gastro'
 export const calendar = 'SG' satisfies HolidaysOption
 
 export default defineSite({
-  site: 'kopi-corner',
+  studio: { id: 'kopi-corner', bricks: 'all' },
   name: 'Kopi Corner',
   url: 'https://example.com',
   timeZone: 'Asia/Singapore',

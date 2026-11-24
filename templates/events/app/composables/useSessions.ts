@@ -1,5 +1,5 @@
 // Synced from templates/_features/sessions/app/composables/useSessions.ts by `pnpm templates sync`. Edit the source, not this copy.
-import { sessionsInOrder, type SessionJsonLdInput, type SessionStatus } from '@lupinum/ginko/basics'
+import { sessionsInOrder, type SessionJsonLdInput, type SessionStatus } from '@lupinum/ginko/patterns'
 
 /** A session as the programme, a speaker's page and "now and next" show it: every value read from its entry. */
 export interface SessionEntry {
@@ -18,7 +18,7 @@ export interface SessionEntry {
   speakers: { id: string, name: string, to?: string }[]
 }
 
-// A stored status this code does not know (`UnknownChoice`: added by a later release of basics) shows as open.
+// A stored status this code does not know (`UnknownChoice`: added by a later release of the patterns) shows as open.
 const STATUSES: SessionStatus[] = ['open', 'soldOut', 'cancelled']
 
 /**

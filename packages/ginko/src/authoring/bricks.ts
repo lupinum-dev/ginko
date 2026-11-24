@@ -1,6 +1,7 @@
 // A brick as a site developer writes it. `single` and `collection` only keep what was written; `defineSite` (site.ts)
 // turns it into the stored form (core/types.ts), because the labels of the standard tasks need the site's languages
 // and the texts of its label files.
+import type { StatusRuleName } from '../patterns/rules.ts'
 import type { ValueInput } from '../core/fields.ts'
 import type { CollectionListing, CollectionTree, Fields, Label } from '../core/types.ts'
 
@@ -84,8 +85,11 @@ export type CollectionStatusInput<D extends string = string, K extends string = 
   | { show: 'missing'; field: K }
   /** The age of the newest entry by its date field. */
   | { show: 'newest'; field: D }
-/** The line of a single on the Studio's Today page: today's opening hours; `plans` names the brick of planned hours. */
-export type SingleStatusInput = { show: 'opening-hours'; plans?: string }
+/**
+ * The line of a single on the Studio's Today page: a status rule of a pattern, by name (`{ rule: 'opening-hours' }`:
+ * today's opening hours). `plans` names a collection the rule also reads (`'hourPlans'`: the hours that apply from a date).
+ */
+export type SingleStatusInput = { rule: StatusRuleName; plans?: string }
 
 interface Common<F extends Fields> {
   /** The brick's name in the Studio. */

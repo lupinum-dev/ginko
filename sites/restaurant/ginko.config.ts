@@ -1,6 +1,6 @@
 // Gasthaus zur Linde: the v1 acceptance target (SPEC 13, DEMOS.md demo 3).
 // Hours, notices, lunch, menu, events and gallery come from the gastro preset; the rest is this house's own.
-import { defineSite, f, single } from '@lupinum/ginko'
+import { defineSite, extend, f, single } from '@lupinum/ginko'
 import { events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '@lupinum/ginko-preset-gastro'
 
 export default defineSite({
@@ -37,12 +37,12 @@ export default defineSite({
     hourPlans: hourPlans(),
     notices: notices(),
     // The cook enters the week's lunch menu; it goes live once the owner approves it (SPEC 17).
-    lunch: { ...lunch({ weekOf: '2026-10-05', needsApproval: true }), preview: 'lunch' },
+    lunch: extend(lunch({ weekOf: '2026-10-05', needsApproval: true }), { preview: 'lunch' }),
     // Lunch weeks planned ahead, shown from their first day of the week (lunchWeekOn).
     lunchPlans: lunchPlans(),
-    menu: { ...menu(), preview: 'menu' },
+    menu: extend(menu(), { preview: 'menu' }),
     events: events(),
-    gallery: { ...gallery(), preview: 'gallery' },
+    gallery: extend(gallery(), { preview: 'gallery' }),
     // A rare job (moving, new number): no quick task, found under this label in Alles bearbeiten.
     contact: single({
       label: 'Adresse und Kontakt',

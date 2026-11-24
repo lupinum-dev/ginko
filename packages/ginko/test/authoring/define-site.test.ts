@@ -1,6 +1,7 @@
 // The form a site is written in ('@lupinum/ginko': defineSite, single, collection, extend, f) and the stored form it
 // produces. Wrong behaviour these tests catch is named on each test.
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { checkSite } from '../../src/core/index.ts'
 import type { BrickValue } from '../../src/core/infer.ts'
 import { collection, defineSite, extend, f, single } from '../../src/index.ts'
@@ -74,7 +75,7 @@ describe('defineSite writes the stored form', () => {
     expect({ max, order, visible, status, label }).toEqual({
       max: 500, order: 'manual', visible: { mode: 'until', field: 'until', days: 2, deleteExpired: true }, status: { count: true }, label: { de: 'Leistungen', en: 'Services' },
     })
-    expect(checkSite(site)).toEqual([])
+    expect(checkSite(site, statusRules)).toEqual([])
   })
 
   // Checked by `tsc`: an entry of a brick with a line in `entries` has `url`; one without has none.
@@ -182,12 +183,23 @@ describe('a config or a brick in the form of 0.18', () => {
     ].join('\n'))
   })
 
-  // Wrong: a preset or the docs theme, which still build stored-form bricks, cannot be used in a site file.
-  it('takes a brick made with the stored-form builders and sets where it lives and its address', () => {
+  // Wrong: a brick of the stored form (Ginko 0.18, an old preset) passes without the checks of the written form, or
+  // stops without saying what to write instead.
+  it('refuses a brick made with the stored-form builders and names the way', () => {
     const news = stored.collection({ untranslated: 'fallback', label: 'News', listing: { title: 'title' }, max: 20, order: 'manual', fields: { title: stored.f.text('Titel'), slug: stored.f.slug('Adresse', { from: 'title' }) } })
-    const site = defineSite({ ...base, locales: ['de', 'en'], bricks: { news }, entries: { news: '/news/[slug]' } })
-    expect(site.bricks.news).toMatchObject({ source: 'files', route: { de: '/news/[slug]', en: '/en/news/[slug]' }, max: 20 })
-    expect(site.site).toBe('halden-pumps')
+    expect(() => defineSite({ ...base, locales: ['de'], bricks: { news } as never, entries: { news: '/news/[slug]' } as never })).toThrow(
+      "- bricks.news is a brick of the stored form (Ginko 0.18). Take its pattern from '@lupinum/ginko/patterns' or from the preset, or write it with `single` or `collection` of '@lupinum/ginko'.",
+    )
+  })
+
+  // Wrong: `bricks: { faq: undefined }` (a conditional spread) throws a bare TypeError, or a string is called a brick
+  // of the stored form.
+  it('says that a value that is no object is not a brick', () => {
+    expect(() => defineSite({ ...base, locales: ['de'], bricks: { faq: undefined, news: 'news' } as never })).toThrow([
+      'ginko.config.ts:',
+      '- bricks.faq is not a brick. Write it with single(...) or collection(...), or call a pattern.',
+      '- bricks.news is not a brick. Write it with single(...) or collection(...), or call a pattern.',
+    ].join('\n'))
   })
 })
 

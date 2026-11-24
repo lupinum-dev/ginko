@@ -284,7 +284,7 @@ export interface HoursLineContext {
   plans?: HourPlan[]
   /**
    * `schema.holidays`. Absent: a schema released before `country` existed. Its site may close on Austrian holidays
-   * (the gastro preset's 0.4 default) or on none (the neutral basics), and the schema cannot tell which; on a day where
+   * (the gastro preset's 0.4 default) or on none (the neutral pattern), and the schema cannot tell which; on a day where
    * the two differ the line is unknown rather than wrong.
    */
   holidays?: StoredHolidays

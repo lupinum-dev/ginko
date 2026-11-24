@@ -1,9 +1,8 @@
 // Legal texts: one entry per text, each with its kind and one Markdown body. Which texts a site needs depends on its
 // country, so none is required.
 import { f } from '../core/fields.ts'
-import { collection, type RouteTemplate } from '../core/site.ts'
-import type { Locale } from '../core/types.ts'
-import { sourceOf, t, type BasicsOptions } from './shared.ts'
+import { collection } from '../core/site.ts'
+import { t, type BasicsOptions } from './shared.ts'
 
 /** The kinds of legal text (`legalType`): stored values, they never change. */
 export const legalTypes = [
@@ -15,20 +14,13 @@ export const legalTypes = [
   { value: 'accessibility', label: t('Barrierefreiheit', 'Accessibility statement', 'Declaración de accesibilidad', 'Déclaration d’accessibilité') },
 ] as const
 
-export interface LegalOptions<R extends Record<Locale, RouteTemplate> | undefined> extends BasicsOptions {
-  /** A page per text, e.g. `{ en: '/[slug]', de: '/de/[slug]' }`. Without it the texts have no pages of their own. */
-  route?: R
-}
-
-export function legal<const R extends Record<Locale, RouteTemplate> | undefined = undefined>(o: LegalOptions<R> = {}) {
+export function legal(o: BasicsOptions = {}) {
   return collection({
     label: o.label ?? t('Rechtliches', 'Legal', 'Textos legales', 'Informations légales'),
     listing: { title: 'title', detail: 'updatedAt' },
     untranslated: 'hide',
-    ...sourceOf(o),
     max: 20,
     order: 'manual',
-    ...(o.route ? { route: o.route as R } : {}),
     tasks: [{
       id: 'update', kind: 'edit', pick: true, fields: ['body', 'updatedAt'], prefill: { updatedAt: '@today' },
       label: t('Rechtstext aktualisieren', 'Update a legal text', 'Actualizar un texto legal', 'Mettre à jour un texte juridique'),

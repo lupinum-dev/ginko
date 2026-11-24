@@ -171,12 +171,12 @@ export type CollectionStatus<D extends string = string, K extends string = strin
   | { age: D }
 
 /**
- * The status of a single brick on the Studio's Today page: `hours` shows today's opening hours ("Open today
- * 11:30–14:30", "Closed today") from the brick's `week`, `exceptions`, `closedOn` and `holidays` fields.
- * `{ hours: { plans: 'hourPlans' } }` also reads the site's hour plans (a collection of `hourPlans()`, by its key): the
- * line follows the plan that applies today.
+ * The status of a single brick on the Studio's Today page: the line of a status rule, by name (`{ rule: '<name>' }`).
+ * The rule comes from a pattern and states the fields it reads; `checkSchema` refuses a name its caller does not know.
+ * `plans` names a collection of the site the rule also reads (the rule states its fields): the line follows the entry
+ * of it that applies today.
  */
-export type SingleStatus = { hours: true | { plans: string } }
+export type SingleStatus = { rule: string; plans?: string }
 
 export type BrickStatus = CollectionStatus | SingleStatus
 

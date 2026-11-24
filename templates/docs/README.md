@@ -215,8 +215,8 @@ prefix.
 
 | Feature | Delete |
 |---|---|
-| Start page | `content/home*.md`, `home: homePages(…)` and `home: docsHome()` in `ginko.config.ts` with their imports; `/` then opens the first docs page |
-| Changelog | `content/changelog/`, `changelog: changelogCollection()` and `changelog: changelogPages(…)` in `ginko.config.ts` with their imports, the `$page.changelog` links in `content/docs/1.introduction*.md` and the changelog card in `content/home*.md` |
+| Start page | `content/home*.md`, `home: '/'` in `pages` and `home: docsHome()` in `ginko.config.ts` with their imports; `/` then opens the first docs page |
+| Changelog | `content/changelog/`, `changelog: changelogCollection()` and `changelog: '/changelog'` in `pages` of `ginko.config.ts` with their imports, the `$page.changelog` links in `content/docs/1.introduction*.md` and the changelog card in `content/home*.md` |
 | German | see "Add or remove a language" |
 | "Edit this page" | `docs.repository` in `app/app.config.ts` (keep the `repository` constant: the footer `source` link uses it) |
 | "Copy page" and its menu | set `markdownActions: { copy: false, openIn: [] }` in `app/app.config.ts` |
@@ -236,7 +236,7 @@ prefix.
 Ginko Studio is the editor of the Ginko platform: people who do not use Git change pages and changelog entries in the
 browser, and see which translations are behind under **Inhalte > Übersetzungen**. You host the platform yourself: see
 [Host the platform](https://ginko.lupinum.com/docs/host-the-platform). The bricks of `ginko.config.ts` then switch
-from files to the Studio (`source: 'platform'` in `docsHome`, `docsCollection` and `changelogCollection`); the pages
+from files to the Studio (name them in `studio.bricks`: `home`, `docs` and `changelog`); the pages
 and their code stay the same, and the search box finds a page from the Studio within a minute of its publication.
 Until you move, everything here works without it.
 

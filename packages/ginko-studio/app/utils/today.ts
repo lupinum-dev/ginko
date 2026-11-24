@@ -32,12 +32,12 @@ export interface Split { buttons: Task[]; more: Task[] }
 
 /**
  * The brick whose card a plan brick `key` sits in: the single a collection `plans` (lunchPlans → lunch), or the single
- * whose hours status follows this collection (`status: { hours: { plans: key } }`, hourPlans → hours).
+ * whose status rule follows this collection (`status: { rule, plans: key }`, hourPlans → hours).
  */
 export function planOwner(schema: Schema, key: string): string | undefined {
   const brick = schema.bricks[key]
   if (brick?.kind === 'collection' && brick.plans) return brick.plans.brick
-  return Object.entries(schema.bricks).find(([, b]) => b.kind === 'single' && typeof b.status?.hours === 'object' && b.status.hours.plans === key)?.[0]
+  return Object.entries(schema.bricks).find(([, b]) => b.kind === 'single' && b.status?.plans === key)?.[0]
 }
 
 /**
