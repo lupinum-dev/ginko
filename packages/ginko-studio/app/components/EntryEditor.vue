@@ -705,7 +705,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <header class="grid gap-2.5">
           <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <h1 class="text-xl font-semibold tracking-tight min-[900px]:text-[1.375rem]">{{ title }}</h1>
+              <h1 class="text-2xl min-[900px]:text-[1.875rem]">{{ title }}</h1>
               <Badge v-if="bar && !sideMode && statusText" :variant="statusVariant">{{ statusText }}</Badge>
             </div>
             <DropdownMenu v-if="entry && !removed">
@@ -789,9 +789,8 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <EntryFields v-bind="fieldProps" :entries="mainUngrouped" @update="setField" />
         <template v-if="tabbed">
           <Tabs v-if="mainGroups.length" v-model="activeTab">
-            <!-- Underlined, so the tabs never look like the language switch above them. -->
-            <TabsList class="h-auto w-full flex-wrap justify-start gap-5 rounded-none border-b bg-transparent p-0">
-              <TabsTrigger v-for="g in mainGroups" :key="g.id" :value="g.id" class="-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-0 pt-1 pb-2 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent">
+            <TabsList>
+              <TabsTrigger v-for="g in mainGroups" :key="g.id" :value="g.id">
                 {{ shown(g.label) }}
                 <span v-if="groupHasIssue(g)" class="size-2 rounded-full bg-destructive" role="img" :aria-label="t('entry.groupHasIssues')" />
                 <span v-if="groupHasGap(g)" class="size-2 rounded-full bg-warning" role="img" :aria-label="t('entry.groupHasGaps')" />
@@ -852,7 +851,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
       <!-- The right column (from 1280px, preview closed): status and publishing, then the entry's address, picture and
            search fields. Inside the form, so Enter and the shortcuts work there too. -->
       <aside v-if="sideMode" class="side-col grid content-start gap-4" :aria-label="t('entry.side.label')">
-        <section v-if="statusCard" class="grid gap-3 rounded-xl border bg-card p-4">
+        <section v-if="statusCard" class="grid gap-3 rounded-[14px] border bg-card p-4">
           <div class="flex items-center justify-between gap-2">
             <h2 class="text-sm font-semibold">{{ t('entry.side.status') }}</h2>
             <Badge v-if="statusText" :variant="statusVariant">{{ statusText }}</Badge>
@@ -887,11 +886,11 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
             <p v-if="publishError" class="rounded-md bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive" role="alert">{{ publishError }}</p>
           </div>
         </section>
-        <section v-if="sideImage || sideSlug.length" class="grid gap-5 rounded-xl border bg-card p-4">
+        <section v-if="sideImage || sideSlug.length" class="grid gap-5 rounded-[14px] border bg-card p-4">
           <EntryFields v-if="sideImage" v-bind="fieldProps" :entries="[sideImage]" @update="setField" />
           <EntryFields v-if="sideSlug.length" v-bind="fieldProps" :entries="sideSlug" @update="setField" />
         </section>
-        <section v-for="g in sideGroups" :key="g.id" class="grid gap-4 rounded-xl border bg-card p-4">
+        <section v-for="g in sideGroups" :key="g.id" class="grid gap-4 rounded-[14px] border bg-card p-4">
           <h2 class="text-sm font-semibold">{{ shown(g.label) }}</h2>
           <EntryFields v-bind="fieldProps" :entries="g.fields" @update="setField" />
         </section>
@@ -905,7 +904,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <span v-else-if="!dirty && savedOnce" class="text-success">{{ savedText }}</span>
         <span v-else-if="dirty && !busy" class="inline-flex items-center gap-1.5 text-warning"><span class="size-1.5 rounded-full bg-warning" aria-hidden="true" />{{ t('entry.unsaved') }}</span>
       </span>
-      <Button type="button" :variant="showPreview ? 'secondary' : 'ghost'" class="h-9 gap-2 px-3" :aria-pressed="showPreview" @click="togglePreview">
+      <Button type="button" variant="ghost" class="h-9 gap-2 px-3" :aria-pressed="showPreview" @click="togglePreview">
         <component :is="showPreview ? EyeOffIcon : EyeIcon" aria-hidden="true" />{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}
       </Button>
       <Button v-if="publishable && !publishing && !removed && !sideMode" type="button" variant="outline" class="h-9" :disabled="busy" @click="openPublish">{{ scheduledAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>

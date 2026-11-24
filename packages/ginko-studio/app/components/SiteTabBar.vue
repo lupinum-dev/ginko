@@ -12,8 +12,9 @@ const rest = computed(() => props.links.slice(3))
 const moreActive = computed(() => rest.value.some((l) => isSiteLinkActive(route.path, l)))
 const open = ref(false)
 watch(() => route.path, () => { open.value = false })
-const tab = 'group grid min-w-0 flex-1 justify-items-center gap-1 pt-2 pb-1.5 text-[12px] font-medium text-muted-foreground no-underline outline-none focus-visible:ring-3 focus-visible:ring-ring/80 aria-[current=page]:text-foreground'
-const tile = 'relative grid h-8 w-14 place-items-center rounded-lg group-aria-[current=page]:bg-primary group-aria-[current=page]:text-primary-foreground'
+const tab = 'group grid min-w-0 flex-1 justify-items-center gap-1 pt-2 pb-1.5 text-[12px] font-medium text-muted-foreground no-underline outline-none focus-visible:ring-3 focus-visible:ring-ring/80 aria-[current=page]:font-semibold aria-[current=page]:text-foreground'
+// Gold marks the current view, as in the rail.
+const tile = 'relative grid h-8 w-14 place-items-center rounded-[10px] group-aria-[current=page]:bg-marker group-aria-[current=page]:text-marker-foreground'
 </script>
 
 <template>
@@ -24,7 +25,7 @@ const tile = 'relative grid h-8 w-14 place-items-center rounded-lg group-aria-[c
     <NuxtLink v-for="l in tabs" :key="l.to" :to="l.to" :class="tab" :aria-current="isSiteLinkActive(route.path, l) ? 'page' : undefined">
       <span :class="tile">
         <component :is="l.icon" class="size-5" aria-hidden="true" />
-        <span v-if="l.count" aria-hidden="true" class="absolute -top-1 right-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-[5px] text-[11px] font-semibold text-primary-foreground ring-2 ring-background">{{ l.count }}</span>
+        <span v-if="l.count" aria-hidden="true" class="absolute -top-1 right-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-marker px-[5px] text-[11px] font-bold text-marker-foreground ring-2 ring-background">{{ l.count }}</span>
       </span>
       <span class="max-w-full truncate">{{ l.label }}</span>
       <span v-if="l.count" class="sr-only">({{ t('nav.toReviewCount', { count: l.count }) }})</span>
@@ -41,7 +42,7 @@ const tile = 'relative grid h-8 w-14 place-items-center rounded-lg group-aria-[c
         <nav class="grid gap-0.5" :aria-label="t('nav.more')">
           <NuxtLink
             v-for="l in rest" :key="l.to" :to="l.to" :aria-current="isSiteLinkActive(route.path, l) ? 'page' : undefined"
-            class="flex min-h-12 items-center gap-3 rounded-lg px-3 text-[15px] font-medium text-foreground no-underline hover:bg-muted aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+            class="flex min-h-12 items-center gap-3 rounded-lg px-3 text-[15px] font-medium text-foreground no-underline hover:bg-hover aria-[current=page]:bg-muted aria-[current=page]:font-semibold"
           >
             <component :is="l.icon" class="size-5 text-muted-foreground" aria-hidden="true" />{{ l.label }}
           </NuxtLink>

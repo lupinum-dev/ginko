@@ -14,7 +14,7 @@ const bar = usePanelBar()
 </script>
 
 <template>
-  <div :class="['min-[900px]:grid min-[900px]:flex-1', folded ? 'min-[900px]:grid-cols-[minmax(0,1fr)]' : 'min-[900px]:grid-cols-[15.5rem_minmax(0,1fr)]']">
+  <div :class="['min-[900px]:grid min-[900px]:flex-1', folded ? 'min-[900px]:grid-cols-[minmax(0,1fr)]' : 'min-[900px]:grid-cols-[15.25rem_minmax(0,1fr)]']">
     <Teleport v-if="bar && foldable" to="#studio-lead">
       <Button type="button" variant="ghost" size="icon-sm" class="-ml-2 mr-1 text-muted-foreground" :aria-pressed="!folded" :aria-label="t('site.all.areaList')" :title="t('site.all.areaList')" @click="toggle()">
         <PanelLeftIcon aria-hidden="true" />
@@ -22,7 +22,7 @@ const bar = usePanelBar()
     </Teleport>
     <!-- The cell stretches to the page height (column colour and line to the bottom); the list inside it sticks. -->
     <aside v-show="!folded" class="hidden border-r bg-sidebar min-[900px]:block">
-      <div class="min-[900px]:sticky min-[900px]:top-(--studio-header-height) min-[900px]:max-h-[calc(100dvh-5rem)] min-[900px]:overflow-y-auto min-[900px]:p-3">
+      <div class="min-[900px]:sticky min-[900px]:top-(--studio-header-height) min-[900px]:h-[calc(100dvh-5rem)] min-[900px]:overflow-y-auto min-[900px]:px-3 min-[900px]:pt-[18px] min-[900px]:pb-3">
         <AllNav :slug="slug" :bricks="bricks" :current="current" :removed-active="removedActive" :translations-active="translationsActive" overview />
       </div>
     </aside>

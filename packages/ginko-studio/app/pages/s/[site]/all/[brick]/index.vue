@@ -108,7 +108,7 @@ const ops = useOps(s.slug)
     <div v-else class="max-w-[1200px] pb-10 min-[900px]:pb-12">
       <!-- The title row of StudioPage (AllShell already pads the cell). -->
       <header class="mb-5 flex flex-wrap items-start gap-x-4 gap-y-3">
-        <h1 class="min-w-0 flex-1 text-[1.375rem] font-semibold tracking-tight">{{ shownLabel(brick.label, s.main.value) }}</h1>
+        <h1 class="min-w-0 flex-1">{{ shownLabel(brick.label, s.main.value) }}</h1>
         <Button v-if="canCreate" as-child><NuxtLink :to="`/s/${s.slug.value}/all/${key}/new`"><PlusIcon aria-hidden="true" />{{ t('site.all.new') }}</NuxtLink></Button>
       </header>
       <!-- While the shown page is not the answer to the current arguments (loading, or that answer failed), it can be an

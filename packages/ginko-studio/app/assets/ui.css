@@ -1,9 +1,13 @@
 /* Ginko platform UI: a tool, not a brand. Calm, light, readable in daylight on a phone.
    Base element styles on the shadcn tokens in css/tailwind.css; components style themselves with utilities.
-   Self-hosted font (no third parties). */
+   Self-hosted fonts (no third parties): Inter for all text, Bricolage Grotesque for page titles (with its optical
+   size axis, so a large title gets the tight display cut), Geist Mono for keys, addresses and commands. */
 @import '@fontsource-variable/inter/index.css';
+@import '@fontsource-variable/bricolage-grotesque/opsz.css';
+@import '@fontsource-variable/geist-mono/index.css';
 
-:root { accent-color: var(--primary); }
+/* Native checkboxes, radios and range inputs take the green of focus and links, like the Studio's own controls. */
+:root { accent-color: var(--ring); }
 
 @layer components {
 
@@ -22,15 +26,18 @@ body {
 /* Pages of a site on wide screens: the canvas behind the rail and the framed panel, also in the overscroll area. */
 @media (min-width: 900px) { body.studio-site { background: var(--canvas); } }
 h1, h2, h3 { margin: 0; line-height: 1.2; text-wrap: balance; }
-/* Page and section titles: one size each; a utility class on the tag still wins (utilities come after this layer). */
-h1 { font-size: 1.5rem; font-weight: 600; }
+/* Page and section titles: one size each; a utility class on the tag still wins (utilities come after this layer).
+   The page title is the one place of the display font: no page sets its own size or weight on an h1, except the entry
+   editor, whose title is the entry's own (often long) name: it is a step smaller. */
+h1 { font-family: var(--font-display); font-size: 1.75rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; }
+@media (min-width: 900px) { h1 { font-size: 2rem; } }
 h2 { font-size: 1.25rem; font-weight: 600; }
 p { margin: 0; }
 /* Figures line up in dates and times; running text keeps Inter's normal figures (tabular widens hyphens). */
 time { font-variant-numeric: tabular-nums; }
-a:where(:not([data-slot])) { color: var(--primary); text-underline-offset: 0.18em; }
+a:where(:not([data-slot])) { color: var(--link); text-underline-offset: 0.18em; }
 button, input, select, textarea { font: inherit; color: inherit; }
-:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }

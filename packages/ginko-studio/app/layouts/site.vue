@@ -137,17 +137,20 @@ const BLOCKED = 'grid w-full max-w-[1200px] justify-items-start gap-3 px-4 pt-4 
   <!-- Wide screens: the rail on the canvas, the page in a framed panel whose top bar sticks (site, crumbs, page actions,
        search, View site). Phones: a top bar, the page, tabs at the bottom. --studio-header-height is what sticks above
        the page, so sticky toolbars and panes sit below it. -->
-  <div class="min-h-dvh [--studio-header-height:57px] min-[900px]:flex min-[900px]:gap-3 min-[900px]:bg-canvas min-[900px]:p-3 min-[900px]:[--studio-header-height:3.5rem]">
+  <div class="min-h-dvh [--studio-header-height:57px] min-[900px]:flex min-[900px]:bg-canvas min-[900px]:py-3 min-[900px]:pr-3 min-[900px]:[--studio-header-height:3.5rem]">
+    <!-- The large leaf behind the rail. Fixed, so it stays in the corner of the window on a long page; the rail and the
+         panel come later and are positioned, so they lie above it. -->
+    <GinkoMark class="pointer-events-none fixed -bottom-[190px] -left-[250px] size-[560px] text-canvas-leaf max-[899px]:hidden" />
     <a href="#studio-main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:ring-3 focus:ring-ring/80 focus:outline-none">{{ t('nav.skip') }}</a>
     <SiteRail v-if="!blocked" class="max-[899px]:hidden" :links="links" :initial="initial" :site-name="siteName">
       <template #foot>
-        <AccountMenu :manager="manager" :last-refresh="lastRefresh" :updating="siteUpdate.running.value" @update="siteUpdate.run()" />
+        <AccountMenu canvas :manager="manager" :last-refresh="lastRefresh" :updating="siteUpdate.running.value" @update="siteUpdate.run()" />
       </template>
     </SiteRail>
     <header v-if="!blocked" class="sticky top-0 z-20 flex h-[57px] items-center gap-1.5 border-b bg-background/95 pr-2 pl-4 backdrop-blur min-[900px]:hidden">
       <NuxtLink
         to="/?all" :aria-label="`${siteName} · ${t('nav.mySites')}`"
-        class="grid size-9 flex-none place-items-center rounded-lg border border-primary text-sm font-bold text-primary"
+        class="grid size-9 flex-none place-items-center rounded-[10px] rounded-bl-[3px] bg-primary font-display text-[17px] font-extrabold text-primary-foreground no-underline"
       >{{ initial }}</NuxtLink>
       <p class="ml-1.5 min-w-0 flex-1 truncate font-semibold">{{ siteName }}</p>
       <Button type="button" variant="ghost" size="icon" :aria-label="t('basics.search.label')" @click="paletteOpen = true">
@@ -158,9 +161,10 @@ const BLOCKED = 'grid w-full max-w-[1200px] justify-items-start gap-3 px-4 pt-4 
       </Button>
       <AccountMenu side="bottom" :manager="manager" :last-refresh="lastRefresh" :updating="siteUpdate.running.value" @update="siteUpdate.run()" />
     </header>
-    <!-- overflow-clip rounds the panel without making it a scroll container, so the top bar still sticks to the window. -->
-    <div class="min-w-0 flex-1 min-[900px]:flex min-[900px]:min-h-[calc(100dvh-1.5rem)] min-[900px]:flex-col min-[900px]:overflow-clip min-[900px]:rounded-xl min-[900px]:border min-[900px]:bg-card min-[900px]:shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
-      <header v-if="!blocked" class="sticky top-0 z-20 hidden h-14 items-center gap-2 border-b bg-card/95 pr-3 pl-5 backdrop-blur-sm min-[900px]:flex">
+    <!-- overflow-clip rounds the panel without making it a scroll container, so the top bar still sticks to the window.
+         The panel has the leaf corner (bottom left smaller). -->
+    <div class="relative min-w-0 flex-1 min-[900px]:flex min-[900px]:min-h-[calc(100dvh-1.5rem)] min-[900px]:flex-col min-[900px]:overflow-clip min-[900px]:rounded-[18px] min-[900px]:rounded-bl-[6px] min-[900px]:bg-card">
+      <header v-if="!blocked" class="sticky top-0 z-20 hidden h-14 items-center gap-2 border-b bg-card/95 pr-3 pl-6 backdrop-blur-sm min-[900px]:flex">
         <div id="studio-lead" class="flex items-center empty:hidden" />
         <nav :aria-label="t('nav.crumbs')" class="min-w-0 flex-1 overflow-x-clip">
           <ol class="flex min-w-0 items-center gap-1 text-sm">

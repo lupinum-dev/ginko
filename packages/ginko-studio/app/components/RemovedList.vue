@@ -57,7 +57,7 @@ async function purge() {
 <template>
   <section aria-labelledby="removed-title">
     <header class="mb-6">
-      <h1 id="removed-title" class="text-[1.375rem] font-semibold tracking-tight">{{ t('basics.removed.title') }}</h1>
+      <h1 id="removed-title">{{ t('basics.removed.title') }}</h1>
       <p class="mt-1 max-w-[65ch] text-muted-foreground min-[900px]:text-sm">{{ t('basics.removed.keeps', { limit: sizeText(SITE_BUDGET.trashBytes, format.number) }) }}</p>
     </header>
     <p v-if="list.error.value" class="mb-3 font-medium text-destructive" role="alert">{{ opErrorOf(list.error.value, t('basics.loadFailed')).message }}</p>

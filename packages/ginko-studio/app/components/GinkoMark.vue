@@ -1,7 +1,10 @@
-<!-- A ginkgo leaf: fan with a notch and a stalk. Decorative. -->
+<!-- The Ginko leaf. It takes the text colour: gold (`text-marker`) as the mark, `text-canvas-leaf` as the large leaf
+     behind the rail. Size comes from the class (default 22 px). -->
 <template>
-  <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M12 21.5V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
-    <path d="M12 13C8.5 13 3 11 3 6.6 5.6 4 9 3 11.3 3.4L12 7.8l.7-4.4C15 3 18.4 4 21 6.6 21 11 15.5 13 12 13Z" class="fill-primary" />
+  <svg viewBox="-5 0 100 100" width="22" height="22" aria-hidden="true">
+    <g transform="rotate(-32 50 54)" fill="currentColor" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M50 68C48 61 27 58 4.4 50A33 33 0 0 1 47.4 13.7L50 34L52.6 13.7A33 33 0 0 1 95.6 50C73 58 52 61 50 68Z" stroke-width="3" />
+      <path d="M50 66C50 77 48.5 86 45 94" fill="none" stroke-width="7" />
+    </g>
   </svg>
 </template>

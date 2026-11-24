@@ -41,7 +41,7 @@ const linkOf = (row: Row) => areas.value.get(row.brick)!.kind === 'single'
 <template>
   <section aria-labelledby="translations-title">
     <header class="mb-6">
-      <h1 id="translations-title" class="text-[1.375rem] font-semibold tracking-tight">{{ t('site.translations.heading') }}</h1>
+      <h1 id="translations-title">{{ t('site.translations.heading') }}</h1>
       <p class="mt-1 max-w-[65ch] text-muted-foreground min-[900px]:text-sm">{{ t('site.translations.lede') }}</p>
     </header>
     <p v-if="status.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(status.error.value, t('basics.loadFailed')).message }}</p>

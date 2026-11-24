@@ -180,7 +180,7 @@ defineExpose({ pick, openLibrary: () => { libraryOpen.value = true }, canFrame, 
         <Button v-if="canFrame" type="button" variant="secondary" size="icon-sm" :aria-label="t('fields.image.frames.open')" :title="t('fields.image.frames.open')" @click="framesOpen = true"><Focus aria-hidden="true" /></Button>
       </div>
     </figure>
-    <p v-if="tileWarning" class="m-0 flex gap-1 text-xs leading-snug text-amber-700 dark:text-amber-400" :title="tileWarning.full">
+    <p v-if="tileWarning" class="m-0 flex gap-1 text-xs leading-snug text-warning" :title="tileWarning.full">
       <TriangleAlert class="mt-px size-3.5 shrink-0" aria-hidden="true" /><span>{{ tileWarning.short }}<span class="sr-only">: {{ tileWarning.full }}</span></span>
     </p>
     <FrameDialog v-if="framesOpen && fileId && ready" v-model:open="framesOpen" :id="`${id}-frames`" :file-id="fileId" :file="ready" :frames="frames" />
@@ -199,7 +199,7 @@ defineExpose({ pick, openLibrary: () => { libraryOpen.value = true }, canFrame, 
            (as a bare ghost button it read like a heading). -->
       <div class="flex flex-wrap justify-center gap-1.5" :class="!tile && '@max-xs:grid @max-xs:justify-items-start'">
         <Button type="button" variant="outline" size="sm" :disabled="sending" @click="pick">{{ t('fields.image.pick') }}</Button>
-        <Button type="button" variant="ghost" size="sm" :class="!tile && '@max-xs:h-auto @max-xs:px-0 @max-xs:pointer-coarse:min-h-11 @max-xs:text-primary @max-xs:underline-offset-4 @max-xs:hover:bg-transparent @max-xs:hover:underline'" :disabled="sending" @click="libraryOpen = true">{{ t('files.picker.choose') }}</Button>
+        <Button type="button" variant="ghost" size="sm" :class="!tile && '@max-xs:h-auto @max-xs:px-0 @max-xs:pointer-coarse:min-h-11 @max-xs:text-link @max-xs:underline-offset-4 @max-xs:hover:bg-transparent @max-xs:hover:underline'" :disabled="sending" @click="libraryOpen = true">{{ t('files.picker.choose') }}</Button>
       </div>
       <!-- Nobody drags a file onto a phone: the hint is for screens with a mouse. -->
       <p v-if="!tile" class="text-[13px] text-muted-foreground pointer-coarse:hidden [@media(hover:none)]:hidden">{{ t('fields.image.drop') }}</p>

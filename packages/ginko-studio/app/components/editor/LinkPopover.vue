@@ -101,7 +101,7 @@ const keepOpen = keepOpenOnTextFocus(() => props.editor, () => open.value)
               <ListboxFilter
                 :id="inputId" ref="input" :model-value="text" autocapitalize="off" autocomplete="off" spellcheck="false" :placeholder="t('editor.link.placeholder')"
                 :aria-invalid="error !== ''" :aria-describedby="error ? errorId : undefined"
-                class="h-10 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/80 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 pointer-coarse:h-11"
+                class="h-10 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/80 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm pointer-coarse:h-11"
                 @update:model-value="onText"
               />
             </div>

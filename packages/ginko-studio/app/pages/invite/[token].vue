@@ -58,7 +58,7 @@ async function signIn() {
 <template>
   <main class="grid w-full gap-4 rounded-2xl border bg-card p-6 sm:p-8">
     <template v-if="offer">
-      <h1 class="text-xl font-semibold tracking-tight">{{ t('invite.heading', { site: offer.site }) }}</h1>
+      <h1>{{ t('invite.heading', { site: offer.site }) }}</h1>
       <p class="text-muted-foreground"><I18nT k="invite.lead" :params="{ site: offer.site, role: t(offer.role === 'owner' ? 'invite.role.owner' : 'invite.role.staff') }"><template #site="{ text }"><strong class="font-medium text-foreground">{{ text }}</strong></template></I18nT></p>
       <p v-if="offer.role === 'owner'">{{ t('invite.rightsOwner') }}</p>
       <div v-else-if="offer.rights.length" class="grid gap-1">
@@ -84,7 +84,7 @@ async function signIn() {
       </template>
     </template>
     <template v-else-if="!loading">
-      <h1 class="text-xl font-semibold tracking-tight">{{ t('invite.title') }}</h1>
+      <h1>{{ t('invite.title') }}</h1>
       <p class="text-destructive" role="alert">{{ t('invite.expired') }}</p>
     </template>
     <SignOut v-if="offer ? !offer.email : status === 'authenticated'" />

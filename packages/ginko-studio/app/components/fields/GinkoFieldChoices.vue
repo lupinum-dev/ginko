@@ -6,7 +6,7 @@ import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
 import { Checkbox } from '@studio/components/ui/checkbox'
 import { Label } from '@studio/components/ui/label'
-import { OPTION_CHIP as row } from './sizes'
+import { OPTION_CHIP as row, OPTION_INPUT } from './sizes'
 import { useStudioSite } from '../../utils/labels'
 
 const props = defineProps<{ id: string; field: Extract<Field, { type: 'choices' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string }>()
@@ -30,11 +30,11 @@ function toggle(value: string, on: boolean) {
 <template>
   <div class="flex flex-wrap gap-2" role="group" tabindex="-1" :aria-labelledby="`${id}-label`" :aria-describedby="describedBy" :aria-invalid="invalid">
     <Label v-for="o in field.options" :key="o.value" :for="`${id}-${o.value}`" :class="row">
-      <Checkbox :id="`${id}-${o.value}`" :model-value="values?.includes(o.value) ?? false" :disabled="atMax && !values?.includes(o.value)" @update:model-value="toggle(o.value, $event === true)" />
+      <Checkbox :id="`${id}-${o.value}`" :class="OPTION_INPUT" :model-value="values?.includes(o.value) ?? false" :disabled="atMax && !values?.includes(o.value)" @update:model-value="toggle(o.value, $event === true)" />
       {{ shown(o.label) }}
     </Label>
     <Label v-if="!field.optional" :for="`${id}-none`" :class="[row, 'border-dashed']">
-      <Checkbox :id="`${id}-none`" :model-value="none" @update:model-value="$event === true ? emit('update:modelValue', []) : emit('update:modelValue', undefined)" />
+      <Checkbox :id="`${id}-none`" :class="OPTION_INPUT" :model-value="none" @update:model-value="$event === true ? emit('update:modelValue', []) : emit('update:modelValue', undefined)" />
       {{ t('fields.none') }}
     </Label>
   </div>

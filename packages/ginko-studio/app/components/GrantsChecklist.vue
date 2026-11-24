@@ -28,7 +28,7 @@ function toggle(grant: string, on: boolean) {
         <label v-for="task in group.tasks" :key="task.id" class="flex min-h-11 cursor-pointer items-center gap-2.5 text-base min-[900px]:min-h-9 min-[900px]:text-sm pointer-coarse:min-h-11">
           <input
             type="checkbox"
-            class="m-0 size-5 flex-none accent-primary min-[900px]:size-4"
+            class="m-0 size-5 flex-none min-[900px]:size-4"
             :checked="modelValue.includes(taskRef(group.key, task))"
             @change="toggle(taskRef(group.key, task), ($event.target as HTMLInputElement).checked)"
           >
