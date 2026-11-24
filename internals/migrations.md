@@ -8,11 +8,11 @@ the exact condition for removing it and the tracking issue when there is one. Re
 The platform's one-time data migrations are list entries in `packages/ginko-server/convex/lib/migrations.ts`
 (`MIGRATIONS`). Nobody runs them by hand:
 
-- A production build (`apps/platform/scripts/vercel-build.sh`) calls `npx convex run --prod migrations:runPending`
-  right after `convex deploy`. It starts the next migration that has not finished and prints one line, for example
+- A production build (`ginko-platform build`, also the build of `apps/platform`) calls
+  `npx convex run --prod migrations:runPending` right after `convex deploy`. It starts the next migration that has not finished and prints one line, for example
   `Migrations: all 5 done.` or `Migrations: started <name> (2 pending)`. The migrations run in the background, one
   after the other, in list order; the build does not wait for them. If the call fails, the build only warns: the new
-  backend is live already. A self-hosted platform without this script runs the same two commands.
+  backend is live already. A platform deployed without this command runs the same two commands.
 - `pnpm local:dev`, `scripts/setup-local.ts`, the platform e2e run and the platform template test call it on the local
   backend (`prepareLocalBackend`), so local backends that keep their data are migrated too.
 - A fresh deployment (no site, no run recorded) records every migration as done without running any.
@@ -49,18 +49,6 @@ Rules for a new migration:
    "it ran on every deployment" can never be known. The major's release notes say "update to the last version before
    it first and wait until `ops:status` shows no pending migration"; contract steps ship with that major.
 7. An entry in this file, and a test that runs it through `migrations:runPending`.
-
-## Two copies of the platform build: `vercel-build.sh` and `ginko-platform build`
-
-Since 2026-11-23. `apps/platform/scripts/vercel-build.sh` (the hosted platform's Vercel build) and
-`packages/ginko/src/cli/platform-build.ts` (`ginko-platform build`, the build of a platform project made by
-`create-ginko --platform`) hold the same rules: deploy the backend only in production and only with a `prod:` deploy
-key, then `convex run --prod migrations:runPending` (warn on failure), then `nuxt build`. A change to one must reach
-the other until the script is gone. Depends on it: the hosted platform's Vercel project (`buildCommand` in
-`apps/platform/vercel.json`). Remove the script and this entry when `apps/platform` builds with
-`ginko-platform build --convex ../../packages/ginko-server` (piece K of the self-hosting plan, with Matthias's OK,
-since it changes the production build). `convex run --prod` with only `CONVEX_DEPLOY_KEY` set works: confirmed by a
-real build on 2026-11-23 (`RUN_ON_PRODUCTION` in `platform-build.ts`).
 
 ## Entry storage: trees in `entryTrees`, text-only budget, separate trash (`2026-10-14-entry-storage`)
 

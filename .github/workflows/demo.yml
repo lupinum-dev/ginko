@@ -1,6 +1,6 @@
 # The demo platform lupinum-ginko-demo (internals/decisions.md D55): every template runs there as a site with its
 # content in the Studio. Its Vercel project is linked to main: each production build deploys the Convex backend, then
-# the Studio (apps/platform/scripts/vercel-build.sh); the template sites deploy through their own Vercel Git links.
+# the Studio (`ginko-platform build` in apps/platform); the template sites deploy through their own Vercel Git links.
 # Here, on each push to main, every template site gets its schema (`ginko release` with GINKO_CONTENT=platform, the
 # path a client site takes too); a release that needs backend code the Vercel build has not deployed yet fails, and a
 # run by hand repeats it. Every Monday night, and when started by hand, the template sites get their content back from

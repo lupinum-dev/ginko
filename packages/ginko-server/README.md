@@ -18,9 +18,10 @@ keeps `sharp` out of the bundle only when it runs next to the `package.json` tha
 bundles `sharp`, and the deploy fails on Convex's Linux runtime.
 
 **Releases.** Every production build on Vercel deploys the Convex functions first and then builds the Studio
-(`apps/platform/vercel.json` runs `apps/platform/scripts/vercel-build.sh`). A failed Convex deploy fails the build,
-and the previous release stays live. Preview builds and local builds deploy nothing. The Vercel project's root
-directory is `apps/platform`.
+(`apps/platform/vercel.json` runs `ginko-platform build --convex ../../packages/ginko-server`, the command every
+platform project builds with). A failed Convex deploy fails the build, and the previous release stays live. Preview
+builds deploy nothing; a build outside Vercel deploys only when `CONVEX_DEPLOY_KEY` holds a production key. The
+Vercel project's root directory is `apps/platform`.
 
 **Preview builds** still run the Nuxt build, and it stops without `SITE_URL` and the Convex URLs. So choose one:
 add **Preview** variables in Vercel that point at a separate staging Convex project (see
@@ -118,7 +119,7 @@ One-time data migrations run by themselves after a deploy: the production build 
 `npx convex run --prod migrations:runPending` right after `convex deploy` and prints one line, for example
 `Migrations: all 5 done.` or `Migrations: started <name> (2 pending)`. They run in the background, one after the
 other, and nobody runs them by hand. A fresh deployment records them all as done without running any. If you deploy
-without `apps/platform/scripts/vercel-build.sh`, run the same two commands:
+without `ginko-platform build`, run the same two commands:
 
 ```bash
 npx convex deploy
