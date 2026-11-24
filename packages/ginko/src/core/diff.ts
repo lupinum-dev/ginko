@@ -110,7 +110,7 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
 
 type Report = (path: string, kind: string, message: Described, fix?: Described, snippet?: string) => void
 /** The site's week in production and in the release: the days of a rows field of weekdays or workdays come from it. */
-type Weeks = readonly [SiteWeek | undefined, SiteWeek | undefined]
+type Weeks = readonly [SiteWeek, SiteWeek]
 
 /** A value a new field starts with: its default, or for a rows field, rows its columns' defaults fill (`startValue`). */
 const hasStart = (field: Field) => field.default !== undefined || (field.type === 'rows' && rowDefaults(field.of) !== undefined)
@@ -165,7 +165,7 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
       if (stableJson(before[k] ?? null) !== stableJson(after[k] ?? null)) ok(`${key}.${k}`, k, msg('diff.valueChanged', { name: k }))
     }
   }
-  diffFields(key, before.fields, after.fields, newFills, ok, no, currency, weeks)
+  diffFields(key, before.fields, after.fields, newFills, ok, no, weeks, currency)
 }
 
 /** The existing addresses stay as they are; the only difference is an address for a language that is new in this release. */
@@ -179,7 +179,7 @@ function onlyNewLocalesAdded(before: Record<string, string | undefined>, after: 
  * `currency` is set for the top-level fields of a brick, which a rejection can replace with a new field (snippets);
  * `weeks` for them too, since only a top-level field can be a rows field.
  */
-function diffFields(path: string, before: Fields, after: Fields, newFills: Set<string>, ok: Report, no: Report, currency?: Currency, weeks?: Weeks) {
+function diffFields(path: string, before: Fields, after: Fields, newFills: Set<string>, ok: Report, no: Report, weeks: Weeks, currency?: Currency) {
   const topLevel = currency !== undefined
   for (const [name, old] of Object.entries(before)) {
     const at = `${path}.${name}`
@@ -199,7 +199,7 @@ function diffFields(path: string, before: Fields, after: Fields, newFills: Set<s
   }
 }
 
-function diffField(at: string, old: Field, next: Field, newFills: Set<string>, ok: Report, no: Report, weeks?: Weeks) {
+function diffField(at: string, old: Field, next: Field, newFills: Set<string>, ok: Report, no: Report, weeks: Weeks) {
   if (old.type !== next.type) return no(at, 'typeChanged', msg('diff.typeChanged', { at, from: old.type, to: next.type }))
   if (old.retired && !next.retired) no(at, 'unretired', msg('diff.unretired', { path: at }))
   // Rollback contract (SPEC 2.5): retiring freezes the production definition; old code reads it.
@@ -246,11 +246,11 @@ function diffField(at: string, old: Field, next: Field, newFills: Set<string>, o
   }
   if (old.type === 'list' && next.type === 'list') {
     if (!sameLabel(old.itemLabel, next.itemLabel)) ok(at, 'text', msg('diff.textChanged'))
-    diffFields(at, old.of, next.of, newFills, ok, no)
+    diffFields(at, old.of, next.of, newFills, ok, no, weeks)
   }
   if (old.type === 'rows' && next.type === 'rows') {
     // The rows each side stores, by its site's week (a changed week can change the workdays). The order is presentation.
-    const [before, after] = [rowKeysOf(old, weeks?.[0]), rowKeysOf(next, weeks?.[1])]
+    const [before, after] = [rowKeysOf(old, weeks[0]), rowKeysOf(next, weeks[1])]
     // A removed row is stored data that old code reads, like a removed option (choice above) or field (diffFields).
     for (const row of before) if (!after.includes(row)) no(at, 'rowRemoved', msg('diff.rowRemoved', { at, row }), fx('keepRow'))
     // An added row is a new value in every stored entry, like a new required field (diffFields): the release fills it
@@ -261,7 +261,7 @@ function diffField(at: string, old: Field, next: Field, newFills: Set<string>, o
       else no(at, 'rowWithoutDefault', msg('diff.rowWithoutDefault', { at, row }), fx('rowDefaults'))
     }
     if (stableJson(old.rows as Json) !== stableJson(next.rows as Json) && before.every((row) => after.includes(row)) && after.every((row) => before.includes(row))) ok(at, 'text', msg('diff.textChanged'))
-    diffFields(at, old.of, next.of, newFills, ok, no)
+    diffFields(at, old.of, next.of, newFills, ok, no, weeks)
   }
 }
 

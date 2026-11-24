@@ -2,8 +2,8 @@ import { effectiveMax, effectiveMin, effectiveProfile, isTable, isTranslatable, 
 import { isCurrency, isLocale, labelProblem, MAX_LOCALES } from './labels.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { formatMb, limitOf } from './uploads.ts'
-import { weeklyTask, weekStartField } from './stale.ts'
-import { WEEKDAYS } from './time.ts'
+import { weeklyTask } from './stale.ts'
+import { DAY_KEYS } from './time.ts'
 import { CALENDAR_NAMES, holidaysOf, STORED_HOLIDAYS } from './holidays.ts'
 import { componentProblems, type ComponentDef, type ComponentRegistry } from './components.ts'
 import { factComponent, factProblem, FACT_TAG } from './facts.ts'
@@ -64,7 +64,7 @@ export function serializeSchema(site: SiteInput): Schema {
     ...(site.languages && Object.keys(site.languages).length ? { languages: { ...site.languages } } : {}),
     currency: site.currency,
     // As the site states it; the server, the Studio and the site all read `schema.week`.
-    ...(site.week !== undefined ? { week: site.week } : {}),
+    week: site.week,
     // Resolved once, so the server and the Studio never run the site's code to know its holidays.
     ...withHolidays(site),
     pages: Object.fromEntries(Object.entries(site.pages).map(([key, page]) => [key, typeof page === 'string' ? { [site.locales[0]]: page } : page])),
@@ -347,15 +347,9 @@ function schemaProblems(schema: Schema): string[] {
   if (!isSiteUrl(schema.url)) problems.push(`Invalid site url “${String(schema.url)}” (expected an absolute http(s) address such as “https://linde.example”).`)
   if (schema.timeZone === undefined) problems.push(MISSING_TIME_ZONE)
   else if (!isTimeZone(schema.timeZone)) problems.push(`Invalid time zone “${String(schema.timeZone)}” (expected for example “Europe/Vienna”).`)
-  if (schema.week !== undefined && !isWeek(schema.week)) problems.push(`week must be { firstDay, workdays }: firstDay one of ${WEEKDAYS.join(', ')}, workdays a whole number from 1 to 7 (the days from firstDay on that are workdays).`)
-  else if (schema.week === undefined) {
-    // A weekly brick needs the site's week: it decides the first day of every week and when the coming week counts.
-    const weekly = Object.entries(schema.bricks ?? {}).find(([, brick]) => typeof brick === 'object' && brick !== null && weekStartField(brick))
-    if (weekly) problems.push(`week is missing. The brick “${weekly[0]}” is planned by the week, so say on which day the site's week starts and how many days are workdays, for example \`week: { firstDay: 'monday', workdays: 5 }\`.`)
-    // A rows field of weekdays or workdays shows its days from the week's first day on; workdays are the site's.
-    const days = weekly ? undefined : dayRowsField(schema.bricks)
-    if (days) problems.push(`week is missing. The field “${days.path}” has a row for each ${days.rows === 'weekdays' ? 'day of the week' : 'workday'}, so say on which day the site's week starts and how many days are workdays, for example \`week: { firstDay: 'monday', workdays: 5 }\`.`)
-  }
+  // Every site states its week, as its time zone: the calendar, planned weeks and rows of days read it.
+  if (schema.week === undefined) problems.push(MISSING_WEEK)
+  else if (!isWeek(schema.week)) problems.push(`week must be { firstDay, workdays }: firstDay one of ${DAY_KEYS.join(', ')}, workdays a list of 1 to 7 different days of these, for example \`week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }\`.`)
   if (schema.holidays !== undefined && !STORED_HOLIDAYS.includes(schema.holidays)) problems.push(`holidays must be one of ${STORED_HOLIDAYS.join(', ')}.`)
   if (!isCurrency(schema.currency)) problems.push(`Invalid currency “${String(schema.currency)}” (expected an ISO 4217 code such as “EUR” or “JPY”).`)
   const pageOwner = new Map<string, string>()
@@ -615,7 +609,9 @@ function checkValueIn(schema: Schema, field: Field, value: unknown, path: string
 function isWeek(week: unknown): boolean {
   if (typeof week !== 'object' || week === null || Array.isArray(week)) return false
   const { firstDay, workdays, ...rest } = week as { firstDay?: unknown; workdays?: unknown }
-  return (WEEKDAYS as readonly unknown[]).includes(firstDay) && Number.isInteger(workdays) && (workdays as number) >= 1 && (workdays as number) <= 7 && !Object.keys(rest).length
+  const isDay = (day: unknown) => (DAY_KEYS as readonly unknown[]).includes(day)
+  return isDay(firstDay) && Array.isArray(workdays) && workdays.length >= 1 && workdays.length <= 7 && workdays.every(isDay)
+    && new Set(workdays).size === workdays.length && !Object.keys(rest).length
 }
 
 /** The kind each standard task id stands for: the Studio opens the task `edit` from a row, so the ids are fixed. */
@@ -858,16 +854,8 @@ function isPlatformAddress(value: unknown): boolean {
   }
 }
 
-/** The first live field with `rows: 'weekdays'` or `'workdays'` (`path`: `brick.field`): it needs the site's week. */
-function dayRowsField(bricks: Schema['bricks'] | undefined): { path: string; rows: 'weekdays' | 'workdays' } | undefined {
-  for (const [key, brick] of Object.entries(bricks ?? {})) {
-    if (typeof brick !== 'object' || brick === null || brick.retired) continue
-    for (const [name, field] of Object.entries(brick.fields ?? {})) if (field.type === 'rows' && typeof field.rows === 'string' && !field.retired) return { path: `${key}.${name}`, rows: field.rows }
-  }
-  return undefined
-}
-
 const MISSING_LOCALES = "locales is missing. Write the site's languages, the main language first, for example `locales: ['de', 'en']`."
+const MISSING_WEEK = "week is missing. Write the site's week, for example `week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`: the calendar and planned weeks start on firstDay, and rows of workdays are the workdays."
 const MISSING_TIME_ZONE = "timeZone is missing. Write the site's time zone, for example `timeZone: 'Europe/Vienna'`: Ginko counts today, the week and planned dates in it."
 
 /** An IANA time zone name this runtime's `Intl` knows, e.g. `Europe/Vienna`. */

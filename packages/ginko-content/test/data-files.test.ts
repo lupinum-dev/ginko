@@ -9,7 +9,7 @@ import { readContent } from '../src/read.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'preise', name: 'Preise', url: 'https://preise.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
   bricks: {
     angebote: collection({
       listing: { title: 'title' },
@@ -148,7 +148,7 @@ describe('drafts', () => {
 
 describe('scheduled entries', () => {
   const site = serializeSchema(defineSite({
-    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', pages: { home: { en: '/' } },
+    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { en: '/' } },
     bricks: {
       posts: collection({ listing: { title: 'title' }, label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
       events: collection({ listing: { title: 'title' }, label: 'Events', source: 'files', max: 50, order: { field: 'date', dir: 'asc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),

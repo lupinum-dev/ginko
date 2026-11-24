@@ -11,7 +11,7 @@ import { buildFileBundles, searchIndex } from '../src/index.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
   bricks: {
     docs: collection({ body: 'body',
       listing: { title: 'title' },

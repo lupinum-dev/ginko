@@ -175,7 +175,8 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
   }
   if (url?.protocol !== 'http:' && url?.protocol !== 'https:') fail('INVALID', 'errors.siteAddressNotUrl')
   if (!isFetchableSiteUrl(args.url, process.env.GINKO_LOCAL === '1')) fail('INVALID', 'errors.siteUrlNotAllowed')
-  // Defaults stay Vienna, German, EUR; the first release may still change them while the site has no bricks.
+  // Defaults stay Vienna, German, EUR and a Monday-to-Friday week (D92): the first release replaces them while the
+  // site has no bricks, and no website reads them before.
   const timeZone = args.timeZone ?? 'Europe/Vienna'
   const locales = args.locales ?? ['de']
   const currency = args.currency ?? 'EUR'
@@ -193,6 +194,7 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
     timeZone,
     locales,
     currency,
+    week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: {},
     bricks: {},
     migrations: [],

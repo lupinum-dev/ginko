@@ -1,7 +1,7 @@
 <!-- Pages of one site: its name, "View site", the views (UI.md 2, 10.2). -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import { DEFAULT_WEEK, weekInfo, type ComponentRegistry, type Schema } from '@lupinum/ginko/internal'
+import type { ComponentRegistry, Schema } from '@lupinum/ginko/internal'
 import { provideGinkoAssets } from '@lupinum/ginko-editor'
 import { ChevronRightIcon, CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, SparklesIcon, SquareArrowOutUpRightIcon, SunIcon, UsersIcon } from '@lucide/vue'
 import { isSiteLinkActive, type SiteLink } from '../utils/siteLinks'
@@ -36,13 +36,11 @@ provide(EDITOR_LINK_TARGETS, () => {
 })
 // Labels and prices under this layout read the site's main language and currency.
 provideStudioSite({ main: () => data.value?.site.schema.locales[0] ?? '', currency: () => data.value?.site.schema.currency ?? 'EUR', timeZone: () => data.value?.site.schema.timeZone ?? 'Europe/Vienna' })
-// Date fields under this layout count "today" and weeks in the site's zone and week (`schema.week`); a site that
-// states no week has no weekly brick, and its calendar starts on Monday (`DEFAULT_WEEK`).
+// Date fields under this layout count "today" in the site's zone, and date and rows fields use the site's week
+// (`schema.week`, required on every site): weeks start on its first day, rows of days follow its order. While the site
+// loads there is no schema yet, and no field shows.
 provide('ginko:timeZone', computed(() => data.value?.site.schema.timeZone ?? 'Europe/Vienna'))
-// While the site loads there is no schema yet.
-provide('ginko:week', computed(() => { const week = data.value?.site.schema.week; return week ? weekInfo(week) : DEFAULT_WEEK }))
-// The week as the site states it: a rows field of weekdays or workdays shows its rows in the order it gives (`rowKeysOf`).
-provide('ginko:site-week', computed(() => data.value?.site.schema.week))
+provide('ginko:week', computed(() => data.value?.site.schema.week))
 // Only a refusal replaces the page: signed out (in another tab, or the session ended on the server, which leaves the
 // token here, so only the server's answer tells, auth-1), no access (removed from the team, an unknown site), or the
 // site being deleted. Then no page, sheet or button stays usable (break-it 9); the page says what happened and what to

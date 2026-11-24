@@ -163,33 +163,23 @@ describe('week: the site states its week', () => {
   // week from Sunday although it states Monday.
   it('follows `week`, not the language', () => {
     const schema = serializeSchema({ ...restaurant, languages: { de: 'en-US', en: 'en-US' } })
-    expect(schema.week).toEqual({ firstDay: 'monday', workdays: 5 })
+    expect(schema.week).toEqual({ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] })
     expect(checkSchema(schema)).toEqual([])
     // Wednesday 14 October 2026.
     expect(resolveToken('@workWeek', schema.timeZone, schema.week, new Date('2026-10-14T10:00:00Z'))).toBe('2026-10-12')
-    expect(resolveToken('@workWeek', schema.timeZone, { firstDay: 'sunday', workdays: 6 }, new Date('2026-10-14T10:00:00Z'))).toBe('2026-10-11')
+    expect(resolveToken('@workWeek', schema.timeZone, { firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] }, new Date('2026-10-14T10:00:00Z'))).toBe('2026-10-11')
   })
 
-  // Wrong: a site with a weekly brick and no `week` gets a week from somewhere without saying so.
-  it('is required when a brick is weekly', () => {
-    const schema = stored()
-    delete schema.week
-    expect(checkSchema(schema)).toEqual([expect.stringMatching(/^week is missing\. The brick “lunch” is planned by the week/)])
+  // Wrong: a site without a weekly brick states no week, and the Studio's Today page or the hourly reminder run
+  // breaks on it (they read the week of every site).
+  it('is required on every site', () => {
+    const { week: _week, ...noWeek } = stored()
+    const plain: Schema = { ...noWeek, bricks: { hours: { ...noWeek.bricks.hours!, status: undefined } } } as unknown as Schema
+    expect(checkSchema(plain)).toEqual(["week is missing. Write the site's week, for example `week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`: the calendar and planned weeks start on firstDay, and rows of workdays are the workdays."])
   })
 })
 
 describe('f.rows: a fixed table is its own field type', () => {
-  // Wrong: a site with opening hours by weekday and no `week` gets its days in an order from somewhere without saying so.
-  it('needs `week` for rows of weekdays or workdays, not for an own list of rows', () => {
-    const { week: _week, ...noWeek } = stored()
-    const hoursOnly: Schema = { ...noWeek, bricks: { hours: { ...noWeek.bricks.hours!, status: undefined } } }
-    expect(checkSchema(hoursOnly)).toEqual(["week is missing. The field “hours.week” has a row for each day of the week, so say on which day the site's week starts and how many days are workdays, for example `week: { firstDay: 'monday', workdays: 5 }`."])
-    const own: Brick = { kind: 'single', label: 'Schichten', fields: { shifts: { type: 'rows', label: 'Schichten', rows: [{ key: 'early', label: 'Früh' }, { key: 'late', label: 'Spät' }], of: { staff: { type: 'number', label: 'Personen', min: 0, max: 20, step: 1, default: 2 } } } } }
-    expect(checkSchema({ ...noWeek, bricks: { shifts: own } })).toEqual([])
-  })
-
-  // Wrong: "min = max" (with the old `unique`) is read as a fixed table again, so a list of two dates becomes one
-  // object per row, loses its row ids and its add and remove buttons.
   it('a list with min = max stays a list, and a stored `unique` is refused, not read as fixed rows', async () => {
     const schema = serializeSchema({
       ...restaurant,

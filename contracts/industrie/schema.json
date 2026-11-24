@@ -14,8 +14,14 @@
   },
   "currency": "EUR",
   "week": {
-    "firstDay": "monday",
-    "workdays": 5
+    "firstDay": "mo",
+    "workdays": [
+      "mo",
+      "tu",
+      "we",
+      "th",
+      "fr"
+    ]
   },
   "pages": {
     "home": {

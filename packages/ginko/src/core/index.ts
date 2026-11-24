@@ -16,7 +16,7 @@ export { withMarkdownRefs, fileMarkdownRef, platformMarkdownRef, type MarkdownRe
 export { isSafeHref, safeHref } from './href.ts'
 export { withoutTrailingSlashes, trimPath } from './path.ts'
 export { slugify, slugBases, uniqueSlug, SLUG_PATTERN } from './slug.ts'
-export { todayIn, zonedDateTime, startOfWeek, workWeekOf, firstDayShown, weekInfo, WEEKDAYS, DEFAULT_WEEK, DAY_KEYS, daysOf, addDays, resolveToken, type WeekInfo, type SiteWeek, type Weekday, type DayKey } from './time.ts'
+export { todayIn, zonedDateTime, startOfWeek, workWeekOf, firstDayShown, weekInfo, DAY_KEYS, daysOf, workdaysOf, addDays, resolveToken, type WeekInfo, type SiteWeek, type DayKey } from './time.ts'
 export { brickStatus, type HoursToday, type StatusEntry, type StatusLine } from './status.ts'
 export { createAsks, duePlan, liveFrom, plannedWeeks, plansThisWeek, staleOf, weekStartField, weeklyTask, type WeekState } from './stale.ts'
 export { sha256, stableJson } from './sha256.ts'

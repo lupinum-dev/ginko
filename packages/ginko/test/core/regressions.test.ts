@@ -285,7 +285,7 @@ describe('Astra phase 4 re-review', () => {
   const text = { type: 'text', label: 'Text' } as const
   const list = (of: Fields) => ({ type: 'list', label: 'Rows', itemLabel: 'Row', max: 5, of }) as const
   const make = (fields: Fields): Schema => serializeSchema({
-    site: 'test', name: 'Test', url: 'https://example.com', timeZone: 'UTC', locales: ['de'], currency: 'EUR', pages: {},
+    site: 'test', name: 'Test', url: 'https://example.com', timeZone: 'UTC', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
     bricks: { menu: { kind: 'collection', label: 'Menu', listing: { title: 'title' }, max: 10, order: 'manual', fields: { title: text, ...fields } } },
   })
 

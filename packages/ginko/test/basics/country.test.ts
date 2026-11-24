@@ -6,7 +6,7 @@ import { hoursOn, type HoursContext } from '../../src/basics/index.ts'
 import { checkSchema, checkSite, collection, defineSite, diffSchema, f, serializeSchema, type SiteInput } from '../../src/core/index.ts'
 
 const base = defineSite({
-  site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', pages: { home: '/' },
+  site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
   bricks: { news: collection({ listing: { title: 'title' }, label: 'News', max: 10, order: 'manual', fields: { title: f.text('Title') } }) },
 })
 const site = (over: Pick<SiteInput, 'country' | 'calendar'>): SiteInput => ({ ...base, ...over })

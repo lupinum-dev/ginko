@@ -3,7 +3,7 @@
 // one mail per person and site, each brick once per person and week, on the day before the site's week starts (Sunday
 // for Monday-first weeks), between 17:00 and 18:00 in the site's time zone.
 import { startOfWeek, type Json } from '@lupinum/ginko'
-import { addDays, DEFAULT_WEEK, weekInfo, labelOf, plannedWeeks, staleOf, todayIn, workWeekOf, type Schema } from '@lupinum/ginko/internal'
+import { addDays, weekInfo, labelOf, plannedWeeks, staleOf, todayIn, workWeekOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { components } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
@@ -24,11 +24,8 @@ function hourIn(timeZone: string, now: Date): number {
 /** Whether tomorrow is the first day of the site's week. */
 const isDayBeforeWeekStart = (date: string, schema: Schema) => startOfWeek(addDays(date, 1), weekOfSite(schema)) === addDays(date, 1)
 
-/**
- * The site's week. A site without a weekly brick states none; its status reminders keep the day before Monday
- * (`DEFAULT_WEEK`), the day every site had before `week` was stated.
- */
-const weekOfSite = (schema: Schema) => (schema.week ? weekInfo(schema.week) : DEFAULT_WEEK)
+/** The site's week: every site states it (`checkSchema`). */
+const weekOfSite = (schema: Schema) => weekInfo(schema.week)
 
 /**
  * Hourly. Sends the reminders of every site whose 17:00 hour on the day before the week starts it is. `now` is for tests and the

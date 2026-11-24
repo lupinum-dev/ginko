@@ -9,7 +9,7 @@
 import { computed, inject, nextTick, onBeforeUnmount, provide, reactive, ref, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, ordered } from '@lupinum/ginko/internal'
+import { isShown, ordered } from '@lupinum/ginko/internal'
 import { hasTranslation } from '../../utils/content'
 import GinkoField from './GinkoField.vue'
 import GinkoFieldImage, { LIST_ALT_HINT } from './GinkoFieldImage.vue'
@@ -145,7 +145,9 @@ function restoreRow(row: Row, index: number) {
   next.splice(Math.min(index, next.length), 0, row)
   update(next)
 }
-function addRow() { update([...rows.value, { ...defaultsFor(props.field.of, undefined), _id: newRowId() } as Row]) }
+/** A new row starts with the columns' defaults. A column is never a rows field (`checkSchema`), so no week is needed. */
+const columnDefaults = () => Object.fromEntries(Object.entries(props.field.of).flatMap(([name, c]) => (!c.retired && c.default !== undefined ? [[name, c.default]] : [])))
+function addRow() { update([...rows.value, { ...columnDefaults(), _id: newRowId() } as Row]) }
 
 // "Noch richtig?": a choices column with `askAgainWhen` next to its changed text column. Only a change in the main
 // language asks: a translation does not change the dish. In a foreign language the choices are not shown, so the

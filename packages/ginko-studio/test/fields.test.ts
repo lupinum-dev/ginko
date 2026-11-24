@@ -369,7 +369,7 @@ describe('week fields', () => {
       const value = shallowRef<Json | undefined>(undefined)
       const wrapper = mount(defineComponent({
         setup: () => () => h(GinkoFieldDate, { id: 'f-week', modelValue: value.value, invalid: false, weeks: [1, 2], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
-      }))
+      }), { global: { provide: { 'ginko:week': ref({ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }) } } })
       expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['Nächste Woche', 'Übernächste Woche'])
       await wrapper.findAll('button')[1]!.trigger('click')
       expect(value.value).toBe('2026-10-26')

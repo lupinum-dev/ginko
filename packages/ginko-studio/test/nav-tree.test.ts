@@ -13,7 +13,7 @@ const { computed, nextTick, ref, watch } = vue
 Object.entries({ computed, nextTick, ref, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const brick = serializeSchema(defineSite({
-  site: 'docs', name: 'Docs', url: 'https://docs.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: {},
+  site: 'docs', name: 'Docs', url: 'https://docs.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
   bricks: { docs: collection({ listing: { title: 'title' }, tree: { parent: 'parent', section: 'section' }, label: 'Doku', max: 100, order: 'manual', fields: { title: f.text('Titel'), section: f.text('Abschnitt', { optional: true }), parent: f.ref('Über', { to: 'docs', optional: true }), slug: f.slug('Adresse', { from: 'title' }) } }) },
 })).bricks.docs as CollectionBrick
 

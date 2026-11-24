@@ -55,7 +55,7 @@ interface NewSingle {
   bytes: number
 }
 
-export async function newSingle(brick: string, fields: Fields, main: Locale, week: SiteWeek | undefined): Promise<NewSingle> {
+export async function newSingle(brick: string, fields: Fields, main: Locale, week: SiteWeek): Promise<NewSingle> {
   const data = defaultsFor(fields, week)
   const prints = nextPrints({ fields, roots: Object.keys(data), before: {}, after: data, prints: {}, main, confirm: undefined })
   return { brick, data, prints, fields, trees: await treesOf(fields, data), bytes: entryBytes(data, prints) }

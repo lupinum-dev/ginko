@@ -24,6 +24,7 @@ export default defineSite({
   name: 'My docs',
   url: 'https://docs.example.com',
   timeZone: 'Europe/Vienna',
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   currency: 'EUR',
   pages: { home: homePages({ locales }) }, // the start page is the page `home`

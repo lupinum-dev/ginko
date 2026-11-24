@@ -13,7 +13,7 @@ const isRecord = (value: unknown): value is Record<string, Json> => typeof value
  * refuses a gained row they cannot fill), then the migration writes. `roots` names the root fields whose value changed.
  * `weeks`: the site's week before and in the release, for the rows of a rows field of days.
  */
-export function releaseData(stored: Fields, next: Fields, data: Record<string, Json>, written: Record<string, Json>, weeks: readonly [SiteWeek | undefined, SiteWeek | undefined]): { data: Record<string, Json>; roots: string[] } {
+export function releaseData(stored: Fields, next: Fields, data: Record<string, Json>, written: Record<string, Json>, weeks: readonly [SiteWeek, SiteWeek]): { data: Record<string, Json>; roots: string[] } {
   const out: Record<string, Json> = { ...data }
   for (const [name, field] of Object.entries(next)) {
     if (field.retired) continue

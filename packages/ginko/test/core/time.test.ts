@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { formatMoney, isCurrency, minorDigits, resolveToken, todayIn, weekInfo, startOfWeek, workWeekOf, type SiteWeek } from '../../src/core/index.ts'
 
-const MONDAY: SiteWeek = { firstDay: 'monday', workdays: 5 }
+const MONDAY: SiteWeek = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }
 
 describe('todayIn (SPEC 2.7, B7)', () => {
   // Wrong behaviour caught: "today" flips a day too early or late around midnight because it uses UTC instead of the site zone.
@@ -24,39 +24,45 @@ describe('startOfWeek and workWeekOf (the week the site states)', () => {
     [MONDAY, '2026-10-10', '2026-10-05', '2026-10-12'],
     [MONDAY, '2026-10-11', '2026-10-05', '2026-10-12'],
     [MONDAY, '2026-10-12', '2026-10-12', '2026-10-12'],
-    // Sunday first, Sunday to Friday (a US site: Friday is the last workday), so only Saturday goes to the coming one.
-    [{ firstDay: 'sunday', workdays: 6 }, '2026-10-09', '2026-10-04', '2026-10-04'],
-    [{ firstDay: 'sunday', workdays: 6 }, '2026-10-10', '2026-10-04', '2026-10-11'],
-    [{ firstDay: 'sunday', workdays: 6 }, '2026-10-11', '2026-10-11', '2026-10-11'],
-    [{ firstDay: 'sunday', workdays: 6 }, '2026-10-12', '2026-10-11', '2026-10-11'],
+    // Sunday first, Monday to Friday (a US site): the calendar starts on Sunday, Friday is the last workday, so Saturday
+    // already plans the coming week and Friday does not.
+    [{ firstDay: 'su', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, '2026-10-09', '2026-10-04', '2026-10-04'],
+    [{ firstDay: 'su', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, '2026-10-10', '2026-10-04', '2026-10-11'],
+    [{ firstDay: 'su', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, '2026-10-11', '2026-10-11', '2026-10-11'],
+    // Monday first, Tuesday to Saturday (a restaurant closed on Mondays): Saturday is the last workday, so Sunday plans
+    // the coming week and Saturday does not.
+    [{ firstDay: 'mo', workdays: ['tu', 'we', 'th', 'fr', 'sa'] }, '2026-10-10', '2026-10-05', '2026-10-05'],
+    [{ firstDay: 'mo', workdays: ['tu', 'we', 'th', 'fr', 'sa'] }, '2026-10-11', '2026-10-05', '2026-10-12'],
+    [{ firstDay: 'mo', workdays: ['tu', 'we', 'th', 'fr', 'sa'] }, '2026-10-12', '2026-10-12', '2026-10-12'],
+    // Sunday first, Sunday to Friday: only Saturday goes to the coming one.
+    [{ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] }, '2026-10-09', '2026-10-04', '2026-10-04'],
+    [{ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] }, '2026-10-10', '2026-10-04', '2026-10-11'],
+    [{ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] }, '2026-10-11', '2026-10-11', '2026-10-11'],
+    [{ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] }, '2026-10-12', '2026-10-11', '2026-10-11'],
     // Sunday first, Sunday to Thursday (Israel), weekend Fri+Sat.
-    [{ firstDay: 'sunday', workdays: 5 }, '2026-10-08', '2026-10-04', '2026-10-04'],
-    [{ firstDay: 'sunday', workdays: 5 }, '2026-10-09', '2026-10-04', '2026-10-11'],
-    [{ firstDay: 'sunday', workdays: 5 }, '2026-10-10', '2026-10-04', '2026-10-11'],
-    [{ firstDay: 'sunday', workdays: 5 }, '2026-10-11', '2026-10-11', '2026-10-11'],
+    [{ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th'] }, '2026-10-08', '2026-10-04', '2026-10-04'],
+    [{ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th'] }, '2026-10-09', '2026-10-04', '2026-10-11'],
+    [{ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th'] }, '2026-10-10', '2026-10-04', '2026-10-11'],
+    [{ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th'] }, '2026-10-11', '2026-10-11', '2026-10-11'],
     // Saturday first, Saturday to Thursday (Egypt): Friday goes to the coming week, Saturday starts it.
-    [{ firstDay: 'saturday', workdays: 6 }, '2026-10-08', '2026-10-03', '2026-10-03'],
-    [{ firstDay: 'saturday', workdays: 6 }, '2026-10-09', '2026-10-03', '2026-10-10'],
-    [{ firstDay: 'saturday', workdays: 6 }, '2026-10-10', '2026-10-10', '2026-10-10'],
-    [{ firstDay: 'saturday', workdays: 6 }, '2026-10-11', '2026-10-10', '2026-10-10'],
+    [{ firstDay: 'sa', workdays: ['sa', 'su', 'mo', 'tu', 'we', 'th'] }, '2026-10-08', '2026-10-03', '2026-10-03'],
+    [{ firstDay: 'sa', workdays: ['sa', 'su', 'mo', 'tu', 'we', 'th'] }, '2026-10-09', '2026-10-03', '2026-10-10'],
+    [{ firstDay: 'sa', workdays: ['sa', 'su', 'mo', 'tu', 'we', 'th'] }, '2026-10-10', '2026-10-10', '2026-10-10'],
+    [{ firstDay: 'sa', workdays: ['sa', 'su', 'mo', 'tu', 'we', 'th'] }, '2026-10-11', '2026-10-10', '2026-10-10'],
   ] as const)('%o, %s: week starts %s, work week starts %s', (stated, date, start, work) => {
     const week = weekInfo(stated as SiteWeek)
     expect(startOfWeek(date, week)).toBe(start)
     expect(workWeekOf(date, week)).toBe(work)
   })
 
-  // Wrong behaviour caught: the workdays are counted from Monday instead of the stated first day, or a reader without a
-  // stated week silently answers Monday-first.
+  // Wrong behaviour caught: the first day or the days off do not follow the stated week (a list of workdays, any days).
   it.each([
     [MONDAY, { firstDay: 1, weekend: [6, 7] }],
-    [{ firstDay: 'sunday', workdays: 5 }, { firstDay: 7, weekend: [5, 6] }],
-    [{ firstDay: 'saturday', workdays: 7 }, { firstDay: 6, weekend: [] }],
-    [{ firstDay: 'wednesday', workdays: 4 }, { firstDay: 3, weekend: [7, 1, 2] }],
+    [{ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th'] }, { firstDay: 7, weekend: [5, 6] }],
+    [{ firstDay: 'sa', workdays: ['sa', 'su', 'mo', 'tu', 'we', 'th', 'fr'] }, { firstDay: 6, weekend: [] }],
+    [{ firstDay: 'mo', workdays: ['tu', 'we', 'th', 'fr', 'sa'] }, { firstDay: 1, weekend: [1, 7] }],
   ] as const)('the days of %o', (stated, info) => {
     expect(weekInfo(stated as SiteWeek)).toEqual(info)
-  })
-  it('throws with a sentence when the site states no week', () => {
-    expect(() => weekInfo(undefined)).toThrow(/The site states no week/)
   })
 
   it('keeps year ends right', () => {
@@ -83,7 +89,7 @@ describe('resolveToken (SPEC 2.7)', () => {
 
   // Wrong behaviour caught: the tokens ignore the site's week and always answer Monday-first.
   it('uses the week of the site: a US site starts on Sunday', () => {
-    const us: SiteWeek = { firstDay: 'sunday', workdays: 6 }
+    const us: SiteWeek = { firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] }
     expect(resolveToken('@workWeek', 'America/New_York', us, new Date('2026-10-14T12:00:00Z'))).toBe('2026-10-11')
     expect(resolveToken('@nextWorkWeek', 'America/New_York', us, new Date('2026-10-14T12:00:00Z'))).toBe('2026-10-18')
   })

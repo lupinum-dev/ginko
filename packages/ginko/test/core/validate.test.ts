@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import site from '../../../../sites/restaurant/ginko.config.ts'
-import { f, serializeSchema, single, slugify, uniqueSlug, validate, type Issue, type ValidateOptions } from '../../src/core/index.ts'
+import { f, serializeSchema, single, slugify, uniqueSlug, validate, type Issue, type Schema, type ValidateOptions } from '../../src/core/index.ts'
 
 // Schema of the restaurant acceptance config (SPEC 13), plus a small extra brick
 // for the email and tel formats the restaurant does not use.
@@ -134,7 +134,7 @@ describe('calendar dates, times and ranges (SPEC 2.2, 2.3)', () => {
 })
 
 describe('a week start (lunch.weekOf, lunchPlans.weekOf)', () => {
-  const sundayFirst = { ...schema, week: { firstDay: 'sunday' as const, workdays: 6 as const } }
+  const sundayFirst: Schema = { ...schema, week: { firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] } }
   // Wrong behaviour caught: a lunch week saved as a Thursday is stored and never shows, because the site looks for the
   // week that starts on the week's first day.
   it.each([

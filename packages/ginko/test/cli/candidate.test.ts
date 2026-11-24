@@ -10,7 +10,7 @@ const candidateOf = (release: ReleaseState, site: SiteInput) => buildCandidate(r
 // retires `headline` in favour of `title`, and adds a plain `code` filled from the price.
 const before = defineSite({
   site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: {},
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
   bricks: {
     menu: collection({ untranslated: 'fallback', listing: { title: 'headline' }, label: 'Karte', fields: { headline: f.text('Überschrift', { max: 120 }), price: f.money('Preis') }, max: 20, order: 'manual' }),
   },

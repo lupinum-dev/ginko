@@ -13,6 +13,16 @@
       "de"
     ],
     "currency": "EUR",
+    "week": {
+      "firstDay": "mo",
+      "workdays": [
+        "mo",
+        "tu",
+        "we",
+        "th",
+        "fr"
+      ]
+    },
     "pages": {
       "home": {
         "en": "/",

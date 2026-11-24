@@ -372,6 +372,7 @@ const { t } = createTranslator({
   messages: compileTree({ greeting: 'Hallo {name}' }).tree,
   language: 'de-AT',
   timeZone: 'Europe/Vienna',
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
 })
 t('greeting', { name: 'Romi' }) // "Hallo Romi"
 

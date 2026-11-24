@@ -41,12 +41,12 @@ export interface SiteInput {
   /** The BCP 47 language per locale for `lang`, hreflang and dates, e.g. `{ de: 'de-AT' }`. Default: the locale itself. Keys are entries of `locales`. */
   languages?: Partial<Record<Locale, string>>
   /**
-   * The site's week: the day it starts on and how many days from there are workdays, e.g.
-   * `{ firstDay: 'monday', workdays: 5 }`. Required when a brick is weekly (a task fills `@workWeek` or
-   * `@nextWorkWeek`, or a collection `plans` weeks): those weeks start on `firstDay`, and after the last workday the
-   * coming week counts. The language of the site does not decide it.
+   * The site's week: the day the calendar week starts on and the workdays, by day key (`mo` to `su`), e.g.
+   * `{ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`. Weeks start on `firstDay` (the calendar, planned
+   * weeks, `@workWeek`); after the workday that comes last in the week, the coming week counts; rows of `'workdays'` are
+   * these days. The language of the site does not decide it.
    */
-  week?: SiteWeek
+  week: SiteWeek
   currency: Currency
   /**
    * The country of the site (ISO 3166-1 alpha-2, e.g. `AT`). It picks the public-holiday calendar (`calendar`) and is

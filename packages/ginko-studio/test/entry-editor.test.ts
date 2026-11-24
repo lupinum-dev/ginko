@@ -30,7 +30,7 @@ vi.stubGlobal('useConvexConnectionState', () => ({ isConnected: ref(true) }))
 vi.stubGlobal('useOps', () => ({}))
 
 const schema = serializeSchema(defineSite({
-  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
   bricks: { blog: collection({ untranslated: 'fallback', label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }), story: f.markdown('Geschichte', { optional: true }) } }) },
 }))
@@ -138,7 +138,7 @@ function answering(name: string, data: vue.Ref<unknown>, asked: unknown[] = []) 
 // gastro preset opened as "Heute ausgebucht" with that day's date.
 test('a new entry starts like its create task: the task title and the prefill the server resolves', async () => {
   const blog = (tasks: NonNullable<Parameters<typeof collection>[0]['tasks']>) => serializeSchema(defineSite({
-    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/' } },
     bricks: { blog: collection({ untranslated: 'fallback', label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, tasks, fields: { title: f.text('Titel'), date: f.date('Datum') } }) },
   }))
@@ -216,7 +216,7 @@ test('closing the remove question returns the focus to "Mehr"', async () => {
 // and the save named a text that no longer exists, which the server refuses (leafNotTranslatable): nothing saved.
 test('a confirmed translation of a row removed meanwhile is left out of the save', async () => {
   const bilingual = serializeSchema(defineSite({
-    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/', en: '/en' } },
     bricks: { lunch: single({ label: 'Mittagsmenü', fields: { days: f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht') } }) } }) },
   }))
@@ -353,7 +353,7 @@ test('the preview of a new entry shows its own page once the title is typed, and
   vi.useFakeTimers()
   try {
     const routed = serializeSchema(defineSite({
-      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
       pages: { about: { de: '/ueber-uns' } },
       bricks: { blog: collection({ untranslated: 'hide', label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/blog/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
@@ -423,7 +423,7 @@ test.each([
   vi.stubGlobal('useRoute', () => ({ query: { lang: 'en' } }))
   try {
     const routed = serializeSchema(defineSite({
-      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
       pages: { about: { de: '/ueber-uns', en: '/en/about-us' } },
       bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/blog/[slug]', en: '/en/blog/[slug]' }, untranslated, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
@@ -539,7 +539,7 @@ test('Alles bearbeiten on the English tab says a cleared title takes the entry o
   vi.stubGlobal('useRoute', () => ({ query: { lang: 'en' } }))
   try {
     const routed = serializeSchema(defineSite({
-      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
       pages: { home: { de: '/', en: '/en' } },
       bricks: { events: collection({ untranslated: 'hide', label: 'Events', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/events/[slug]', en: '/en/events/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
@@ -568,7 +568,7 @@ test('Alles bearbeiten on the English tab says a cleared title takes the entry o
 // Save without publishing (D60): on every live entry and single, Speichern keeps the changes unpublished.
 describe('the footer of a live entry with unpublished changes', () => {
   const withSingle = serializeSchema(defineSite({
-    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/' } },
     bricks: { contact: single({ label: 'Kontakt', fields: { title: f.text('Titel') } }) },
   }))

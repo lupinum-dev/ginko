@@ -18,7 +18,7 @@ const { computed, defineComponent, h, onMounted, onUnmounted, ref, Suspense } = 
 Object.entries({ computed, onMounted, onUnmounted, ref, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const schema = serializeSchema(defineSite({
-  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
   bricks: { legal: collection({ listing: { title: 'title' }, label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') } }) },
 }))
@@ -117,7 +117,7 @@ describe('going back to a version', () => {
   // the week change in the preview that the save does not make.
   test('the preview is asked for with the task the revert will use', async () => {
     const withTasks = serializeSchema(defineSite({
-      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
       pages: { home: { de: '/' } },
       bricks: { legal: collection({ listing: { title: 'title' }, label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') }, tasks: [{ id: 'fix', label: 'Titel', kind: 'edit', fields: ['title'] }] }) },
     }))

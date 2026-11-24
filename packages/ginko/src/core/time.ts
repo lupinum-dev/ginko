@@ -46,45 +46,37 @@ export interface WeekInfo {
   weekend: number[]
 }
 
-/**
- * The week of a site that states none (it has no weekly brick): Monday first, Saturday and Sunday off. Only the Studio's
- * calendar and the day of the weekly reminder mail of such a site read it; a weekly brick reads the stated `week`.
- */
-export const DEFAULT_WEEK: WeekInfo = { firstDay: 1, weekend: [6, 7] }
-
-/** The days of the week, Monday first, as `week.firstDay` names them. */
-export const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
-export type Weekday = (typeof WEEKDAYS)[number]
-
-/**
- * The site's week, as the site states it (`defineSite({ week })`) and the schema stores it: the day the week starts on
- * and how many days from that day on are workdays (`{ firstDay: 'monday', workdays: 5 }`: Monday to Friday). Weekly
- * bricks (`@workWeek`, `plans`) start their weeks on `firstDay`; after the last workday, the coming week counts.
- */
-export interface SiteWeek {
-  firstDay: Weekday
-  workdays: 1 | 2 | 3 | 4 | 5 | 6 | 7
-}
-
-/**
- * The week a site states, in ISO numbers for the date helpers. Throws when the site states none: `checkSchema` requires
- * `week` on a site with a weekly brick, so only a reader outside a weekly brick can get here.
- */
-export function weekInfo(week: SiteWeek | undefined): WeekInfo {
-  if (!week) throw new Error("The site states no week. Add `week: { firstDay: 'monday', workdays: 5 }` (your values) to defineSite in ginko.config.ts.")
-  const firstDay = (WEEKDAYS.indexOf(week.firstDay) + 1) as WeekInfo['firstDay']
-  const weekend = [...Array(7 - week.workdays).keys()].map((i) => ((firstDay - 1 + week.workdays + i) % 7) + 1)
-  return { firstDay, weekend }
-}
-
-/** The keys of the days in stored values (a rows field of weekdays, the opening hours), Monday first. */
+/** The keys of the days in the site's week and in stored values (a rows field of weekdays, the opening hours), Monday first. */
 export const DAY_KEYS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const
 export type DayKey = (typeof DAY_KEYS)[number]
 
-/** The site's seven days in its order, from `week.firstDay` on: the first `week.workdays` of them are its workdays. Throws without a week. */
-export function daysOf(week: SiteWeek | undefined): DayKey[] {
-  const first = weekInfo(week).firstDay - 1
+/**
+ * The site's week, as the site states it (`defineSite({ week })`) and the schema stores it: the day the calendar week
+ * starts on and the days that are workdays, any days (`{ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`;
+ * a restaurant closed on Mondays `['tu', 'we', 'th', 'fr', 'sa']`; a US site `firstDay: 'su'` with Monday to Friday).
+ * Every site states it. Weeks start on `firstDay`; after the workday that comes last in the week counted from
+ * `firstDay`, the coming week counts.
+ */
+export interface SiteWeek {
+  firstDay: DayKey
+  workdays: readonly DayKey[]
+}
+
+/** The week a site states, in ISO numbers for the date helpers. */
+export function weekInfo(week: SiteWeek): WeekInfo {
+  const iso = (day: DayKey) => DAY_KEYS.indexOf(day) + 1
+  return { firstDay: iso(week.firstDay) as WeekInfo['firstDay'], weekend: DAY_KEYS.filter((day) => !week.workdays.includes(day)).map(iso) }
+}
+
+/** The site's seven days in its order, from `week.firstDay` on. */
+export function daysOf(week: SiteWeek): DayKey[] {
+  const first = DAY_KEYS.indexOf(week.firstDay)
   return DAY_KEYS.map((_, i) => DAY_KEYS[(first + i) % 7]!)
+}
+
+/** The site's workdays in its week order, from `week.firstDay` on. */
+export function workdaysOf(week: SiteWeek): DayKey[] {
+  return daysOf(week).filter((day) => week.workdays.includes(day))
 }
 
 const isoDay = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay() || 7 // 1 = Monday, 7 = Sunday
@@ -117,7 +109,7 @@ export function firstDayShown(weekStart: string, week: WeekInfo): string {
   return weekStart
 }
 
-export function resolveToken(token: string, timeZone: string, week: SiteWeek | undefined, now: Date = new Date()): string | undefined {
+export function resolveToken(token: string, timeZone: string, week: SiteWeek, now: Date = new Date()): string | undefined {
   const today = todayIn(timeZone, now)
   if (token === '@today') return today
   if (token === '@workWeek') return workWeekOf(today, weekInfo(week))

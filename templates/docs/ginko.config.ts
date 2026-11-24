@@ -14,6 +14,8 @@ export default defineSite({
   seo: { description: 'Documentation of Orbit SDK, the TypeScript client for the Orbit API.', color: '#047857' },
   url: siteUrl('https://example.com'),
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   // A link to a missing heading fails `ginko check` and the build (the default is a warning).
   linkCheck: { anchors: 'error' },

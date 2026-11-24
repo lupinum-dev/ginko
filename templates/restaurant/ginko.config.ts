@@ -21,7 +21,7 @@ export default defineSite({
   languages: { en: 'en-GB', de: 'de-AT', it: 'it-IT' },
   currency: 'EUR',
   // The site's week: the lunch week starts on this day, and the opening hours list it first.
-  week: { firstDay: 'monday', workdays: 5 },
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: {
     home: localized('/'),
     menu: localized('/menu'),

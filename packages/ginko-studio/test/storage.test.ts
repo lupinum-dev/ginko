@@ -72,7 +72,7 @@ test('a removed entry names its area in the language of the Studio', () => {
   vi.stubGlobal('useOps', () => ({ purgeEntry: vi.fn(), restoreEntry: vi.fn() }))
   trashQuery({ data: [removed(true)] })
   const schema = serializeSchema(defineSite({
-    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/', en: '/en' } },
     bricks: { dishes: collection({ listing: { title: 'title' }, label: { de: 'Gerichte', en: 'Dishes' }, max: 50, order: 'manual', fields: { title: f.text('Name') } }) },
   }))

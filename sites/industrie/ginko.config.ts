@@ -13,7 +13,7 @@ export default defineSite({
   locales: ['de', 'en'],
   languages: { de: 'de-AT', en: 'en-GB' },
   currency: 'EUR',
-  week: { firstDay: 'monday', workdays: 5 },
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: {
     home: '/',
     news: { de: '/aktuelles', en: '/news' },

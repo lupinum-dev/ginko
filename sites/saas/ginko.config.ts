@@ -5,6 +5,8 @@ export default defineSite({
   name: 'Taktwerk',
   url: 'https://ginko-demo-saas.vercel.app',
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales: ['de', 'en', 'fr'],
   languages: { de: 'de-DE', en: 'en-GB', fr: 'fr-FR' },
   currency: 'EUR',

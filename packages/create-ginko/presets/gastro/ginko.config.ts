@@ -10,7 +10,7 @@ export default defineSite({
   timeZone: 'Europe/Vienna', // change for your country
   locales: ['en'],
   currency: 'EUR', // change for your country
-  week: { firstDay: 'monday', workdays: 5 },
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: '/' },
   // Shown in search results and link previews. Replace it with one sentence about your site.
   // `color`: the brand colour of the generated share cards.

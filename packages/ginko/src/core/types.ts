@@ -321,8 +321,8 @@ export interface Schema {
   /** The language tag per locale for numbers, money and dates (`SiteInput.languages`, "de-AT"); absent when the site sets none. */
   languages?: Partial<Record<Locale, string>>
   currency: Currency
-  /** The site's week as the site states it (`SiteInput.week`); absent on a site without a weekly brick that states none. */
-  week?: SiteWeek
+  /** The site's week as the site states it (`SiteInput.week`). */
+  week: SiteWeek
   /** The public-holiday calendar of the site (`calendar`, else from `country`); absent when the config sets neither. */
   holidays?: StoredHolidays
   /** Static pages by key, each with its path per locale (the home page is the one whose main-locale path is `/`). */

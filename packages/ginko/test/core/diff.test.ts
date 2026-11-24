@@ -92,7 +92,7 @@ const allowed: Row[] = [
   { name: 'a collection max raised', mutate: (s) => { node(s, 'bricks.menu').max = 200 } },
   // An added row is like a new required field: allowed when the columns' defaults fill it.
   { name: 'a row added to a rows field, filled from the column defaults', prod: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }] }, mutate: (s) => { field(s, 'lunch.days').rows = [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }] } },
-  { name: 'a workday added to the site week: the lunch week gains a row filled from the column defaults', mutate: (s) => { s.week = { firstDay: 'monday', workdays: 6 } } },
+  { name: 'a workday added to the site week: the lunch week gains a row filled from the column defaults', mutate: (s) => { s.week = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr', 'sa'] } } },
   { name: 'a new locale appended at the end', mutate: (s) => { s.locales = ['de', 'en', 'fr'] } },
   {
     name: 'a route added to a collection that had none',
@@ -487,9 +487,14 @@ describe('checkSchema: limits and structure (SPEC 2.1)', () => {
       problems: ['gallery: too many fields.'],
     },
     {
+      name: 'a week in the old shape (a weekday name and a count)',
+      mutate: (s: Schema) => { (s as { week: unknown }).week = { firstDay: 'monday', workdays: 5 } },
+      problems: ["week must be { firstDay, workdays }: firstDay one of mo, tu, we, th, fr, sa, su, workdays a list of 1 to 7 different days of these, for example `week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`."],
+    },
+    {
       name: 'a week in numbers',
       mutate: (s: Schema) => { (s as { week: unknown }).week = { firstDay: 1, weekend: [6, 7] } },
-      problems: ['week must be { firstDay, workdays }: firstDay one of monday, tuesday, wednesday, thursday, friday, saturday, sunday, workdays a whole number from 1 to 7 (the days from firstDay on that are workdays).'],
+      problems: ["week must be { firstDay, workdays }: firstDay one of mo, tu, we, th, fr, sa, su, workdays a list of 1 to 7 different days of these, for example `week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }`."],
     },
     {
       name: 'a schema over 256 KiB of ASCII',

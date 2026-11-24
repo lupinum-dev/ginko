@@ -10,6 +10,8 @@ export default defineSite({
   name: '{{SITE}}',
   url: 'https://example.com',
   timeZone: 'Europe/Vienna', // change for your country
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   currency: 'EUR', // change for your country
   pages: { home: '/' },

@@ -6,7 +6,7 @@
 import { computed, inject, onBeforeUnmount, ref, watchEffect, type Ref } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json, Locale } from '@lupinum/ginko'
-import { DAY_KEYS, isShown, ordered, rowKeysOf, type SiteWeek } from '@lupinum/ginko/internal'
+import { isShown, ordered, rowKeysOf, type SiteWeek } from '@lupinum/ginko/internal'
 import { hasTranslation, rowLabel } from '../../utils/content'
 import GinkoField from './GinkoField.vue'
 import { messageOf } from '@studio/utils/messageOf'
@@ -30,17 +30,15 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 const blockers = inject(BLOCKERS, undefined)
-const siteWeek = inject<Ref<SiteWeek | undefined>>('ginko:site-week', ref(undefined))
+// The site's week (layouts/site.vue): rows of days follow its order. Without it (no site loaded) no rows show.
+const siteWeek = inject<Ref<SiteWeek | undefined>>('ginko:week', ref(undefined))
 const { shown: labelText } = useStudioSite()
 const { t, format } = useI18n()
 
 const isRow = (value: unknown): value is Row => !!value && typeof value === 'object' && !Array.isArray(value)
 const value = computed<Record<string, Json>>(() => (isRow(props.modelValue) ? props.modelValue : {}))
-/**
- * The rows in the order of the field: the site's week for days (stored maps come back with their keys sorted). Outside
- * a site's pages there is no week; the days then show Monday first, as many as the value has.
- */
-const keys = computed(() => (typeof props.field.rows !== 'string' || siteWeek.value ? rowKeysOf(props.field, siteWeek.value) : DAY_KEYS.filter((key) => Object.hasOwn(value.value, key))))
+/** The rows in the order of the field: the site's week for days (stored maps come back with their keys sorted). */
+const keys = computed(() => (siteWeek.value ? rowKeysOf(props.field, siteWeek.value) : []))
 const rowOf = (key: string): Row => { const row = value.value[key]; return isRow(row) ? row : {} }
 const titleOf = (key: string) => rowLabel(props.field, key, props.locale, { t, format })
 

@@ -1,6 +1,6 @@
 // The lunch page, the Heute board and the door sheet show one week. A wrong pick shows last week's dishes or hides a planned week.
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_WEEK } from '@lupinum/ginko/internal'
+import { weekInfo } from '@lupinum/ginko/internal'
 import { lunchWeekOn } from '../src/lunch.ts'
 
 const week = (weekOf: string, dish: string) => ({ data: { weekOf, days: [dish] } })
@@ -17,6 +17,6 @@ describe('lunchWeekOn', () => {
     ['only past planned weeks and a stale main week: nothing to show', main, [plans[0]!], '2026-10-14', undefined],
     ['no plans at all, stale main week: nothing to show', main, [], '2026-10-14', undefined],
   ] as const)('%s', (_name, m, p, today, expected) => {
-    expect(lunchWeekOn(m, p, today, DEFAULT_WEEK)?.data.days[0]).toBe(expected)
+    expect(lunchWeekOn(m, p, today, weekInfo({ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }))?.data.days[0]).toBe(expected)
   })
 })

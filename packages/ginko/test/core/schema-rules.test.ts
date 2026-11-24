@@ -18,7 +18,7 @@ type Bricks = SiteInput['bricks']
 function site(fields: Fields = {}, over: Partial<SiteInput> = {}): SiteInput {
   return defineSite({
     site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
-    locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'monday', workdays: 5 }, pages: { home: { de: '/', en: '/en' } },
+    locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
     bricks: { menu: collection({ listing: { title: 'name' }, untranslated: 'fallback', label: 'Karte', fields: { name: f.text('Name', { max: 120 }), ...fields }, max: 20, order: 'manual' }) },
     ...over,
   })
@@ -473,7 +473,7 @@ describe('week tokens', () => {
 
   // Wrong behaviour caught: the week is not stored on the schema, so server, Studio and site disagree about the first day.
   it('stores the week as the site states it, and none when it states none', () => {
-    expect(serializeSchema(site({}, { week: { firstDay: 'sunday', workdays: 6 } })).week).toEqual({ firstDay: 'sunday', workdays: 6 })
+    expect(serializeSchema(site({}, { week: { firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] } })).week).toEqual({ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] })
     expect('week' in serializeSchema(site({}, { week: undefined }))).toBe(false)
   })
 })

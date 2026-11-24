@@ -8,6 +8,8 @@ export default defineSite({
   studio: { id: '{{SITE}}', bricks: [] }, // die Kennung der Website auf einer Ginko-Plattform; noch kein Baustein wird dort bearbeitet
   url: 'https://example.com',
   timeZone: 'Europe/Vienna', // für dein Land ändern
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales: ['de'],
   currency: 'EUR', // für dein Land ändern
   pages: { home: '/' },

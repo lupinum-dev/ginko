@@ -182,7 +182,7 @@ describe('reminders.sweep', () => {
     const s = await setupUnplanned()
     await s.t.run(async (ctx) => {
       const site = (await ctx.db.get(s.site))!
-      await ctx.db.patch(s.site, { schema: { ...(site.schema as object), week: { firstDay: 'sunday', workdays: 6 } } })
+      await ctx.db.patch(s.site, { schema: { ...(site.schema as object), week: { firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] } } })
     })
     expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })).toEqual({ sent: 0 })
     expect(await s.t.mutation(internal.reminders.sweep, { now: SATURDAY_17_VIENNA })).toEqual({ sent: 2 })

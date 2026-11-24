@@ -222,7 +222,7 @@ function localized(value: Json, leaf: string, state: State, field: Field): unkno
 }
 
 /** Stored-format data built from the fields' defaults (new singletons, module defaults). */
-export function defaultsFor(fields: Fields, week: SiteWeek | undefined): Record<string, Json> {
+export function defaultsFor(fields: Fields, week: SiteWeek): Record<string, Json> {
   const out: Record<string, Json> = {}
   for (const [name, field] of Object.entries(fields)) {
     if (field.retired) continue

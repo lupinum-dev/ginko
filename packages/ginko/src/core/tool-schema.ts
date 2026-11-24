@@ -37,7 +37,7 @@ export interface ToolSchemaContext {
   mainLocale: Locale
   currency: Currency
   /** The site's week: the days of a rows field of weekdays or workdays. */
-  week: SiteWeek | undefined
+  week: SiteWeek
   /** Prefill of the task, already resolved by `tasks.prefill` (storage format). */
   prefill?: Record<string, Json>
 }

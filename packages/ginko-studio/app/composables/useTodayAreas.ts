@@ -247,9 +247,9 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
    * one, it is what the website shows this week, not the single's own fields (lunchWeekOn in the gastro preset).
    */
   function plannedNow(key: string, task = weeklyTask(s.schema.value!.bricks[key]!)?.task) {
+    if (!task) return undefined
     const schema = s.schema.value!
     const start = workWeekOf(s.today.value, weekInfo(schema.week))
-    if (!task) return undefined
     for (const [k, b] of Object.entries(schema.bricks)) {
       if (b.kind !== 'collection' || b.plans?.brick !== key) continue
       const entry = entriesOf(k).find((e) => e.state !== 'draft' && plansThisWeek(schema, key, task, k, e.data as Record<string, Json>, start))

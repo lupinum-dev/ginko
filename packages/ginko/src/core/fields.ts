@@ -3,7 +3,7 @@ import type {
   ListField, LongTextField, MarkdownField, MoneyField, NumberField, RefField, RowDef, RowSet, RowsField, SlugField, TextField,
   TimeField, Brick, Field, Json, Label, Localized,
 } from './types.ts'
-import { daysOf, type DayKey, type SiteWeek } from './time.ts'
+import { daysOf, workdaysOf, type DayKey, type SiteWeek } from './time.ts'
 import type { Money } from './infer.ts'
 import { stableJson } from './sha256.ts'
 import type { MarkdownProfile } from './markdown.ts'
@@ -193,9 +193,9 @@ const isRow = (value: unknown): value is Record<string, Json> => typeof value ==
  * The row keys of a rows field, in the order the Studio shows them: the seven days or the workdays from the site's
  * `week.firstDay` on, or the own rows. Days need the site's week (`checkSchema` requires it); without one this throws.
  */
-export function rowKeysOf(field: RowsField, week: SiteWeek | undefined): string[] {
+export function rowKeysOf(field: RowsField, week: SiteWeek): string[] {
   if (field.rows === 'weekdays') return daysOf(week)
-  if (field.rows === 'workdays') return daysOf(week).slice(0, week!.workdays)
+  if (field.rows === 'workdays') return workdaysOf(week)
   return field.rows.map((row: RowDef) => row.key)
 }
 
@@ -229,7 +229,7 @@ export function rowDefaults(of: Fields): Record<string, Json> | undefined {
  * The value a field starts with: its `default`. A rows field without one starts with every row filled from its
  * columns' defaults, when they fill a row (`rowDefaults`); its rows need the site's week.
  */
-export function startValue(field: Field, week: SiteWeek | undefined): Json | undefined {
+export function startValue(field: Field, week: SiteWeek): Json | undefined {
   if (field.default !== undefined || field.type !== 'rows') return field.default
   const row = rowDefaults(field.of)
   return row && Object.fromEntries(rowKeysOf(field, week).map((key) => [key, row]))

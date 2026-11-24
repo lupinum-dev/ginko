@@ -13,6 +13,8 @@ export default defineSite({
   seo: { description: 'A new website, built with Ginko.', color: '#18181b' },
   url: siteUrl('https://example.com'),
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   currency: 'EUR',
   // The site's id on a Ginko platform, and the bricks editors change in Ginko Studio: none yet, every brick is in files.

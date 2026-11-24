@@ -20,6 +20,8 @@ export default defineSite({
   url: siteUrl('https://example.com'),
   // Session times are entered and shown in this zone; JSON-LD writes them with its offset.
   timeZone: 'Europe/Vienna',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   // Austrian public holidays in the Studio, and `addressCountry` in the JSON-LD.
   country: 'AT',
   locales,

@@ -12,7 +12,7 @@ const site = defineSite({
   url: 'https://cafe.example',
   timeZone: 'Europe/Vienna',
   locales: ['de', 'en'],
-  currency: 'EUR',
+  currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/', en: '/en' } },
   bricks: {
     about: single({

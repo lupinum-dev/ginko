@@ -3,8 +3,8 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, type Ref } from 'vue'
 import { useI18n } from '#imports'
-import type { Json, WeekInfo } from '@lupinum/ginko'
-import { addDays, DEFAULT_WEEK, isDate, startOfWeek, workWeekOf } from '@lupinum/ginko/internal'
+import type { Json } from '@lupinum/ginko'
+import { addDays, isDate, startOfWeek, weekInfo, workWeekOf, type SiteWeek } from '@lupinum/ginko/internal'
 import { useToday } from '@lupinum/ginko-editor'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
@@ -17,14 +17,18 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 const timeZone = inject<Ref<string>>('ginko:timeZone', ref('Europe/Vienna'))
-const week = inject<Ref<WeekInfo>>('ginko:week', ref(DEFAULT_WEEK))
+// The site's week (layouts/site.vue). Without it (no site loaded) a week field offers no shortcuts and keeps the date.
+const siteWeek = inject<Ref<SiteWeek | undefined>>('ginko:week', ref(undefined))
+const week = computed(() => siteWeek.value && weekInfo(siteWeek.value))
 const today = useToday(timeZone)
 const { t } = useI18n()
 const value = computed(() => (typeof props.modelValue === 'string' ? props.modelValue : ''))
 const WEEK_LABELS = { 0: 'fields.date.thisWeek', 1: 'fields.date.nextWeek', 2: 'fields.date.weekAfterNext' } as const
-const quick = computed(() => props.weeks
-  ? props.weeks.map((offset) => ({ label: t(WEEK_LABELS[offset]), date: addDays(workWeekOf(today.value, week.value), 7 * offset) }))
-  : [{ label: t('fields.date.today'), date: today.value }, { label: t('fields.date.tomorrow'), date: addDays(today.value, 1) }])
+const quick = computed(() => {
+  const info = week.value
+  if (!props.weeks) return [{ label: t('fields.date.today'), date: today.value }, { label: t('fields.date.tomorrow'), date: addDays(today.value, 1) }]
+  return info ? props.weeks.map((offset) => ({ label: t(WEEK_LABELS[offset]), date: addDays(workWeekOf(today.value, info), 7 * offset) })) : []
+})
 /** "Leeren" hides itself once the field is empty: the focus goes to the date, not to <body>. */
 function clear() {
   emit('update:modelValue', undefined)
@@ -36,7 +40,8 @@ function clear() {
  * On leaving the field, not on each input: while someone types the day, the date must not jump under the cursor.
  */
 function toWeekStart() {
-  if (props.weeks && isDate(value.value) && startOfWeek(value.value, week.value) !== value.value) emit('update:modelValue', startOfWeek(value.value, week.value))
+  const info = week.value
+  if (props.weeks && info && isDate(value.value) && startOfWeek(value.value, info) !== value.value) emit('update:modelValue', startOfWeek(value.value, info))
 }
 </script>
 

@@ -45,7 +45,7 @@ beforeEach(() => {
 })
 
 const lastAnswer = {
-  site: { slug: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', previewOrigins: [], schema: { locales: ['de'], currency: 'EUR', timeZone: 'Europe/Vienna' }, bytes: 0, entryCount: 3, lastRefreshAt: null },
+  site: { slug: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', previewOrigins: [], schema: { locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, timeZone: 'Europe/Vienna' }, bytes: 0, entryCount: 3, lastRefreshAt: null },
   role: 'owner', grants: [],
 }
 const noAccess = () => normalizeConvexError(new ConvexError({ code: 'FORBIDDEN', key: 'errors.noAccess', message: 'Kein Zugriff auf diese Seite.' }), { functionName: 'sites:meta' })

@@ -26,7 +26,7 @@ export default defineSite({
   // Prices of the treatments.
   currency: 'EUR',
   // The site's week: the opening hours start on this day.
-  week: { firstDay: 'monday', workdays: 5 },
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   // The site's id on a Ginko platform, and the bricks the team edits in Ginko Studio: none yet, every brick is in files.
   studio: { id: 'local-business', bricks: [] },
   pages: {

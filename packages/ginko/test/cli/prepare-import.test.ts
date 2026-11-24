@@ -10,7 +10,7 @@ import { collection, defineComponents, defineSite, f, serializeSchema } from '..
 
 const config = defineSite({
   site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: { home: '/' },
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
   components: defineComponents({
     layout: { kind: 'block', label: 'Layout', describe: 'Columns', props: {} },
     column: { kind: 'block', label: 'Column', describe: 'One column', props: { width: f.text('Width') } },

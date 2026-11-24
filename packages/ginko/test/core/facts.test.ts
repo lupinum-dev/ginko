@@ -26,7 +26,7 @@ const practice = single({
 })
 
 const site = (over: Partial<SiteInput> = {}): SiteInput => defineSite({
-  site: 'praxis', name: 'Praxis', url: 'https://praxis.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'praxis', name: 'Praxis', url: 'https://praxis.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: '/' },
   bricks: {
     practice,

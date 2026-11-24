@@ -57,7 +57,7 @@ describe('eventJsonLd', () => {
 })
 
 const site = (withPeople: boolean) => defineSite({
-  site: 'odd', name: 'Open Data Days', url: 'https://odd.example', timeZone: 'Europe/Vienna', locales: ['en', 'de'], currency: 'EUR', pages: { home: '/' },
+  site: 'odd', name: 'Open Data Days', url: 'https://odd.example', timeZone: 'Europe/Vienna', locales: ['en', 'de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
   bricks: {
     events: events({ route: { en: '/events/[slug]', de: '/de/veranstaltungen/[slug]' } }),
     ...(withPeople ? { people: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'People', max: 100, order: 'manual', fields: { name: f.text('Name') } }), sessions: sessions({ people: 'people' }) } : { sessions: sessions() }),

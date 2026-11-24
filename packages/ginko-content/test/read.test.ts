@@ -12,7 +12,7 @@ import { errorLine, readContent } from '../src/read.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
   bricks: {
     docs: collection({ body: 'body',
       listing: { title: 'title' },
@@ -75,7 +75,7 @@ describe('readContent', () => {
   // another name gets no address from its file names and no URL.
   it('takes the address from the file name into the slug field, whatever it is called', async () => {
     const adresse = serializeSchema(defineSite({
-      site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: {},
+      site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
       bricks: { pages: collection({ body: 'body', listing: { title: 'title' }, label: 'Seiten', source: 'files', max: 5, order: 'manual', route: { de: '/seite/[slug]' }, fields: { title: f.text('Titel'), adresse: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') } }) },
     }))
     const s = site({ 'content/pages/1.ueber-uns.md': md('title: Über uns') })
@@ -179,7 +179,7 @@ describe('buildFileBundles', () => {
 
 describe('publicBundle', () => {
   const events = serializeSchema(defineSite({
-    site: 'ev', name: 'Ev', url: 'https://ev.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
+    site: 'ev', name: 'Ev', url: 'https://ev.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/' } },
     bricks: {
       events: collection({ body: 'body',
         listing: { title: 'title' },
@@ -306,7 +306,7 @@ describe('images in Markdown', () => {
 describe('image variants', () => {
   const imageSchema = serializeSchema(defineSite({
     site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
-    locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
+    locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/' } },
     bricks: { docs: collection({ body: 'body', listing: { title: 'title' }, label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), hero: f.image('Bild', { optional: true }), body: f.markdown('Text') } }) },
   }))
   const png = (width: number, height: number) => sharp({ create: { width, height, channels: 3, background: '#c33' } }).png().toBuffer()
@@ -349,7 +349,7 @@ describe('image variants', () => {
 
 describe('checks that never hide a broken entry', () => {
   const blog = serializeSchema(defineSite({
-    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
     bricks: {
       authors: collection({ listing: { title: 'name' }, label: 'Authors', source: 'files', max: 5, order: 'manual', fields: { name: f.text('Name') } }),
       posts: collection({ listing: { title: 'title' }, label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date'), author: f.ref('Author', { to: 'authors' }) } }),
@@ -378,7 +378,7 @@ describe('checks that never hide a broken entry', () => {
   // Wrong behaviour caught: the changelog basic has no drafts line, so a release dated in the future is published at once.
   it('leaves out a changelog entry dated after the build day', async () => {
     const log = serializeSchema(defineSite({
-      site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
+      site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/' } },
       bricks: { changelog: changelog({ source: 'files' }) },
     }))
     const s = site({ 'content/changelog/v1.md': '---\nversion: 1.0.0\ndate: 2026-10-01\n---\nOut.', 'content/changelog/v9.md': '---\nversion: 9.0.0\ndate: 2031-01-01\n---\nLater.' })
@@ -414,7 +414,7 @@ describe('check messages for file owners', () => {
   const both = (de: string, en: string) => ({ de, en })
   const owners = serializeSchema(defineSite({
     site: 'studio', name: 'Studio', url: 'https://studio.example', timeZone: 'Europe/Vienna',
-    locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+    locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
     bricks: {
       people: collection({ listing: { title: 'name' }, label: 'Personen', source: 'files', max: 20, order: 'manual', fields: { name: f.text('Name') } }),
       events: collection({
@@ -459,7 +459,7 @@ describe('check messages for file owners', () => {
 describe('multi-choice values in files', () => {
   const dish = (options: string[], optional = false) => serializeSchema(defineSite({
     site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Vienna',
-    locales: ['de'], currency: 'EUR', pages: { home: '/' },
+    locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
     bricks: {
       menu: collection({
         listing: { title: 'name' },

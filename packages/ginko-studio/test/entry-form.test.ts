@@ -339,6 +339,8 @@ describe('TaskSheet', () => {
     const entry = o.data ? { ...stored, _id: 'l1', brick: o.brickKey, kind: brick.kind === 'single' ? 'single' : 'item', data: o.data } as Entry : undefined
     const sheet = mount(TaskSheet, {
       props: { site: 'restaurant', brickKey: o.brickKey, brick, task: brick.tasks!.find((t) => t.id === o.task)!, entry, main: 'de', locales: ['de', 'en'], schema, copyFrom: o.copyFrom, reopen: o.reopen },
+      // The site's week, as layouts/site.vue provides it: rows of workdays follow it.
+      global: { provide: { 'ginko:week': vue.ref(schema.week) } },
       attachTo: document.body,
     })
     await flushPromises()

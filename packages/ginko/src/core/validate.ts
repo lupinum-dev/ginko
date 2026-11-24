@@ -158,7 +158,7 @@ function eachNode(nodes: readonly Json[], fn: (node: [string, Record<string, Jso
 
 interface MarkdownLeaf { field: MarkdownField; text: string; path: string; locale: Locale }
 /** `texts` collects Markdown values for the profile check, which needs the async parser. */
-interface Ctx { locales: Locale[]; main: Locale; week?: SiteWeek; texts?: MarkdownLeaf[]; refs?: ValidateOptions['refs']; fileAlt?: ValidateOptions['fileAlt'] }
+interface Ctx { locales: Locale[]; main: Locale; week: SiteWeek; texts?: MarkdownLeaf[]; refs?: ValidateOptions['refs']; fileAlt?: ValidateOptions['fileAlt'] }
 
 /** `listRow`: the fields are the columns of a list row, which also holds its `_id`. */
 function checkFields(fields: Fields, data: unknown, path: string, ctx: Ctx, listRow = false): Issue[] {

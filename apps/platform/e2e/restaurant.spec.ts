@@ -1,5 +1,5 @@
 // The restaurant jobs of UI.md 9, as the owner (Wirtin) and the cook (Koch) do them, at 390 and 1440 px.
-import { addDays, DEFAULT_WEEK, todayIn, workWeekOf } from '@lupinum/ginko/internal'
+import { addDays, todayIn, weekInfo, workWeekOf } from '@lupinum/ginko/internal'
 import { expect, test, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
 import { codeFor, openQuick, resetContent, serverDir } from './local'
@@ -66,7 +66,7 @@ test.describe('Wirtin', () => {
     await page.getByRole('button', { name: 'Mittagsmenü dieser Woche' }).click()
     const sheet = page.getByRole('dialog')
     // The weekly task always covers this week: the week is shown, not asked.
-    const monday = new Date(`${workWeekOf(today(), DEFAULT_WEEK)}T12:00:00Z`).toLocaleDateString('de', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    const monday = new Date(`${workWeekOf(today(), weekInfo({ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }))}T12:00:00Z`).toLocaleDateString('de', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' })
     await expect(sheet.locator('[data-test="fixed-week"]')).toContainText(monday)
     await expect(sheet.locator('input[type="date"]')).toHaveCount(0)
     const tuesday = sheet.locator('li', { has: page.getByRole('heading', { name: 'Dienstag' }) })

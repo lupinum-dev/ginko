@@ -12,7 +12,7 @@ import { collection, defineSite, f, printOf } from '../../src/core/index.ts'
 // `blog` is a platform brick (no `source`): files-export reads content/<key>/ for every brick anyway.
 const config = defineSite({
   site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: { home: '/' },
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
   bricks: {
     blog: collection({ body: 'body',
       listing: { title: 'title' },

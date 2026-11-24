@@ -124,6 +124,8 @@ export default defineSite({
   name: 'Ginko',
   url: 'https://ginko.lupinum.com',
   timeZone: 'Europe/Vienna',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   currency: 'EUR',
   pages: { home: '/', blog: '/blog', changelog: '/changelog' },

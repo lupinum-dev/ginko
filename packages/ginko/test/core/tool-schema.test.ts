@@ -5,7 +5,7 @@ import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import type { Brick, Task } from '../../src/index.ts'
 import { fromToolInput, taskInputSchema } from '../../src/internal.ts'
 
-const ctx = { mainLocale: 'de', currency: 'EUR', week: { firstDay: 'monday', workdays: 5 } } as const
+const ctx = { mainLocale: 'de', currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] } } as const
 const bricks = restaurant.bricks as Record<string, Brick>
 const task = (brick: string, id: string) => bricks[brick]!.tasks!.find((t) => t.id === id)!
 

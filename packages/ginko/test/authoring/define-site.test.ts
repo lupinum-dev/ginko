@@ -6,7 +6,7 @@ import type { BrickValue } from '../../src/core/infer.ts'
 import { collection, defineSite, extend, f, single } from '../../src/index.ts'
 import * as stored from '../../src/internal.ts'
 
-const base = { name: 'Halden Pumps', url: 'https://halden.example', timeZone: 'Europe/Vienna', currency: 'EUR' } as const
+const base = { name: 'Halden Pumps', url: 'https://halden.example', timeZone: 'Europe/Vienna', currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] } } as const
 
 const services = collection({ untranslated: 'fallback',
   listing: { title: 'title' },

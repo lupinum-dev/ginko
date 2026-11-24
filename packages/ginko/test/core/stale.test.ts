@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
-import { createAsks, DEFAULT_WEEK, liveFrom, plannedWeeks, serializeSchema, staleOf, weekInfo, type Schema, type Task } from '../../src/core/index.ts'
+import { createAsks, liveFrom, plannedWeeks, serializeSchema, staleOf, weekInfo, type Schema, type Task } from '../../src/core/index.ts'
 
+const WEEK = weekInfo({ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] })
 const lunch = {
   fields: { weekOf: { type: 'date' }, note: { type: 'text' } },
   tasks: [{ id: 'lunchWeek', label: 'Mittagsmenü', kind: 'edit', fields: ['weekOf', 'note'], prefill: { weekOf: '@workWeek' } }] as Task[],
@@ -16,13 +17,13 @@ describe('staleOf (weekly upkeep)', () => {
     ['Sunday, next week entered', '2026-10-11', '2026-10-12', true],
     ['Saturday, nothing entered', '2026-10-10', undefined, false],
   ])('%s', (_name, today, stored, current) => {
-    expect(staleOf(lunch, stored ? { weekOf: stored } : {}, today, DEFAULT_WEEK)?.current).toBe(current)
+    expect(staleOf(lunch, stored ? { weekOf: stored } : {}, today, WEEK)?.current).toBe(current)
   })
 
   // Wrong behaviour caught: a Sunday-first site compares with a Monday, so its current week is called out of date.
   it('uses the site week: on a Sunday-first Wednesday the week of Sunday 11 is current', () => {
-    expect(staleOf(lunch, { weekOf: '2026-10-11' }, '2026-10-14', weekInfo({ firstDay: 'sunday', workdays: 6 }))?.current).toBe(true)
-    expect(staleOf(lunch, { weekOf: '2026-10-11' }, '2026-10-14', DEFAULT_WEEK)?.current).toBe(false)
+    expect(staleOf(lunch, { weekOf: '2026-10-11' }, '2026-10-14', weekInfo({ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] }))?.current).toBe(true)
+    expect(staleOf(lunch, { weekOf: '2026-10-11' }, '2026-10-14', WEEK)?.current).toBe(false)
   })
 
   // Wrong behaviour caught: a menu planned ahead is not counted, so the Sunday mail nags although the week is ready; or any planned week hides a missing one.
@@ -31,7 +32,7 @@ describe('staleOf (weekly upkeep)', () => {
     ['Sunday, only another week planned', '2026-10-11', ['2026-10-19'], false],
     ['Sunday, the ending week planned', '2026-10-11', ['2026-10-05'], false],
   ])('%s', (_name, today, planned, current) => {
-    expect(staleOf(lunch, { weekOf: '2026-10-05' }, today, DEFAULT_WEEK, planned)?.current).toBe(current)
+    expect(staleOf(lunch, { weekOf: '2026-10-05' }, today, WEEK, planned)?.current).toBe(current)
   })
 
   // Wrong behaviour caught: planned weeks are read from collections that do not plan this brick.
@@ -47,8 +48,8 @@ describe('staleOf (weekly upkeep)', () => {
 
   // Wrong behaviour caught: bricks without a weekly task are reported as out of date.
   it('is undefined without a week task', () => {
-    expect(staleOf({ fields: lunch.fields, tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['note'] }] }, {}, '2026-10-11', DEFAULT_WEEK)).toBeUndefined()
-    expect(staleOf({ fields: lunch.fields }, {}, '2026-10-11', DEFAULT_WEEK)).toBeUndefined()
+    expect(staleOf({ fields: lunch.fields, tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['note'] }] }, {}, '2026-10-11', WEEK)).toBeUndefined()
+    expect(staleOf({ fields: lunch.fields }, {}, '2026-10-11', WEEK)).toBeUndefined()
   })
 })
 

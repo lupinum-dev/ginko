@@ -7,7 +7,7 @@ import type { Id } from '../convex/_generated/dataModel'
 import { errorOf, opId, setup } from './setup'
 
 const docsBrick = serializeSchema(defineSite({
-  site: 'x', name: 'x', url: 'https://x.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', pages: {},
+  site: 'x', name: 'x', url: 'https://x.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
   bricks: {
     docs: collection({
       label: 'Doku', max: 100, order: 'manual', listing: { title: 'title' }, tree: { parent: 'parent', section: 'section', tab: 'tab' },

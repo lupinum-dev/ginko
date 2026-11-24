@@ -17,6 +17,8 @@ export default defineSite({
   url: siteUrl('https://example.com'),
   // "Today" for the build: a post dated after it is not published yet (content/posts/, README "Write a post").
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   languages: { en: 'en-GB', de: 'de-DE' },
   // Required by Ginko; the blog shows no prices.
