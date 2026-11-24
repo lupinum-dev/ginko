@@ -37,6 +37,34 @@ jobs:
       - run: pnpm check:contracts
       - run: pnpm check:pack
 
+  # convex/_generated of ginko-server is committed and ships in the package, so it must match the code. Codegen needs a
+  # deployment, so this pushes once to a fresh local anonymous backend (no account), then fails on any changed file.
+  server-codegen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          check-latest: true
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec convex dev --once --typecheck disable
+        working-directory: packages/ginko-server
+        env:
+          CONVEX_AGENT_MODE: anonymous
+      - run: |
+          if [ -n "$(git status --porcelain -- packages/ginko-server/convex)" ]; then
+            git status --short -- packages/ginko-server/convex
+            git diff -- packages/ginko-server/convex
+            echo "::error::packages/ginko-server/convex/_generated is stale. Run 'CONVEX_AGENT_MODE=anonymous npx convex dev --once' in packages/ginko-server and commit the result."
+            exit 1
+          fi
+
   # Only production advisories that reach a published package block releases (scripts/audit-deps.mjs).
   audit:
     runs-on: ubuntu-latest
@@ -149,7 +177,7 @@ jobs:
   ci:
     name: ci
     if: always()
-    needs: [check, audit, nuxt5, i18n-browser, platform-e2e]
+    needs: [check, server-codegen, audit, nuxt5, i18n-browser, platform-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
