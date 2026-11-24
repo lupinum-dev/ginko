@@ -28,6 +28,16 @@ type Compiled<X, R> =
   : X
 type CompiledBricks<B, E> = { [K in keyof B]: Compiled<B[K], K extends keyof E ? true : undefined> }
 
+/**
+ * What `defineSite` returns: the site in its stored form, with the types of this config. A page of `pages` is a path
+ * per language (with the prefix), so `site.pages.news.de` reads as in 0.18.
+ */
+type Site<B, L extends string, E, P> = Omit<SiteInput, 'bricks' | 'locales' | 'pages'> & {
+  locales: readonly [L, ...L[]]
+  pages: { [K in keyof P]: Partial<Record<L, string>> }
+  bricks: CompiledBricks<B, E>
+}
+
 /** The site keys that are written in another way than they are stored. */
 type Replaced = 'site' | 'platform' | 'pages' | 'bricks' | 'locales'
 
@@ -44,6 +54,7 @@ export function defineSite<
   const B extends Record<string, Brick | BrickDef>,
   const L extends string,
   const E extends Partial<Record<WithEntryPage<B>, EntryAddress<NoInfer<L>>>> = {},
+  const P extends Record<string, Address<NoInfer<L>, Path>> = {},
 >(site: Omit<SiteInput, Replaced> & {
   /** The site's languages. The first one is the main language. */
   locales: readonly [L, ...L[]]
@@ -53,14 +64,14 @@ export function defineSite<
    * The fixed pages by key, without the language prefix. A text is the same path in every language; an object has
    * exactly these languages: `{ home: '/', menu: { de: '/speisekarte', en: '/menu' } }`.
    */
-  pages?: Record<string, Address<NoInfer<L>, Path>>
+  pages?: P
   /** The page of one entry, by brick: a path with `[slug]`, the same in every language or one per language. Only collections with a slug field. */
   entries?: E & { [K in keyof E]: K extends WithEntryPage<B> ? unknown : never }
   /** Who edits what. Without it every brick lives in files. */
   studio?: StudioInput<keyof B & string>
   /** The texts of other editor languages: the content of `i18n/studio/<locale>.json`, by language. */
   texts?: Partial<Record<Locale, StudioTexts>>
-}): Omit<SiteInput, 'bricks' | 'locales'> & { locales: readonly [L, ...L[]]; bricks: CompiledBricks<B, E> } {
+}): Site<B, L, E, P> {
   const old = ['site', 'platform'].filter((key) => Object.hasOwn(site, key))
   if (old.length) {
     throw new Error([
@@ -102,7 +113,7 @@ export function defineSite<
     }
     return [key, brick]
   }))
-  const storedPages = Object.fromEntries(Object.entries(pages).map(([key, page]) => [key, address(`pages.${key}`, page)]))
+  const storedPages = Object.fromEntries(Object.entries(pages as Record<string, string | Partial<Record<string, string>>>).map(([key, page]) => [key, address(`pages.${key}`, page)]))
   if (problems.length) throw new Error(`ginko.config.ts:\n${problems.map((p) => `- ${p}`).join('\n')}`)
   const out = {
     ...rest,
@@ -113,7 +124,7 @@ export function defineSite<
     bricks: compiled,
   }
   // The compiled bricks are built by key at runtime; their types are computed from `B` and `E` above.
-  return out as Omit<SiteInput, 'bricks' | 'locales'> & { locales: readonly [L, ...L[]]; bricks: CompiledBricks<B, E> }
+  return out as Site<B, L, E, P>
 }
 
 const isDef = (brick: Brick | BrickDef): brick is BrickDef => (brick as { [DEF]?: true })[DEF] === true

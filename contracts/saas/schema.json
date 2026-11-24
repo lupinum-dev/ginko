@@ -211,8 +211,6 @@
           "pos": 7
         }
       },
-      "max": 6,
-      "order": "manual",
       "tasks": [
         {
           "id": "add",
@@ -238,6 +236,8 @@
           "kind": "remove"
         }
       ],
+      "max": 6,
+      "order": "manual",
       "pos": 2
     },
     "changelog": {
@@ -284,11 +284,6 @@
           "pos": 3
         }
       },
-      "max": 300,
-      "order": {
-        "field": "date",
-        "dir": "desc"
-      },
       "tasks": [
         {
           "id": "add",
@@ -313,6 +308,11 @@
           "kind": "remove"
         }
       ],
+      "max": 300,
+      "order": {
+        "field": "date",
+        "dir": "desc"
+      },
       "pos": 3
     },
     "blog": {
@@ -363,16 +363,6 @@
           "pos": 6
         }
       },
-      "max": 200,
-      "order": {
-        "field": "date",
-        "dir": "desc"
-      },
-      "route": {
-        "de": "/blog/[slug]",
-        "en": "/en/blog/[slug]",
-        "fr": "/fr/blog/[slug]"
-      },
       "tasks": [
         {
           "id": "add",
@@ -400,6 +390,16 @@
           "kind": "remove"
         }
       ],
+      "max": 200,
+      "order": {
+        "field": "date",
+        "dir": "desc"
+      },
+      "route": {
+        "de": "/blog/[slug]",
+        "en": "/en/blog/[slug]",
+        "fr": "/fr/blog/[slug]"
+      },
       "pos": 4
     },
     "testimonials": {
@@ -433,8 +433,6 @@
           "pos": 3
         }
       },
-      "max": 30,
-      "order": "manual",
       "tasks": [
         {
           "id": "add",
@@ -459,6 +457,8 @@
           "kind": "remove"
         }
       ],
+      "max": 30,
+      "order": "manual",
       "pos": 5
     },
     "faq": {
@@ -479,8 +479,6 @@
           "pos": 1
         }
       },
-      "max": 60,
-      "order": "manual",
       "tasks": [
         {
           "id": "add",
@@ -503,6 +501,8 @@
           "kind": "remove"
         }
       ],
+      "max": 60,
+      "order": "manual",
       "pos": 6
     },
     "notices": {
@@ -529,13 +529,6 @@
           "pos": 2
         }
       },
-      "max": 5,
-      "order": "manual",
-      "visible": {
-        "mode": "until",
-        "field": "until",
-        "deleteExpired": true
-      },
       "tasks": [
         {
           "id": "add",
@@ -548,6 +541,13 @@
           "kind": "remove"
         }
       ],
+      "max": 5,
+      "order": "manual",
+      "visible": {
+        "mode": "until",
+        "field": "until",
+        "deleteExpired": true
+      },
       "pos": 7
     },
     "company": {

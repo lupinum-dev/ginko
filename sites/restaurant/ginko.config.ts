@@ -1,12 +1,11 @@
 // Gasthaus zur Linde: the v1 acceptance target (SPEC 13, DEMOS.md demo 3).
 // Hours, notices, lunch, menu, events and gallery come from the gastro preset; the rest is this house's own.
-import { defineSite, f, single } from '@lupinum/ginko/v1'
+import { defineSite, f, single } from '@lupinum/ginko'
 import { events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '@lupinum/ginko-preset-gastro'
 
 const lunchBrick = lunch({ weekOf: '2026-10-05' })
 
 export default defineSite({
-  site: 'restaurant',
   name: 'Gasthaus zur Linde',
   url: 'https://ginko-demo-restaurant.vercel.app',
   timeZone: 'Europe/Vienna',
@@ -15,14 +14,21 @@ export default defineSite({
   currency: 'EUR',
   // Austrian public holidays for the opening hours (stored as `holidays: 'AT'`).
   country: 'AT',
+  // The site's id on the platform. Every brick is edited in Ginko Studio.
+  studio: { id: 'restaurant', bricks: 'all' },
+  // Paths are written without the language prefix: Ginko adds `/en`.
   pages: {
-    home: { de: '/', en: '/en' },
-    menu: { de: '/speisekarte', en: '/en/menu' },
-    lunch: { de: '/mittagsmenue', en: '/en/lunch' },
-    events: { de: '/veranstaltungen', en: '/en/events' },
-    gallery: { de: '/galerie', en: '/en/gallery' },
-    imprint: { de: '/impressum', en: '/en/imprint' },
-    privacy: { de: '/datenschutz', en: '/en/privacy' },
+    home: '/',
+    menu: { de: '/speisekarte', en: '/menu' },
+    lunch: { de: '/mittagsmenue', en: '/lunch' },
+    events: { de: '/veranstaltungen', en: '/events' },
+    gallery: { de: '/galerie', en: '/gallery' },
+    imprint: { de: '/impressum', en: '/imprint' },
+    privacy: { de: '/datenschutz', en: '/privacy' },
+  },
+  // The page of one event.
+  entries: {
+    events: { de: '/veranstaltungen/[slug]', en: '/events/[slug]' },
   },
   bricks: {
     // Schnell ändern lists bricks in this order, so each plan sits right after the brick it plans.
@@ -35,7 +41,7 @@ export default defineSite({
     // Lunch weeks planned ahead, shown from their first day of the week (lunchWeekOn).
     lunchPlans: lunchPlans(),
     menu: menu(),
-    events: events({ route: { de: '/veranstaltungen/[slug]', en: '/en/events/[slug]' } }),
+    events: events(),
     gallery: gallery(),
     // A rare job (moving, new number): no quick task, found under this label in Alles bearbeiten.
     contact: single({

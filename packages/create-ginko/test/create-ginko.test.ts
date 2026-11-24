@@ -28,7 +28,7 @@ describe('create-ginko', () => {
   it('without options creates the English plain starter and says how to pick another one', () => {
     const result = run('plain')
     expect(result.status).toBe(0)
-    expect(read('plain', 'ginko.config.ts')).toContain("site: 'plain'")
+    expect(read('plain', 'ginko.config.ts')).toContain("studio: { id: 'plain', bricks: [] }")
     expect(read('plain', 'ginko.config.ts')).toContain("locales: ['en']")
     expect(read('plain', 'content/start.md')).toContain('title: Hello Ginko')
     expect(JSON.parse(read('plain', 'package.json')).dependencies).not.toHaveProperty('@lupinum/ginko-docs')
@@ -57,7 +57,7 @@ describe('create-ginko', () => {
   it('says which site id it derived when the folder name is not a valid one', () => {
     const result = run('My Café!')
     expect(result.status).toBe(0)
-    expect(read('My Café!', 'ginko.config.ts')).toContain("site: 'my-caf'")
+    expect(read('My Café!', 'ginko.config.ts')).toContain("studio: { id: 'my-caf', bricks: [] }")
     expect(result.stdout).toContain('The site id is "my-caf"')
     expect(run('plain-id').stdout).not.toContain('The site id is')
   })
@@ -97,7 +97,8 @@ describe('create-ginko', () => {
         expect(result.status).toBe(0)
         for (const file of files) expect(existsSync(join(work, name, file)), file).toBe(true)
         expect(existsSync(join(work, name, 'content/start.md'))).toBe(false)
-        expect(read(name, 'ginko.config.ts')).toContain(`site: '${name}'`)
+        // The docs starter is written with '@lupinum/ginko/v1' (the docs theme's helpers give that form).
+        expect(read(name, 'ginko.config.ts')).toContain(preset === 'docs' ? `site: '${name}'` : `studio: { id: '${name}', bricks: [] }`)
         expect(read(name, 'ginko.config.ts')).toMatch(new RegExp(`locales.*\\['${lang}'\\]`))
         expect(read(name, 'ginko.config.ts')).not.toContain('{{')
         expect(read(name, 'ginko.config.ts')).toContain(pkg)
@@ -173,7 +174,7 @@ describe('create-ginko --template', () => {
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('Created tpl-site from the starter template in English and German.')
     // Wrong behaviour caught: two sites created from one template share the template's site id.
-    expect(read('tpl-site', 'ginko.config.ts')).toMatch(/\bsite: 'tpl-site'/)
+    expect(read('tpl-site', 'ginko.config.ts')).toContain("studio: { id: 'tpl-site', bricks: [] }")
     // Wrong behaviour caught: a site in English and German whose labels still carry the template's French texts.
     expect(read('tpl-site', 'ginko.config.ts')).toContain("label: { de: 'Startseite', en: 'Home page' }")
     expect(read('tpl-site', 'README.md')).not.toContain('The languages of this copy')

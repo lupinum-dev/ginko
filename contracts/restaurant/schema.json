@@ -1909,10 +1909,6 @@
         "mode": "until",
         "field": "when"
       },
-      "route": {
-        "de": "/veranstaltungen/[slug]",
-        "en": "/en/events/[slug]"
-      },
       "tasks": [
         {
           "id": "add",
@@ -1943,6 +1939,10 @@
           "kind": "remove"
         }
       ],
+      "route": {
+        "de": "/veranstaltungen/[slug]",
+        "en": "/en/events/[slug]"
+      },
       "pos": 6
     },
     "gallery": {
@@ -2065,7 +2065,6 @@
     "legal": {
       "kind": "single",
       "label": "Rechtliches",
-      "layout": "tabs",
       "fields": {
         "imprint": {
           "type": "markdown",
@@ -2086,6 +2085,7 @@
           "pos": 1
         }
       },
+      "layout": "tabs",
       "pos": 9
     },
     "seo": {

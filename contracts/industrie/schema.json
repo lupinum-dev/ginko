@@ -132,8 +132,8 @@
               "pos": 5
             }
           },
-          "min": 7,
           "max": 7,
+          "min": 7,
           "unique": "day",
           "default": [
             {
@@ -276,13 +276,6 @@
           "pos": 1
         }
       },
-      "max": 5,
-      "order": "manual",
-      "visible": {
-        "mode": "until",
-        "field": "until",
-        "deleteExpired": true
-      },
       "tasks": [
         {
           "id": "add",
@@ -295,6 +288,13 @@
           "kind": "remove"
         }
       ],
+      "max": 5,
+      "order": "manual",
+      "visible": {
+        "mode": "until",
+        "field": "until",
+        "deleteExpired": true
+      },
       "pos": 1
     },
     "news": {
@@ -342,15 +342,6 @@
           "pos": 5
         }
       },
-      "max": 60,
-      "order": {
-        "field": "date",
-        "dir": "desc"
-      },
-      "route": {
-        "de": "/aktuelles/[slug]",
-        "en": "/en/news/[slug]"
-      },
       "tasks": [
         {
           "id": "add",
@@ -377,6 +368,15 @@
           "kind": "remove"
         }
       ],
+      "max": 60,
+      "order": {
+        "field": "date",
+        "dir": "desc"
+      },
+      "route": {
+        "de": "/aktuelles/[slug]",
+        "en": "/en/news/[slug]"
+      },
       "pos": 2
     },
     "jobs": {
@@ -469,12 +469,6 @@
           "pos": 9
         }
       },
-      "max": 40,
-      "order": "manual",
-      "visible": {
-        "mode": "until",
-        "field": "until"
-      },
       "tasks": [
         {
           "id": "add",
@@ -505,6 +499,12 @@
           "kind": "remove"
         }
       ],
+      "max": 40,
+      "order": "manual",
+      "visible": {
+        "mode": "until",
+        "field": "until"
+      },
       "pos": 3
     },
     "events": {
@@ -538,15 +538,6 @@
           "pos": 3
         }
       },
-      "max": 40,
-      "order": {
-        "field": "when",
-        "dir": "asc"
-      },
-      "visible": {
-        "mode": "until",
-        "field": "when"
-      },
       "tasks": [
         {
           "id": "add",
@@ -571,6 +562,15 @@
           "kind": "remove"
         }
       ],
+      "max": 40,
+      "order": {
+        "field": "when",
+        "dir": "asc"
+      },
+      "visible": {
+        "mode": "until",
+        "field": "when"
+      },
       "pos": 4
     },
     "products": {
@@ -648,12 +648,6 @@
           "pos": 5
         }
       },
-      "max": 80,
-      "order": "manual",
-      "route": {
-        "de": "/produkte/[slug]",
-        "en": "/en/products/[slug]"
-      },
       "tasks": [
         {
           "id": "add",
@@ -680,6 +674,12 @@
           "kind": "remove"
         }
       ],
+      "max": 80,
+      "order": "manual",
+      "route": {
+        "de": "/produkte/[slug]",
+        "en": "/en/products/[slug]"
+      },
       "pos": 5
     },
     "contacts": {
@@ -718,8 +718,6 @@
           "pos": 4
         }
       },
-      "max": 30,
-      "order": "manual",
       "tasks": [
         {
           "id": "add",
@@ -745,6 +743,8 @@
           "kind": "remove"
         }
       ],
+      "max": 30,
+      "order": "manual",
       "pos": 6
     },
     "certificates": {
@@ -773,11 +773,6 @@
           "pos": 2
         }
       },
-      "max": 20,
-      "order": {
-        "field": "validUntil",
-        "dir": "asc"
-      },
       "tasks": [
         {
           "id": "add",
@@ -800,6 +795,11 @@
           "kind": "remove"
         }
       ],
+      "max": 20,
+      "order": {
+        "field": "validUntil",
+        "dir": "asc"
+      },
       "pos": 7
     },
     "company": {

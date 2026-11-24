@@ -81,12 +81,6 @@
           "en": "Pages",
           "fr": "Pages"
         },
-        "max": 50,
-        "order": "manual",
-        "route": {
-          "en": "/[slug]",
-          "de": "/de/[slug]"
-        },
         "fields": {
           "title": {
             "type": "text",
@@ -176,6 +170,11 @@
         "tasks": [
           {
             "id": "edit",
+            "label": {
+              "de": "Seite bearbeiten",
+              "en": "Edit a page",
+              "fr": "Modifier une page"
+            },
             "kind": "edit",
             "pick": true,
             "fields": [
@@ -185,23 +184,24 @@
               "actionLabel",
               "actionUrl",
               "body"
-            ],
-            "label": {
-              "de": "Seite bearbeiten",
-              "en": "Edit a page",
-              "fr": "Modifier une page"
-            }
+            ]
           },
           {
             "id": "add",
-            "kind": "create",
             "label": {
               "de": "Seite hinzufügen",
               "en": "Add a page",
               "fr": "Ajouter une page"
-            }
+            },
+            "kind": "create"
           }
         ],
+        "max": 50,
+        "order": "manual",
+        "route": {
+          "en": "/[slug]",
+          "de": "/de/[slug]"
+        },
         "pos": 1
       },
       "notices": {
@@ -234,13 +234,6 @@
             "pos": 1
           }
         },
-        "max": 5,
-        "order": "manual",
-        "visible": {
-          "mode": "until",
-          "field": "until",
-          "deleteExpired": true
-        },
         "tasks": [
           {
             "id": "add",
@@ -259,6 +252,13 @@
             "kind": "remove"
           }
         ],
+        "max": 5,
+        "order": "manual",
+        "visible": {
+          "mode": "until",
+          "field": "until",
+          "deleteExpired": true
+        },
         "pos": 2
       },
       "site": {
@@ -400,13 +400,13 @@
         "tasks": [
           {
             "id": "edit",
-            "kind": "edit",
             "label": {
               "de": "Kontaktdaten ändern",
               "en": "Change contact details",
               "es": "Cambiar los datos de contacto",
               "fr": "Modifier les coordonnées"
             },
+            "kind": "edit",
             "fields": [
               "legalName",
               "street",
@@ -430,32 +430,6 @@
           "es": "Textos legales",
           "fr": "Informations légales"
         },
-        "max": 20,
-        "order": "manual",
-        "route": {
-          "en": "/legal/[slug]",
-          "de": "/de/legal/[slug]"
-        },
-        "tasks": [
-          {
-            "id": "update",
-            "kind": "edit",
-            "pick": true,
-            "fields": [
-              "body",
-              "updatedAt"
-            ],
-            "prefill": {
-              "updatedAt": "@today"
-            },
-            "label": {
-              "de": "Rechtstext aktualisieren",
-              "en": "Update a legal text",
-              "es": "Actualizar un texto legal",
-              "fr": "Mettre à jour un texte juridique"
-            }
-          }
-        ],
         "fields": {
           "title": {
             "type": "text",
@@ -577,6 +551,32 @@
             "profile": "page",
             "pos": 5
           }
+        },
+        "tasks": [
+          {
+            "id": "update",
+            "label": {
+              "de": "Rechtstext aktualisieren",
+              "en": "Update a legal text",
+              "es": "Actualizar un texto legal",
+              "fr": "Mettre à jour un texte juridique"
+            },
+            "kind": "edit",
+            "pick": true,
+            "fields": [
+              "body",
+              "updatedAt"
+            ],
+            "prefill": {
+              "updatedAt": "@today"
+            }
+          }
+        ],
+        "max": 20,
+        "order": "manual",
+        "route": {
+          "en": "/legal/[slug]",
+          "de": "/de/legal/[slug]"
         },
         "pos": 4
       }

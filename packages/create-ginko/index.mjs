@@ -150,7 +150,10 @@ if (template) {
     }
   }
   const config = join(dir, 'ginko.config.ts')
-  writeFileSync(config, readFileSync(config, 'utf8').replace(/(\bsite:\s*)(['"])[^'"]*\2/, `$1'${site}'`))
+  // The site's id: `studio: { id: '…' }`; a config of '@lupinum/ginko/v1' (the docs template) has `site: '…'`.
+  const source = readFileSync(config, 'utf8')
+  const id = /(\bstudio:\s*\{\s*id:\s*)(['"])[^'"]*\2/.test(source) ? /(\bstudio:\s*\{\s*id:\s*)(['"])[^'"]*\2/ : /(\bsite:\s*)(['"])[^'"]*\2/
+  writeFileSync(config, source.replace(id, `$1'${site}'`))
   const path = join(dir, 'package.json')
   const pkg = JSON.parse(readFileSync(path, 'utf8'))
   pkg.name = site
