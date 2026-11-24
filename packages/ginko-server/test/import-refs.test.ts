@@ -137,6 +137,23 @@ describe('import keeps references between entries', () => {
     expect([site.bytes, site.treeBytes]).toEqual([rows.reduce((sum, e) => sum + e.bytes, 0), rows.reduce((sum, e) => sum + (e.treeBytes ?? 0), 0)])
   })
 
+  // Wrong behaviour caught: a file links to an entry by its name (`$authors.anna`), and the import's map is keyed by the
+  // exported ID `authors/anna`, so the link kept pointing at `anna`, which names no entry of a brick without an address.
+  it('points a link by name from a files export at the new id, also in a brick without a slug field', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const { run, upload } = runnerOf(s)
+    await importSite({ dir: await exportFolder([
+      exported('notes/hello', 'notes', 1, { body: { de: 'Von [Anna]($authors.anna).' } }),
+      exported('authors/anna', 'authors', 1, { name: { de: 'Anna' } }),
+    ]), run, upload, log: () => undefined })
+
+    const rows = await entriesOf(s, s.site)
+    const anna = rows.find((e) => e.brick === 'authors')!
+    expect(rows.find((e) => e.brick === 'notes')!.data).toEqual({ body: { de: `Von [Anna]($authors.${anna._id}).` } })
+  })
+
   // A post that names a short files-export ID 20000 times: 234 KiB in the export, 684 KiB once each `authors/a` is a
   // 32-character Convex ID. Wrong behaviour caught: the size is checked before the rewrite only, so the import clears the
   // site and stores an entry the Studio then refuses to grow.

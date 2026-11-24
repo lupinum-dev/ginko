@@ -27,7 +27,7 @@ describe('linkTargets', () => {
 
 const schema = {
   pages: { menu: { de: '/speisekarte', en: '/en/menu' } },
-  bricks: { blog: { kind: 'collection' }, snippets: { kind: 'collection' } },
+  bricks: { blog: { kind: 'collection', fields: { slug: { type: 'slug', from: 'title' } } }, snippets: { kind: 'collection', fields: {} } },
 } as unknown as Pick<Schema, 'pages' | 'bricks'>
 
 const tree = (...nodes: unknown[]) => ({ nodes })

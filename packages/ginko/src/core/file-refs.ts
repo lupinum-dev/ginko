@@ -90,17 +90,23 @@ export function rewriteFileRefs(text: string, map: ReadonlyMap<string, string>):
  */
 const ENTRY_LINK = /(?<=\]\(\s*<?|^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*<?)\$([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)(?![\w.-])/gm
 
-/** The entry IDs and slugs that a text links to (`$authors.<ref>`); page links and words in code are left out. */
+/**
+ * The entry IDs and slugs that a text links to (`$authors.<ref>`): each `ref` as written, and `authors/<ref>`, the ID of
+ * a file entry, which a file links to by its name. Page links and words in code are left out.
+ */
 export function entryLinkRefs(text: string): Set<string> {
-  return new Set([...withoutCode(text).matchAll(ENTRY_LINK)].filter((m) => m[1] !== 'page').map((m) => m[2]!))
+  return new Set([...withoutCode(text).matchAll(ENTRY_LINK)].filter((m) => m[1] !== 'page').flatMap((m) => [m[2]!, `${m[1]}/${m[2]}`]))
 }
 
-/** The text with every link to an entry whose ID is in `map` pointing at its new ID. Slugs, unknown IDs and words in code stay as they are. */
+/**
+ * The text with every link to an entry whose ID is in `map` pointing at its new ID. A link by name (`$authors.anna`)
+ * finds a file entry's ID `authors/anna`. Slugs, unknown IDs and words in code stay as they are.
+ */
 export function rewriteEntryLinks(text: string, map: ReadonlyMap<string, string>): string {
   let out = ''
   let last = 0
   for (const match of withoutCode(text).matchAll(ENTRY_LINK)) {
-    const to = match[1] === 'page' ? undefined : map.get(match[2]!)
+    const to = match[1] === 'page' ? undefined : map.get(match[2]!) ?? map.get(`${match[1]}/${match[2]}`)
     if (to === undefined) continue
     out += `${text.slice(last, match.index)}$${match[1]}.${to}`
     last = match.index + match[0].length
