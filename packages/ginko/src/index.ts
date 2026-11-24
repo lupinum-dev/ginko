@@ -7,7 +7,7 @@
 // which has no stability promise. Adding a name here later breaks nobody; removing one breaks sites. Keep it small.
 //
 // `defineSite`, `single`, `collection`, `extend` and `f` are the form a site is written in (src/authoring). They
-// produce the stored form (src/core), which the builders of '@lupinum/ginko/v1' write directly.
+// produce the stored form (src/core).
 export { defineSite, type StudioInput } from './authoring/site.ts'
 export {
   single, collection, extend,

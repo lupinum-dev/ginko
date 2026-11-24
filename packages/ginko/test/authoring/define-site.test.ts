@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { checkSite } from '../../src/core/index.ts'
 import type { BrickValue } from '../../src/core/infer.ts'
 import { collection, defineSite, extend, f, single } from '../../src/index.ts'
-import * as v1 from '../../src/v1.ts'
+import * as stored from '../../src/internal.ts'
 
 const base = { name: 'Halden Pumps', url: 'https://halden.example', timeZone: 'Europe/Vienna', currency: 'EUR' } as const
 
@@ -67,8 +67,8 @@ describe('defineSite writes the stored form', () => {
     expect(site.bricks.home.tasks).toEqual([{ id: 'edit', label: 'Startseite bearbeiten', kind: 'edit', fields: ['title'] }])
   })
 
-  // Wrong: a default or a renamed key is stored with another value than 0.18 stored, and a release reports a change.
-  it('stores the defaults and the renamed keys as 0.18 does', () => {
+  // Wrong: a default or a renamed key is stored under another name or value than the stored form reads.
+  it('stores the defaults and the renamed keys in the stored form', () => {
     const { max, order, visible, status, label } = site.bricks.services
     expect({ max, order, visible, status, label }).toEqual({
       max: 500, order: 'manual', visible: { mode: 'until', field: 'until', days: 2, deleteExpired: true }, status: { count: true }, label: { de: 'Leistungen', en: 'Services' },
@@ -163,27 +163,27 @@ describe('label files', () => {
 })
 
 describe('a config or a brick in the form of 0.18', () => {
-  // Wrong: a site that updates to 0.19 gets a type error wall or a silent wrong model instead of the one line to change.
-  it('stops with the import to change', () => {
+  // Wrong: a site of 0.18 gets a type error wall or a silent wrong model instead of what to change.
+  it('stops and names the new keys', () => {
     const old = { ...base, site: 'halden', locales: ['de'], pages: {}, bricks: {} }
-    expect(() => defineSite(old as never)).toThrow(/form of Ginko 0\.18[\s\S]*from '@lupinum\/ginko\/v1'/)
+    expect(() => defineSite(old as never)).toThrow(/form of Ginko 0\.18[\s\S]*`studio: \{ id, url, bricks \}`/)
   })
 
   it('names the new place of a moved key', () => {
     const brick = collection({ label: 'News', fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) }, ...({ source: 'files', route: { de: '/news/[slug]' }, status: { age: 'date' }, tasks: [{ id: 'write', label: 'Schreiben', kind: 'create' }] } as object) })
     expect(() => defineSite({ ...base, locales: ['de', 'en'], bricks: { news: brick }, entries: { news: '/news/[slug]' }, pages: { news: { de: '/news', en: '/en/news' } } })).toThrow([
       'ginko.config.ts:',
-      '- news.source: where a brick lives is `studio.bricks` in the site file. (To keep a brick of 0.18 as it is, import from \'@lupinum/ginko/v1\'.)',
-      '- news.route: the address of an entry is `entries` in the site file. (To keep a brick of 0.18 as it is, import from \'@lupinum/ginko/v1\'.)',
+      '- news.source: where a brick lives is `studio.bricks` in the site file.',
+      '- news.route: the address of an entry is `entries` in the site file.',
       '- news.tasks.write: write `kind: \'add\'`.',
       '- news.status: write `{ show: … }`, such as `{ show: \'next\', field: \'when\' }`.',
       '- pages.news.en: write the path without the language prefix (“/news”). Ginko adds “/en”.',
     ].join('\n'))
   })
 
-  // Wrong: a preset or a brick file that still uses the 0.18 builders cannot be used in a new site file.
-  it('takes a brick made with the 0.18 builders and sets where it lives and its address', () => {
-    const news = v1.collection({ label: 'News', max: 20, order: 'manual', fields: { title: v1.f.text('Titel'), slug: v1.f.slug('Adresse', { from: 'title' }) } })
+  // Wrong: a preset or the docs theme, which still build stored-form bricks, cannot be used in a site file.
+  it('takes a brick made with the stored-form builders and sets where it lives and its address', () => {
+    const news = stored.collection({ label: 'News', max: 20, order: 'manual', fields: { title: stored.f.text('Titel'), slug: stored.f.slug('Adresse', { from: 'title' }) } })
     const site = defineSite({ ...base, locales: ['de', 'en'], bricks: { news }, entries: { news: '/news/[slug]' } })
     expect(site.bricks.news).toMatchObject({ source: 'files', route: { de: '/news/[slug]', en: '/en/news/[slug]' }, max: 20 })
     expect(site.site).toBe('halden-pumps')
@@ -237,7 +237,7 @@ describe('extend', () => {
 
   it('refuses to replace a field, and a brick that was not made with this entry', () => {
     expect(() => extend(jobs, { fields: { title: f.longtext('Titel') } })).toThrow('extend: the brick already has the field title.')
-    const old = v1.single({ label: 'Alt', fields: { title: v1.f.text('Titel') } })
+    const old = stored.single({ label: 'Alt', fields: { title: stored.f.text('Titel') } })
     expect(() => extend(old as never, {})).toThrow(/made with `single` or `collection`/)
   })
 })
