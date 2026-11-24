@@ -37,7 +37,9 @@
     "notList": "„{label}“ muss eine Liste sein.",
     "tooManyRows": "„{label}“ hat zu viele Einträge (höchstens {max}).",
     "tooFewRows": "„{label}“ braucht mindestens {min} Einträge.",
-    "duplicateRowValue": "„{label}“: „{value}“ kommt mehrfach vor.",
+    "notRows": "„{label}“ braucht ein Objekt mit einer Zeile je Zeilenschlüssel.",
+    "rowMissing": "„{label}“: Die Zeile „{row}“ fehlt.",
+    "unknownRow": "„{label}“: Eine Zeile „{row}“ gibt es nicht.",
     "badRowId": "„{label}“: Zeile {row} hat keine gültige ID.",
     "duplicateRowId": "„{label}“: Zeilen-ID doppelt.",
     "notImage": "„{label}“ ist kein gültiges Bild.",
@@ -177,8 +179,9 @@
     "optionRemoved": "„{at}“: Option „{option}“ fehlt.",
     "optionRenamed": "Option umbenannt.",
     "optionAdded": "Neue Option „{option}“.",
-    "uniqueChanged": "„{at}“: unique kann nicht neu gesetzt oder geändert werden.",
-    "uniqueDropped": "„{at}“: unique entfällt.",
+    "rowAdded": "Neue Zeile „{row}“ in „{at}“, gefüllt mit den default-Werten der Spalten.",
+    "rowWithoutDefault": "Neue Zeile „{row}“ in „{at}“: Eine Pflichtspalte hat kein default.",
+    "rowRemoved": "„{at}“: Zeile „{row}“ fehlt.",
     "fix": {
       "newField": "Neues Feld anlegen, mit einer Migration füllen und das alte Feld unter `retired` eintragen.",
       "newFieldOnly": "Ein neues Feld anlegen.",
@@ -202,7 +205,8 @@
       "keepMin": "min beibehalten.",
       "minOnGrid": "min so senken, dass der Unterschied ein Vielfaches von step ist.",
       "keepOption": "Option behalten; sie kann umbenannt (label) werden.",
-      "newList": "Neue Liste anlegen und mit einer Migration füllen.",
+      "keepRow": "Zeile behalten; ihr label kann sich ändern.",
+      "rowDefaults": "Gib jeder Pflichtspalte ein default oder mach sie optional.",
       "factInUse": "Nimm die Angabe zuerst aus diesen Texten oder lass sie in `facts`."
     },
     "factInUse": "Die Angabe „{fact}“ fehlt in `facts`, steht aber noch in {count, plural, one {einem Text} other {# Texten}}: {texts}."

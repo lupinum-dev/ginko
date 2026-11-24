@@ -37,7 +37,9 @@
     "notList": "“{label}” debe ser una lista.",
     "tooManyRows": "“{label}” tiene demasiados elementos (máximo {max}).",
     "tooFewRows": "“{label}” necesita al menos {min} elementos.",
-    "duplicateRowValue": "“{label}”: “{value}” aparece más de una vez.",
+    "notRows": "“{label}” necesita un objeto con una fila por clave de fila.",
+    "rowMissing": "“{label}”: falta la fila “{row}”.",
+    "unknownRow": "“{label}”: no existe la fila “{row}”.",
     "badRowId": "“{label}”: la fila {row} no tiene un ID válido.",
     "duplicateRowId": "“{label}”: el ID de fila aparece dos veces.",
     "notImage": "“{label}” no es una imagen válida.",
@@ -177,8 +179,9 @@
     "optionRemoved": "“{at}”: falta la opción “{option}”.",
     "optionRenamed": "Opción renombrada.",
     "optionAdded": "Opción nueva “{option}”.",
-    "uniqueChanged": "“{at}”: unique no se puede definir ni cambiar.",
-    "uniqueDropped": "“{at}”: unique eliminado.",
+    "rowAdded": "Fila nueva “{row}” en “{at}”, rellenada con los valores predeterminados de las columnas.",
+    "rowWithoutDefault": "Fila nueva “{row}” en “{at}”: una columna obligatoria no tiene valor predeterminado.",
+    "rowRemoved": "“{at}”: falta la fila “{row}”.",
     "fix": {
       "newField": "Añade un campo nuevo, rellénalo con una migración y lista el campo anterior en `retired`.",
       "newFieldOnly": "Añade un campo nuevo.",
@@ -202,7 +205,8 @@
       "keepMin": "Conserva min.",
       "minOnGrid": "Reduce min para que la diferencia sea un múltiplo de step.",
       "keepOption": "Conserva la opción; se puede renombrar (label).",
-      "newList": "Añade una lista nueva y rellénala con una migración.",
+      "keepRow": "Conserva la fila; su label puede cambiar.",
+      "rowDefaults": "Da a cada columna obligatoria un valor predeterminado o hazla opcional.",
       "factInUse": "Quita primero el dato de esos textos o déjalo en `facts`."
     },
     "factInUse": "El dato «{fact}» falta en `facts`, pero aún se cita en {count, plural, one {un texto} other {# textos}}: {texts}."

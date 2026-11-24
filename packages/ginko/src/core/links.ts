@@ -4,6 +4,7 @@
 import type { Bundle, BundleItem } from './bundle.ts'
 import { msg, type CoreKey, type Msg } from './messages.ts'
 import { entryRedirects, matchRedirect, type Redirect } from './redirects.ts'
+import { isTable, rowsIn } from './fields.ts'
 import type { Fields, Json, Schema } from './types.ts'
 
 export type LinkLevel = 'error' | 'warn' | 'off'
@@ -259,7 +260,7 @@ export function linkTargets(fields: Fields, data: Record<string, Json>): Set<str
     for (const [name, field] of Object.entries(inner)) {
       const value = row[name]
       if (field.type === 'markdown') text(value)
-      else if (field.type === 'list' && Array.isArray(value)) for (const r of value) if (isRecord(r)) walk(field.of, r as Record<string, Json>)
+      else if (isTable(field)) for (const [, r] of rowsIn(field, value)) walk(field.of, r)
     }
   }
   walk(fields, data)

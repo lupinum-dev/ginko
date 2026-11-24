@@ -37,7 +37,9 @@
     "notList": "“{label}” deve essere un elenco.",
     "tooManyRows": "“{label}” ha troppi elementi (al massimo {max}).",
     "tooFewRows": "“{label}” richiede almeno {min} elementi.",
-    "duplicateRowValue": "“{label}”: “{value}” compare più di una volta.",
+    "notRows": "“{label}” richiede un oggetto con una riga per chiave di riga.",
+    "rowMissing": "“{label}”: manca la riga “{row}”.",
+    "unknownRow": "“{label}”: non esiste una riga “{row}”.",
     "badRowId": "“{label}”: la riga {row} non ha un ID valido.",
     "duplicateRowId": "“{label}”: un ID di riga compare due volte.",
     "notImage": "“{label}” non è un’immagine valida.",
@@ -177,8 +179,9 @@
     "optionRemoved": "“{at}”: manca l’opzione “{option}”.",
     "optionRenamed": "Opzione rinominata.",
     "optionAdded": "Nuova opzione “{option}”.",
-    "uniqueChanged": "“{at}”: unique non può essere impostato né modificato.",
-    "uniqueDropped": "“{at}”: unique è stato rimosso.",
+    "rowAdded": "Nuova riga “{row}” in “{at}”, riempita con i valori predefiniti delle colonne.",
+    "rowWithoutDefault": "Nuova riga “{row}” in “{at}”: una colonna obbligatoria non ha un valore predefinito.",
+    "rowRemoved": "“{at}”: manca la riga “{row}”.",
     "fix": {
       "newField": "Aggiungi un nuovo campo, riempilo con una migrazione ed elenca il vecchio campo sotto `retired`.",
       "newFieldOnly": "Aggiungi un nuovo campo.",
@@ -202,7 +205,8 @@
       "keepMin": "Mantieni min.",
       "minOnGrid": "Abbassa min in modo che la differenza sia un multiplo di step.",
       "keepOption": "Mantieni l’opzione; può essere rinominata (label).",
-      "newList": "Aggiungi un nuovo elenco e riempilo con una migrazione.",
+      "keepRow": "Mantieni la riga; il suo label può cambiare.",
+      "rowDefaults": "Dai a ogni colonna obbligatoria un valore predefinito o rendila facoltativa.",
       "factInUse": "Togli prima il dato da questi testi o lascialo in `facts`."
     },
     "factInUse": "Il dato «{fact}» manca in `facts`, ma è ancora citato in {count, plural, one {un testo} other {# testi}}: {texts}."

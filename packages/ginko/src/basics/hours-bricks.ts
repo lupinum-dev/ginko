@@ -5,6 +5,7 @@ import { f } from '../core/fields.ts'
 import { collection, single } from '../core/site.ts'
 import type { Label } from '../core/types.ts'
 import { sourceOf, type BasicsOptions } from './shared.ts'
+import { weekdayKeys, type Weekday } from './weekdays.ts'
 
 export { sourceOf, type BasicsOptions }
 
@@ -20,25 +21,19 @@ export interface HoursOptions extends BasicsOptions {
 /** A schema label in both languages. */
 export const both = (de: string, en: string) => ({ de, en })
 
-export const weekdays = [
-  { value: 'mo', label: both('Montag', 'Monday') }, { value: 'tu', label: both('Dienstag', 'Tuesday') }, { value: 'we', label: both('Mittwoch', 'Wednesday') },
-  { value: 'th', label: both('Donnerstag', 'Thursday') }, { value: 'fr', label: both('Freitag', 'Friday') }, { value: 'sa', label: both('Samstag', 'Saturday') },
-  { value: 'su', label: both('Sonntag', 'Sunday') },
-] as const
-
-/** One row of the default week. Row IDs are fixed so every fresh site starts with the same, stable rows. */
-export interface WeekRow { _id: string; day: (typeof weekdays)[number]['value']; closed: boolean; from1?: string; to1?: string; from2?: string; to2?: string }
+/** The default week: one row per day key, as the rows field `week` stores it. */
+export type WeekDefault = Record<Weekday, { closed: boolean; from1?: string; to1?: string; from2?: string; to2?: string }>
 
 /** Monday to Friday 09:00–17:00, closed at the weekend. */
-const officeWeek: WeekRow[] = weekdays.map((d) => {
-  const closed = d.value === 'sa' || d.value === 'su'
-  return { _id: `wk${d.value}000000`, day: d.value, closed, ...(closed ? {} : { from1: '09:00', to1: '17:00' }) }
-})
+const officeWeek = Object.fromEntries(weekdayKeys.map((day) => {
+  const closed = day === 'sa' || day === 'su'
+  return [day, { closed, ...(closed ? {} : { from1: '09:00', to1: '17:00' }) }]
+})) as WeekDefault
 
 /** Every text of the two hours bricks. A preset pins its own (the gastro preset keeps its restaurant wording). */
 export interface HoursTexts {
   hours: Label
-  week: Label; day: Label; closed: Label
+  week: Label; closed: Label
   opens: Label; closes: Label; opensAgain: Label; opensAgainHint: Label; closesAgain: Label
   exceptions: Label; exception: Label; dates: Label; reason: Label; reasonHint: Label; exceptionClosed: Label
   closedOn: Label; closedOnHint: Label; closedNote: Label; closedNoteHint: Label
@@ -50,7 +45,7 @@ export interface HoursTexts {
 
 const neutral: HoursTexts = {
   hours: both('Öffnungszeiten', 'Opening hours'),
-  week: both('Wochenplan', 'Weekly hours'), day: both('Tag', 'Day'), closed: both('Ganztägig geschlossen', 'Closed all day'),
+  week: both('Wochenplan', 'Weekly hours'), closed: both('Ganztägig geschlossen', 'Closed all day'),
   opens: both('Öffnet um', 'Opens at'), closes: both('Schließt um', 'Closes at'), opensAgain: both('Öffnet wieder um', 'Opens again at'),
   opensAgainHint: both('Nur wenn du untertags eine Pause machst.', 'Only if you close for a break during the day.'),
   closesAgain: both('Schließt wieder um', 'Closes again at'),
@@ -93,21 +88,20 @@ function timeFields(t: HoursTexts) {
   }
 }
 
-/** One 7-row week, shared by the standard hours and the hour plans. */
-function weekField(t: HoursTexts, week: readonly WeekRow[]) {
-  return f.list(t.week, {
-    itemLabel: t.day,
+/** One row per weekday (`mo` … `su`), shared by the standard hours and the hour plans. */
+function weekField(t: HoursTexts, week: WeekDefault) {
+  return f.rows(t.week, {
+    rows: 'weekdays',
     fields: {
-      day: f.choice(t.day, { options: weekdays }),
       closed: f.boolean(t.closed),
       ...timeFields(t),
     },
-    min: 7, max: 7, unique: 'day', default: week,
+    default: week,
   })
 }
 
 /** @internal The hours single with a preset's texts and default week; sites use `hours()`. */
-export function hoursBrick(t: HoursTexts, week: readonly WeekRow[], opts: HoursOptions) {
+export function hoursBrick(t: HoursTexts, week: WeekDefault, opts: HoursOptions) {
   return single({
     label: opts.label ?? t.hours,
     ...sourceOf(opts),
@@ -151,7 +145,7 @@ export function hoursBrick(t: HoursTexts, week: readonly WeekRow[], opts: HoursO
 }
 
 /** @internal The hour plans with a preset's texts; sites use `hourPlans()`. */
-export function hourPlansBrick(t: HoursTexts, week: readonly WeekRow[], opts: BasicsOptions) {
+export function hourPlansBrick(t: HoursTexts, week: WeekDefault, opts: BasicsOptions) {
   return collection({
     label: opts.label ?? t.plans,
     listing: { title: 'label', detail: 'from' },

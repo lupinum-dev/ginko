@@ -2,7 +2,7 @@
 // The lunch week as one A4 page for the door. Same data and pending rule as the lunch page; a week that is
 // not the current one prints nothing but the pending text, so no old menu goes on the door by mistake.
 import { formatMoney } from '@lupinum/ginko'
-import { siteName, telHref, type Weekday } from '../utils/site'
+import { siteName, telHref } from '../utils/site'
 
 const langOf = useGinkoLang()
 
@@ -11,7 +11,7 @@ definePageMeta({ layout: 'print', path: '/mittagsmenue/drucken', i18n: { paths: 
 const { lang, labels } = useSite()
 const { t, format, language } = useI18n()
 const path = useGinkoPath()
-const { lunch, current } = useLunchWeek()
+const { lunch, current, days } = useLunchWeek()
 const contact = useGinko('contact')
 const print = () => window.print()
 
@@ -47,9 +47,9 @@ const range = computed(() => {
         <p class="range" data-test="print-week">{{ range }}</p>
         <p class="hint">{{ t('lunchHint') }}</p>
         <ol class="days">
-          <li v-for="d in lunch.data.days" :key="d._id" data-test="print-day">
-            <span class="day">{{ labels.weekdays[d.day as Weekday] }}</span>
-            <span class="dish" :lang="langOf(lunch, `days.${d._id}.dish`)">{{ d.dish }}</span>
+          <li v-for="d in days" :key="d.day" data-test="print-day">
+            <span class="day">{{ labels.weekdays[d.day] }}</span>
+            <span class="dish" :lang="langOf(lunch, `days.${d.day}.dish`)">{{ d.dish }}</span>
             <span class="meta">
               <span v-if="d.allergens.length" class="letters">{{ [...d.allergens].sort().join(' ') }}</span>
               <span v-if="d.price" class="price">{{ formatMoney(d.price, language) }}</span>
@@ -57,7 +57,7 @@ const range = computed(() => {
           </li>
         </ol>
         <p v-if="lunch.data.note" class="note" :lang="langOf(lunch, 'note')">{{ lunch.data.note }}</p>
-        <AllergenKey class="key" :codes="lunch.data.days.flatMap((d) => d.allergens)" />
+        <AllergenKey class="key" :codes="days.flatMap((d) => d.allergens)" />
       </template>
       <p v-else class="pending">{{ t('lunchPending') }}</p>
     </main>

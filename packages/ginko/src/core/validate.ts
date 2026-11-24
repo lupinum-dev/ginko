@@ -1,4 +1,4 @@
-import { ALT_INVISIBLE, ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isShown, isTranslatable, MAX_CENTS } from './fields.ts'
+import { ALT_INVISIBLE, ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isShown, isTranslatable, MAX_CENTS, rowKeysOf } from './fields.ts'
 import { fileRefUses } from './file-refs.ts'
 import { parseMarkdown } from './markdown.ts'
 import { labelOf } from './labels.ts'
@@ -6,7 +6,7 @@ import { bare, DEFAULT_LOCALE, msg, type CoreKey, type Described, type Msg } fro
 import { roundedMb, type UploadType } from './uploads.ts'
 import { SLUG_PATTERN } from './slug.ts'
 import { weekStartField } from './stale.ts'
-import { startOfWeek, weekInfo } from './time.ts'
+import { startOfWeek, weekInfo, type SiteWeek } from './time.ts'
 import type { Brick, Field, FileField, Fields, Issue, Json, Locale, MarkdownField, Schema } from './types.ts'
 
 /**
@@ -57,7 +57,7 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
   const brick = Object.hasOwn(schema.bricks, brickKey) ? schema.bricks[brickKey] : undefined
   if (!brick) return { errors: [issue('', 'UNKNOWN_BRICK', 'unknownBrick', { brick: brickKey })], warnings: [] }
   const texts: MarkdownLeaf[] = []
-  const issues = checkFields(brick.fields, data, '', { locales: schema.locales, main: schema.locales[0]!, texts, refs: opts.refs, fileAlt: opts.fileAlt })
+  const issues = checkFields(brick.fields, data, '', { locales: schema.locales, main: schema.locales[0]!, week: schema.week, texts, refs: opts.refs, fileAlt: opts.fileAlt })
   for (const { field, text, path, locale } of texts) {
     const { problemMessages: problems, value } = await parseMarkdown(text, { profile: effectiveProfile(field), components: schema.components })
     const label = shown(field, schema.locales[0]!)
@@ -107,18 +107,30 @@ function ruleIssues(schema: Schema, brick: Brick, data: unknown): RuleIssue[] {
     const field = missing && Object.hasOwn(brick.fields, missing) ? brick.fields[missing] : undefined
     if (missing && field) out.push({ issue: issue(missing, 'REQUIRED', 'fieldMissing', { label: shown(field, main) }), touches: [plan.next, plan.from] })
   }
-  // An end time after its start (`after`), e.g. a session from 10:00 to 11:30. Equal times are an empty slot.
+  out.push(...timeOrderIssues(brick.fields, data, '', main))
+  // The same inside every row of a rows field: its columns may name each other in `after`.
   for (const [name, field] of Object.entries(brick.fields)) {
-    if (field.type !== 'time' || !field.after) continue
-    const [start, end] = [data[field.after], data[name]]
-    if (typeof start === 'string' && typeof end === 'string' && timePattern.test(start) && timePattern.test(end) && end <= start) {
-      out.push({ issue: issue(name, 'TIME_ORDER', 'timeOrder', { start: shown(brick.fields[field.after]!, main), end: shown(field, main) }), touches: [field.after, name] })
-    }
+    const rows = data[name]
+    if (field.type !== 'rows' || !isRecord(rows)) continue
+    for (const [key, row] of Object.entries(rows)) if (isRecord(row)) out.push(...timeOrderIssues(field.of, row, `${name}.${key}.`, main))
   }
   const week = weekStartField(brick)
   const start = week ? data[week] : undefined
   if (week && isDate(start) && startOfWeek(start, weekInfo(schema.week)) !== start) {
     out.push({ issue: issue(week, 'NOT_WEEK_START', 'notWeekStart', { label: shown(brick.fields[week]!, main) }), touches: [week] })
+  }
+  return out
+}
+
+/** An end time after its start (`after`), e.g. a session from 10:00 to 11:30. Equal times are an empty slot. */
+function timeOrderIssues(fields: Fields, data: Record<string, unknown>, prefix: string, main: Locale): RuleIssue[] {
+  const out: RuleIssue[] = []
+  for (const [name, field] of Object.entries(fields)) {
+    if (field.type !== 'time' || !field.after) continue
+    const [start, end] = [data[field.after], data[name]]
+    if (typeof start === 'string' && typeof end === 'string' && timePattern.test(start) && timePattern.test(end) && end <= start) {
+      out.push({ issue: issue(`${prefix}${name}`, 'TIME_ORDER', 'timeOrder', { start: shown(fields[field.after]!, main), end: shown(field, main) }), touches: [`${prefix}${field.after}`, `${prefix}${name}`] })
+    }
   }
   return out
 }
@@ -146,13 +158,14 @@ function eachNode(nodes: readonly Json[], fn: (node: [string, Record<string, Jso
 
 interface MarkdownLeaf { field: MarkdownField; text: string; path: string; locale: Locale }
 /** `texts` collects Markdown values for the profile check, which needs the async parser. */
-interface Ctx { locales: Locale[]; main: Locale; texts?: MarkdownLeaf[]; refs?: ValidateOptions['refs']; fileAlt?: ValidateOptions['fileAlt'] }
+interface Ctx { locales: Locale[]; main: Locale; week?: SiteWeek; texts?: MarkdownLeaf[]; refs?: ValidateOptions['refs']; fileAlt?: ValidateOptions['fileAlt'] }
 
-function checkFields(fields: Fields, data: unknown, path: string, ctx: Ctx): Issue[] {
+/** `listRow`: the fields are the columns of a list row, which also holds its `_id`. */
+function checkFields(fields: Fields, data: unknown, path: string, ctx: Ctx, listRow = false): Issue[] {
   if (!isRecord(data)) return [issue(path, 'NOT_OBJECT', 'notObject')]
   const issues: Issue[] = []
   for (const key of Object.keys(data)) {
-    if (key === '_id' && path) continue
+    if (key === '_id' && listRow) continue
     if (!Object.hasOwn(fields, key)) issues.push(issue(join(path, key), 'UNKNOWN_FIELD', 'unknownField'))
   }
   for (const [key, field] of Object.entries(fields)) {
@@ -260,24 +273,27 @@ function checkScalar(field: Field, value: unknown, path: string, locale: Locale 
       if (value.length > field.max) return fail('TOO_MANY', 'tooManyRows', { max: field.max })
       if (field.min !== undefined && value.length < field.min) return fail('TOO_FEW', 'tooFewRows', { min: field.min })
       const out: Issue[] = []
-      if (field.unique) {
-        const key = field.unique
-        const seen = new Set<string>()
-        for (const row of value) {
-          const v = isRecord(row) ? row[key] : undefined
-          if (typeof v !== 'string') continue
-          if (seen.has(v)) { out.push(issue(path, 'DUPLICATE', 'duplicateRowValue', { label, value: v })); break }
-          seen.add(v)
-        }
-      }
       const ids = new Set<string>()
       value.forEach((row, index) => {
         const id = isRecord(row) && typeof row._id === 'string' ? row._id : undefined
         if (!id || !rowIdPattern.test(id)) { out.push(issue(join(path, String(index)), 'ROW_ID', 'badRowId', { label, row: index + 1 })); return }
         if (ids.has(id)) { out.push(issue(join(path, id), 'ROW_ID', 'duplicateRowId', { label })); return }
         ids.add(id)
-        out.push(...checkFields(field.of, row, join(path, id), ctx!))
+        out.push(...checkFields(field.of, row, join(path, id), ctx!, true))
       })
+      return out
+    }
+    case 'rows': {
+      // Exactly the rows of the field, by key. A day set needs the site's week (checkSchema requires it): `rowKeysOf` throws without one.
+      if (!isRecord(value)) return fail('TYPE', 'notRows')
+      const keys = rowKeysOf(field, ctx!.week)
+      const out: Issue[] = []
+      for (const key of Object.keys(value)) if (!keys.includes(key)) out.push(issue(join(path, key), 'UNKNOWN_ROW', 'unknownRow', { label, row: key }))
+      for (const key of keys) {
+        const row = value[key]
+        if (row === undefined || row === null) out.push(issue(join(path, key), 'REQUIRED', 'rowMissing', { label, row: key }))
+        else out.push(...checkFields(field.of, row, join(path, key), ctx!))
+      }
       return out
     }
     case 'image':
@@ -292,8 +308,8 @@ function checkScalar(field: Field, value: unknown, path: string, locale: Locale 
 }
 
 /** Checks one stored value against one field, e.g. the `value` of a retired rule. */
-export function checkValue(schema: Pick<Schema, 'locales'>, field: Field, value: unknown, path: string): Issue[] {
-  const ctx = { locales: schema.locales, main: schema.locales[0]! }
+export function checkValue(schema: Pick<Schema, 'locales' | 'week'>, field: Field, value: unknown, path: string): Issue[] {
+  const ctx = { locales: schema.locales, main: schema.locales[0]!, week: schema.week }
   if (value === undefined || value === null) return field.optional ? [] : [issue(path, 'REQUIRED', 'fieldMissing', { label: shown(field, ctx.main) })]
   return checkField(field, value, path, ctx)
 }

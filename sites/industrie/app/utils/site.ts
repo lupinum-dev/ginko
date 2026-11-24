@@ -110,7 +110,9 @@ export function certStatus(validUntil: string, today: string, soonDays = 60): Ce
   return days < 0 ? 'expired' : days < soonDays ? 'soon' : 'valid'
 }
 
-export interface DayHours { day: string; closed: boolean; from1?: string; to1?: string; from2?: string; to2?: string }
+export interface DayHours { closed: boolean; from1?: string; to1?: string; from2?: string; to2?: string }
+/** The weekly plan as the bundle has it: the hours of each day by its key. */
+export type WeekHours = Partial<Record<Weekday, DayHours>>
 export interface Exception { _id: string; when: { from: string; to: string }; reason: string; closed: boolean }
 
 /** The reception times of one weekday as text: `07:00–12:00 und 12:30–16:00`. Empty when closed. `and` is the caller's message. */
@@ -130,12 +132,12 @@ export type TodayState =
  * Whether the reception is staffed today. Order: the "closed today" switch, then a closing
  * exception that covers today, then the weekly plan (a closed Saturday or Sunday is the weekend).
  */
-export function todayState(hours: { week: DayHours[]; exceptions: Exception[]; closedOn?: string; closedNote?: string }, today: string, and: string): TodayState {
+export function todayState(hours: { week: WeekHours; exceptions: Exception[]; closedOn?: string; closedNote?: string }, today: string, and: string): TodayState {
   if (hours.closedOn === today) return { kind: 'closed', reason: hours.closedNote || undefined, field: 'closedNote' }
   const exception = hours.exceptions.find((e) => e.closed && e.when.from <= today && today <= e.when.to)
   if (exception) return { kind: 'closed', reason: exception.reason, field: `exceptions.${exception._id}.reason` }
   const key = weekdayOf(today)
-  const day = hours.week.find((d) => d.day === key)
+  const day = hours.week[key]
   if (!day || day.closed) return key === 'sa' || key === 'su' ? { kind: 'weekend' } : { kind: 'closed', field: '' }
   return { kind: 'open', times: timesOf(day, and) }
 }

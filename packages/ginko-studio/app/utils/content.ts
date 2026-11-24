@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type CollectionBrick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { createAsks, entryTitle, fileRefsIn, isTranslatable, isVisible, leavesOf, ordered, printOf, slugBases, stableJson, untranslatedMode, urlsFor, weeklyTask, weekStartField, type Schema } from '@lupinum/ginko/internal'
+import { DAY_KEYS, createAsks, entryTitle, fileRefsIn, isTranslatable, isVisible, leavesOf, ordered, printOf, slugBases, stableJson, untranslatedMode, urlsFor, weeklyTask, weekStartField, type DayKey, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import type { api } from '#convex/api'
 import type { FunctionReturnType } from 'convex/server'
@@ -58,6 +58,20 @@ export function rowTitle(columns: Fields, row: unknown, locale: Locale, words: W
   return undefined
 }
 
+/**
+ * The name of a row of a rows field: for the days of the week the weekday in the Studio's language ("Montag"), worded
+ * as the Studio words weekdays elsewhere; for an own list of rows its label. The stored field keeps no weekday names.
+ */
+export function rowLabel(field: Extract<Field, { type: 'rows' }>, key: string, locale: Locale, words: Words): string {
+  if (typeof field.rows !== 'string') {
+    const row = field.rows.find((r) => r.key === key)
+    return row ? shownLabel(row.label, locale) : key
+  }
+  const day = DAY_KEYS.indexOf(key as DayKey)
+  // 1 January 2024 was a Monday: day n of that week names the weekday.
+  return day === -1 ? key : words.format.date(`2024-01-0${day + 1}`, { weekday: 'long', timeZone: 'UTC' })
+}
+
 /** The choice field that groups a pick list (`listing.group`, such as Kategorie), when the brick names one. */
 export function groupField(brick: Brick): { key: string; field: Extract<Field, { type: 'choice' }> } | undefined {
   const key = brick.kind === 'collection' ? brick.listing.group : undefined
@@ -87,9 +101,9 @@ export function taskFields(brick: Brick, task: Task): Fields {
   return out
 }
 
-/** A field with text to translate: translatable itself, an image (alt text), or a list with such columns (Astra phase 8). */
+/** A field with text to translate: translatable itself, an image (alt text), or a list or rows field with such columns (Astra phase 8). */
 export function hasTranslation(f: Field): boolean {
-  if (f.type === 'list') return Object.values(f.of).some(hasTranslation)
+  if (f.type === 'list' || f.type === 'rows') return Object.values(f.of).some(hasTranslation)
   return (isTranslatable(f) && f.type !== 'slug') || f.type === 'image'
 }
 
@@ -156,6 +170,23 @@ export function ownChangesOver(field: Field, base: Json | undefined, mine: Json 
       return out
     })
   }
+  // A rows field has the same rows on both sides: each row merges like a list row both still have.
+  if (field.type === 'rows' && isRecord(mine) && isRecord(base) && isRecord(theirs)) {
+    const out: Record<string, Json> = {}
+    for (const [key, row] of Object.entries(mine)) {
+      const b = base[key]
+      const t = theirs[key]
+      if (!isRecord(row) || !isRecord(b) || !isRecord(t)) { out[key] = row; continue }
+      const merged: Record<string, Json> = { ...row }
+      for (const [col, inner] of Object.entries(field.of)) {
+        const value = ownChangesOver(inner, b[col], row[col], t[col])
+        if (value === undefined) delete merged[col]
+        else merged[col] = value
+      }
+      out[key] = merged
+    }
+    return out
+  }
   return mine
 }
 
@@ -212,6 +243,7 @@ export function displayValue(field: Field, value: unknown, locale: Locale, words
     case 'choice': { const o = field.options.find((x) => x.value === value); return o ? shownLabel(o.label, locale) : String(value) }
     case 'choices': { const v = value as string[]; return v.length ? field.options.filter((o) => v.includes(o.value)).map((o) => shownLabel(o.label, locale)).join(', ') : t('ops.value.none') }
     case 'list': return t('ops.value.items', { count: (value as unknown[]).length })
+    case 'rows': return t('ops.value.items', { count: Object.keys(value as object).length })
     case 'number': return `${format.number(Number(value), { useGrouping: false, maximumFractionDigits: 20 })}${field.unit ? ` ${field.unit}` : ''}`
     default: return t('ops.value.changed')
   }
@@ -378,7 +410,7 @@ export function leafTranslation(input: { draft: Record<string, unknown> | undefi
 
 /**
  * Whether the website leaves the whole entry out of a language while this leaf has no text there (`name`, `image.alt`,
- * or `days.<rowId>.dish` in a list). It mirrors core resolve.ts `localized()`: a required text of a collection whose
+ * or `days.<rowId>.dish` in a list, `days.mo.dish` in a rows field). It mirrors core resolve.ts `localized()`: a required text of a collection whose
  * untranslated entries are hidden (`untranslatedMode`, pages by default) makes the entry untranslated; slugs and image
  * descriptions never do, and parts of pages fall back to the main language instead.
  */
@@ -386,6 +418,6 @@ export function hidesUntranslated(brick: Brick, leaf: string): boolean {
   if (brick.kind !== 'collection' || untranslatedMode(brick) !== 'hide' || leaf.endsWith('.alt')) return false
   const [root, , column] = leaf.split('.')
   const top = brick.fields[root!]
-  const field = column === undefined ? top : top?.type === 'list' ? top.of[column] : undefined
+  const field = column === undefined ? top : top?.type === 'list' || top?.type === 'rows' ? top.of[column] : undefined
   return !!field && isTranslatable(field) && !field.optional && field.type !== 'slug'
 }

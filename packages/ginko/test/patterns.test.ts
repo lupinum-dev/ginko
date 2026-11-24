@@ -60,6 +60,8 @@ describe('patterns', () => {
     const { site, legal, notices, people, posts, jobs, events, sessions, downloads, faq, gallery, hours, hourPlans, changelog } = patterns
     const config = defineSite({
       ...base,
+      // The opening hours have a row per day of the week.
+      week: { firstDay: 'monday', workdays: 5 },
       bricks: {
         site: site(), legal: legal(), notices: notices(), jobs: jobs(), downloads: downloads(), faq: faq(), gallery: gallery(), changelog: changelog(),
         news: posts({ authors: 'team' }),

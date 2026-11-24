@@ -1433,9 +1433,9 @@ export async function usesOfEntry(ctx: QueryCtx, actor: Actor, target: Doc<'entr
   return out
 }
 
-/** A `ref` field to `brick`, or a list with such a column. */
+/** A `ref` field to `brick`, or a list or rows field with such a column. */
 const pointsAt = (field: Field, brick: string): boolean =>
-  (field.type === 'ref' && field.to === brick) || (field.type === 'list' && Object.values(field.of).some((inner) => !inner.retired && pointsAt(inner, brick)))
+  (field.type === 'ref' && field.to === brick) || ((field.type === 'list' || field.type === 'rows') && Object.values(field.of).some((inner) => !inner.retired && pointsAt(inner, brick)))
 
 /**
  * Removed entries of a brick that can still be restored (30 days, SPEC 12), newest first, with only what the area list

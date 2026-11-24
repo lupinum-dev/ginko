@@ -2,7 +2,7 @@
 // the wrong behaviour it catches: the behaviour coming back from the shape instead of its key.
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
-import { checkSchema, checkSite, diffSchema, entryTitle, navTree, resolveEntry, resolveToken, serializeSchema, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
+import { checkSchema, checkSite, diffSchema, entryTitle, f, navTree, resolveEntry, resolveToken, serializeSchema, single, validate, type Brick, type Bundle, type CollectionBrick, type Schema } from '../../src/core/index.ts'
 
 const stored = (): Schema => structuredClone(serializeSchema(restaurant))
 
@@ -175,6 +175,34 @@ describe('week: the site states its week', () => {
     const schema = stored()
     delete schema.week
     expect(checkSchema(schema)).toEqual([expect.stringMatching(/^week is missing\. The brick “lunch” is planned by the week/)])
+  })
+})
+
+describe('f.rows: a fixed table is its own field type', () => {
+  // Wrong: a site with opening hours by weekday and no `week` gets its days in an order from somewhere without saying so.
+  it('needs `week` for rows of weekdays or workdays, not for an own list of rows', () => {
+    const { week: _week, ...noWeek } = stored()
+    const hoursOnly: Schema = { ...noWeek, bricks: { hours: { ...noWeek.bricks.hours!, status: undefined } } }
+    expect(checkSchema(hoursOnly)).toEqual(["week is missing. The field “hours.week” has a row for each day of the week, so say on which day the site's week starts and how many days are workdays, for example `week: { firstDay: 'monday', workdays: 5 }`."])
+    const own: Brick = { kind: 'single', label: 'Schichten', fields: { shifts: { type: 'rows', label: 'Schichten', rows: [{ key: 'early', label: 'Früh' }, { key: 'late', label: 'Spät' }], of: { staff: { type: 'number', label: 'Personen', min: 0, max: 20, step: 1, default: 2 } } } } }
+    expect(checkSchema({ ...noWeek, bricks: { shifts: own } })).toEqual([])
+  })
+
+  // Wrong: "min = max" (with the old `unique`) is read as a fixed table again, so a list of two dates becomes one
+  // object per row, loses its row ids and its add and remove buttons.
+  it('a list with min = max stays a list, and a stored `unique` is refused, not read as fixed rows', async () => {
+    const schema = serializeSchema({
+      ...restaurant,
+      bricks: { slots: single({ label: 'Termine', fields: { days: f.list('Termine', { itemLabel: 'Termin', min: 2, max: 2, fields: { day: f.choice('Tag', { options: ['mo', 'tu'] }) } }) } }) },
+    })
+    expect(schema.bricks.slots!.fields.days!.type).toBe('list')
+    const asList = { days: [{ _id: 'slot000001', day: 'mo' }, { _id: 'slot000002', day: 'tu' }] }
+    expect((await validate(schema, 'slots', asList, { mode: 'create' })).errors).toEqual([])
+    const asRows = { days: { mo: { day: 'mo' }, tu: { day: 'tu' } } }
+    expect((await validate(schema, 'slots', asRows, { mode: 'create' })).errors.map((e) => [e.path, e.code])).toEqual([['days', 'TYPE']])
+    const withUnique = structuredClone(schema)
+    ;(withUnique.bricks.slots!.fields.days as unknown as Record<string, unknown>).unique = 'day'
+    expect(checkSchema(withUnique)).toContain('slots.days: unknown property “unique”.')
   })
 })
 

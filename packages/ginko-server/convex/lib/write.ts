@@ -186,7 +186,7 @@ interface Placement {
   field: FileField
 }
 
-/** Every file placed in a file field of the entry, list rows included. */
+/** Every file placed in a file field of the entry, the rows of lists and rows fields included. */
 function placementsOf(fields: Fields, data: Data): Placement[] {
   const out: Placement[] = []
   const walk = (path: string, field: Field, value: Json | undefined) => {
@@ -196,6 +196,9 @@ function placementsOf(fields: Fields, data: Data): Placement[] {
       value.forEach((row, i) => {
         if (typeof row === 'object' && row !== null && !Array.isArray(row)) for (const [k, inner] of Object.entries(field.of)) walk(`${path}.${i}.${k}`, inner, row[k])
       })
+    }
+    if (field.type === 'rows' && !Array.isArray(value)) {
+      for (const [key, row] of Object.entries(value)) if (typeof row === 'object' && row !== null && !Array.isArray(row)) for (const [k, inner] of Object.entries(field.of)) walk(`${path}.${key}.${k}`, inner, row[k])
     }
   }
   for (const [name, field] of Object.entries(fields)) walk(name, field, data[name])

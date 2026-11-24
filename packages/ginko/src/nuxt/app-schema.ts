@@ -39,5 +39,6 @@ function appFields(fields: Fields): Fields {
 function appField(field: Field): Field {
   const { hint: _hint, group: _group, ...rest } = field
   if (rest.type === 'list') return { ...rest, label: '', itemLabel: '', of: appFields(rest.of) }
+  if (rest.type === 'rows') return { ...rest, label: '', rows: Array.isArray(rest.rows) ? rest.rows.map((row) => ({ key: row.key, label: '' })) : rest.rows, of: appFields(rest.of) }
   return { ...rest, label: '' }
 }

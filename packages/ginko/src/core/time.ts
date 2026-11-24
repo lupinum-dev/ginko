@@ -77,6 +77,16 @@ export function weekInfo(week: SiteWeek | undefined): WeekInfo {
   return { firstDay, weekend }
 }
 
+/** The keys of the days in stored values (a rows field of weekdays, the opening hours), Monday first. */
+export const DAY_KEYS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const
+export type DayKey = (typeof DAY_KEYS)[number]
+
+/** The site's seven days in its order, from `week.firstDay` on: the first `week.workdays` of them are its workdays. Throws without a week. */
+export function daysOf(week: SiteWeek | undefined): DayKey[] {
+  const first = weekInfo(week).firstDay - 1
+  return DAY_KEYS.map((_, i) => DAY_KEYS[(first + i) % 7]!)
+}
+
 const isoDay = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay() || 7 // 1 = Monday, 7 = Sunday
 
 /** Days since the week started: 0 on its first day, 6 on its last. */

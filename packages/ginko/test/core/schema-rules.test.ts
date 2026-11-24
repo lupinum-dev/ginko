@@ -369,7 +369,7 @@ describe('file bricks', () => {
     ['two markdown fields in a file brick', files({ ...md, intro: f.markdown('Intro') }, 'files', 'body'), "docs.intro: in a file brick, a markdown field is the text of the file. Write `body: 'intro'` (one markdown field per file brick)."],
     ['a markdown field of a file brick without body', files(md, 'files'), "docs.body: in a file brick, a markdown field is the text of the file. Write `body: 'body'` (one markdown field per file brick)."],
     ['body naming a text field', files(md, 'files', 'title'), 'docs.body: “title” is not a markdown field of this brick.'],
-    ['markdown in a list of a file brick', files(list(f.markdown('Zelle')), 'files'), 'docs: in file bricks, markdown is only allowed as the text of the file, not in a list.'],
+    ['markdown in a list of a file brick', files(list(f.markdown('Zelle')), 'files'), 'docs: in file bricks, markdown is only allowed as the text of the file, not in a list or a rows field.'],
   ])('%s is refused', (_, input, problem) => {
     expect(problemsOf(input)).toContain(problem)
   })
@@ -755,8 +755,8 @@ describe('status (Today page status line)', () => {
     ['hours on the hours single', set('hours', { hours: true }), []],
     ['hours linked to the hour plans', set('hours', { hours: { plans: 'hourPlans' } }), []],
     ['hours linked to a missing brick', set('hours', { hours: { plans: 'seasons' } }), ['hours: status.hours.plans names “seasons”, which is not a live brick of the site.']],
-    ['hours linked to a collection that is not hour plans', set('hours', { hours: { plans: 'events' } }), ['hours: status.hours.plans names “events”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).']],
-    ['hours linked to hour plans without yearly', (s) => { node(s, 'bricks.hourPlans.fields.yearly').type = 'text'; set('hours', { hours: { plans: 'hourPlans' } })(s) }, ['hours: status.hours.plans names “hourPlans”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).']],
+    ['hours linked to a collection that is not hour plans', set('hours', { hours: { plans: 'events' } }), ['hours: status.hours.plans names “events”, which is not a collection of hour plans (hourPlans(): rows of weekdays “week”, a date “from” and a switch “yearly”).']],
+    ['hours linked to hour plans without yearly', (s) => { node(s, 'bricks.hourPlans.fields.yearly').type = 'text'; set('hours', { hours: { plans: 'hourPlans' } })(s) }, ['hours: status.hours.plans names “hourPlans”, which is not a collection of hour plans (hourPlans(): rows of weekdays “week”, a date “from” and a switch “yearly”).']],
     ['hours with a link of another form', set('hours', { hours: 'hourPlans' }), ['hours: status.hours must be true or { plans: \'<key of the hour plans>\' }.']],
     ['next on a missing field', set('events', { next: 'date' }), ['events: status.next names “date”, which is not a field of the brick.']],
     ['age on a text field', set('events', { age: 'title' }), ['events: status.age needs a date or daterange field, “title” is a text field.']],

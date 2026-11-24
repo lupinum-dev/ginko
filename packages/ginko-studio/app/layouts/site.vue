@@ -41,6 +41,8 @@ provideStudioSite({ main: () => data.value?.site.schema.locales[0] ?? '', curren
 provide('ginko:timeZone', computed(() => data.value?.site.schema.timeZone ?? 'Europe/Vienna'))
 // While the site loads there is no schema yet.
 provide('ginko:week', computed(() => { const week = data.value?.site.schema.week; return week ? weekInfo(week) : DEFAULT_WEEK }))
+// The week as the site states it: a rows field of weekdays or workdays shows its rows in the order it gives (`rowKeysOf`).
+provide('ginko:site-week', computed(() => data.value?.site.schema.week))
 // Only a refusal replaces the page: signed out (in another tab, or the session ended on the server, which leaves the
 // token here, so only the server's answer tells, auth-1), no access (removed from the team, an unknown site), or the
 // site being deleted. Then no page, sheet or button stays usable (break-it 9); the page says what happened and what to

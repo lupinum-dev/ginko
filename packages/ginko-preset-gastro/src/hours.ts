@@ -6,7 +6,7 @@ import type { DayRule, Exception, Holiday, HolidayClosure, HolidaysOption, Hours
 export {
   austrianHolidays, closedOnClosure, planOn, spansOf, spansText, timesOf, upcomingPlans, weekdayOf, weekFor,
   type DayHours, type DayRule, type Exception, type Holiday, type HolidayClosure, type HolidayNames, type HolidaySetting, type HourPlan,
-  type HoursContext, type HoursData, type HoursSource, type Span, type Times, type TodayState, type Weekday,
+  type HoursContext, type HoursData, type HoursSource, type Span, type Times, type TodayState, type Weekday, type WeekHours,
 } from '@lupinum/ginko/basics'
 
 /** The context with Austria as the calendar when it names none (the preset's 0.4 behaviour). */

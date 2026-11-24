@@ -19,7 +19,7 @@ export { hours, hourPlans, type HoursOptions } from './hours-bricks.ts'
 export {
   calendarIn, closedOnClosure, holidayOn, hoursLine, hoursOn, noticesOn, planOn, spansOf, spansText, timesOf, todayState, upcomingClosures,
   upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, weekOf,
-  type DayHours, type DayRule, type Exception, type HolidayClosure, type HolidaySetting, type HourPlan, type HoursContext, type HoursData,
+  type DayHours, type DayRule, type Exception, type HolidayClosure, type HolidaySetting, type HourPlan, type HoursContext, type HoursData, type WeekHours,
   type HoursLine, type HoursLineContext, type HoursSource, type Span, type Times, type TodayState, type Weekday,
 } from './hours.ts'
 export {

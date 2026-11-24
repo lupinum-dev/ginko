@@ -37,7 +37,9 @@
     "notList": "يجب أن يكون «{label}» قائمة.",
     "tooManyRows": "يحتوي «{label}» على عناصر كثيرة جدًّا (الحد الأقصى {max}).",
     "tooFewRows": "يحتاج «{label}» إلى {min, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصرًا} other {# عنصر}} على الأقل.",
-    "duplicateRowValue": "«{label}»: القيمة «{value}» تتكرّر أكثر من مرة.",
+    "notRows": "يحتاج «{label}» إلى كائن فيه صف لكل مفتاح صف.",
+    "rowMissing": "«{label}»: الصف «{row}» مفقود.",
+    "unknownRow": "«{label}»: لا يوجد صف «{row}».",
     "badRowId": "«{label}»: معرّف الصف {row} غير صالح.",
     "duplicateRowId": "«{label}»: معرّف الصف مكرّر.",
     "notImage": "«{label}» ليس صورة صالحة.",
@@ -177,8 +179,9 @@
     "optionRemoved": "«{at}»: الخيار «{option}» مفقود.",
     "optionRenamed": "تمت إعادة تسمية الخيار.",
     "optionAdded": "خيار جديد «{option}».",
-    "uniqueChanged": "«{at}»: لا يمكن تعيين unique أو تغييره.",
-    "uniqueDropped": "«{at}»: تمت إزالة unique.",
+    "rowAdded": "صف جديد «{row}» في «{at}»، مملوء بالقيم الافتراضية للأعمدة.",
+    "rowWithoutDefault": "صف جديد «{row}» في «{at}»: عمود مطلوب بلا قيمة افتراضية.",
+    "rowRemoved": "«{at}»: الصف «{row}» مفقود.",
     "fix": {
       "newField": "أضِف حقلًا جديدًا، واملأه بترحيل، وأدرج الحقل القديم تحت `retired`.",
       "newFieldOnly": "أضِف حقلًا جديدًا.",
@@ -202,7 +205,8 @@
       "keepMin": "أبقِ min.",
       "minOnGrid": "اخفض min بحيث يكون الفرق مضاعفًا لـ step.",
       "keepOption": "أبقِ الخيار؛ يمكن إعادة تسميته (label).",
-      "newList": "أضِف قائمة جديدة واملأها بترحيل.",
+      "keepRow": "أبقِ الصف؛ يمكن تغيير label الخاص به.",
+      "rowDefaults": "أعطِ كل عمود مطلوب قيمة افتراضية أو اجعله اختياريًا.",
       "factInUse": "احذف المعلومة من هذه النصوص أولًا، أو أبقِها في `facts`."
     },
     "factInUse": "المعلومة «{fact}» غير موجودة في `facts`، لكنها ما زالت مذكورة في {count, plural, one {نص واحد} other {# نصوص}}: {texts}."

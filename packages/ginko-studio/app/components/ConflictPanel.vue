@@ -6,12 +6,12 @@
 <script setup lang="ts">
 import { useI18n } from '#imports'
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { mergeRows, rowDiffs } from '@lupinum/ginko/internal'
+import { keyedRowDiffs, mergeRows, rowDiffs } from '@lupinum/ginko/internal'
 import { GitCompareArrowsIcon } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@studio/components/ui/alert'
 import { Button } from '@studio/components/ui/button'
 import { computed } from 'vue'
-import { displayValue, rowTitle, type Data } from '../utils/content'
+import { displayValue, rowLabel, rowTitle, type Data } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { isYou, whoText, type Who } from '../utils/who'
 
@@ -70,7 +70,7 @@ const YOU = { added: 'entry.conflict.row.youAdded', removed: 'entry.conflict.row
 const THEY = { added: 'entry.conflict.row.theyAdded', removed: 'entry.conflict.row.theyRemoved', changed: 'entry.conflict.row.theyChanged' } as const
 const ELSEWHERE = { added: 'entry.conflict.row.otherWindowAdded', removed: 'entry.conflict.row.otherWindowRemoved', changed: 'entry.conflict.row.otherWindowChanged' } as const
 
-/** One line per field; a list instead gets one line per row each side changed, and one per row both changed. */
+/** One line per field; a list or rows field instead gets one line per row each side changed, and one per row both changed. */
 const items = computed(() => props.conflict.fields.map((key) => {
   const field = props.fields[key]
   const stored = props.conflict.data[key]
@@ -85,6 +85,19 @@ const items = computed(() => props.conflict.fields.map((key) => {
         return yoursElsewhere(key) ? t(ELSEWHERE[r.change], { row }) : t(THEY[r.change], { who: whoOf(key), row })
       }),
       ...clashes.map((id) => t(yoursElsewhere(key) ? 'entry.conflict.row.clashYou' : 'entry.conflict.row.clash', { row: rowName(key, id, stored, mine, base) })),
+    ]
+    if (lines.length) return { key, label: shownField(key), lines }
+  }
+  // A rows field keeps its rows: one line per row each side changed, and one per row both changed.
+  if (field?.type === 'rows') {
+    const base = props.baseline[key]
+    const name = (id: string) => rowLabel(field, id, props.locale, { t, format })
+    const [mineRows, theirRows] = [keyedRowDiffs(base, mine).rows.map((r) => r.id), keyedRowDiffs(base, stored).rows.map((r) => r.id)]
+    const clashes = mineRows.filter((id) => theirRows.includes(id))
+    const lines = [
+      ...mineRows.filter((id) => !clashes.includes(id)).map((id) => t(YOU.changed, { row: name(id) })),
+      ...theirRows.filter((id) => !clashes.includes(id)).map((id) => (yoursElsewhere(key) ? t(ELSEWHERE.changed, { row: name(id) }) : t(THEY.changed, { who: whoOf(key), row: name(id) }))),
+      ...clashes.map((id) => t(yoursElsewhere(key) ? 'entry.conflict.row.clashYou' : 'entry.conflict.row.clash', { row: name(id) })),
     ]
     if (lines.length) return { key, label: shownField(key), lines }
   }

@@ -47,7 +47,7 @@ describe('schema.holidays', () => {
 
 describe('the basics hours rules pick the calendar (none without one)', () => {
   // A week open every day, so only the holiday rule can close it.
-  const week = (['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const).map((day) => ({ day, closed: false, from1: '09:00', to1: '17:00' }))
+  const week = Object.fromEntries((['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const).map((day) => [day, { closed: false, from1: '09:00', to1: '17:00' }]))
   const ctx = (over: Partial<HoursContext>): HoursContext => ({ hours: { week, exceptions: [], holidays: 'closed' }, ...over })
   // 26 Oct 2026 is the Austrian National Day, 3 Oct German Unity Day, 3 Mar the house party.
   it.each([

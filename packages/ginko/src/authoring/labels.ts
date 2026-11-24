@@ -88,10 +88,8 @@ function translateField(field: Field, texts: ByLocale<FieldTexts>, path: string,
     unknownKeys(options, out.options.map((o) => o.value), `${path}.options`, 'option', problems)
     out.options = out.options.map((o) => ({ ...o, label: withTexts(o.label, main, each(options, (t) => t[o.value])) }))
   }
-  if (out.type === 'list') {
-    out.itemLabel = withTexts(out.itemLabel, main, each(texts, (t) => t.itemLabel))
-    out.of = translateFields(out.of, sub(texts, (t) => t.fields), path, ctx)
-  }
+  if (out.type === 'list') out.itemLabel = withTexts(out.itemLabel, main, each(texts, (t) => t.itemLabel))
+  if (out.type === 'list' || out.type === 'rows') out.of = translateFields(out.of, sub(texts, (t) => t.fields), path, ctx)
   return out
 }
 

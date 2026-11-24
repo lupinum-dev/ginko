@@ -57,13 +57,13 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput, schem
   const checked: { id: string; brick: string; data: Record<string, Json> }[] = []
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (!Object.hasOwn(state.schema.bricks, key)) {
-      if (brick.kind === 'single') created.push({ brick: key, data: defaultsFor(brick.fields) })
+      if (brick.kind === 'single') created.push({ brick: key, data: defaultsFor(brick.fields, schema.week) })
       continue
     }
     const all = recheckAll(state.schema, schema, key)
     for (const entry of state.entries) {
       if (entry.brick !== key) continue
-      const next = releaseData(state.schema.bricks[key]!.fields, brick.fields, entry.data, writes.get(entry.id) ?? {})
+      const next = releaseData(state.schema.bricks[key]!.fields, brick.fields, entry.data, writes.get(entry.id) ?? {}, [state.schema.week, schema.week])
       if (next.roots.length) changed.push({ id: entry.id, brick: key, data: next.data })
       if (next.roots.length || all) checked.push({ id: entry.id, brick: key, data: next.data })
     }
@@ -139,7 +139,7 @@ function migrate(migration: Migration, descriptor: MigrationDescriptor, field: F
   return out
 }
 
-/** The entry with its translatable values (top level and inside list rows) resolved to one locale. A missing locale is left out. */
+/** The entry with its translatable values (top level and inside the rows of lists and rows fields) resolved to one locale. A missing locale is left out. */
 function forLocale(fields: Fields, data: Record<string, Json>, locale: Locale): Record<string, Json> {
   const out: Record<string, Json> = {}
   for (const [name, value] of Object.entries(data)) {
@@ -149,6 +149,8 @@ function forLocale(fields: Fields, data: Record<string, Json>, locale: Locale): 
       if (picked !== undefined) out[name] = picked
     } else if (field?.type === 'list' && Array.isArray(value)) {
       out[name] = value.map((row) => (isObject(row) ? forLocale(field.of, row as Record<string, Json>, locale) : row))
+    } else if (field?.type === 'rows' && isObject(value)) {
+      out[name] = Object.fromEntries(Object.entries(value as Record<string, Json>).map(([key, row]) => [key, isObject(row) ? forLocale(field.of, row as Record<string, Json>, locale) : row]))
     } else {
       out[name] = value
     }

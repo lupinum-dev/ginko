@@ -37,7 +37,9 @@
     "notList": "“{label}” must be a list.",
     "tooManyRows": "“{label}” has too many items (at most {max}).",
     "tooFewRows": "“{label}” needs at least {min} items.",
-    "duplicateRowValue": "“{label}”: “{value}” appears more than once.",
+    "notRows": "“{label}” needs an object with one row per row key.",
+    "rowMissing": "“{label}”: the row “{row}” is missing.",
+    "unknownRow": "“{label}”: there is no row “{row}”.",
     "badRowId": "“{label}”: Row {row} has no valid ID.",
     "duplicateRowId": "“{label}”: Row ID appears twice.",
     "notImage": "“{label}” is not a valid image.",
@@ -177,8 +179,9 @@
     "optionRemoved": "“{at}”: option “{option}” is missing.",
     "optionRenamed": "Option renamed.",
     "optionAdded": "New option “{option}”.",
-    "uniqueChanged": "“{at}”: unique cannot be set or changed.",
-    "uniqueDropped": "“{at}”: unique removed.",
+    "rowAdded": "New row “{row}” in “{at}”, filled with the defaults of the columns.",
+    "rowWithoutDefault": "New row “{row}” in “{at}”: a required column has no default.",
+    "rowRemoved": "“{at}”: row “{row}” is missing.",
     "fix": {
       "newField": "Add a new field, fill it with a migration and list the old field under `retired`.",
       "newFieldOnly": "Add a new field.",
@@ -202,7 +205,8 @@
       "keepMin": "Keep min.",
       "minOnGrid": "Lower min so that the difference is a multiple of step.",
       "keepOption": "Keep the option; it can be renamed (label).",
-      "newList": "Add a new list and fill it with a migration.",
+      "keepRow": "Keep the row; its label can change.",
+      "rowDefaults": "Give every required column a default, or make it optional.",
       "factInUse": "Take the fact out of these texts first, or keep it in `facts`."
     },
     "factInUse": "The fact “{fact}” is missing from `facts` but is still quoted in {count, plural, one {one text} other {# texts}}: {texts}."

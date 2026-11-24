@@ -498,8 +498,9 @@ describe('agent door: builder tools (owners and admins)', () => {
     ['ginko_write', { brick: 'menu', entry: 'x', fields: { descripton: 'x' } }, '“descripton” is not a field of “menu”. Did you mean “description”?'],
     ['ginko_create', { brick: 'notice', fields: { text: 'x' } }, 'There is no brick “notice”. Did you mean “notices”?'],
     ['ginko_create', { brick: 'menu', fields: { zzz: 1 } }, '“zzz” is not a field of “menu”. The fields are listed in ginko_schema.'],
-    // Inside a list row too: the row's unknown name was dropped and the save reported success.
-    ['ginko_write', { brick: 'lunch', fields: { days: [{ day: 'mon', gericht: 'Suppe' }] } }, '“days[0].gericht” is not a field of “lunch”. Did you mean “dish”?'],
+    // Inside a row too: the row's unknown name was dropped and the save reported success.
+    ['ginko_write', { brick: 'lunch', fields: { days: { mo: { gericht: 'Suppe' } } } }, '“days.mo.gericht” is not a field of “lunch”. Did you mean “dish”?'],
+    ['ginko_write', { brick: 'hours', fields: { exceptions: [{ grund: 'Urlaub' }] } }, '“exceptions[0].grund” is not a field of “hours”. Did you mean “reason”?'],
   ])('%s %j names the closest key', async (tool, args, text) => {
     const s = await setup()
     expect(await call(s, await keyOf(s, 'owner'), tool, args)).toMatchObject({ isError: true, text })

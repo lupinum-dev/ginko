@@ -1,8 +1,9 @@
 import type {
   BooleanField, ChoiceField, ChoicesField, DateField, DateRangeField, Fields, FileField, ImageField,
-  ListField, LongTextField, MarkdownField, MoneyField, NumberField, RefField, SlugField, TextField, TimeField,
-  Brick, Field, Json, Label, Localized,
+  ListField, LongTextField, MarkdownField, MoneyField, NumberField, RefField, RowDef, RowSet, RowsField, SlugField, TextField,
+  TimeField, Brick, Field, Json, Label, Localized,
 } from './types.ts'
+import { daysOf, type DayKey, type SiteWeek } from './time.ts'
 import type { Money } from './infer.ts'
 import { stableJson } from './sha256.ts'
 import type { MarkdownProfile } from './markdown.ts'
@@ -27,6 +28,7 @@ type DefaultInput<C> =
   : C extends { type: 'ref' } ? string
   : C extends { type: 'slug' } ? TextInput
   : C extends { type: 'list'; of: infer G extends Fields } ? readonly ListRow<G>[]
+  : C extends { type: 'rows'; rows: infer R; of: infer G extends Fields } ? RowsValue<R, G>
   : never
 
 /**
@@ -73,6 +75,24 @@ type ListRow<F extends Fields> = { _id: string }
 type ListOpts<F extends Fields> = Omit<Opts<ListField<F>, DefaultInput<ListField<F>>>, 'of'> & { fields: F }
 /** Like `Only` for the rows of a list `default`: a cell of a column the list does not have fails the type check. */
 type OnlyColumns<O, F> = O extends { default: readonly (infer R)[] } ? { default: readonly (R extends unknown ? Only<R, F & { _id: string }> : never)[] } : unknown
+/** The cells of one row of a rows field as written: a value per column; only optional columns may be missing. */
+type RowCells<F extends Fields> =
+  & { [K in keyof F as F[K] extends { optional: true } ? never : K]: ValueInput<F[K]> }
+  & { [K in keyof F as F[K] extends { optional: true } ? K : never]?: ValueInput<F[K]> }
+/**
+ * The keys of a row set: every day for `'weekdays'`, some days for `'workdays'` (the site's week decides which), the
+ * own keys otherwise.
+ */
+export type RowKeyOf<R> = R extends 'weekdays' | 'workdays' ? DayKey : R extends readonly { key: infer K extends string }[] ? K : string
+/** A rows value as written: a row per key; `'workdays'` may leave days out, since the site's week decides its rows. */
+type RowsValue<R, F extends Fields> = R extends 'workdays' ? { [K in DayKey]?: RowCells<F> } : { [K in RowKeyOf<R>]: RowCells<F> }
+type RowsOpts<F extends Fields, R extends RowSet> = Pick<RowsField, 'hint' | 'optional' | 'group' | 'showWhen'> & {
+  /** `'weekdays'`, `'workdays'` or an own list of rows `[{ key: 'spring', label: 'Frühling' }, …]`. */
+  rows: R
+  /** The columns of one row. */
+  fields: F
+  default?: RowsValue<R, F>
+}
 type ImageOpts = Opts<ImageField>
 type FileOpts = Opts<FileField>
 type RefOpts = Omit<Opts<RefField, DefaultInput<{ type: 'ref' }>>, 'multiple' | 'max'>
@@ -103,6 +123,14 @@ export const f = {
   list: <const F extends Fields, const O extends ListOpts<F>>(label: Label, o: Only<O, ListOpts<F>> & OnlyColumns<O, F> & { fields: F }) => {
     const { fields, itemLabel, ...rest } = o
     return { type: 'list', label, itemLabel, of: fields, ...rest } as unknown as ListField<F> & Omit<O, 'fields'>
+  },
+  /**
+   * A table with a fixed set of rows (`rows`) and the same columns in every row (`fields`): the hours of each weekday,
+   * the dish of each workday, the prices of each season. People fill every row; they add, remove and move none.
+   */
+  rows: <const F extends Fields, const R extends RowSet, const O extends RowsOpts<F, R>>(label: Label, o: Only<O, RowsOpts<F, R>> & { rows: R; fields: F }) => {
+    const { fields, rows, ...rest } = o
+    return { type: 'rows', label, rows, of: fields, ...rest } as unknown as RowsField<F, R> & Omit<O, 'fields' | 'rows' | 'default'>
   },
   /** Images and files have no `default`: their values are uploads of the site's owner. */
   image: <const O extends ImageOpts = {}>(label: Label, o?: Only<O, ImageOpts>) => ({ type: 'image', label, ...o }) as ImageField & O,
@@ -153,6 +181,58 @@ export function effectiveMin(field: Field): number {
     case 'list': return field.min ?? 0
     default: return -Infinity
   }
+}
+
+/** A field whose value holds rows of the columns `of`: a list (rows by `_id`) or a rows field (rows by key). */
+export type TableField = ListField | RowsField
+export const isTable = (field: Field): field is TableField => field.type === 'list' || field.type === 'rows'
+
+const isRow = (value: unknown): value is Record<string, Json> => typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/**
+ * The row keys of a rows field, in the order the Studio shows them: the seven days or the workdays from the site's
+ * `week.firstDay` on, or the own rows. Days need the site's week (`checkSchema` requires it); without one this throws.
+ */
+export function rowKeysOf(field: RowsField, week: SiteWeek | undefined): string[] {
+  if (field.rows === 'weekdays') return daysOf(week)
+  if (field.rows === 'workdays') return daysOf(week).slice(0, week!.workdays)
+  return field.rows.map((row: RowDef) => row.key)
+}
+
+/**
+ * The rows of a list or rows value, each with the segment a path uses for it: a list row's `_id` (`#<index>` without
+ * one), a rows field's row key. Anything that is not a row is left out.
+ */
+export function rowsIn(field: TableField, value: unknown): [string, Record<string, Json>][] {
+  if (field.type === 'list') return Array.isArray(value) ? value.flatMap((row, i) => (isRow(row) ? [[typeof row._id === 'string' ? row._id : `#${i}`, row] as [string, Record<string, Json>]] : [])) : []
+  return isRow(value) ? Object.entries(value).filter((entry): entry is [string, Record<string, Json>] => isRow(entry[1])) : []
+}
+
+/** The value with `fn` applied to every row, in its own shape: a list stays a list, a rows map stays a map. */
+export function mapRows(field: TableField, value: Json, fn: (row: Record<string, Json>) => Json): Json {
+  if (field.type === 'list') return Array.isArray(value) ? value.map((row) => (isRow(row) ? fn(row) : row)) : value
+  return isRow(value) ? Object.fromEntries(Object.entries(value).map(([key, row]) => [key, isRow(row) ? fn(row) : row])) : value
+}
+
+/** One row of the columns `of` filled with their defaults; undefined when a required live column has none. */
+export function rowDefaults(of: Fields): Record<string, Json> | undefined {
+  const row: Record<string, Json> = {}
+  for (const [name, column] of Object.entries(of)) {
+    if (column.retired) continue
+    if (column.default !== undefined) row[name] = column.default
+    else if (!column.optional) return undefined
+  }
+  return row
+}
+
+/**
+ * The value a field starts with: its `default`. A rows field without one starts with every row filled from its
+ * columns' defaults, when they fill a row (`rowDefaults`); its rows need the site's week.
+ */
+export function startValue(field: Field, week: SiteWeek | undefined): Json | undefined {
+  if (field.default !== undefined || field.type !== 'rows') return field.default
+  const row = rowDefaults(field.of)
+  return row && Object.fromEntries(rowKeysOf(field, week).map((key) => [key, row]))
 }
 
 /** The address field of a brick: its one live slug field (`checkSchema` allows one per collection), or undefined. */

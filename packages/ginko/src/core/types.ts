@@ -78,11 +78,21 @@ export interface ChoicesField<V extends string = string> extends FieldBase { typ
 }
 export interface ListField<F extends Fields = Fields> extends FieldBase {
   type: 'list'; of: F; itemLabel: Label; max: number
-  /** Fewest rows. With `max` equal and a unique required choice this expresses "every option exactly once". */
+  /** Fewest rows. */
   min?: number
-  /** A required subfield (choice, text, date or time) whose value must differ in every row. */
-  unique?: string
 }
+/** One row of a rows field with its own rows: `key` names it in the stored value and in paths, `label` heads it in the Studio. */
+export interface RowDef { key: string; label: Label }
+/**
+ * The rows of a rows field: `'weekdays'` the seven days (keys `mo` … `su`), `'workdays'` the site's workdays
+ * (`week.workdays` days from `week.firstDay` on), or an own list of rows. A list and not an object: the platform sorts object keys.
+ */
+export type RowSet = 'weekdays' | 'workdays' | readonly RowDef[]
+/**
+ * A table with a fixed set of rows and the same columns in every row (`of`), such as the hours of each weekday. The
+ * value is a map from row key to row (`{ mo: { closed, … }, … }`) with exactly the rows of the field.
+ */
+export interface RowsField<F extends Fields = Fields, R extends RowSet = RowSet> extends FieldBase { type: 'rows'; rows: R; of: F }
 /** Points to entries of a collection brick `to`; stores the entry ID (a list of IDs with `multiple`). `max` only with `multiple`. */
 export interface RefField extends FieldBase { type: 'ref'; to: string; multiple?: boolean; max?: number }
 /** A frame's shape as `width:height`, such as `3:2`, `1:1` or `1.91:1`. */
@@ -101,7 +111,7 @@ export interface SlugField extends FieldBase { type: 'slug'; from: string }
 
 export type Field =
   | TextField | LongTextField | MarkdownField | NumberField | MoneyField | BooleanField
-  | DateField | TimeField | DateRangeField | ChoiceField | ChoicesField | ListField
+  | DateField | TimeField | DateRangeField | ChoiceField | ChoicesField | ListField | RowsField
   | ImageField | FileField | SlugField | RefField
 
 export type FieldType = Field['type']

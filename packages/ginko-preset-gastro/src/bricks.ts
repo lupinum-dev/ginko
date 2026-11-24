@@ -3,7 +3,7 @@
 // starts without the prefilled texts (`serializeSchema`).
 import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate, type Task } from '@lupinum/ginko/internal'
 import { gallery, type HoursOptions } from '@lupinum/ginko/basics'
-import { eventsBrick, hourPlansBrick, hoursBrick, noticesBrick, weekdays, type ChoicesField, type DateField, type HoursTexts, type ListField, type WeekRow } from '@lupinum/ginko/internal'
+import { DAY_KEYS, eventsBrick, hourPlansBrick, hoursBrick, noticesBrick, type ChoicesField, type DateField, type HoursTexts, type RowsField, type WeekDefault } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
 
 /** Allergen codes on dishes: the EU list of 14, none at all (the field is left out), or your own list. */
@@ -11,8 +11,6 @@ export type AllergenSet = 'EU' | 'none' | readonly ChoiceOption[]
 
 /** A schema label in both languages. The editor sees the one for their language, and a site in another language falls back to English. */
 const both = (de: string, en: string) => ({ de, en })
-
-export { weekdays }
 
 // The 14 EU allergens (LMIV) with the letter codes used in Austria.
 export const allergensEU: readonly ChoiceOption[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'L', 'M', 'N', 'O', 'P', 'R'].map((code) => ({
@@ -47,13 +45,8 @@ export interface GastroOptions {
 /** `source` as a brick property, only when set, so a platform brick's schema stays as it was. */
 const sourceOf = (opts: GastroOptions) => (opts.source ? { source: opts.source } : {})
 
-// Row IDs in defaults are fixed so every fresh site starts with the same, stable rows.
-const weekDefault: WeekRow[] = weekdays.map((d) => ({
-  _id: `wk${d.value}000000`,
-  day: d.value,
-  closed: d.value === 'mo',
-  ...(d.value === 'mo' ? {} : { from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00' }),
-}))
+/** Closed on Monday; 11:30–14:00 and 17:30–22:00 on the other days. */
+const weekDefault = Object.fromEntries(DAY_KEYS.map((day) => [day, day === 'mo' ? { closed: true } : { closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00' }])) as WeekDefault
 
 const lunchPlaceholder = { de: 'Wird noch bekannt gegeben', en: 'To be announced' } as const
 
@@ -65,13 +58,11 @@ export function isLunchPlaceholder(dish: unknown): boolean {
 
 const soldOutText = { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked today.' }
 
-const lunchDefault = weekdays.slice(0, 5).map((d) => ({ _id: `ld${d.value}000000`, day: d.value, dish: lunchPlaceholder }))
-
 // The restaurant wording of the hours bricks (the basics are neutral): pinned here, because labels and hints are part
 // of every gastro site's stored schema.
 const hoursTexts: HoursTexts = {
   hours: both('Öffnungszeiten', 'Opening hours'),
-  week: both('Wochenplan', 'Weekly hours'), day: both('Tag', 'Day'), closed: both('Ruhetag', 'Closed all day'),
+  week: both('Wochenplan', 'Weekly hours'), closed: both('Ruhetag', 'Closed all day'),
   opens: both('Öffnet um', 'Opens at'), closes: both('Schließt um', 'Closes at'), opensAgain: both('Öffnet wieder um', 'Opens again at'),
   opensAgainHint: both('Nur wenn du untertags eine Pause machst.', 'Only if you close for a break during the day.'),
   closesAgain: both('Schließt wieder um', 'Closes again at'),
@@ -123,16 +114,15 @@ export function notices(opts: GastroOptions = {}) {
 /** The list of lunch days; `allergens` left out when the set is `'none'`. */
 function lunchDays<A extends AllergenSet>(allergens: A | undefined) {
   const choices = allergenChoices(allergens)
+  // A day starts with the placeholder dish and no allergens: the columns' defaults fill every workday of the site.
   const columns = {
-    day: f.choice(both('Tag', 'Day'), { options: weekdays.slice(0, 5) }),
-    dish: f.text(both('Gericht', 'Dish'), { max: 200 }),
+    dish: f.text(both('Gericht', 'Dish'), { max: 200, default: lunchPlaceholder }),
     price: f.money(both('Preis', 'Price'), { optional: true }),
   }
-  const list = { itemLabel: both('Tag', 'Day'), min: 5, max: 5, unique: 'day' } as const
-  // Each branch checks its own default rows; `allergens` exists only when the set is not 'none', which the type cannot see here.
+  // `allergens` exists only when the set is not 'none', which the type cannot see here.
   return (choices
-    ? f.list(both('Tage', 'Days'), { ...list, fields: { ...columns, allergens: f.choices(both('Allergene', 'Allergens'), { options: choices, askAgainWhen: 'dish' }) }, default: lunchDefault.map((row) => ({ ...row, allergens: [] })) })
-    : f.list(both('Tage', 'Days'), { ...list, fields: columns, default: lunchDefault })) as ListField<typeof columns & AllergenFields<A>>
+    ? f.rows(both('Tage', 'Days'), { rows: 'workdays', fields: { ...columns, allergens: f.choices(both('Allergene', 'Allergens'), { options: choices, askAgainWhen: 'dish', default: [] }) } })
+    : f.rows(both('Tage', 'Days'), { rows: 'workdays', fields: columns })) as RowsField<typeof columns & AllergenFields<A>, 'workdays'>
 }
 
 /**

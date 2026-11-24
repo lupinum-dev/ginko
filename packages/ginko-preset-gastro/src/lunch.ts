@@ -2,7 +2,7 @@
 import type { WeekInfo } from '@lupinum/ginko'
 import { workWeekOf } from '@lupinum/ginko/internal'
 
-export interface LunchWeekData { weekOf: string; days: unknown[]; note?: unknown }
+export interface LunchWeekData { weekOf: string; days: unknown; note?: unknown }
 
 /**
  * The lunch week to show on `today`: the planned week whose first day is this work week's first day wins,

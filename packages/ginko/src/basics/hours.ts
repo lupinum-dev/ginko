@@ -9,7 +9,9 @@ export { addDays, weekdayKeys, weekdayOf, type Weekday }
 export { austrianHolidays, type Holiday, type HolidayNames }
 
 export interface Times { from1?: string; to1?: string; from2?: string; to2?: string }
-export interface DayHours extends Times { day: string; closed: boolean }
+export interface DayHours extends Times { closed: boolean }
+/** A week as the rows field `week` stores it: the hours of each day by its key. A day without a row reads as unknown. */
+export type WeekHours = Partial<Record<Weekday, DayHours>>
 /** An exception without times is a closure; with times and `closed: false` it is special hours. */
 export interface Exception extends Times {
   _id: string
@@ -25,10 +27,10 @@ export interface HolidayClosure {
   holiday: HolidayNames
 }
 /** A date range with its own week: a season ("yearly") or "new hours from a date". */
-export interface HourPlan { _id?: string; id?: string; label?: string; from: string; to?: string; yearly?: boolean; week: DayHours[] }
+export interface HourPlan { _id?: string; id?: string; label?: string; from: string; to?: string; yearly?: boolean; week: WeekHours }
 export type HolidaySetting = 'sunday' | 'closed' | 'normal'
 export interface HoursData {
-  week: DayHours[]
+  week: WeekHours
   exceptions: Exception[]
   closedOn?: string
   closedNote?: string
@@ -99,7 +101,7 @@ export function planOn(plans: HourPlan[] | undefined, date: string): HourPlan | 
 }
 
 /** The 7-day plan that applies on `date`: a covering plan, else the standard week. */
-export function weekFor(ctx: HoursContext, date: string): { week: DayHours[]; plan?: HourPlan } {
+export function weekFor(ctx: HoursContext, date: string): { week: WeekHours; plan?: HourPlan } {
   const plan = planOn(ctx.plans, date)
   return plan ? { week: plan.week, plan } : { week: ctx.hours.week }
 }
@@ -131,11 +133,11 @@ export function hoursOn(ctx: HoursContext, date: string): DayRule {
   const holiday = holidayOn(date, calendarIn(ctx))
   const setting = hours.holidays ?? 'sunday'
   if (holiday && setting !== 'normal') {
-    const base = setting === 'closed' ? undefined : week.find((d) => d.day === 'su')
+    const base = setting === 'closed' ? undefined : week.su
     return { ...ruleOfDay(base, 'holiday'), holiday: { de: holiday.de, en: holiday.en } }
   }
 
-  return ruleOfDay(week.find((d) => d.day === weekdayOf(date)), plan ? 'plan' : 'week')
+  return ruleOfDay(week[weekdayOf(date)], plan ? 'plan' : 'week')
 }
 
 /** The 7 days from `monday`, each with what applies. */
@@ -185,7 +187,7 @@ export function upcomingHolidayClosures(ctx: HoursContext, today: string, days: 
   for (let i = 1; i <= days; i++) {
     const date = addDays(today, i)
     const rule = hoursOn(ctx, date)
-    if (rule.source === 'holiday' && rule.closed && rule.holiday && !ruleOfDay(weekFor(ctx, date).week.find((d) => d.day === weekdayOf(date)), 'week').closed) {
+    if (rule.source === 'holiday' && rule.closed && rule.holiday && !ruleOfDay(weekFor(ctx, date).week[weekdayOf(date)], 'week').closed) {
       out.push({ _id: `holiday-${date}`, when: { from: date, to: date }, closed: true, holiday: rule.holiday })
     }
   }
@@ -292,9 +294,9 @@ const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const isText = (v: unknown): v is string | Record<string, string> => typeof v === 'string' ? v !== '' : isRecord(v) && Object.values(v).every((x) => typeof x === 'string')
 
-/** Hours data as the server stores it: a week of day rows, maybe exceptions and a closed day. */
+/** Hours data as the server stores it: a week of day rows by key, maybe exceptions and a closed day. */
 function asHours(data: unknown): HoursData | undefined {
-  if (!isRecord(data) || !Array.isArray(data.week) || !data.week.every((d) => isRecord(d) && typeof d.day === 'string')) return undefined
+  if (!isRecord(data) || !isRecord(data.week) || !Object.values(data.week).every(isRecord)) return undefined
   if (data.exceptions !== undefined && data.exceptions !== null && !(Array.isArray(data.exceptions) && data.exceptions.every((e) => isRecord(e) && isRecord(e.when)))) return undefined
   return { ...data, exceptions: (data.exceptions ?? []) } as unknown as HoursData
 }
@@ -323,7 +325,7 @@ function lineOn(hours: HoursData, today: string, plans: HourPlan[] | undefined, 
 
 function lineOf(rule: DayRule, hours: HoursData, today: string, plans: HourPlan[] | undefined): HoursLine {
   if (rule.source === 'week' || rule.source === 'plan') {
-    if (!weekFor({ hours, plans }, today).week.some((d) => d.day === weekdayOf(today))) return { state: 'unknown' }
+    if (!weekFor({ hours, plans }, today).week[weekdayOf(today)]) return { state: 'unknown' }
   }
   if (rule.closed) {
     if (rule.holiday) return { state: 'closed', holiday: { de: rule.holiday.de, en: rule.holiday.en } }

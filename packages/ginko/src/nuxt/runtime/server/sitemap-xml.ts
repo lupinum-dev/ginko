@@ -119,6 +119,8 @@ function imagesOf(fields: Fields, data: Record<string, unknown>, base: string): 
         if (typeof url === 'string' && url) found.add(/^https?:\/\//.test(url) ? url : `${base}${url.startsWith('/') ? '' : '/'}${url}`)
       } else if (field.type === 'list' && Array.isArray(value)) {
         for (const row of value) walk(field.of, row as Record<string, unknown>)
+      } else if (field.type === 'rows' && value && typeof value === 'object') {
+        for (const row of Object.values(value)) walk(field.of, row as Record<string, unknown>)
       }
     }
   }

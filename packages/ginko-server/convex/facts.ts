@@ -74,7 +74,7 @@ export async function quotesOf(ctx: QueryCtx, site: Doc<'sites'>, names?: Readon
   const schema = site.schema as Schema
   const out = new Map<string, FactQuote[]>()
   const hasText = (fields: Schema['bricks'][string]['fields']): boolean =>
-    Object.values(fields).some((field) => !field.retired && (field.type === 'markdown' || (field.type === 'list' && hasText(field.of))))
+    Object.values(fields).some((field) => !field.retired && (field.type === 'markdown' || ((field.type === 'list' || field.type === 'rows') && hasText(field.of))))
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (brick.retired || brick.source === 'files' || !hasText(brick.fields)) continue
     const rows = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', site._id).eq('brick', key).eq('deletedAt', undefined)).collect()

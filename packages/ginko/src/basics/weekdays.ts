@@ -1,7 +1,10 @@
 // Weekdays and calendar arithmetic on YYYY-MM-DD strings (no time zone involved).
 
-export const weekdayKeys = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const
-export type Weekday = (typeof weekdayKeys)[number]
+import { DAY_KEYS, type DayKey } from '../core/time.ts'
+
+/** The day keys of stored values, Monday first (core's `DAY_KEYS`). */
+export const weekdayKeys = DAY_KEYS
+export type Weekday = DayKey
 
 /** Weekday key of a YYYY-MM-DD date. */
 export function weekdayOf(date: string): Weekday {

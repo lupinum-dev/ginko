@@ -540,7 +540,7 @@ export const importOpen = internalMutation({
     const untouched = (e: Doc<'entries'>) => {
       const def = Object.hasOwn(schema.bricks, e.brick) ? schema.bricks[e.brick] : undefined
       return def?.kind === 'single' && e.kind === 'single' && e.rev === 1 && e.deletedAt === undefined && e.state === undefined
-        && stableJson(e.data) === stableJson(defaultsFor(def.fields))
+        && stableJson(e.data) === stableJson(defaultsFor(def.fields, schema.week))
     }
     if (used || !entries.every(untouched) || site.entryCount !== entries.length) fail('INVALID', 'errors.importNeedsEmptySite')
     let bytes = 0
@@ -575,7 +575,7 @@ export const importDone = internalMutation({
         if (def.kind !== 'single') continue
         const have = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', brick)).first()
         if (have) continue
-        const single = await newSingle(brick, def.fields, schema.locales[0]!)
+        const single = await newSingle(brick, def.fields, schema.locales[0]!, schema.week)
         await insertSingle(ctx, site._id, single, schema.locales)
         created.push(single)
       }

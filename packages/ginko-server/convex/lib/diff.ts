@@ -2,7 +2,7 @@
 // a list of root fields with their old and new value. Pure functions, no Convex. Rows of a list
 // are compared in core (rowDiffs), which the Studio's conflict panel uses too.
 import type { Fields, Json } from '@lupinum/ginko'
-import { isTranslatable, labelOf, rowDiffs, stableJson, type RowDiff } from '@lupinum/ginko/internal'
+import { isTranslatable, labelOf, keyedRowDiffs, rowDiffs, stableJson, type RowDiff } from '@lupinum/ginko/internal'
 
 export interface LocaleDiff { locale: string; before: Json | null; after: Json | null }
 export interface FieldDiff {
@@ -45,6 +45,7 @@ export function diffFields(fields: Fields | undefined, before: Record<string, Js
     if (!field) return base
     if (isTranslatable(field)) return { ...base, locales: localeDiffs(was, now) }
     if (field.type === 'list') return { ...base, ...rowDiffs(was, now) }
+    if (field.type === 'rows') return { ...base, ...keyedRowDiffs(was, now) }
     return base
   })
 }

@@ -1,13 +1,13 @@
 <!-- The lunch menu of the week: 5 days from the week start. Today's row is marked, as closed when the house is closed today. Shown only for the current work week (on the weekend: the coming one). -->
 <script setup lang="ts">
 import { formatMoney } from '@lupinum/ginko'
-import { lunchPrintPath, todayState, type Weekday } from '../utils/site'
+import { lunchPrintPath, todayState } from '../utils/site'
 
 const langOf = useGinkoLang()
 
 const { lang, labels, today } = useSite()
 const { t, format, language } = useI18n()
-const { lunch, current, todayKey } = useLunchWeek()
+const { lunch, current, todayKey, days } = useLunchWeek()
 const { ctx } = useHours()
 // Closed today (the owner's closure, a holiday, the rest day): today's dish is not served, the same rule as the Heute board.
 const closed = computed(() => todayState(ctx.value, today.value).kind !== 'open')
@@ -17,9 +17,9 @@ const closed = computed(() => todayState(ctx.value, today.value).kind !== 'open'
   <div v-if="current">
     <p class="week">{{ t('weekOf', { date: format.date(lunch.data.weekOf, { day: 'numeric', month: 'long' }) }) }}. {{ t('lunchHint') }}.</p>
     <ol class="days">
-      <li v-for="d in lunch.data.days" :key="d._id" :class="{ today: d.day === todayKey, closed: d.day === todayKey && closed }" data-test="lunch" :aria-current="d.day === todayKey ? 'date' : undefined">
-        <span class="day">{{ labels.weekdays[d.day as Weekday] }}<span v-if="d.day === todayKey" class="tag">{{ closed ? t('closedToday') : t('today') }}</span></span>
-        <span class="dish" :lang="langOf(lunch, `days.${d._id}.dish`)">{{ d.dish }}</span>
+      <li v-for="d in days" :key="d.day" :class="{ today: d.day === todayKey, closed: d.day === todayKey && closed }" data-test="lunch" :aria-current="d.day === todayKey ? 'date' : undefined">
+        <span class="day">{{ labels.weekdays[d.day] }}<span v-if="d.day === todayKey" class="tag">{{ closed ? t('closedToday') : t('today') }}</span></span>
+        <span class="dish" :lang="langOf(lunch, `days.${d.day}.dish`)">{{ d.dish }}</span>
         <span class="meta">
           <Allergens :codes="d.allergens" />
           <span v-if="d.price" class="price">{{ formatMoney(d.price, language) }}</span>
@@ -28,7 +28,7 @@ const closed = computed(() => todayState(ctx.value, today.value).kind !== 'open'
     </ol>
     <p v-if="lunch.data.note" class="note" :lang="langOf(lunch, 'note')">{{ lunch.data.note }}</p>
     <p class="print-link"><NuxtLink :to="lunchPrintPath(lang)">{{ t('printLink') }}</NuxtLink></p>
-    <AllergenKey :codes="lunch.data.days.flatMap((d) => d.allergens)" />
+    <AllergenKey :codes="days.flatMap((d) => d.allergens)" />
   </div>
   <p v-else class="lede">{{ t('lunchPending') }}</p>
 </template>

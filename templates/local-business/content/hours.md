@@ -1,28 +1,28 @@
 ---
 week:
-  - day: mo
+  mo:
     closed: false
     from1: '07:30'
     to1: '19:00'
-  - day: tu
+  tu:
     closed: false
     from1: '07:30'
     to1: '19:00'
-  - day: we
+  we:
     closed: false
     from1: '07:30'
     to1: '19:00'
-  - day: th
+  th:
     closed: false
     from1: '07:30'
     to1: '19:00'
-  - day: fr
+  fr:
     closed: false
     from1: '07:30'
     to1: '15:00'
-  - day: sa
+  sa:
     closed: true
-  - day: su
+  su:
     closed: true
 exceptions:
   - when:

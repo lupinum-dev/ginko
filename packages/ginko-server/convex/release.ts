@@ -2,7 +2,7 @@
 // the HTTP routes in routes/release.ts, which resolve the push key to its site first; the
 // internal functions here trust that site id. Owners and admins use the public mutations.
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { byteSize, checkSchema, defaultsFor, entryBytes, fitsBudget, diffSchema, recheckAll, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, checkSchema, defaultsFor, entryBytes, fitsBudget, diffSchema, recheckAll, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema, type SiteWeek } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -55,8 +55,8 @@ interface NewSingle {
   bytes: number
 }
 
-export async function newSingle(brick: string, fields: Fields, main: Locale): Promise<NewSingle> {
-  const data = defaultsFor(fields)
+export async function newSingle(brick: string, fields: Fields, main: Locale, week: SiteWeek | undefined): Promise<NewSingle> {
+  const data = defaultsFor(fields, week)
   const prints = nextPrints({ fields, roots: Object.keys(data), before: {}, after: data, prints: {}, main, confirm: undefined })
   return { brick, data, prints, fields, trees: await treesOf(fields, data), bytes: entryBytes(data, prints) }
 }
@@ -280,7 +280,7 @@ export const release = internalMutation({
       const all = recheckAll(stored, next, key)
       for (const entry of entries.filter((e) => e.brick === key)) {
         const before = entry.data as Record<string, Json>
-        const { data, roots } = releaseData(stored.bricks[key]!.fields, brick.fields, before, writesOf.get(entry._id) ?? {})
+        const { data, roots } = releaseData(stored.bricks[key]!.fields, brick.fields, before, writesOf.get(entry._id) ?? {}, [stored.week, next.week])
         const prints = nextPrints({ fields: brick.fields, roots, before, after: data, prints: entry.prints, main, confirm: undefined })
         const changed = roots.filter((r) => !same(data[r], before[r]) || !same(printsOf(prints, r), printsOf(entry.prints, r)))
         // The trash keeps no trees.
@@ -293,7 +293,7 @@ export const release = internalMutation({
     const created: NewSingle[] = []
     for (const [key, brick] of Object.entries(next.bricks)) {
       if (Object.hasOwn(stored.bricks, key) || brick.kind !== 'single') continue
-      created.push(await newSingle(key, brick.fields, main))
+      created.push(await newSingle(key, brick.fields, main, next.week))
     }
 
     // Every entry of a brick whose fields changed, not only the written ones (break-it 9): a lowered
@@ -420,7 +420,7 @@ async function createMissingSingles(ctx: MutationCtx, site: Doc<'sites'>, schema
   const main = schema.locales[0]!
   const created: NewSingle[] = []
   for (const [key, brick] of Object.entries(schema.bricks)) {
-    if (brick.kind === 'single' && !brick.retired && !filled.has(key)) created.push(await newSingle(key, brick.fields, main))
+    if (brick.kind === 'single' && !brick.retired && !filled.has(key)) created.push(await newSingle(key, brick.fields, main, schema.week))
   }
 
   for (const single of created) await insertSingle(ctx, site._id, single, schema.locales)

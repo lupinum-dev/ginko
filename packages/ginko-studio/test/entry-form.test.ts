@@ -307,7 +307,7 @@ describe('TaskSheet', () => {
   /** This week's lunch as stored: Montag with its dish and allergens. */
   const thisWeek = {
     weekOf: '2026-10-12', note: { de: 'Suppe inklusive' },
-    days: [{ _id: 'ldmo000000', day: 'mo', dish: { de: 'Gulasch' }, allergens: ['A'] }, { _id: 'ldtu000000', day: 'tu', dish: { de: 'Fisch' }, allergens: ['D'] }],
+    days: { mo: { dish: { de: 'Gulasch' }, allergens: ['A'] }, tu: { dish: { de: 'Fisch' }, allergens: ['D'] } },
   }
 
   /**
@@ -482,9 +482,9 @@ describe('TaskSheet', () => {
     await sheet.findAll('button').find((b) => b.text() === 'Von dieser Woche übernehmen')!.trigger('click')
     await flushPromises()
     const dish = (row: string) => sheet.get(`[data-row="${row}"] input[type="text"]`)
-    expect((dish('ldmo000000').element as HTMLInputElement).value).toBe('Gulasch')
+    expect((dish('mo').element as HTMLInputElement).value).toBe('Gulasch')
     expect((sheet.get('input[type="date"]').element as HTMLInputElement).value).toBe('2026-10-19')
-    await dish('ldmo000000').setValue('Schnitzel')
+    await dish('mo').setValue('Schnitzel')
     await sheet.get('form').trigger('submit')
     await flushPromises()
     expect(sheet.get('[role="alert"]').text()).toBe('Bitte bestätige bei „Montag“: Sind die Allergene noch richtig?')

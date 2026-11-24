@@ -1,6 +1,6 @@
-import { effectiveMax, effectiveMin, effectiveProfile, isTranslatable, MAX_CENTS } from './fields.ts'
+import { effectiveMax, effectiveMin, effectiveProfile, isTable, isTranslatable, MAX_CENTS } from './fields.ts'
 import { isCurrency, isLocale, labelProblem, MAX_LOCALES } from './labels.ts'
-import { sha256 } from './sha256.ts'
+import { sha256, stableJson } from './sha256.ts'
 import { formatMb, limitOf } from './uploads.ts'
 import { weeklyTask, weekStartField } from './stale.ts'
 import { WEEKDAYS } from './time.ts'
@@ -27,7 +27,7 @@ export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'sl
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
 export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
-export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
+export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'rows', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
 
@@ -101,7 +101,7 @@ function withHolidays(site: SiteInput): { holidays?: NonNullable<Schema['holiday
 /** `field` with its `default` (and the defaults of list columns) in the stored form, keys in their order; see `storedValue`. */
 function storedField(field: Field, locales: readonly Locale[]): Field {
   return Object.fromEntries(Object.entries(field).flatMap(([key, value]) => {
-    if (key === 'of' && field.type === 'list') return [[key, Object.fromEntries(Object.entries(field.of).map(([name, column]) => [name, storedField(column, locales)]))]]
+    if (key === 'of' && isTable(field)) return [[key, Object.fromEntries(Object.entries(field.of).map(([name, column]) => [name, storedField(column, locales)]))]]
     if (key !== 'default' || value === undefined) return [[key, value]]
     const stored = storedValue(field, value as Json, locales)
     return stored === undefined ? [] : [[key, stored]]
@@ -143,10 +143,9 @@ function storedValue(field: Field, value: Json, locales: readonly Locale[]): Jso
     const kept = Object.fromEntries(Object.entries(value).filter(([locale]) => locales.includes(locale)))
     return Object.hasOwn(kept, locales[0]!) ? kept : undefined
   }
-  if (field.type !== 'list' || !Array.isArray(value)) return value
-  const rows: Json[] = []
-  for (const row of value) {
-    if (!isRecord(row)) { rows.push(row); continue }
+  if (!isTable(field)) return value
+  const storedRow = (row: Json): Json | undefined => {
+    if (!isRecord(row)) return row
     const stored: Record<string, Json> = {}
     for (const [name, cell] of Object.entries(row)) {
       const column = Object.hasOwn(field.of, name) ? field.of[name] : undefined
@@ -154,9 +153,18 @@ function storedValue(field: Field, value: Json, locales: readonly Locale[]): Jso
       if (v === undefined) return undefined
       stored[name] = v
     }
-    rows.push(stored)
+    return stored
   }
-  return rows
+  // A list's rows in order; a rows field's rows by key. Anything else stays as it is, so the schema check reports it.
+  const entries: [string, Json][] | undefined = field.type === 'list' ? (Array.isArray(value) ? value.map((row, i) => [String(i), row]) : undefined) : isRecord(value) ? Object.entries(value) : undefined
+  if (!entries) return value
+  const rows: [string, Json][] = []
+  for (const [key, row] of entries) {
+    const stored = storedRow(row)
+    if (stored === undefined) return undefined
+    rows.push([key, stored])
+  }
+  return field.type === 'list' ? rows.map(([, row]) => row) : Object.fromEntries(rows)
 }
 
 const isRecord = (value: Json): value is { [key: string]: Json } => typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -203,13 +211,13 @@ function lostValues(value: unknown, path: string[]): string[] {
 
 /** Fields with their config position, list columns too (stored objects lose key order). */
 function positioned(fields: Fields): Fields {
-  return Object.fromEntries(Object.entries(fields).map(([name, field], pos) => [name, field.type === 'list' ? { ...field, pos, of: positioned(field.of) } : { ...field, pos }]))
+  return Object.fromEntries(Object.entries(fields).map(([name, field], pos) => [name, isTable(field) ? { ...field, pos, of: positioned(field.of) } : { ...field, pos }]))
 }
 
-/** The reference fields of a brick, also those in list rows, with their paths (`team.members.person`). */
+/** The reference fields of a brick, also those in list rows and rows fields, with their paths (`team.members.person`). */
 function refsOf(fields: Fields, at: string): [string, Extract<Field, { type: 'ref' }>][] {
   return Object.entries(fields).flatMap(([name, field]): [string, Extract<Field, { type: 'ref' }>][] =>
-    field.type === 'ref' ? [[`${at}.${name}`, field]] : field.type === 'list' ? refsOf(field.of, `${at}.${name}`) : [])
+    field.type === 'ref' ? [[`${at}.${name}`, field]] : isTable(field) ? refsOf(field.of, `${at}.${name}`) : [])
 }
 
 /** The schema the platform stores: without file bricks, which only the site's build reads (CONTENT.md). */
@@ -344,6 +352,9 @@ function schemaProblems(schema: Schema): string[] {
     // A weekly brick needs the site's week: it decides the first day of every week and when the coming week counts.
     const weekly = Object.entries(schema.bricks ?? {}).find(([, brick]) => typeof brick === 'object' && brick !== null && weekStartField(brick))
     if (weekly) problems.push(`week is missing. The brick “${weekly[0]}” is planned by the week, so say on which day the site's week starts and how many days are workdays, for example \`week: { firstDay: 'monday', workdays: 5 }\`.`)
+    // A rows field of weekdays or workdays shows its days from the week's first day on; workdays are the site's.
+    const days = weekly ? undefined : dayRowsField(schema.bricks)
+    if (days) problems.push(`week is missing. The field “${days.path}” has a row for each ${days.rows === 'weekdays' ? 'day of the week' : 'workday'}, so say on which day the site's week starts and how many days are workdays, for example \`week: { firstDay: 'monday', workdays: 5 }\`.`)
   }
   if (schema.holidays !== undefined && !STORED_HOLIDAYS.includes(schema.holidays)) problems.push(`holidays must be one of ${STORED_HOLIDAYS.join(', ')}.`)
   if (!isCurrency(schema.currency)) problems.push(`Invalid currency “${String(schema.currency)}” (expected an ISO 4217 code such as “EUR” or “JPY”).`)
@@ -370,7 +381,7 @@ function schemaProblems(schema: Schema): string[] {
     pushLabel(`${key}.label`, brick.label)
     if (brick.describe !== undefined) pushLabel(`${key}.describe`, brick.describe)
     if (brick.source !== undefined && brick.source !== 'files') problems.push(`${key}: source must be “files” or missing.`)
-    if (brick.source === 'files' && Object.values(brick.fields).some((fd) => fd.type === 'list' && Object.values(fd.of).some((c) => c.type === 'markdown'))) problems.push(`${key}: in file bricks, markdown is only allowed as the text of the file, not in a list.`)
+    if (brick.source === 'files' && Object.values(brick.fields).some((fd) => isTable(fd) && Object.values(fd.of).some((c) => c.type === 'markdown'))) problems.push(`${key}: in file bricks, markdown is only allowed as the text of the file, not in a list or a rows field.`)
     if (brick.body !== undefined) {
       const field = typeof brick.body === 'string' && Object.hasOwn(brick.fields, brick.body) ? brick.fields[brick.body] : undefined
       if (field?.type !== 'markdown' || field.retired) problems.push(`${key}.body: “${String(brick.body)}” is not a markdown field of this brick.`)
@@ -410,7 +421,7 @@ function schemaProblems(schema: Schema): string[] {
         const token = isPrefillToken(value)
         if (!field) problems.push(`${path}: the field is missing.`)
         else if (!token && field.type === 'date' && typeof value === 'string' && value.startsWith('@')) problems.push(`${path}: unknown token “${value}” (known: ${PREFILL_TOKENS.join(', ')}).`)
-        else if (!token) for (const p of checkValue(schema, field, value, path)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
+        else if (!token) for (const p of checkValueIn(schema, field, value, path)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
         else if (field.type !== 'date') problems.push(`${path}: “${value}” needs a date field.`)
       }
       if (task.kind === 'create' && task.fields !== undefined) problems.push(...createFieldsProblems(`${key}.${task.id}.fields`, task, brick))
@@ -478,7 +489,7 @@ function schemaProblems(schema: Schema): string[] {
     } else if ('value' in rule) {
       // A constant would reference an upload that no entry holds: unchecked and swept after 7 days.
       if (holdsFiles(field)) problems.push(`retired: “${path}” contains images or files and cannot have a fixed value; use from or, for optional fields, drop.`)
-      for (const p of checkValue(schema, field, rule.value, `retired.${path}`)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
+      for (const p of checkValueIn(schema, field, rule.value, `retired.${path}`)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
     } else if (!field.optional) {
       problems.push(`retired: required field “${path}” needs from or value, not drop.`)
     }
@@ -578,6 +589,29 @@ function visibilityProblems(key: string, vis: unknown, fields: Fields): string[]
   return problems
 }
 
+/** `rows` of a rows field: `'weekdays'`, `'workdays'` or 1 to 50 rows `{ key, label }` with unique keys in the field-name pattern. */
+function rowSetProblems(path: string, rows: unknown, main: Locale): string[] {
+  if (rows === 'weekdays' || rows === 'workdays') return []
+  if (!Array.isArray(rows) || rows.length < 1 || rows.length > 50) return [`${path}.rows: must be 'weekdays', 'workdays' or a list of 1 to 50 rows { key, label }.`]
+  const problems: string[] = []
+  const seen = new Set<string>()
+  for (const row of rows as Json[]) {
+    if (!isRecord(row) || Object.keys(row).sort().join(',') !== 'key,label') { problems.push(`${path}.rows: every row is { key, label }.`); continue }
+    const key = row.key
+    if (typeof key !== 'string' || !/^[a-z][a-zA-Z0-9]{0,40}$/.test(key) || RESERVED_KEYS.has(key)) { problems.push(`${path}.rows: invalid row key “${String(key)}” (a lowercase letter, then letters or digits, as a field name).`); continue }
+    if (seen.has(key)) problems.push(`${path}.rows: the row key “${key}” is listed twice.`)
+    seen.add(key)
+    const label = labelProblem(`${path}.rows.${key}.label`, row.label as Label, main)
+    if (label) problems.push(label)
+  }
+  return problems
+}
+
+/** `checkValue`, except for a rows field of days on a site without a valid week: its rows are unknown, and the week's own problem stands. */
+function checkValueIn(schema: Schema, field: Field, value: unknown, path: string) {
+  return field.type === 'rows' && typeof field.rows === 'string' && !isWeek(schema.week) ? [] : checkValue(schema, field, value, path)
+}
+
 function isWeek(week: unknown): boolean {
   if (typeof week !== 'object' || week === null || Array.isArray(week)) return false
   const { firstDay, workdays, ...rest } = week as { firstDay?: unknown; workdays?: unknown }
@@ -654,14 +688,17 @@ function plansProblems(key: string, plans: unknown, fields: Fields, schema: Sche
 }
 
 /** The fields `{ hours: true }` reads, with their types: the stored names of the hours brick. */
-const HOURS_FIELDS = { week: 'list', exceptions: 'list', closedOn: 'date', holidays: 'choice' } as const
+const HOURS_FIELDS = { week: 'rows', exceptions: 'list', closedOn: 'date', holidays: 'choice' } as const
 /** The fields of an hour plan (`hourPlans()`), with their types: what `{ hours: { plans } }` reads of each entry. */
-const HOUR_PLAN_FIELDS = { week: 'list', from: 'date', yearly: 'boolean' } as const
+const HOUR_PLAN_FIELDS = { week: 'rows', from: 'date', yearly: 'boolean' } as const
+/** The hours read `week` by day key, so it is a rows field of the seven weekdays. */
+const weekOfDays = (field: Field) => field.type === 'rows' && field.rows === 'weekdays'
 
 /** True when `brick` is a live collection with the live fields of `hourPlans()`. */
 export function isHourPlans(brick: Brick): boolean {
   return brick.kind === 'collection' && !brick.retired
     && Object.entries(HOUR_PLAN_FIELDS).every(([name, type]) => Object.hasOwn(brick.fields, name) && !brick.fields[name]!.retired && brick.fields[name]!.type === type)
+    && weekOfDays(brick.fields.week!)
 }
 
 /**
@@ -689,12 +726,13 @@ function statusProblems(key: string, brick: Brick, schema: Schema): string[] {
       if (typeof plans !== 'string') return [`${key}: status.hours must be true or { plans: '<key of the hour plans>' }.`]
       const target = Object.hasOwn(schema.bricks, plans) ? schema.bricks[plans]! : undefined
       if (!target || target.retired) problems.push(`${key}: status.hours.plans names “${plans}”, which is not a live brick of the site.`)
-      else if (!isHourPlans(target)) problems.push(`${key}: status.hours.plans names “${plans}”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).`)
+      else if (!isHourPlans(target)) problems.push(`${key}: status.hours.plans names “${plans}”, which is not a collection of hour plans (hourPlans(): rows of weekdays “week”, a date “from” and a switch “yearly”).`)
     }
     for (const [name, type] of Object.entries(HOURS_FIELDS)) {
       const field = Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
       if (!field || field.retired) problems.push(`${key}: status { hours } needs the live field “${name}”.`)
       else if (field.type !== type) problems.push(`${key}: status { hours } needs “${name}” to be a ${type} field.`)
+      else if (name === 'week' && !weekOfDays(field)) problems.push(`${key}: status { hours } needs “week” to have the rows 'weekdays'.`)
     }
     return problems
   }
@@ -767,9 +805,9 @@ export function mirrorProblem(target: Field, source: Field, siteCurrency: Curren
       if ((source as typeof target).options.some((o) => !allowed.has(o.value))) return 'the source has options the old field does not know'
       return null
     }
-    case 'list': {
+    case 'list': case 'rows': {
       const src = source as typeof target
-      if (target.unique && src.unique !== target.unique) return 'different uniqueness'
+      if (target.type === 'rows' && stableJson(src.type === 'rows' ? src.rows as Json : null) !== stableJson(target.rows as Json)) return 'different rows'
       const tKeys = Object.keys(target.of).sort().join(',')
       if (Object.keys(src.of).sort().join(',') !== tKeys) return 'different columns'
       for (const [key, inner] of Object.entries(target.of)) {
@@ -789,7 +827,7 @@ export function mirrorProblem(target: Field, source: Field, siteCurrency: Curren
 }
 
 function holdsFiles(field: Field): boolean {
-  return field.type === 'image' || field.type === 'file' || (field.type === 'list' && Object.values(field.of).some(holdsFiles))
+  return field.type === 'image' || field.type === 'file' || (isTable(field) && Object.values(field.of).some(holdsFiles))
 }
 
 const NUMBER_OPTIONS = ['min', 'max', 'step', 'maxBytes'] as const
@@ -820,6 +858,15 @@ function isPlatformAddress(value: unknown): boolean {
   }
 }
 
+/** The first live field with `rows: 'weekdays'` or `'workdays'` (`path`: `brick.field`): it needs the site's week. */
+function dayRowsField(bricks: Schema['bricks'] | undefined): { path: string; rows: 'weekdays' | 'workdays' } | undefined {
+  for (const [key, brick] of Object.entries(bricks ?? {})) {
+    if (typeof brick !== 'object' || brick === null || brick.retired) continue
+    for (const [name, field] of Object.entries(brick.fields ?? {})) if (field.type === 'rows' && typeof field.rows === 'string' && !field.retired) return { path: `${key}.${name}`, rows: field.rows }
+  }
+  return undefined
+}
+
 const MISSING_LOCALES = "locales is missing. Write the site's languages, the main language first, for example `locales: ['de', 'en']`."
 const MISSING_TIME_ZONE = "timeZone is missing. Write the site's time zone, for example `timeZone: 'Europe/Vienna'`: Ginko counts today, the week and planned dates in it."
 
@@ -834,7 +881,8 @@ export function isTimeZone(timeZone: unknown): timeZone is string {
   }
 }
 
-function checkField(path: string, field: Field, siblings: Fields, topLevel: boolean, schema: Schema): string[] {
+/** `inRow`: a column of a rows field, whose `after` may name another column of the row. */
+function checkField(path: string, field: Field, siblings: Fields, topLevel: boolean, schema: Schema, inRow = false): string[] {
   const problems: string[] = []
   for (const k of Object.keys(field)) if (!FIELD_KEYS.has(k)) problems.push(`${path}: unknown property “${k}”.`)
   const labelIssue = labelProblem(`${path}.label`, field.label, schema.locales[0] ?? '')
@@ -868,7 +916,7 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       numbersOk = false
     }
   }
-  if (field.default !== undefined) for (const p of checkValue(schema, field, field.default, `${path}.default`)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
+  if (field.default !== undefined) for (const p of checkValueIn(schema, field, field.default, `${path}.default`)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
   // Retirement is per top-level field or brick (SPEC 2.5); a list column cannot be retired on its own. A component's
   // prop can: the editor no longer offers it, and texts that have it stay valid.
   if (!topLevel && field.retired && !path.startsWith('components.')) problems.push(`${path}: columns of a list cannot be retired one by one.`)
@@ -900,19 +948,25 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       for (const o of field.options) { const p = labelProblem(`${path}.${o.value}.label`, o.label, schema.locales[0] ?? ''); if (p) problems.push(p) }
       break
     case 'list':
-      if (!topLevel) problems.push(`${path}: lists cannot be nested.`)
+      if (!topLevel) problems.push(`${path}: lists and rows fields cannot be nested.`)
       if (!(field.max >= 1 && field.max <= 50)) problems.push(`${path}: max must be between 1 and 50.`)
       if (field.min !== undefined && !(Number.isInteger(field.min) && field.min >= 0 && field.min <= field.max)) problems.push(`${path}: min must be between 0 and max.`)
-      if (field.unique !== undefined) {
-        const u = field.of[field.unique]
-        if (!u || u.optional || !['choice', 'text', 'date', 'time'].includes(u.type) || (u.type === 'text' && isTranslatable(u))) problems.push(`${path}: unique needs a required column of type choice, date, time or a text that is not translatable.`)
-      }
       { const p = labelProblem(`${path}.itemLabel`, field.itemLabel, schema.locales[0] ?? ''); if (p) problems.push(p) }
       for (const [name, inner] of Object.entries(field.of)) {
         if (!/^[a-z][a-zA-Z0-9]{0,40}$/.test(name) || name === '_id' || RESERVED_KEYS.has(name)) problems.push(`${path}: invalid column name “${name}”.`)
-        if (inner.type === 'list') problems.push(`${path}.${name}: lists cannot be nested.`)
+        if (isTable(inner)) problems.push(`${path}.${name}: lists and rows fields cannot be nested.`)
         else if (inner.type === 'slug') problems.push(`${path}.${name}: slug is only allowed at the top level.`)
         else problems.push(...checkField(`${path}.${name}`, inner, field.of, false, schema))
+      }
+      break
+    case 'rows':
+      if (!topLevel) problems.push(`${path}: lists and rows fields cannot be nested.`)
+      problems.push(...rowSetProblems(path, field.rows, schema.locales[0] ?? ''))
+      for (const [name, inner] of Object.entries(field.of)) {
+        if (!/^[a-z][a-zA-Z0-9]{0,40}$/.test(name) || name === '_id' || RESERVED_KEYS.has(name)) problems.push(`${path}: invalid column name “${name}”.`)
+        if (isTable(inner)) problems.push(`${path}.${name}: lists and rows fields cannot be nested.`)
+        else if (inner.type === 'slug') problems.push(`${path}.${name}: slug is only allowed at the top level.`)
+        else problems.push(...checkField(`${path}.${name}`, inner, field.of, false, schema, true))
       }
       break
     case 'ref': {
@@ -925,8 +979,8 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
     case 'image': if (field.aspect !== undefined) problems.push(...aspectProblems(path, field.aspect, RESERVED_KEYS)); break
     case 'file': if (!(field.maxBytes > 0 && field.maxBytes <= limitOf('file'))) problems.push(`${path}: maxBytes at most ${formatMb(limitOf('file'))} MB.`); break
     case 'time':
-      if (field.after !== undefined && (!topLevel || siblings[field.after]?.type !== 'time' || field.after === path.split('.').pop())) {
-        problems.push(`${path}.after: “${String(field.after)}” is not another time field of the brick.`)
+      if (field.after !== undefined && (!(topLevel || inRow) || siblings[field.after]?.type !== 'time' || field.after === path.split('.').pop())) {
+        problems.push(`${path}.after: “${String(field.after)}” is not another time field of the ${inRow ? 'row' : 'brick'}.`)
       }
       break
     case 'slug': {

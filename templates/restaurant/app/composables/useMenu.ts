@@ -52,18 +52,18 @@ export function useLunch() {
   const today = useGinkoToday()
   const { ctx } = useHours()
   const siteWeek = useGinkoWeek()
-  const order = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
   const week = computed(() => lunchWeekOn(lunch.value, [], today.value, siteWeek))
   const days = computed(() => {
     const current = week.value
     if (!current) return []
-    return current.data.days.map((day) => {
-      // The week starts on the site's first weekday (Monday or Sunday); the day keys name weekdays.
-      const offset = (order.indexOf(String(day.day)) - order.indexOf(weekdayOf(current.data.weekOf)) + 7) % 7
-      const date = plusDays(current.data.weekOf, offset)
+    // The week runs from its first day (`weekOf`, the site's first weekday); its rows are the site's workdays by day key.
+    return Array.from({ length: 7 }, (_, i) => plusDays(current.data.weekOf, i)).flatMap((date) => {
+      const key = weekdayOf(date)
+      const day = current.data.days[key]
+      if (!day) return []
       const rule = hoursOn(ctx.value, date)
       // `served`: the day's first opening span, when lunch is on.
-      return { ...day, date, today: date === today.value, closed: rule.closed, reason: rule.closed ? rule.reason : undefined, served: rule.closed ? undefined : rule.times[0] }
+      return [{ ...day, day: key, date, today: date === today.value, closed: rule.closed, reason: rule.closed ? rule.reason : undefined, served: rule.closed ? undefined : rule.times[0] }]
     })
   })
   /** When lunch is served: the first opening span of the open lunch days, when it is the same on all of them. */

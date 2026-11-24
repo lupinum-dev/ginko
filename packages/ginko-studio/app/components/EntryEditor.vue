@@ -147,7 +147,7 @@ const prefilled = computed<Record<string, Json>>(() => {
 })
 
 function start() {
-  form.load(props.entry ? { ...props.entry.data } : { ...defaultsFor(fields.value), ...prefilled.value })
+  form.load(props.entry ? { ...props.entry.data } : { ...defaultsFor(fields.value, props.schema.week), ...prefilled.value })
 }
 start()
 // The prefill arrives after the form opened: it fills the new form unless the person has typed already.

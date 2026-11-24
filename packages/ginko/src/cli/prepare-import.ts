@@ -234,6 +234,16 @@ export async function prepareImport(input: PrepareInput): Promise<PrepareResult>
       }
       return rows
     }
+    if (field.type === 'rows' && isObject(value)) {
+      const rows: Record<string, Json> = {}
+      for (const [key, row] of Object.entries(value as Record<string, Json>)) {
+        if (!isObject(row)) { rows[key] = row; continue }
+        const out: Record<string, Json> = { ...(row as Record<string, Json>) }
+        for (const [name, column] of Object.entries(field.of)) if (name in out) out[name] = await walk(column, out[name]!)
+        rows[key] = out
+      }
+      return rows
+    }
     return value
   }
 

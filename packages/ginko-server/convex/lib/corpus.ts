@@ -21,6 +21,12 @@ function withoutFiles(schema: Schema, brick: string, data: Record<string, Json>)
       out[key] = []
       continue
     }
+    // A rows field keeps its rows: only its file cells go.
+    if (field?.type === 'rows' && value && typeof value === 'object' && !Array.isArray(value)) {
+      const files = Object.keys(field.of).filter((k) => field.of[k]!.type === 'image' || field.of[k]!.type === 'file')
+      out[key] = files.length ? Object.fromEntries(Object.entries(value).map(([row, cells]) => [row, cells && typeof cells === 'object' && !Array.isArray(cells) ? Object.fromEntries(Object.entries(cells).filter(([k]) => !files.includes(k))) : cells])) : value
+      continue
+    }
     out[key] = value
   }
   return out

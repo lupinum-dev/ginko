@@ -9,7 +9,7 @@ import industrie from '../sites/industrie/ginko.config.ts'
 import saas from '../sites/saas/ginko.config.ts'
 import restaurant from '../sites/restaurant/ginko.config.ts'
 import {
-  checkSchema, servedBundle, serializeSchema, validate,
+  checkSchema, servedBundle, serializeSchema, startValue, validate,
   type FileInfo, type SiteInput, type StoredEntry,
 } from '../packages/ginko/src/core/index.ts'
 
@@ -63,9 +63,10 @@ export async function render(name: DemoName): Promise<Rendered> {
 
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (brick.kind === 'single') {
-      // A new single is created from defaults on release (SPEC 2.4), so every required field needs one.
+      // A new single is created from defaults on release (SPEC 2.4), so every required field needs one (a rows field
+      // can start from the defaults of its columns).
       for (const [field, def] of Object.entries(brick.fields)) {
-        if (!def.optional && def.default === undefined) problems.push(`${name}: ${key}.${field} ist ein Pflichtfeld ohne default`)
+        if (!def.optional && startValue(def, schema.week) === undefined) problems.push(`${name}: ${key}.${field} ist ein Pflichtfeld ohne default`)
       }
     }
     for (const entry of data[key] ?? []) {

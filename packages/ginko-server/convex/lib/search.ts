@@ -28,6 +28,10 @@ export function searchTexts(field: Field, value: Json | undefined, out: string[]
     for (const row of value) {
       if (row && typeof row === 'object' && !Array.isArray(row)) for (const [key, inner] of Object.entries(field.of)) searchTexts(inner, row[key], out)
     }
+  } else if (field.type === 'rows' && typeof value === 'object' && !Array.isArray(value)) {
+    for (const row of Object.values(value)) {
+      if (row && typeof row === 'object' && !Array.isArray(row)) for (const [key, inner] of Object.entries(field.of)) searchTexts(inner, row[key], out)
+    }
   }
   return out
 }

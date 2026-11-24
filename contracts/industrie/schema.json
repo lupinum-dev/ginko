@@ -13,6 +13,10 @@
     "en": "en-GB"
   },
   "currency": "EUR",
+  "week": {
+    "firstDay": "monday",
+    "workdays": 5
+  },
   "pages": {
     "home": {
       "de": "/",
@@ -57,135 +61,83 @@
       "label": "Empfang und Erreichbarkeit",
       "fields": {
         "week": {
-          "type": "list",
+          "type": "rows",
           "label": "Wochenplan",
-          "itemLabel": "Tag",
+          "rows": "weekdays",
           "of": {
-            "day": {
-              "type": "choice",
-              "label": "Tag",
-              "options": [
-                {
-                  "value": "mo",
-                  "label": "Montag"
-                },
-                {
-                  "value": "tu",
-                  "label": "Dienstag"
-                },
-                {
-                  "value": "we",
-                  "label": "Mittwoch"
-                },
-                {
-                  "value": "th",
-                  "label": "Donnerstag"
-                },
-                {
-                  "value": "fr",
-                  "label": "Freitag"
-                },
-                {
-                  "value": "sa",
-                  "label": "Samstag"
-                },
-                {
-                  "value": "su",
-                  "label": "Sonntag"
-                }
-              ],
-              "pos": 0
-            },
             "closed": {
               "type": "boolean",
               "label": "Geschlossen",
-              "pos": 1
+              "pos": 0
             },
             "from1": {
               "type": "time",
               "label": "Vormittag von",
               "optional": true,
-              "pos": 2
+              "pos": 1
             },
             "to1": {
               "type": "time",
               "label": "Vormittag bis",
               "optional": true,
-              "pos": 3
+              "pos": 2
             },
             "from2": {
               "type": "time",
               "label": "Nachmittag von",
               "optional": true,
-              "pos": 4
+              "pos": 3
             },
             "to2": {
               "type": "time",
               "label": "Nachmittag bis",
               "optional": true,
-              "pos": 5
+              "pos": 4
             }
           },
-          "max": 7,
-          "min": 7,
-          "unique": "day",
-          "default": [
-            {
-              "_id": "wkmo000000",
-              "day": "mo",
+          "default": {
+            "mo": {
               "closed": false,
               "from1": "07:00",
               "to1": "12:00",
               "from2": "12:30",
               "to2": "16:00"
             },
-            {
-              "_id": "wktu000000",
-              "day": "tu",
+            "tu": {
               "closed": false,
               "from1": "07:00",
               "to1": "12:00",
               "from2": "12:30",
               "to2": "16:00"
             },
-            {
-              "_id": "wkwe000000",
-              "day": "we",
+            "we": {
               "closed": false,
               "from1": "07:00",
               "to1": "12:00",
               "from2": "12:30",
               "to2": "16:00"
             },
-            {
-              "_id": "wkth000000",
-              "day": "th",
+            "th": {
               "closed": false,
               "from1": "07:00",
               "to1": "12:00",
               "from2": "12:30",
               "to2": "16:00"
             },
-            {
-              "_id": "wkfr000000",
-              "day": "fr",
+            "fr": {
               "closed": false,
               "from1": "07:00",
               "to1": "12:00",
               "from2": "12:30",
               "to2": "16:00"
             },
-            {
-              "_id": "wksa000000",
-              "day": "sa",
+            "sa": {
               "closed": true
             },
-            {
-              "_id": "wksu000000",
-              "day": "su",
+            "su": {
               "closed": true
             }
-          ],
+          },
           "pos": 0
         },
         "exceptions": {

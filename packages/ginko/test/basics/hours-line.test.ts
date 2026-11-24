@@ -5,10 +5,12 @@
 import { describe, expect, it } from 'vitest'
 import { hoursLine, type HoursLineContext } from '../../src/basics/index.ts'
 
-const week = (['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const).map((day) => (day === 'mo'
-  ? { _id: `wk${day}`, day, closed: true }
-  : { _id: `wk${day}`, day, closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00' }))
-const winter = { from: '2026-11-01', week: week.map((d) => (d.closed ? d : { ...d, from1: '17:00', to1: '21:30', from2: undefined, to2: undefined })) }
+const days = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const
+const week = Object.fromEntries(days.map((day) => [day, day === 'mo'
+  ? { closed: true }
+  : { closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00' }]))
+const winter = { from: '2026-11-01', week: Object.fromEntries(Object.entries(week).map(([day, d]) => [day, d.closed ? d : { ...d, from1: '17:00', to1: '21:30', from2: undefined, to2: undefined }])) }
+const without = (gone: string) => Object.fromEntries(Object.entries(week).filter(([day]) => day !== gone))
 const hours = (over: Record<string, unknown> = {}) => ({ week, exceptions: [], holidays: 'closed', ...over })
 const at = (iso: string, over: Partial<HoursLineContext> = {}): HoursLineContext => ({ timeZone: 'Europe/Vienna', now: new Date(iso), ...over })
 const both = [['11:30', '14:00'], ['17:30', '22:00']]
@@ -27,17 +29,17 @@ describe('hoursLine', () => {
     ['the same day with no public holidays', hours(), at('2026-11-01T08:00:00Z', { holidays: 'none' }), { state: 'open', ranges: both }],
     // No stored calendar: a gastro site released before `country` still closes on Austrian holidays, a basics site does not.
     ['the same day, no calendar stored', hours(), at('2026-11-01T08:00:00Z'), { state: 'unknown', calendar: true }],
-    ['no row for that day, no calendar stored', hours({ week: week.filter((d) => d.day !== 'su') }), at('2026-11-01T08:00:00Z'), { state: 'unknown' }],
+    ['no row for that day, no calendar stored', hours({ week: without('su') }), at('2026-11-01T08:00:00Z'), { state: 'unknown' }],
     ['the same day, no calendar stored, open on holidays', hours({ holidays: 'normal' }), at('2026-11-01T08:00:00Z'), { state: 'open', ranges: both }],
     ['a closure on that day, no calendar stored', hours({ closedOn: '2026-11-01', closedNote: 'Feiertag' }), at('2026-11-01T08:00:00Z'), { state: 'closed', reason: 'Feiertag' }],
     ['a calendar in code could decide', hours(), at('2026-11-01T08:00:00Z', { holidays: 'custom' }), { state: 'unknown', calendar: true }],
-    ['a calendar in code, no row for today', hours({ week: week.filter((d) => d.day !== 'tu') }), at('2026-10-13T08:00:00Z', { holidays: 'custom' }), { state: 'unknown' }],
+    ['a calendar in code, no row for today', hours({ week: without('tu') }), at('2026-10-13T08:00:00Z', { holidays: 'custom' }), { state: 'unknown' }],
     ['a closure decides before any calendar', hours({ closedOn: '2026-11-01' }), at('2026-11-01T08:00:00Z', { holidays: 'custom' }), { state: 'closed' }],
     ['a plan from today', hours(), at('2026-11-03T08:00:00Z', { plans: [winter] }), { state: 'open', ranges: [['17:00', '21:30']] }],
-    ['open without times', hours({ week: week.map((d) => ({ _id: d._id, day: d.day, closed: false })) }), at('2026-10-13T08:00:00Z'), { state: 'unknown' }],
-    ['no row for today', hours({ week: week.filter((d) => d.day !== 'tu') }), at('2026-10-13T08:00:00Z'), { state: 'unknown' }],
+    ['open without times', hours({ week: Object.fromEntries(days.map((day) => [day, { closed: false }])) }), at('2026-10-13T08:00:00Z'), { state: 'unknown' }],
+    ['no row for today', hours({ week: without('tu') }), at('2026-10-13T08:00:00Z'), { state: 'unknown' }],
     ['not hours at all', null, at('2026-10-13T08:00:00Z'), { state: 'unknown' }],
-    ['a week that is no list', { week: 'mo-fr' }, at('2026-10-13T08:00:00Z'), { state: 'unknown' }],
+    ['a week that is no object of days', { week: 'mo-fr' }, at('2026-10-13T08:00:00Z'), { state: 'unknown' }],
   ])('%s', (_, data, ctx, line) => {
     expect(hoursLine(data, ctx)).toEqual(line)
   })

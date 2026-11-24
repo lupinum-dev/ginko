@@ -18,7 +18,7 @@ const first = computed(() => Math.max(0, days.value.findIndex((day) => day.today
   <ol class="flex flex-col border-t">
     <li
       v-for="(day, index) in days"
-      :key="day._id"
+      :key="day.day"
       :aria-current="day.today ? 'date' : undefined"
       :class="index < first && 'not-print:hidden'"
       class="grid gap-x-6 gap-y-1 border-b px-3 py-4 break-inside-avoid aria-[current=date]:bg-muted sm:grid-cols-[11rem_1fr_auto] sm:items-baseline print:aria-[current=date]:bg-transparent"
@@ -32,7 +32,7 @@ const first = computed(() => Math.max(0, days.value.findIndex((day) => day.today
       </template>
       <template v-else>
         <div class="flex flex-col gap-1.5">
-          <p data-lunch-dish class="font-medium" :lang="langOf(lunch, `days.${day._id}.dish`)">{{ day.dish }}</p>
+          <p data-lunch-dish class="font-medium" :lang="langOf(lunch, `days.${day.day}.dish`)">{{ day.dish }}</p>
           <MenuAllergens v-if="!isLunchPlaceholder(day.dish)" :codes="day.allergens.map(String)" />
         </div>
         <p v-if="day.price" class="tabular-nums sm:text-end">{{ formatMoney(day.price, language) }}</p>

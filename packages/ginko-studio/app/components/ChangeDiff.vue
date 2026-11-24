@@ -10,7 +10,7 @@ import { fileRefOf, isShown, ordered } from '@lupinum/ginko/internal'
 import { GinkoMarkdown } from '@lupinum/ginko/vue'
 import { computedAsync } from '@vueuse/core'
 import { computed, defineComponent, h } from 'vue'
-import { displayValue, rowTitle } from '../utils/content'
+import { displayValue, rowLabel, rowTitle } from '../utils/content'
 import { markdownDiff, pictureIdsOf, type BlockChange } from '../utils/markdownDiff'
 import { paragraphDiff } from '../utils/paragraphDiff'
 import { useStudioSite } from '../utils/labels'
@@ -44,7 +44,7 @@ interface Cell { key: string; label: string; before?: string; after?: string; ke
 
 function columnsOf(d: DiffField): Fields {
   const field = props.fields && Object.hasOwn(props.fields, d.field) ? props.fields[d.field] : undefined
-  return field?.type === 'list' ? field.of : {}
+  return field?.type === 'list' || field?.type === 'rows' ? field.of : {}
 }
 
 const filled = (value: Json | undefined) => value !== undefined && value !== null && value !== ''
@@ -61,8 +61,9 @@ function rowView(d: DiffField, row: RowDiff) {
   const columns = columnsOf(d)
   const list = props.fields && Object.hasOwn(props.fields, d.field) ? props.fields[d.field] : undefined
   const data = (row.after ?? row.before) as Record<string, Json> | null
-  const named = rowTitle(columns, row.before ?? row.after, props.locale, { t, format })
-  const title = named?.text || (list?.type === 'list' ? shown(list.itemLabel) : '')
+  // A row of a rows field is named by its row ("Montag"); a list row by its first text column.
+  const named = list?.type === 'rows' ? undefined : rowTitle(columns, row.before ?? row.after, props.locale, { t, format })
+  const title = list?.type === 'rows' ? rowLabel(list, row.id, props.locale, { t, format }) : named?.text || (list?.type === 'list' ? shown(list.itemLabel) : '')
   const label = (key: string) => (Object.hasOwn(columns, key) ? shown(columns[key]!.label) : key)
   const cells: Cell[] = row.change === 'changed' ? changedCells(columns, row, named?.key, label) : Object.keys(columns).filter((key) => key !== named?.key && data && filled(data[key])).map((key) => ({ key, label: label(key), after: cellText(columns, key, data![key]) }))
   return { id: row.id, change: row.change, title, cells }

@@ -1,12 +1,12 @@
-// Rows of a list field compared by their `_id`: what History shows of a list change, and the merge when
-// two people changed the same list at once. Pure functions, shared by the server and the Studio.
+// Rows of a list field compared by their `_id`, and rows of a rows field by their key: what History shows of a change,
+// and the merge when two people changed the same list at once. Pure functions, shared by the server and the Studio.
 import { stableJson } from './sha256.ts'
 import type { Json } from './types.ts'
 
 type Row = Record<string, Json>
 
 export interface RowDiff {
-  /** The row's `_id`; `#<index>` for a row without one (legacy data). */
+  /** The row's `_id` (`#<index>` for a list row without one, legacy data), or a rows field's row key. */
   id: string
   change: 'added' | 'removed' | 'changed'
   before: Json | null
@@ -38,6 +38,23 @@ export function rowDiffs(before: Json | null | undefined, after: Json | null | u
   const kept = (map: Map<string, unknown>, other: Map<string, unknown>) => [...map.keys()].filter((id) => other.has(id))
   const reordered = kept(oldById, nextById).join('\n') !== kept(nextById, oldById).join('\n')
   return reordered ? { rows, reordered } : { rows }
+}
+
+/** Added, removed and changed rows of a rows field (`{ mo: { … }, … }`) by row key, in the order of `after`. */
+export function keyedRowDiffs(before: Json | null | undefined, after: Json | null | undefined): { rows: RowDiff[] } {
+  const was = isRow(before) ? before : {}
+  const now = isRow(after) ? after : {}
+  const rows: RowDiff[] = []
+  for (const [key, row] of Object.entries(now)) {
+    const old = Object.hasOwn(was, key) ? was[key] : undefined
+    if (old === undefined) rows.push({ id: key, change: 'added', before: null, after: row })
+    else if (differs(old, row)) {
+      const fields = isRow(old) && isRow(row) ? [...new Set([...Object.keys(old), ...Object.keys(row)])].filter((k) => differs(old[k], row[k])) : undefined
+      rows.push({ id: key, change: 'changed', before: old, after: row, ...(fields ? { fields } : {}) })
+    }
+  }
+  for (const [key, row] of Object.entries(was)) if (!Object.hasOwn(now, key)) rows.push({ id: key, change: 'removed', before: row, after: null })
+  return { rows }
 }
 
 /**

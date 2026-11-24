@@ -13,7 +13,7 @@ describe('labels', () => {
     expect(schema).toContain('{"de":"Öffnungszeiten","en":"Opening hours"}')
     expect(schema).toContain('{"de":"Heute geschlossen","en":"Closed today"}')
     expect(schema).toContain('{"de":"Mittagsmenü","en":"Lunch menu"}')
-    expect(schema).toContain('{"de":"Montag","en":"Monday"}')
+    expect(schema).toContain('{"de":"Wochenplan","en":"Weekly hours"}')
     expect(schema).toContain('{"de":"Geplanter Preis","en":"Planned price"}')
   })
   it('the lunch plan task has both languages', () => {

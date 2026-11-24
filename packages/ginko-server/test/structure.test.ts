@@ -322,14 +322,14 @@ describe('tasks.prefill', () => {
     const plan = entries['plan-kw42']!
     const values = await as.cook.query(api.tasks.prefill, { site: 'restaurant', task: 'lunch.lunchWeek', entry: plan })
     expect(values).toMatchObject({ weekOf: '2026-10-12' })
-    const days = (values as { days: { day: string }[] }).days
-    expect(days[1]).toMatchObject({ day: 'tu', dish: { de: 'Krautfleckerl mit Speck' } })
-    const fields = { days: days.map((d) => (d.day === 'tu' ? { ...d, dish: { de: 'Kürbisgulasch' } } : d)) }
+    const days = (values as { days: Record<string, Record<string, unknown>> }).days
+    expect(days.tu).toMatchObject({ dish: { de: 'Krautfleckerl mit Speck' } })
+    const fields = { days: { ...days, tu: { ...days.tu, dish: { de: 'Kürbisgulasch' } } } }
     // The task needs approval, also on the planned week: a proposal, then live once the owner says yes.
     const proposed = await as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: plan, baseRev: 1, fields }) as { proposal: Id<'proposals'> }
     expect(proposed).toMatchObject({ status: 'open' })
     await as.owner.mutation(api.proposals.approve, { proposal: proposed.proposal })
-    expect(((await t.run((ctx) => ctx.db.get(plan)))!.data as { days: { dish: unknown }[] }).days[1]!.dish).toEqual({ de: 'Kürbisgulasch' })
+    expect(((await t.run((ctx) => ctx.db.get(plan)))!.data as { days: Record<string, { dish: unknown }> }).days.tu!.dish).toEqual({ de: 'Kürbisgulasch' })
 
     // A week ahead the same week is a later one. A fresh backend: Convex time never goes back.
     vi.setSystemTime(new Date('2026-10-06T08:00:00Z'))

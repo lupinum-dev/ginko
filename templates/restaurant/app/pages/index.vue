@@ -84,7 +84,7 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead, image: home.v
           <a v-if="maps" :href="maps" rel="noopener" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ t('maps') }}</a>
         </p>
         <p v-if="lunchCard && !isLunchPlaceholder(lunchCard.day.dish)">
-          <a href="#lunch" class="inline-block py-2.5 font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ lunchCard.title }}: <span :lang="langOf(lunch, `days.${lunchCard.day._id}.dish`)">{{ lunchCard.day.dish }}</span><template v-if="lunchCard.day.price"> · <span class="whitespace-nowrap tabular-nums">{{ formatMoney(lunchCard.day.price, language) }}</span></template></a>
+          <a href="#lunch" class="inline-block py-2.5 font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ lunchCard.title }}: <span :lang="langOf(lunch, `days.${lunchCard.day.day}.dish`)">{{ lunchCard.day.dish }}</span><template v-if="lunchCard.day.price"> · <span class="whitespace-nowrap tabular-nums">{{ formatMoney(lunchCard.day.price, language) }}</span></template></a>
         </p>
       </div>
     </BlockHero>
@@ -92,7 +92,7 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead, image: home.v
     <BlockSection v-if="lunchCard" id="lunch" :title="lunchCard.title" :lead="lunchCard.day.served ? tm('lunch.served', { from: lunchCard.day.served.from, to: lunchCard.day.served.to }) : undefined">
       <div class="flex flex-col gap-4 rounded-block border p-6">
         <div class="flex items-baseline justify-between gap-6">
-          <p class="text-body font-semibold" :lang="langOf(lunch, `days.${lunchCard.day._id}.dish`)">{{ lunchCard.day.dish }}</p>
+          <p class="text-body font-semibold" :lang="langOf(lunch, `days.${lunchCard.day.day}.dish`)">{{ lunchCard.day.dish }}</p>
           <p v-if="lunchCard.day.price" class="shrink-0 text-body tabular-nums">{{ formatMoney(lunchCard.day.price, language) }}</p>
         </div>
         <p v-if="lunchAllergens" class="text-small text-muted-foreground">{{ tm('allergens.label', { names: lunchAllergens }) }}</p>

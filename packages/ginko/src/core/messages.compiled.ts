@@ -339,18 +339,39 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " Einträge."
    ],
-   "duplicateRowValue": [
+   "notRows": [
     "„",
     [
      "a",
      "label"
     ],
-    "“: „",
+    "“ braucht ein Objekt mit einer Zeile je Zeilenschlüssel."
+   ],
+   "rowMissing": [
+    "„",
     [
      "a",
-     "value"
+     "label"
     ],
-    "“ kommt mehrfach vor."
+    "“: Die Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ fehlt."
+   ],
+   "unknownRow": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Eine Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ gibt es nicht."
    ],
    "badRowId": [
     "„",
@@ -1237,21 +1258,44 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“."
    ],
-   "uniqueChanged": [
-    "„",
+   "rowAdded": [
+    "Neue Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ in „",
     [
      "a",
      "at"
     ],
-    "“: unique kann nicht neu gesetzt oder geändert werden."
+    "“, gefüllt mit den default-Werten der Spalten."
    ],
-   "uniqueDropped": [
+   "rowWithoutDefault": [
+    "Neue Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ in „",
+    [
+     "a",
+     "at"
+    ],
+    "“: Eine Pflichtspalte hat kein default."
+   ],
+   "rowRemoved": [
     "„",
     [
      "a",
      "at"
     ],
-    "“: unique entfällt."
+    "“: Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ fehlt."
    ],
    "fix": {
     "newField": "Neues Feld anlegen, mit einer Migration füllen und das alte Feld unter `retired` eintragen.",
@@ -1276,7 +1320,8 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "min beibehalten.",
     "minOnGrid": "min so senken, dass der Unterschied ein Vielfaches von step ist.",
     "keepOption": "Option behalten; sie kann umbenannt (label) werden.",
-    "newList": "Neue Liste anlegen und mit einer Migration füllen.",
+    "keepRow": "Zeile behalten; ihr label kann sich ändern.",
+    "rowDefaults": "Gib jeder Pflichtspalte ein default oder mach sie optional.",
     "factInUse": "Nimm die Angabe zuerst aus diesen Texten oder lass sie in `facts`."
    },
    "factInUse": [
@@ -1654,18 +1699,39 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " items."
    ],
-   "duplicateRowValue": [
+   "notRows": [
     "“",
     [
      "a",
      "label"
     ],
-    "”: “",
+    "” needs an object with one row per row key."
+   ],
+   "rowMissing": [
+    "“",
     [
      "a",
-     "value"
+     "label"
     ],
-    "” appears more than once."
+    "”: the row “",
+    [
+     "a",
+     "row"
+    ],
+    "” is missing."
+   ],
+   "unknownRow": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: there is no row “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
    ],
    "badRowId": [
     "“",
@@ -2552,21 +2618,44 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”."
    ],
-   "uniqueChanged": [
-    "“",
+   "rowAdded": [
+    "New row “",
+    [
+     "a",
+     "row"
+    ],
+    "” in “",
     [
      "a",
      "at"
     ],
-    "”: unique cannot be set or changed."
+    "”, filled with the defaults of the columns."
    ],
-   "uniqueDropped": [
+   "rowWithoutDefault": [
+    "New row “",
+    [
+     "a",
+     "row"
+    ],
+    "” in “",
+    [
+     "a",
+     "at"
+    ],
+    "”: a required column has no default."
+   ],
+   "rowRemoved": [
     "“",
     [
      "a",
      "at"
     ],
-    "”: unique removed."
+    "”: row “",
+    [
+     "a",
+     "row"
+    ],
+    "” is missing."
    ],
    "fix": {
     "newField": "Add a new field, fill it with a migration and list the old field under `retired`.",
@@ -2591,7 +2680,8 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Keep min.",
     "minOnGrid": "Lower min so that the difference is a multiple of step.",
     "keepOption": "Keep the option; it can be renamed (label).",
-    "newList": "Add a new list and fill it with a migration.",
+    "keepRow": "Keep the row; its label can change.",
+    "rowDefaults": "Give every required column a default, or make it optional.",
     "factInUse": "Take the fact out of these texts first, or keep it in `facts`."
    },
    "factInUse": [
@@ -2969,18 +3059,39 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " elementos."
    ],
-   "duplicateRowValue": [
+   "notRows": [
     "“",
     [
      "a",
      "label"
     ],
-    "”: “",
+    "” necesita un objeto con una fila por clave de fila."
+   ],
+   "rowMissing": [
+    "“",
     [
      "a",
-     "value"
+     "label"
     ],
-    "” aparece más de una vez."
+    "”: falta la fila “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
+   ],
+   "unknownRow": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: no existe la fila “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
    ],
    "badRowId": [
     "“",
@@ -3869,21 +3980,44 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”."
    ],
-   "uniqueChanged": [
-    "“",
+   "rowAdded": [
+    "Fila nueva “",
+    [
+     "a",
+     "row"
+    ],
+    "” en “",
     [
      "a",
      "at"
     ],
-    "”: unique no se puede definir ni cambiar."
+    "”, rellenada con los valores predeterminados de las columnas."
    ],
-   "uniqueDropped": [
+   "rowWithoutDefault": [
+    "Fila nueva “",
+    [
+     "a",
+     "row"
+    ],
+    "” en “",
+    [
+     "a",
+     "at"
+    ],
+    "”: una columna obligatoria no tiene valor predeterminado."
+   ],
+   "rowRemoved": [
     "“",
     [
      "a",
      "at"
     ],
-    "”: unique eliminado."
+    "”: falta la fila “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
    ],
    "fix": {
     "newField": "Añade un campo nuevo, rellénalo con una migración y lista el campo anterior en `retired`.",
@@ -3908,7 +4042,8 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Conserva min.",
     "minOnGrid": "Reduce min para que la diferencia sea un múltiplo de step.",
     "keepOption": "Conserva la opción; se puede renombrar (label).",
-    "newList": "Añade una lista nueva y rellénala con una migración.",
+    "keepRow": "Conserva la fila; su label puede cambiar.",
+    "rowDefaults": "Da a cada columna obligatoria un valor predeterminado o hazla opcional.",
     "factInUse": "Quita primero el dato de esos textos o déjalo en `facts`."
    },
    "factInUse": [
@@ -4286,18 +4421,39 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " éléments."
    ],
-   "duplicateRowValue": [
-    "« ",
+   "notRows": [
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : « ",
+    " » exige un objet avec une ligne par clé de ligne."
+   ],
+   "rowMissing": [
+    "« ",
     [
      "a",
-     "value"
+     "label"
     ],
-    " » apparaît plusieurs fois."
+    " » : la ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " » est manquante."
+   ],
+   "unknownRow": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : il n’existe pas de ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " »."
    ],
    "badRowId": [
     "« ",
@@ -5185,21 +5341,44 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " »."
    ],
-   "uniqueChanged": [
-    "« ",
+   "rowAdded": [
+    "Nouvelle ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " » dans « ",
     [
      "a",
      "at"
     ],
-    " » : unique ne peut être ni défini ni modifié."
+    " », remplie avec les valeurs par défaut des colonnes."
    ],
-   "uniqueDropped": [
-    "« ",
+   "rowWithoutDefault": [
+    "Nouvelle ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " » dans « ",
     [
      "a",
      "at"
     ],
-    " » : unique a été retiré."
+    " » : une colonne obligatoire n’a pas de valeur par défaut."
+   ],
+   "rowRemoved": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : la ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " » est manquante."
    ],
    "fix": {
     "newField": "Ajoutez un nouveau champ, remplissez-le avec une migration et listez l’ancien champ sous `retired`.",
@@ -5224,7 +5403,8 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Conservez min.",
     "minOnGrid": "Abaissez min pour que la différence soit un multiple de step.",
     "keepOption": "Conservez l’option ; elle peut être renommée (label).",
-    "newList": "Ajoutez une nouvelle liste et remplissez-la avec une migration.",
+    "keepRow": "Conservez la ligne ; son label peut changer.",
+    "rowDefaults": "Donnez une valeur par défaut à chaque colonne obligatoire, ou rendez-la facultative.",
     "factInUse": "Retirez d’abord la donnée de ces textes ou gardez-la dans `facts`."
    },
    "factInUse": [
@@ -5602,18 +5782,39 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " elementi."
    ],
-   "duplicateRowValue": [
+   "notRows": [
     "“",
     [
      "a",
      "label"
     ],
-    "”: “",
+    "” richiede un oggetto con una riga per chiave di riga."
+   ],
+   "rowMissing": [
+    "“",
     [
      "a",
-     "value"
+     "label"
     ],
-    "” compare più di una volta."
+    "”: manca la riga “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
+   ],
+   "unknownRow": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: non esiste una riga “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
    ],
    "badRowId": [
     "“",
@@ -6502,21 +6703,44 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”."
    ],
-   "uniqueChanged": [
-    "“",
+   "rowAdded": [
+    "Nuova riga “",
+    [
+     "a",
+     "row"
+    ],
+    "” in “",
     [
      "a",
      "at"
     ],
-    "”: unique non può essere impostato né modificato."
+    "”, riempita con i valori predefiniti delle colonne."
    ],
-   "uniqueDropped": [
+   "rowWithoutDefault": [
+    "Nuova riga “",
+    [
+     "a",
+     "row"
+    ],
+    "” in “",
+    [
+     "a",
+     "at"
+    ],
+    "”: una colonna obbligatoria non ha un valore predefinito."
+   ],
+   "rowRemoved": [
     "“",
     [
      "a",
      "at"
     ],
-    "”: unique è stato rimosso."
+    "”: manca la riga “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
    ],
    "fix": {
     "newField": "Aggiungi un nuovo campo, riempilo con una migrazione ed elenca il vecchio campo sotto `retired`.",
@@ -6541,7 +6765,8 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Mantieni min.",
     "minOnGrid": "Abbassa min in modo che la differenza sia un multiplo di step.",
     "keepOption": "Mantieni l’opzione; può essere rinominata (label).",
-    "newList": "Aggiungi un nuovo elenco e riempilo con una migrazione.",
+    "keepRow": "Mantieni la riga; il suo label può cambiare.",
+    "rowDefaults": "Dai a ogni colonna obbligatoria un valore predefinito o rendila facoltativa.",
     "factInUse": "Togli prima il dato da questi testi o lascialo in `facts`."
    },
    "factInUse": [
@@ -6987,18 +7212,39 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " على الأقل."
    ],
-   "duplicateRowValue": [
+   "notRows": [
+    "يحتاج «",
+    [
+     "a",
+     "label"
+    ],
+    "» إلى كائن فيه صف لكل مفتاح صف."
+   ],
+   "rowMissing": [
     "«",
     [
      "a",
      "label"
     ],
-    "»: القيمة «",
+    "»: الصف «",
     [
      "a",
-     "value"
+     "row"
     ],
-    "» تتكرّر أكثر من مرة."
+    "» مفقود."
+   ],
+   "unknownRow": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: لا يوجد صف «",
+    [
+     "a",
+     "row"
+    ],
+    "»."
    ],
    "badRowId": [
     "«",
@@ -8004,21 +8250,44 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "»."
    ],
-   "uniqueChanged": [
-    "«",
+   "rowAdded": [
+    "صف جديد «",
+    [
+     "a",
+     "row"
+    ],
+    "» في «",
     [
      "a",
      "at"
     ],
-    "»: لا يمكن تعيين unique أو تغييره."
+    "»، مملوء بالقيم الافتراضية للأعمدة."
    ],
-   "uniqueDropped": [
+   "rowWithoutDefault": [
+    "صف جديد «",
+    [
+     "a",
+     "row"
+    ],
+    "» في «",
+    [
+     "a",
+     "at"
+    ],
+    "»: عمود مطلوب بلا قيمة افتراضية."
+   ],
+   "rowRemoved": [
     "«",
     [
      "a",
      "at"
     ],
-    "»: تمت إزالة unique."
+    "»: الصف «",
+    [
+     "a",
+     "row"
+    ],
+    "» مفقود."
    ],
    "fix": {
     "newField": "أضِف حقلًا جديدًا، واملأه بترحيل، وأدرج الحقل القديم تحت `retired`.",
@@ -8043,7 +8312,8 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "أبقِ min.",
     "minOnGrid": "اخفض min بحيث يكون الفرق مضاعفًا لـ step.",
     "keepOption": "أبقِ الخيار؛ يمكن إعادة تسميته (label).",
-    "newList": "أضِف قائمة جديدة واملأها بترحيل.",
+    "keepRow": "أبقِ الصف؛ يمكن تغيير label الخاص به.",
+    "rowDefaults": "أعطِ كل عمود مطلوب قيمة افتراضية أو اجعله اختياريًا.",
     "factInUse": "احذف المعلومة من هذه النصوص أولًا، أو أبقِها في `facts`."
    },
    "factInUse": [

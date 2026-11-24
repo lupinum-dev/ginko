@@ -115,8 +115,9 @@ describe('reminders.sweep', () => {
     const s = await setup()
     await s.t.run(async (ctx) => {
       const hours = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'hours')).first())!
-      const data = hours.data as { week: { day: string }[] }
-      await ctx.db.patch(hours._id, { data: { ...data, week: data.week.filter((d) => d.day !== 'mo') } })
+      const data = hours.data as { week: Record<string, unknown> }
+      const { mo: _mo, ...week } = data.week
+      await ctx.db.patch(hours._id, { data: { ...data, week } as typeof hours.data })
     })
     await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })
     const sent = await mails(s.t)
