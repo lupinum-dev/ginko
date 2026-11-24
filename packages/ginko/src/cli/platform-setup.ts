@@ -44,6 +44,13 @@ interface State {
   deployed?: boolean
 }
 
+/** The `--deployment` reference of the production deployment that setup made, or undefined before setup made one. */
+export function productionDeployment(cwd: string): string | undefined {
+  const path = join(cwd, STATE_FILE)
+  if (!existsSync(path)) return undefined
+  return (JSON.parse(readFileSync(path, 'utf8')) as State).convex?.deployment
+}
+
 /** The name of the deploy key that setup creates for Vercel's production builds. */
 const KEY_NAME = 'ginko-platform-vercel'
 /** Vercel sets the client IP in this header; the Studio and the backend trust it only with the proxy secret. */

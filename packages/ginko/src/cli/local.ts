@@ -170,11 +170,11 @@ export type Runner = (fn: string, args: Record<string, unknown>) => Promise<unkn
 
 /**
  * Confirms the local deployment and returns the runner for it. Throws before anything is written when
- * the Convex CLI points anywhere else. `backendDir` is the Convex project (backendAt).
+ * the Convex CLI points anywhere else. `backendDir` is the Convex project (backendAt). Tests replace `exec`.
  */
-export function connectLocal(backendDir: string, command: string): Runner {
+export function connectLocal(backendDir: string, command: string, exec: typeof runOnce = runOnce): Runner {
   const env = targetEnv(confirmLocal(backendDir, command))
-  return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', fn, JSON.stringify(args)], backendDir, env))
+  return async (fn, args) => parseOutput(await exec('npx', ['convex', 'run', fn, JSON.stringify(args)], backendDir, env))
 }
 
 /** The JSON value that `convex run` prints; it may be preceded by progress lines. Undefined when there is none. */
@@ -241,4 +241,14 @@ export function runOnce(command: string, args: string[], cwd: string, env: NodeJ
  */
 export function connectProd(backendDir: string): Runner {
   return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', '--prod', fn, JSON.stringify(args)], backendDir))
+}
+
+/**
+ * The runner for one named deployment (`ginko-platform import --prod`): every call is `npx convex run --deployment <ref>`,
+ * in the Convex project backendDir, with the Convex CLI's login. The reference comes from ginko-platform.json, which
+ * `ginko-platform setup` writes, never from .env.local (that one selects the local backend). The caller has made the
+ * person say `--prod`.
+ */
+export function connectDeployment(backendDir: string, deployment: string, exec: typeof runOnce = runOnce): Runner {
+  return async (fn, args) => parseOutput(await exec('npx', ['convex', 'run', '--deployment', deployment, fn, JSON.stringify(args)], backendDir))
 }

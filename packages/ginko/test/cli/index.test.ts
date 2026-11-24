@@ -165,11 +165,24 @@ describe('ginko-platform', () => {
     ['no command', [], 'Give a command.'],
     ['an unknown command', ['start'], 'Unknown command "start".'],
     ['an extra argument', ['dev', 'now'], 'Unknown argument "now".'],
+    // Wrong behaviour caught: an import without a folder or a second folder silently picks one.
+    ['import without a folder', ['import', '--site', 'linde'], 'import needs a folder.'],
+    ['import with two folders', ['import', 'a', 'b', '--site', 'linde'], 'Unknown argument "b".'],
   ])('%s: exit 2 with the usage', async (_name, argv, message) => {
     const { code, error } = await platform(argv)
     expect(code).toBe(2)
     expect(error).toContain(message)
     expect(error).toContain('Usage: ginko-platform <command>')
+  })
+
+  // Wrong behaviour caught: an import without --site writes into the site named in export.json, which may be another one.
+  it('import without --site: exit 2, nothing imported', async () => {
+    let imported = false
+    const error: string[] = []
+    const code = await platformMain(['import', 'folder'], { cwd: import.meta.dirname, log: () => undefined, error: (line) => error.push(line), import: async () => { imported = true; return { entries: 0, files: 0 } } })
+    expect(code).toBe(2)
+    expect(imported).toBe(false)
+    expect(error.join('\n')).toContain('needs --site <slug>')
   })
 
   // Wrong behaviour caught: run in the wrong folder, `convex dev` would create a new, empty Convex project there.
@@ -200,13 +213,47 @@ describe('ginko-platform', () => {
         showOutput: (replay?: string) => { shown.push(replay) },
         onStop: () => undefined, stopping: () => false,
       } as unknown as LocalPlatform
-      void platformMain(['dev'], { cwd: dir, log: (line) => log.push(line), error: () => { errors++ }, startPlatform: async () => fake })
+      void platformMain(['dev'], { cwd: dir, log: (line) => log.push(line), error: () => { errors++ }, startPlatform: async () => fake, loadDemo: async () => false })
       await vi.advanceTimersByTimeAsync(120_000)
       expect(log.includes('The Studio is not ready after 2 minutes. Its output follows.')).toBe(notice)
       expect(shown).toEqual(notice ? ['studio'] : [undefined])
       expect(errors).toBe(0)
     } finally {
       vi.useRealTimers()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  // Wrong behaviour caught: the demo sentence is lost above the ready block, or --no-demo still loads the demo.
+  it.each([
+    ['dev: the demo sentence follows the ready block', ['dev'], true],
+    ['dev --no-demo: no demo is loaded', ['dev', '--no-demo'], false],
+  ])('%s', async (_name, argv, withDemo) => {
+    const dir = mkdtempSync(join(tmpdir(), 'ginko-platform-'))
+    writeFileSync(join(dir, 'convex.json'), '{}')
+    try {
+      const log: string[] = []
+      let loads = 0
+      let ready: () => void = () => undefined
+      const fake = {
+        target: { kind: 'local' }, admin: 'admin@example.test', exited: new Promise<number>(() => undefined),
+        start: (_name: string, _cmd: string, _args: string[], _cwd: string, options?: { onLine?: (line: string) => void }) => {
+          ready = () => options?.onLine?.('[nitro] ✔ Nuxt Nitro server built in 797ms')
+          return {}
+        },
+        showOutput: () => undefined, onStop: () => undefined, stopping: () => false,
+      } as unknown as LocalPlatform
+      void platformMain(argv, { cwd: dir, log: (line) => log.push(line), error: () => undefined, startPlatform: async () => fake, loadDemo: async () => { loads++; return true } })
+      await vi.waitFor(() => expect(log).toContain('Starting the Studio.'))
+      ready()
+      await new Promise((done) => setTimeout(done, 10))
+      const block = log.findIndex((line) => line.includes('The Studio runs on'))
+      const demo = log.findIndex((line) => line.startsWith('Loaded a demo site.'))
+      expect(loads).toBe(withDemo ? 1 : 0)
+      expect(block).toBeGreaterThan(-1)
+      if (withDemo) expect(demo).toBeGreaterThan(block)
+      else expect(demo).toBe(-1)
+    } finally {
       rmSync(dir, { recursive: true, force: true })
     }
   })

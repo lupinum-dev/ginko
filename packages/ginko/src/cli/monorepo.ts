@@ -88,7 +88,7 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           if (!args.flags.has('--prod')) throw new CliError('ops:import writes to the hosted platform. Add --prod to confirm.', 'USAGE')
           if (!args.site) throw new CliError('ops:import needs --site <slug>.', 'USAGE')
           const run = connectProd(backendAt(SERVER, 'ops:import'))
-          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log, ...waiting(args), prod: true, reset: args.flags.has('--reset'), site: args.site })
+          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log, ...waiting(args), empty: true, reset: args.flags.has('--reset'), site: args.site })
           return { dir: args.folder, site: args.site, ...done }
         },
       },

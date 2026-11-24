@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// The `ginko` command: `ginko check | release | export | prepare-import | connect`. Output and exit codes: run.ts.
+// The `ginko` command: `ginko check | release | export | files-export | prepare-import | connect`. Output and exit
+// codes: run.ts.
 // Reads GINKO_PLATFORM (or NUXT_PUBLIC_GINKO_PLATFORM), GINKO_KEY, GINKO_COMMIT (or GITHUB_SHA), GINKO_BRANCH and
 // GINKO_REMOTE from the environment; it does not read .env files.
 import { existsSync, readFileSync } from 'node:fs'
@@ -9,6 +10,7 @@ import { loadConfig } from './config.ts'
 import { check } from './check.ts'
 import { connect, realConnectIO, type ConnectIO } from './connect.ts'
 import { exportSite, siteOfKey } from './export.ts'
+import { filesExport } from './files-export.ts'
 import { defaultDir } from './model.ts'
 import { CliError } from './model.ts'
 import { prepareImport } from './prepare-import.ts'
@@ -26,9 +28,13 @@ Commands:
                      GINKO_COMMIT (or GITHUB_SHA). Deploy the site only when it prints "deploy":true.
   export [folder]    Save the schema, entries and files from production to a new or empty folder
                      (default: ginko-export-<site>-<yyyy-mm-dd>). Needs GINKO_PLATFORM and GINKO_KEY.
+  files-export [folder]
+                     Save the schema and the content/ files (with the images they use) to a new or empty folder in
+                     the export format (default: ginko-export-<site>-files). Writes nothing else. Load it into a
+                     site of your platform with \`ginko-platform import\`, in the platform project.
   prepare-import <folder> --map <map.json>
-                     Turn a folder in the export format, filled from an old site, into one that Lupinum can import:
-                     downloads images into files/, renames Markdown components, writes redirects.json. Rewrites
+                     Turn a folder in the export format, filled from an old site, into one that
+                     \`ginko-platform import\` can load: downloads images into files/, renames Markdown components, writes redirects.json. Rewrites
                      export.json (backup: export.json.bak); a second run changes nothing. Needs --config for
                      redirects to entries and for the list of unknown components. Exit 1 when an image failed.
   connect <address>  Get a publishing key for this website folder from the Studio at <address>: confirm the code it
@@ -133,6 +139,10 @@ export function main(argv: string[], deps: CliDeps = realDeps(), io: ConnectIO =
           const site = siteOfKey(env(deps, 'GINKO_KEY'))
           return exportSite({ platform, site, dir: args.folder ?? defaultDir(site, new Date()), fetch: deps.fetch, log: deps.log })
         },
+      },
+      'files-export': {
+        folder: 'optional',
+        run: (args) => filesExport({ config: configPathOf(args), ...(args.folder ? { dir: args.folder } : {}), log: deps.log }),
       },
       'prepare-import': {
         folder: 'required',

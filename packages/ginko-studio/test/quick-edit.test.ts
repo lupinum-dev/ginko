@@ -45,8 +45,10 @@ const navigated: unknown[] = []
 vi.stubGlobal('navigateTo', (to: unknown) => { navigated.push(to) })
 vi.stubGlobal('useToast', () => ({ show: () => {} }))
 let manager = false
+/** The site row the page shows; `release: null` is a site before its first release. */
+let siteRow: Record<string, unknown> = { name: 'Restaurant' }
 vi.stubGlobal('useSiteData', async () => ({
-  slug: ref('restaurant'), schema: ref(schema), site: ref({ name: 'Restaurant' }), main: ref('de'), today: ref('2026-10-15'),
+  slug: ref('restaurant'), schema: ref(schema), site: ref(siteRow), main: ref('de'), today: ref('2026-10-15'),
   isManager: ref(manager), may: () => true, bricks: computed(() => Object.entries(schema.bricks)),
 }))
 /** The page's address: Verlauf and the rejection mail link here with ?task=&reopen=. */
@@ -165,6 +167,29 @@ test('Alles bearbeiten lists the unsaved input too; input typed in a quick task\
   } finally {
     localStorage.clear()
     manager = false
+  }
+})
+
+// Wrong behaviour caught: the demo site of a new local platform (areas from `ginko-platform dev`, never released) says
+// "This site has no areas yet" above its own list of areas, on the first screen a new self-hoster sees.
+test.each([
+  ['never released, with areas: no connect card', notices, false],
+  ['never released, without areas: the connect card', { ...notices, bricks: {} }, true],
+])('Alles bearbeiten, %s', async (_name, shownSchema, card) => {
+  manager = true
+  siteRow = { name: 'Restaurant', release: null }
+  schema = shownSchema as typeof notices
+  try {
+    const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(AllPage) }) }), {
+      global: { stubs: { AllShell: { template: '<div><slot /></div>' }, AllNav: true, RemovedList: true, SiteConnect: { template: '<div data-connect />' }, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-connect]').exists()).toBe(card)
+    wrapper.unmount()
+  } finally {
+    manager = false
+    siteRow = { name: 'Restaurant' }
+    schema = notices
   }
 })
 

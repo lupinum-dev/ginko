@@ -22,7 +22,8 @@ yarn and bun are not tested.
 
 1. Open http://localhost:3100 and enter `admin@example.test`.
 2. The local backend sends no mail. The code appears in the terminal where `npm run dev` runs.
-3. The platform has no site yet. Create the first one with "New site".
+3. The first start loads a demo site, "Demo", so you can edit at once. Delete it when you do not need it: Team ›
+   Delete site. `npm run dev -- --no-demo` starts without it. Create your own sites with "New site".
 
 ## Files
 
@@ -32,7 +33,7 @@ yarn and bun are not tested.
 - `vercel.json`: Vercel builds the project with `npm run build` (`ginko-platform build`). A production build deploys
   the backend first, then starts its data migrations, then builds the Studio.
 - `ginko-platform.json`: written by `ginko-platform setup`: the production deployment and the Studio address. It
-  holds no secret.
+  holds no secret. `ginko-platform import --prod` imports into this deployment.
 
 ## Put it online
 
@@ -68,6 +69,28 @@ Two steps stay by hand:
 - **The Resend domain.** Resend sends only from a domain you verified there. Until then, sign-in mail does not arrive.
 - **Your own domain.** Add it to the Vercel project, then run `npx ginko-platform setup --site-url https://<your domain>`.
   Setup changes the address on both sides and deploys again.
+
+## Bring the content of a website
+
+A Ginko website that keeps its content in files (`content/`) can move it into a site of this platform. In this order,
+the live website keeps showing its files until the content is on the platform:
+
+1. In the Studio, create the site with "New site". Its Team page shows the values that connect the website to it
+   (`GINKO_PLATFORM`, `GINKO_KEY`).
+2. In the website folder, save the content: `npx ginko files-export`. It writes the folder
+   `ginko-export-<site>-files`.
+3. On a new branch, for example `move-to-platform`, remove `source: 'files'` from every brick in `ginko.config.ts`.
+   Commit, push the branch (not `main`), and release it by hand:
+   `GINKO_BRANCH=move-to-platform GINKO_COMMIT=$(git rev-parse HEAD) npx ginko release`, with `GINKO_PLATFORM` and
+   `GINKO_KEY` set. The release sends the schema; the import does not.
+4. In this folder: `npx ginko-platform import <path to the export folder> --site <identifier> --prod`. Without
+   `--prod`, it imports into the local backend of `npm run dev` (create the site there first, too).
+5. Merge the branch into `main`. Its release and deploy now find the content on the platform.
+
+Why a branch: `ginko release` releases only the newest commit of `GINKO_BRANCH` (default `main`), and the website
+deploys from `main`. So the schema reaches the platform while the live website still reads its files. Between steps 3
+and 5, a release from `main` fails (it would remove the moved bricks from the platform, which a release refuses), so
+keep that time short. The import takes only a site without content.
 
 Updates: raise the three `@lupinum/*` versions in `package.json` (always the same version), then run
 `vercel deploy --prod`, or push when the Vercel project is connected to Git.

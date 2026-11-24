@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { main as ginko } from '../../src/cli/index.ts'
 import { main } from '../../src/cli/monorepo.ts'
 import { parseExport } from '../../src/cli/model.ts'
 import type { CliDeps } from '../../src/cli/run.ts'
@@ -36,10 +37,10 @@ const files: Record<string, string> = {
   'content/faq/1.preis.yml': 'question: Was kostet es?\nanswer: Das kommt darauf an.\n',
 }
 
-function run(argv: string[], logs: string[] = []) {
+function run(argv: string[], logs: string[] = [], cli = main) {
   const out: string[] = []
   const deps = { env: {}, git: async () => '', stdout: (t: string) => out.push(t), log: (line: string) => void logs.push(line), fetch: async () => new Response() } as CliDeps
-  return main(argv, deps).then((code) => ({ code, json: JSON.parse(out.join('')) as Record<string, unknown> }))
+  return cli(argv, deps).then((code) => ({ code, json: JSON.parse(out.join('')) as Record<string, unknown> }))
 }
 
 function site(extra: Record<string, string | Uint8Array> = {}) {
@@ -83,6 +84,16 @@ describe('local:files-export', () => {
     expect(json).toMatchObject({ entries: 3, bricks: { blog: 2, faq: 1 } })
     // Wrong behaviour caught: the draft vanishes without a word.
     expect(logs).toContain('Warning: 1 entry stays out of the export as drafts, scheduled for later or part of a draft (blog/entwurf); add them in the Studio.')
+  })
+
+  // Wrong behaviour caught: a self-hoster without the repository cannot export, or `ginko files-export` writes another
+  // export than the monorepo command.
+  it('is the public `ginko files-export` too, with the same export', async () => {
+    const s = site()
+    const { code, json } = await run(['files-export', s.out, '--config', s.config], [], ginko)
+    expect(code).toBe(0)
+    expect(json).toMatchObject({ ok: true, site: 'linde', entries: 3, bricks: { blog: 2, faq: 1 }, files: 0 })
+    expect(parseExport(JSON.parse(readFileSync(join(s.out, 'export.json'), 'utf8')), 'path', 'invalid').entries).toHaveLength(3)
   })
 
   it('needs --config and refuses a folder that is not empty', async () => {

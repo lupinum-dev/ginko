@@ -4,9 +4,11 @@
 //    @lupinum dependencies) from this checkout.
 // 2. Runs the packed create-ginko with --platform in a temp folder, points the @lupinum dependencies at the tarballs and
 //    installs with npm. convex.json must name a folder that exists after the install.
-// 3. Starts `npm run dev` (ginko-platform dev) and waits for its "The Studio runs on" block.
-// 4. In Chromium: signs in as admin@example.test with the code that `npm run dev` printed, creates a site on the
-//    "New site" page and must land on its Content page (screenshot: content-page.png).
+// 3. Starts `npm run dev` (ginko-platform dev) and waits for its "The Studio runs on" block and the line that it loaded
+//    the demo site (the new backend has no site).
+// 4. In Chromium: signs in as admin@example.test with the code that `npm run dev` printed; the demo site's Content page
+//    must show at least one area and one entry (screenshot: demo-page.png). Then creates a site on the "New site" page
+//    and must land on its Content page (screenshot: content-page.png).
 // 5. Ctrl-C (SIGINT to the process group, as a terminal sends it) must stop everything: the ports are free again.
 //
 // Each step prints its name; a failed step says which one and shows the end of the dev log. Exit 0 or 1.
@@ -26,6 +28,7 @@ const PORTS = [3100, 3210, 3211]
 const STUDIO = 'http://localhost:3100'
 const ADMIN = 'admin@example.test'
 const SITE = { name: 'Install check', url: 'https://install-check.example', id: 'install-check' }
+const DEMO_LINE = 'Loaded a demo site.'
 
 const work = mkdtempSync(join(tmpdir(), 'ginko-platform-install-'))
 const logs = process.env.GINKO_PLATFORM_INSTALL_LOGS ?? join(work, 'logs')
@@ -158,6 +161,9 @@ await step('npm run dev until the Studio is ready', async () => {
   await until('the line "The Studio runs on"', 600, () => output.some((line) => line.startsWith('The Studio runs on')))
   await until(`${STUDIO}/login answers 200`, 300, async () => (await fetch(`${STUDIO}/login`).catch(() => undefined))?.status === 200)
 })
+await step('npm run dev loads the demo site', async () => {
+  await until(`the line "${DEMO_LINE}"`, 120, () => output.some((line) => line.startsWith(DEMO_LINE)))
+})
 
 // 4. The browser walk.
 const codeLine = new RegExp(`^Sign-in code for ${ADMIN.replaceAll('.', '\\.')}: (\\d{6})$`)
@@ -179,15 +185,27 @@ await step(`sign in as ${ADMIN} with the code from the terminal`, async () => {
   await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForURL((url) => !url.pathname.startsWith('/login'))
 })
-await step('create a site on the "New site" page', async () => {
+await step('the demo site shows areas and entries', async () => {
+  await page.goto(`${STUDIO}/s/demo/all`)
+  await page.getByRole('heading', { level: 1, name: 'Content' }).waitFor()
+  const areas = page.locator('section[aria-labelledby="all-areas"] a[href^="/s/demo/all/"]')
+  await areas.first().waitFor()
+  // The Studio renders the count with a trailing space ("2 entries ").
+  const entries = page.getByText(/^\s*[1-9]\d* entr(y|ies)\b/)
+  await entries.first().waitFor()
+  console.log(`  ${await areas.count()} areas, ${await entries.count()} of them with entries`)
+  await page.screenshot({ path: join(logs, 'demo-page.png') })
+})
+await step('create a site on the "New site" page and land on its Content page', async () => {
+  // With one site the Studio opens it at once; ?all shows the list of sites with "New site".
+  await page.goto(`${STUDIO}/?all`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'New site' }).click()
   await page.waitForURL(`${STUDIO}/new`)
+  await page.waitForLoadState('networkidle')
   await page.getByLabel('Name', { exact: true }).fill(SITE.name)
   await page.getByLabel('Website address').fill(SITE.url)
   await page.getByLabel('Identifier').fill(SITE.id)
   await page.getByRole('button', { name: 'Create site' }).click()
-})
-await step('land on the Content page of the new site', async () => {
   await page.waitForURL(`${STUDIO}/s/${SITE.id}/all`)
   await page.getByRole('heading', { level: 1, name: 'Content' }).waitFor()
   await page.screenshot({ path: join(logs, 'content-page.png') })
@@ -199,7 +217,7 @@ await step('Ctrl-C stops npm run dev and every process it started', async () => 
   await stopDev()
   await until(`ports ${PORTS.join(', ')} free again`, 30, async () => (await busyPorts(PORTS)).length === 0)
 })
-console.log(`OK ${NAME}: a new platform project from the tarballs installs with npm, starts with npm run dev, signs in the admin with the printed code, creates a site and opens its Content page. Screenshot: ${join(logs, 'content-page.png')}`)
+console.log(`OK ${NAME}: a new platform project from the tarballs installs with npm, starts with npm run dev and loads the demo site, signs in the admin with the printed code, shows the demo's areas and entries, creates a site and opens its Content page. Screenshots: ${join(logs, 'demo-page.png')}, ${join(logs, 'content-page.png')}`)
 if (!process.env.GINKO_PLATFORM_INSTALL_LOGS) {
   // Keep the logs and the screenshot; remove the project and the tarballs.
   for (const entry of readdirSync(work)) if (entry !== 'logs') rmSync(join(work, entry), { recursive: true, force: true })
