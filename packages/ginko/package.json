@@ -22,6 +22,7 @@
     "./internal/search": "./src/internal/search.ts",
     "./search": "./src/search.ts",
     "./basics": "./src/basics/index.ts",
+    "./v2": "./src/v2/index.ts",
     "./nuxt": "./src/nuxt/module.ts"
   },
   "bin": {
