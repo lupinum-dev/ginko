@@ -58,7 +58,7 @@ const schema = serializeSchema(defineSite({
   pages: { home: { de: '/' } },
   bricks: {
     notices: collection({
-      label: 'Hinweise', max: 5, order: 'manual',
+      label: 'Hinweise', max: 5, order: 'manual', listing: { title: 'text', detail: 'until' },
       fields: { text: f.text('Text', { translate: false }), until: f.date('Gilt bis', { optional: true }) },
       tasks: [{ id: 'add', label: 'Hinweis hinzufügen', kind: 'create' }],
     }),
@@ -293,7 +293,7 @@ describe('languages', () => {
     pages: { home: { de: '/', en: '/en' } },
     bricks: {
       dishes: collection({
-        label: 'Speisen', max: 50, order: 'manual',
+        label: 'Speisen', max: 50, order: 'manual', listing: { title: 'name', detail: 'price' },
         fields: { name: f.text('Name'), price: f.money('Preis') },
         tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create' }],
       }),
@@ -448,7 +448,7 @@ describe('publish step', () => {
     pages: { home: { de: '/' } },
     bricks: {
       posts: collection({
-        label: 'Beiträge', max: 50, order: 'manual', fields: { title: f.text('Titel', { translate: false }) },
+        label: 'Beiträge', max: 50, order: 'manual', listing: { title: 'title' }, fields: { title: f.text('Titel', { translate: false }) },
         tasks: [{ id: 'write', label: 'Beitrag schreiben', kind: 'create' }, { id: 'fix', label: 'Beitrag ändern', kind: 'edit', fields: ['title'], pick: true }],
       }),
     },

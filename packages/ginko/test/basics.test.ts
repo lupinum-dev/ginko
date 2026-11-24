@@ -283,6 +283,7 @@ describe('a files site with every basic', () => {
       ...config,
       bricks: {
         offers: collection({
+          listing: { title: 'title' },
           label: 'Offers',
           source: 'files',
           order: 'manual',

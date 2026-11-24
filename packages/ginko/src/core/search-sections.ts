@@ -50,7 +50,7 @@ export function searchSections(bundle: Bundle, options: SearchSectionsOptions): 
       const url = item.urls?.[bundle.locale]
       if (!url) continue
       if (def && options.today && !isVisible(def, item.data, options.today)) continue
-      const title = entryTitle(item, def?.fields)
+      const title = entryTitle(item, def)
       const intro: string[] = []
       for (const [name, field] of fields) {
         const value = item.data[name]

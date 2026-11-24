@@ -30,5 +30,6 @@ export const pages = collection({
     body: f.markdown({ de: 'Text', en: 'Text', fr: 'Texte' }, { profile: 'page' }),
   },
   // 'edit' is every field but the address: a changed address breaks links.
+  listing: { title: 'title', image: 'image' },
   tasks: ['edit', 'add'],
 })

@@ -25,6 +25,7 @@ const site = defineSite({
       tasks: [{ id: 'edit', kind: 'edit', label: { de: 'Text ändern', en: 'Change the text' }, fields: ['title'] }],
     }),
     dishes: collection({
+      listing: { title: 'name' },
       label: { de: 'Speisen', en: 'Dishes' },
       max: 50,
       order: { field: 'price', dir: 'desc' },

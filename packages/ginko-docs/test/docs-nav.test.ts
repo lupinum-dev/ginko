@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { NavNode } from '@lupinum/ginko'
 import { navTree, outline, type Bundle, type BundleItem, type OutlineNode, type OutlineRow } from '@lupinum/ginko/internal'
 import { enrichNav, type DocFields, type DocNode } from '../app/lib/docsNav'
+import { docsCollection } from '../src/config.ts'
 
 const node = (id: string, children: NavNode[] = []): NavNode => ({ id, title: id, path: `/docs/${id}`, children } as NavNode)
 
@@ -46,7 +47,7 @@ describe('the Studio outline and the website', () => {
       }
       const items: BundleItem[] = rows.map((r) => ({ id: r.id, data: { title: r.id, ...r }, fallback: [], urls: { en: `/docs/${r.id}` } }))
       const bundle = { format: 3, site: 's', locale: 'en', locales: ['en'], mainLocale: 'en', currency: 'EUR', schemaRev: 1, contentRev: 1, generatedAt: '', bricks: { docs: { kind: 'collection', items } } } as Bundle
-      const site = enrichNav(navTree(bundle, ['docs'], 'en'), (id) => rows.find((r) => r.id === id))
+      const site = enrichNav(navTree(bundle, ['docs'], 'en', { bricks: { docs: docsCollection({ locales: ['en'] }) } }), (id) => rows.find((r) => r.id === id))
       const fromSite = (n: DocNode): unknown => [n.id, n.tab, n.section, n.children.map(fromSite)]
       const fromOutline = (n: OutlineNode, tab?: string): unknown => [n.row.id, n.tab ?? tab, n.section, n.children.map((c) => fromOutline(c, n.tab ?? tab))]
       expect(outline(rows).map((n) => fromOutline(n)), JSON.stringify(rows)).toEqual(site.map(fromSite))

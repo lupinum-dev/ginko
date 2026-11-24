@@ -19,6 +19,7 @@ const schema = serializeSchema(defineSite({
   pages: { home: { de: '/' } },
   bricks: {
     events: collection({
+      listing: { title: 'title' },
       label: 'Veranstaltungen', describe: 'Was bei uns los ist', max: 20, order: 'manual',
       fields: { title: f.text('Titel'), image: f.image('Bild', { optional: true }) },
       tasks: [{ id: 'add', label: 'Veranstaltung hinzufügen', kind: 'create' }, { id: 'edit', label: 'Veranstaltung ändern', kind: 'edit', pick: true, fields: ['title'] }],

@@ -7,6 +7,7 @@ const schema = {
     blog: {
       kind: 'collection',
       label: 'Blog',
+      listing: { title: 'title' },
       fields: {
         title: { type: 'text', label: 'Titel' },
         intro: { type: 'longtext', label: 'Einleitung' },
@@ -15,9 +16,9 @@ const schema = {
         body: { type: 'markdown', label: 'Text' },
       },
     },
-    pages: { kind: 'collection', label: 'Seiten', fields: { title: { type: 'text', label: 'Titel' } } },
+    pages: { kind: 'collection', label: 'Seiten', listing: { title: 'title' }, fields: { title: { type: 'text', label: 'Titel' } } },
     settings: { kind: 'single', label: 'Einstellungen', fields: { title: { type: 'text', label: 'Titel' } } },
-    people: { kind: 'collection', label: 'Vortragende', fields: { name: { type: 'text', label: 'Name' }, slug: { type: 'slug', label: 'Adresse', from: 'name' } } },
+    people: { kind: 'collection', label: 'Vortragende', listing: { title: 'name' }, fields: { name: { type: 'text', label: 'Name' }, slug: { type: 'slug', label: 'Adresse', from: 'name' } } },
   },
 } as unknown as Pick<Schema, 'bricks'>
 
@@ -86,7 +87,7 @@ describe('llmsTxt', () => {
 describe('entries without a title', () => {
   // Wrong behaviour caught: people with pages (speakers) have a name but no title, so llms.txt and the Markdown twin
   // named each one by its entry id ("people/lena-hofer").
-  test('are named by the field their slug is made from', async () => {
+  test('are named by the field of listing.title', async () => {
     const lena = item('people/lena-hofer', { name: 'Lena Hofer', slug: 'lena-hofer' }, { de: '/vortragende/lena-hofer' })
     const bundle = {
       format: 3, site: 'lupi', locale: 'de', locales: ['de'], mainLocale: 'de', currency: 'EUR', schemaRev: 1, contentRev: 1,
@@ -159,6 +160,6 @@ describe('markdownNotFound', () => {
       expected: '# Not found\n\nThere is no page at `/kontakt.md`.\n\nAll pages: https://lupinum.com/llms.txt\n',
     },
   ])('$name', ({ path, expected }) => {
-    expect(markdownNotFound(bundle, path, { origin: 'https://lupinum.com/' })).toBe(expected)
+    expect(markdownNotFound(bundle, path, { origin: 'https://lupinum.com/', schema })).toBe(expected)
   })
 })

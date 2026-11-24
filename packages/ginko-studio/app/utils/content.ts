@@ -31,7 +31,7 @@ export function draftSlugs(brick: Brick, locales: readonly Locale[], data: Data)
   return out
 }
 
-/** A short name for an entry: its first text field in the main language, else the brick's label. */
+/** A short name for an entry: the field `listing.title` names, in the main language, else the brick's label. */
 export function titleOf(brick: Brick, data: Data, locale: Locale): string {
   return typedTitle(brick, data, locale) ?? shownLabel(brick.label, locale)
 }
@@ -58,12 +58,11 @@ export function rowTitle(columns: Fields, row: unknown, locale: Locale, words: W
   return undefined
 }
 
-/** The first choice field of a brick, used to group pick lists (Kategorie). */
+/** The choice field that groups a pick list (`listing.group`, such as Kategorie), when the brick names one. */
 export function groupField(brick: Brick): { key: string; field: Extract<Field, { type: 'choice' }> } | undefined {
-  for (const [key, field] of ordered(brick.fields)) {
-    if (field.type === 'choice' && !field.retired) return { key, field }
-  }
-  return undefined
+  const key = brick.kind === 'collection' ? brick.listing.group : undefined
+  const field = key !== undefined && Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
+  return key !== undefined && field?.type === 'choice' && !field.retired ? { key, field } : undefined
 }
 
 /** Root fields whose value differs between two data objects. */
@@ -225,19 +224,16 @@ export function formatDay(date: string, format: Words['format']): string {
 }
 
 /**
- * The date that matters for an entry in a list: the field that decides when it is visible, else its first
- * date field. A range shows "von – bis". Undefined when the entry has none, it is empty, or the title names it.
+ * The line under an entry's name in a list: the value of the field `listing.detail` names, in the main language `main`
+ * (a range shows "von – bis", money its amount). Undefined when the brick names none or the value is empty.
  */
-export function relevantDate(brick: Brick, data: Data, words: Words): string | undefined {
-  // A planned week carries its date in its name already (`titleOf`).
-  if (brick.kind === 'collection' && brick.plans) return undefined
-  const visible = brick.kind === 'collection' && brick.visible && brick.visible.mode !== 'always' ? brick.visible.field : undefined
-  const key = visible ?? ordered(brick.fields).find(([, f]) => !f.retired && (f.type === 'date' || f.type === 'daterange'))?.[0]
-  const field = key ? brick.fields[key] : undefined
-  if (!key || !field || (field.type !== 'date' && field.type !== 'daterange')) return undefined
+export function listingDetail(brick: Brick, data: Data, main: Locale, words: Words): string | undefined {
+  const key = brick.kind === 'collection' ? brick.listing.detail : undefined
+  const field = key !== undefined && Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
+  if (key === undefined || !field || field.retired) return undefined
   const value = data[key]
   if (value === undefined || value === null || value === '') return undefined
-  return displayValue(field, value, 'de', words)
+  return displayValue(field, value, main, words)
 }
 
 /** "de" → "German" (en) or "Deutsch" (de): language names in the Studio's language (`language`, e.g. `en-GB`). */

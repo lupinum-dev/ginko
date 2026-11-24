@@ -15,14 +15,17 @@ const config = defineSite({
   locales: ['de', 'en'], currency: 'EUR', pages: { home: '/' },
   bricks: {
     blog: collection({
+      listing: { title: 'title' },
       label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]', en: '/en/blog/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') },
     }),
     faq: collection({
+      listing: { title: 'question' },
       label: 'FAQ', source: 'files', max: 50, order: 'manual',
       fields: { question: f.text('Frage'), answer: f.longtext('Antwort') },
     }),
     authors: collection({
+      listing: { title: 'name' },
       label: 'Autorinnen', max: 20, order: 'manual',
       fields: { name: f.text('Name'), avatar: f.image('Bild', { optional: true }), bio: f.markdown('Über mich', { profile: 'rich', optional: true }) },
     }),

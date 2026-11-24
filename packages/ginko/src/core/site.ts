@@ -3,7 +3,7 @@ import type { HolidaysOption } from './holidays.ts'
 import type { LinkConfig } from './links.ts'
 import type { Redirect } from './redirects.ts'
 import type {
-  Brick, BrickSource, CollectionBrick, CollectionStatus, Currency, Fields, Json, Label, Locale, RetiredRule, SingleBrick, SingleStatus, Task, Visibility,
+  Brick, BrickSource, CollectionBrick, CollectionListing, CollectionStatus, Currency, Fields, Json, Label, Locale, RetiredRule, SingleBrick, SingleStatus, Task, Visibility,
 } from './types.ts'
 
 export interface MigrationContext {
@@ -180,6 +180,11 @@ export function collection<const F extends Fields, const R extends Record<Locale
   planned?: Planned<F>
   max: number
   order: 'manual' | { field: keyof F & string; dir?: 'asc' | 'desc' }
+  /**
+   * How an entry appears in lists: the field that names it, and optionally a detail, a group and an image. Field names
+   * only, as in `planned`: a factory with generic fields could not name them otherwise; `checkSchema` checks the types.
+   */
+  listing: CollectionListing<keyof F & string, keyof F & string, keyof F & string, keyof F & string>
   route?: R
   visible?: Visibility<FieldsOfType<F, 'date' | 'daterange'>>
   /**

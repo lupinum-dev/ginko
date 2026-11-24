@@ -22,6 +22,7 @@ const notices = serializeSchema(defineSite({
   pages: { home: { de: '/' } },
   bricks: {
     notices: collection({
+      listing: { title: 'text' },
       label: 'Hinweise', max: 20, order: 'manual',
       fields: { text: f.text('Text'), until: f.date('Gilt bis', { optional: true }) },
       visible: { mode: 'until', field: 'until' },
@@ -218,6 +219,26 @@ describe('a planned price (menu, `planned`)', () => {
   })
 })
 
+describe('the pick list reads `listing`', () => {
+  const dishes = serializeSchema(restaurant).bricks.menu!
+  const entry = (id: string, data: Record<string, unknown>) => ({ _id: id, brick: 'menu', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data })
+  const entries = [
+    entry('a', { category: 'mains', veg: 'vegan', name: { de: 'Linsencurry' }, description: { de: 'Mit Reis' }, price: { amount: 1290 } }),
+    entry('b', { category: 'desserts', veg: 'vegetarian', name: { de: 'Strudel' }, description: { de: 'Mit Vanilleeis' }, price: { amount: 690 } }),
+  ]
+
+  // Wrong (guess 12): the list is grouped by the first choice field and shows the first money field, so a second
+  // choice or money field moved up regroups the list or shows the wrong amount.
+  test('groups by listing.group and shows listing.detail beside the name of listing.title', () => {
+    HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.open = true }
+    const brick = { ...dishes, listing: { title: 'description', group: 'veg' } }
+    const wrapper = mount(PickSheet, { props: { brick, task: dishes.tasks!.find((t) => t.id === 'price')!, entries: entries as never, main: 'de', today: '2026-10-17' } })
+    expect(wrapper.findAll('h3').map((h) => h.text())).toEqual(['vegetarisch', 'vegan'])
+    expect(wrapper.findAll('li').map((li) => li.text())).toEqual(['Mit Vanilleeis', 'Mit Reis'])
+    wrapper.unmount()
+  })
+})
+
 describe('planning a week ahead (lunchPlans)', () => {
   const lunch = { _id: 'lunch1', brick: 'lunch', kind: 'single', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { weekOf: '2026-10-12', days: [] } }
   const plan = { _id: 'p19', brick: 'lunchPlans', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { weekOf: '2026-10-19' } }
@@ -350,6 +371,7 @@ test('a drafts collection lists its drafts apart from what is on the website, st
     pages: { home: { de: '/' } },
     bricks: {
       notices: collection({
+        listing: { title: 'text' },
         label: 'Hinweise', max: 20, order: 'manual',
         fields: { text: f.text('Text'), until: f.date('Gilt bis', { optional: true }) },
         visible: { mode: 'until', field: 'until' },

@@ -1,21 +1,20 @@
 // What the Studio's pages read of entries (sites.meta has no entries): a list row with what a list shows, and the
 // entry an editor opens. Each page subscribes only to the rows it shows, so a save elsewhere sends it little or nothing.
 import type { Brick, Locale } from '@lupinum/ginko'
-import { entryTitle, labelOf, ordered, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, labelOf, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { Data } from './content'
 import { leafStatus, type LeafStatus } from './translation'
 import { overlay, pendingInfo, type Pending } from './pending'
 
 /**
- * The fields a list row shows beside its title: the field `visible` reads (expired or not) and the first date or date
- * range (the date under the title). Only these values travel with a row.
+ * The fields a list row shows beside its title: the field `visible` reads (expired or not) and the field
+ * `listing.detail` names (the line under the title). Only these values travel with a row.
  */
-function dateKeys(brick: Brick): string[] {
+function shownKeys(brick: Brick): string[] {
   const keys = new Set<string>()
   if (brick.kind === 'collection' && brick.visible && brick.visible.mode !== 'always') keys.add(brick.visible.field)
-  const first = ordered(brick.fields).find(([, field]) => !field.retired && (field.type === 'date' || field.type === 'daterange'))
-  if (first) keys.add(first[0])
+  if (brick.kind === 'collection' && brick.listing.detail !== undefined) keys.add(brick.listing.detail)
   return [...keys]
 }
 
@@ -40,12 +39,12 @@ export function titleOf(schema: Schema, brick: Brick, data: Data, language: stri
   return entryTitle(brick, data, main, (label) => labelOf(label, language ?? main, main)) ?? null
 }
 
-/** One row of a collection list (about 150 B): its title, its state, the date values the row shows, and its translation gaps. */
+/** One row of a collection list (about 150 B): its title, its state, the values the row shows (`dates`: the expiry and the detail), and its translation gaps. */
 export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, language?: string, pending = false) {
   const def = schema.bricks[brick]!
   const data = row.data as Data
   const dates: Data = {}
-  for (const key of dateKeys(def)) if (data[key] !== undefined) dates[key] = data[key]!
+  for (const key of shownKeys(def)) if (data[key] !== undefined) dates[key] = data[key]!
   return {
     _id: row._id,
     order: row.order,

@@ -1,7 +1,7 @@
-<!-- Choose the entry for a pick task (UI.md 3): search by name, grouped by the first choice field. -->
+<!-- Choose the entry for a pick task (UI.md 3): search by name, grouped by `listing.group`, the detail beside each name. -->
 <script setup lang="ts">
 import type { Brick, Locale } from '@lupinum/ginko'
-import { duePlan, ordered, searchable } from '@lupinum/ginko/internal'
+import { duePlan, searchable } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { displayValue, groupField, titleOf, type Task } from '../utils/content'
 import { useStudioSite } from '../utils/labels'
@@ -21,16 +21,14 @@ const search = ref<{ $el: HTMLElement } | null>(null)
 onMounted(() => { dialog.value?.showModal(); search.value?.$el.focus() })
 
 const group = computed(() => groupField(props.brick))
-// A price next to each name, so "Preis ändern" shows what it changes: the money field the task edits, else the
-// first one in form order.
-const moneyKey = computed(() => {
-  const money = ordered(props.brick.fields).filter(([, f]) => f.type === 'money' && !f.retired).map(([k]) => k)
-  const edited = props.task.kind === 'edit' ? money.find((k) => props.task.kind === 'edit' && props.task.fields.includes(k)) : undefined
-  return edited ?? money[0]
+// The detail next to each name (`listing.detail`, such as the price of a dish), so "Preis ändern" shows what it changes.
+const detailKey = computed(() => {
+  const key = props.brick.kind === 'collection' ? props.brick.listing.detail : undefined
+  return key !== undefined && props.brick.fields[key] && !props.brick.fields[key]!.retired ? key : undefined
 })
 // From the day of a planned price (`planned`) on, the site shows that one, so the list does too.
-const priceOf = (e: Entry) => {
-  const key = moneyKey.value
+const detailOf = (e: Entry) => {
+  const key = detailKey.value
   if (!key) return ''
   const value = (key === props.brick.planned?.field ? duePlan(props.brick, e.data, props.today) : undefined) ?? e.data[key]
   return value != null ? displayValue(props.brick.fields[key]!, value, props.main, { t, format }) : ''
@@ -69,7 +67,7 @@ const groups = computed(() => {
             <li v-for="e in g.items" :key="e._id">
               <button type="button" class="flex min-h-13 w-full items-center justify-between gap-3 rounded-md border bg-card px-3.5 py-2.5 text-left font-semibold outline-none hover:border-primary hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/80" @click="emit('pick', e)">
                 <span class="min-w-0">{{ titleOf(brick, e.data, main) }}</span>
-                <span v-if="priceOf(e)" class="flex-none font-normal text-muted-foreground tabular-nums">{{ priceOf(e) }}</span>
+                <span v-if="detailOf(e)" class="flex-none font-normal text-muted-foreground tabular-nums">{{ detailOf(e) }}</span>
               </button>
             </li>
           </ul>

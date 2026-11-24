@@ -15,6 +15,7 @@ const schema = serializeSchema(defineSite({
   locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
   bricks: {
     docs: collection({
+      listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]', en: '/en/docs/[slug]' },
       // Listed in English also without a translation (the main-language page), so the fallback of file entries shows.
@@ -29,12 +30,13 @@ const schema = serializeSchema(defineSite({
       },
     }),
     pages: collection({
+      listing: { title: 'title' },
       label: 'Seiten', source: 'files', max: 5, order: 'manual',
       route: { de: '/seite/[slug]', en: '/en/page/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text', { profile: 'page' }) },
     }),
     legal: single({ label: 'Rechtliches', source: 'files', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
-    notices: collection({ label: 'Hinweise', max: 5, order: 'manual', fields: { text: f.text('Text') } }),
+    notices: collection({ listing: { title: 'text' }, label: 'Hinweise', max: 5, order: 'manual', fields: { text: f.text('Text') } }),
   },
   components: {
     figure: { kind: 'block', label: 'Bild', describe: 'Bild mit Maßen', props: { src: f.image('Bild'), width: f.number('Breite', { min: 1, max: 10000, step: 1, optional: true }), height: f.number('Höhe', { min: 1, max: 10000, step: 1, optional: true }) } },
@@ -167,6 +169,7 @@ describe('publicBundle', () => {
     site: 'ev', name: 'Ev', url: 'https://ev.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
     bricks: {
       events: collection({
+        listing: { title: 'title' },
         label: 'Termine', source: 'files', max: 50, order: 'manual', visible: { mode: 'until', field: 'when' },
         route: { de: '/termine/[slug]' },
         fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), when: f.daterange('Wann'), body: f.markdown('Text') },
@@ -291,7 +294,7 @@ describe('image variants', () => {
   const imageSchema = serializeSchema(defineSite({
     site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
     locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
-    bricks: { docs: collection({ label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), hero: f.image('Bild', { optional: true }), body: f.markdown('Text') } }) },
+    bricks: { docs: collection({ listing: { title: 'title' }, label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), hero: f.image('Bild', { optional: true }), body: f.markdown('Text') } }) },
   }))
   const png = (width: number, height: number) => sharp({ create: { width, height, channels: 3, background: '#c33' } }).png().toBuffer()
 
@@ -335,8 +338,8 @@ describe('checks that never hide a broken entry', () => {
   const blog = serializeSchema(defineSite({
     site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
     bricks: {
-      authors: collection({ label: 'Authors', source: 'files', max: 5, order: 'manual', fields: { name: f.text('Name') } }),
-      posts: collection({ label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date'), author: f.ref('Author', { to: 'authors' }) } }),
+      authors: collection({ listing: { title: 'name' }, label: 'Authors', source: 'files', max: 5, order: 'manual', fields: { name: f.text('Name') } }),
+      posts: collection({ listing: { title: 'title' }, label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date'), author: f.ref('Author', { to: 'authors' }) } }),
       hours: single({
         label: 'Hours', source: 'files',
         fields: { exceptions: f.list('Exceptions', { itemLabel: 'Day', fields: { reason: f.text('Reason') }, max: 10, optional: true }) },
@@ -400,8 +403,9 @@ describe('check messages for file owners', () => {
     site: 'studio', name: 'Studio', url: 'https://studio.example', timeZone: 'Europe/Vienna',
     locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
     bricks: {
-      people: collection({ label: 'Personen', source: 'files', max: 20, order: 'manual', fields: { name: f.text('Name') } }),
+      people: collection({ listing: { title: 'name' }, label: 'Personen', source: 'files', max: 20, order: 'manual', fields: { name: f.text('Name') } }),
       events: collection({
+        listing: { title: 'title' },
         label: 'Termine', source: 'files', max: 20, order: 'manual',
         fields: {
           title: f.text('Titel'),
@@ -445,6 +449,7 @@ describe('multi-choice values in files', () => {
     locales: ['de'], currency: 'EUR', pages: { home: '/' },
     bricks: {
       menu: collection({
+        listing: { title: 'name' },
         label: 'Karte', source: 'files', max: 20, order: 'manual',
         fields: { name: f.text('Name'), allergens: f.choices('Allergene', { options: options.map((value) => ({ value, label: value })), optional }) },
       }),

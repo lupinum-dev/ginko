@@ -219,6 +219,8 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   max: number
   /** `manual`: the owner sorts the entries. Else by a field, ascending unless `dir: 'desc'`. */
   order: 'manual' | { field: string; dir?: 'asc' | 'desc' }
+  /** How an entry appears in lists (see `CollectionListing`). */
+  listing: CollectionListing
   route?: R
   visible?: Visibility
   /**
@@ -237,6 +239,24 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
 }
 
 export type Brick = SingleBrick | CollectionBrick
+
+/** The field types `listing.title` may name: the name of an entry is a text, or the day it is for. */
+export const LISTING_TITLE_TYPES = ['text', 'longtext', 'date'] as const
+/** The field types `listing.detail` may name: a value that reads as one short line. */
+export const LISTING_DETAIL_TYPES = ['text', 'longtext', 'number', 'money', 'date', 'daterange', 'time', 'choice', 'choices', 'boolean'] as const
+
+/**
+ * How an entry of a collection appears in the Studio's lists, pick lists and search, and in the site's lists of
+ * entries (navigation, llms.txt, search): `title` is the field that names it, `detail` the value shown beside or under
+ * the name, `group` a choice field whose options group a pick list, `image` a picture shown with it. Field names only;
+ * the stored data does not change with it.
+ */
+export type CollectionListing<T extends string = string, D extends string = string, G extends string = string, I extends string = string> = {
+  title: T
+  detail?: D
+  group?: G
+  image?: I
+}
 
 /**
  * What a retired field (SPEC 2.5) answers to old code: `from` mirrors another field of the brick, `value` is a fixed

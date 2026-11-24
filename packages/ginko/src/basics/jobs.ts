@@ -28,6 +28,7 @@ export interface JobsOptions<R extends Record<Locale, RouteTemplate> | undefined
 export function jobs<const R extends Record<Locale, RouteTemplate> | undefined = undefined>(o: JobsOptions<R> = {}) {
   return collection({
     label: o.label ?? t('Stellen', 'Jobs', 'Empleos', 'Offres d’emploi'),
+    listing: { title: 'title', detail: 'validUntil' },
     ...sourceOf(o),
     max: 30,
     order: { field: 'title', dir: 'asc' },

@@ -22,6 +22,7 @@ type SlugOf<R> = R extends undefined ? {} : { slug: ReturnType<typeof slugField>
 export function people<const R extends Record<Locale, RouteTemplate> | undefined = undefined>(o: PeopleOptions<R> = {}) {
   return collection({
     label: o.label ?? t('Personen', 'People', 'Personas', 'Personnes'),
+    listing: { title: 'name', image: 'photo' },
     ...sourceOf(o),
     max: 100,
     order: 'manual',

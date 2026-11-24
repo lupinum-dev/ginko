@@ -162,6 +162,7 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptio
   const lunchBrick = opts.lunchBrick ?? 'lunch'
   return collection({
     label: both('Mittagsmenü vorausplanen', 'Plan the lunch menu ahead'),
+    listing: { title: 'weekOf' },
     ...sourceOf(opts),
     fields: {
       weekOf: f.date(both('Woche ab', 'Week starting')),
@@ -231,6 +232,7 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
   } satisfies Task<{ soldOutOn: DateField }>) as unknown as Task<typeof fields>
   return collection({
     label: both('Speisekarte', 'Menu'),
+    listing: { title: 'name', detail: 'price', group: 'category' },
     ...sourceOf(opts),
     fields,
     // The platform checks that a plan has both its price and its date, and opens "Preis ändern" on the price in effect.

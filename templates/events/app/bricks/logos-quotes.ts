@@ -13,6 +13,7 @@ export const logos = collection({
     image: f.image({ de: 'Logo', en: 'Logo', fr: 'Logo' }),
     url: f.text({ de: 'Website', en: 'Website', fr: 'Site web' }, { format: 'url', optional: true }),
   },
+  listing: { title: 'name', image: 'image' },
   tasks: ['add', 'remove'],
 })
 
@@ -31,5 +32,6 @@ export const quotes = collection({
       hint: { de: 'Zum Beispiel „Kundin seit 2021“.', en: 'For example “Customer since 2021”.', fr: 'Par exemple « Cliente depuis 2021 ».' },
     }),
   },
+  listing: { title: 'text' },
   tasks: ['add', 'edit'],
 })

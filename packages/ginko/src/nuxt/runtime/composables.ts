@@ -183,7 +183,7 @@ export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRe
 export function useGinkoNav(bricks: MaybeRefOrGetter<CollectionKey[]>): ComputedRef<NavNode[]> {
   const bundle = useVisibleBundle(bricks)
   const locale = useGinkoLocale()
-  return computed(() => navTree(bundle.value, toValue(bricks), locale.value))
+  return computed(() => navTree(bundle.value, toValue(bricks), locale.value, schema))
 }
 
 /** The nodes from the root down to the current route's path; empty when the path is not in the tree. */

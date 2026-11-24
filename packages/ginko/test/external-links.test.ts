@@ -93,7 +93,7 @@ describe('cache', () => {
 describe('without linkCheck.external', () => {
   const config = defineSite({
     site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: '/' },
-    bricks: { docs: collection({ label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') } }) },
+    bricks: { docs: collection({ listing: { title: 'title' }, label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') } }) },
   })
   const site = (links: object | undefined) => {
     const root = tmp()

@@ -67,7 +67,7 @@ const { useKeptEntry } = await import('../app/composables/useKeptEntry')
 const { default: ConflictPanel } = await import('../app/components/ConflictPanel.vue')
 
 const brick = {
-  kind: 'collection', label: 'Gerichte',
+  kind: 'collection', label: 'Gerichte', listing: { title: 'name' },
   fields: {
     name: { type: 'text', label: 'Name', pos: 0 }, description: { type: 'longtext', label: 'Beschreibung', pos: 1 },
     sides: { type: 'list', label: 'Beilagen', pos: 2, of: { name: { type: 'text', label: 'Name' } } },

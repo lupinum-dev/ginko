@@ -39,7 +39,7 @@ const ICON_NAME = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*|i-[a-z0
 
 /** One entry as Markdown: its title as `#`, then each text field as a paragraph and each markdown field as its Markdown. */
 export async function entryMarkdown(item: BundleItem, brick: string, options: AgentOptions): Promise<string> {
-  const title = entryTitle(item, options.schema.bricks[brick]?.fields)
+  const title = entryTitle(item, options.schema.bricks[brick])
   const parts = [`# ${markdownText(title, true)}`]
   for (const [name, field] of Object.entries(options.schema.bricks[brick]?.fields ?? {})) {
     const value = item.data[name]
@@ -92,7 +92,7 @@ export function llmsTxt(bundle: Bundle, options: AgentOptions & { siteName: stri
     for (const item of entry.items) {
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      const title = entryTitle(item, options.schema.bricks[brick]?.fields)
+      const title = entryTitle(item, options.schema.bricks[brick])
       links.push(`- [${markdownText(title, true)}](${origin}${markdownPath(url)})`)
     }
     if (links.length === 0) continue
@@ -137,7 +137,7 @@ export function markdownNotFound(bundle: Bundle, path: string, options: { origin
     for (const item of entry.items) {
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      const title = entryTitle(item, options.schema?.bricks[brick]?.fields)
+      const title = entryTitle(item, options.schema?.bricks[brick])
       const haystack = `${url} ${title}`.toLowerCase()
       const score = tokens.filter((token) => haystack.includes(token)).length
       if (score > 0) matches.push({ url, title, score })

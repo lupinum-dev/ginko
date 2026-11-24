@@ -10,7 +10,7 @@ const docsBrick = serializeSchema(defineSite({
   site: 'x', name: 'x', url: 'https://x.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', pages: {},
   bricks: {
     docs: collection({
-      label: 'Doku', max: 100, order: 'manual',
+      label: 'Doku', max: 100, order: 'manual', listing: { title: 'title' },
       fields: {
         title: f.text('Titel'),
         section: f.text('Abschnitt', { optional: true }),

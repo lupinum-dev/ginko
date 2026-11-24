@@ -12,6 +12,7 @@ const schema = serializeSchema(defineSite({
   locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
   bricks: {
     angebote: collection({
+      listing: { title: 'title' },
       label: 'Angebote', source: 'files', max: 50, order: 'manual',
       route: { de: '/angebote/[slug]', en: '/en/offers/[slug]' },
       fields: {
@@ -23,11 +24,12 @@ const schema = serializeSchema(defineSite({
       },
     }),
     docs: collection({
+      listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]', en: '/en/docs/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') },
     }),
-    termine: collection({ label: 'Termine', source: 'files', max: 50, order: 'manual', fields: { angebot: f.ref('Angebot', { to: 'angebote' }), title: f.text('Titel') } }),
+    termine: collection({ listing: { title: 'title' }, label: 'Termine', source: 'files', max: 50, order: 'manual', fields: { angebot: f.ref('Angebot', { to: 'angebote' }), title: f.text('Titel') } }),
   },
 }))
 
@@ -148,8 +150,8 @@ describe('scheduled entries', () => {
   const site = serializeSchema(defineSite({
     site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', pages: { home: { en: '/' } },
     bricks: {
-      posts: collection({ label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
-      events: collection({ label: 'Events', source: 'files', max: 50, order: { field: 'date', dir: 'asc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
+      posts: collection({ listing: { title: 'title' }, label: 'Posts', source: 'files', max: 50, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
+      events: collection({ listing: { title: 'title' }, label: 'Events', source: 'files', max: 50, order: { field: 'date', dir: 'asc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
     },
   }))
   const files = {

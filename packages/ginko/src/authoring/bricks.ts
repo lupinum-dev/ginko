@@ -2,7 +2,7 @@
 // turns it into the stored form (core/types.ts), because the labels of the standard tasks need the site's languages
 // and the texts of its label files.
 import type { ValueInput } from '../core/fields.ts'
-import type { Fields, Label } from '../core/types.ts'
+import type { CollectionListing, Fields, Label } from '../core/types.ts'
 
 /** Marks a brick written with `single` or `collection` of this entry. A symbol key, so it is never stored. */
 export const DEF: unique symbol = Symbol.for('ginko.brick.def')
@@ -12,6 +12,18 @@ type FieldsOfType<F, T extends string> = { [K in keyof F]: F[K] extends { type: 
 type Need<K extends string, Missing extends string> = [K] extends [never] ? Missing : K
 type DateKey<F> = Need<FieldsOfType<F, 'date' | 'daterange'>, 'This brick has no date field'>
 type DayKey<F> = Need<FieldsOfType<F, 'date'>, 'This brick has no date field'>
+
+/**
+ * How an entry appears in the Studio's lists, pick lists and search: `title` names it (a text, longtext or date field),
+ * `detail` is shown beside the name (such as a price or a date), `group` is a choice field that groups a pick list,
+ * `image` a picture shown with it.
+ */
+export type ListingInput<F> = CollectionListing<
+  Need<FieldsOfType<F, 'text' | 'longtext' | 'date'>, 'This brick has no text or date field'>,
+  FieldsOfType<F, 'text' | 'longtext' | 'number' | 'money' | 'date' | 'daterange' | 'time' | 'choice' | 'choices' | 'boolean'>,
+  FieldsOfType<F, 'choice'>,
+  FieldsOfType<F, 'image'>
+>
 
 /** The tasks every brick can have by their short name. `'add'` and `'remove'` are for collections. */
 export type StandardTask = 'add' | 'edit' | 'remove'
@@ -84,6 +96,8 @@ interface Common<F extends Fields> {
 export interface SingleInput<F extends Fields> extends Common<F> { status?: SingleStatusInput }
 
 export interface CollectionInput<F extends Fields> extends Common<F> {
+  /** How an entry appears in lists: `{ title: 'name', detail: 'price', group: 'category' }`. Only `title` is required. */
+  listing: ListingInput<F>
   /** Most entries. Default 500. */
   max?: number
   /** Default `'manual'`: the owner's order. */
@@ -104,6 +118,7 @@ interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; i
 export interface SingleDef<F extends Fields = Fields> extends Def<F> { kind: 'single'; status?: SingleStatusInput }
 export interface CollectionDef<F extends Fields = Fields> extends Def<F> {
   kind: 'collection'
+  listing: CollectionListing
   max?: number
   order?: 'manual' | { field: string; dir?: 'asc' | 'desc' }
   showUntil?: ShowUntil

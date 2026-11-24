@@ -7,6 +7,7 @@ import { sourceOf, t, type BasicsOptions } from './shared.ts'
 export function faq(o: BasicsOptions = {}) {
   return collection({
     label: o.label ?? t('Häufige Fragen', 'FAQ', 'Preguntas frecuentes', 'Questions fréquentes'),
+    listing: { title: 'question' },
     ...sourceOf(o),
     max: 100,
     order: 'manual',

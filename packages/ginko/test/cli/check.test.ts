@@ -12,6 +12,7 @@ const config = defineSite({
   locales: ['de'], currency: 'EUR', pages: { home: '/' },
   bricks: {
     docs: collection({
+      listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') },
@@ -20,7 +21,7 @@ const config = defineSite({
 })
 
 // A platform brick: `ginko check` compares it with production unless --offline.
-const news = collection({ label: 'News', max: 10, order: 'manual', fields: { title: f.text('Titel') } })
+const news = collection({ listing: { title: 'title' }, label: 'News', max: 10, order: 'manual', fields: { title: f.text('Titel') } })
 
 /** A site folder: ginko.config.ts (a plain module, so the test needs no imports), content/ and public/. */
 function siteWith(markdown: string, site: object = config) {
@@ -144,6 +145,7 @@ describe('ginko check and links in content files', () => {
   it('warns when a platform brick\'s maxima can pass the entry limit', async () => {
     const legal = single({ label: 'Rechtliches', fields: { body: f.markdown('Text', { max: 300_000 }) } })
     const docs = collection({
+      listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]', en: '/docs/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text', { max: 300_000 }) },
     })
@@ -155,7 +157,7 @@ describe('ginko check and links in content files', () => {
 
   // Bug caught: the content package knows the line of a CSV row, but `ginko check` printed only the file and field.
   it('prints the line of a data file error', async () => {
-    const menu = collection({ label: 'Karte', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), price: f.number('Preis', { min: 0, max: 100, step: 0.1 }) } })
+    const menu = collection({ listing: { title: 'title' }, label: 'Karte', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), price: f.number('Preis', { min: 0, max: 100, step: 0.1 }) } })
     const path = siteWith('Text.', { ...config, bricks: { ...config.bricks, menu } })
     mkdirSync(join(dirname(path), 'content/menu'))
     writeFileSync(join(dirname(path), 'content/menu/preise.csv'), 'slug,title,price\nkaffee,Kaffee,"3,5"\n')

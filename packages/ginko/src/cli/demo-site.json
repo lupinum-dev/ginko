@@ -199,6 +199,10 @@
         ],
         "max": 50,
         "order": "manual",
+        "listing": {
+          "title": "title",
+          "image": "image"
+        },
         "route": {
           "en": "/[slug]",
           "de": "/de/[slug]"
@@ -255,6 +259,10 @@
         ],
         "max": 5,
         "order": "manual",
+        "listing": {
+          "title": "text",
+          "detail": "until"
+        },
         "visible": {
           "mode": "until",
           "field": "until",
@@ -575,6 +583,10 @@
         ],
         "max": 20,
         "order": "manual",
+        "listing": {
+          "title": "title",
+          "detail": "updatedAt"
+        },
         "route": {
           "en": "/legal/[slug]",
           "de": "/de/legal/[slug]"

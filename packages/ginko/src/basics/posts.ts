@@ -27,6 +27,7 @@ export function posts<const R extends Record<Locale, RouteTemplate> | undefined 
   const tag = t('Schlagwort', 'Tag', 'Etiqueta', 'Mot-clé')
   return collection({
     label: o.label ?? t('Beiträge', 'Posts', 'Artículos', 'Articles'),
+    listing: { title: 'title', detail: 'date', image: 'image' },
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
@@ -48,6 +49,7 @@ export function posts<const R extends Record<Locale, RouteTemplate> | undefined 
 export function authors(o: BasicsOptions = {}) {
   return collection({
     label: o.label ?? t('Autorinnen und Autoren', 'Authors', 'Autores', 'Auteurs'),
+    listing: { title: 'name', image: 'avatar' },
     ...sourceOf(o),
     max: 100,
     order: 'manual',
@@ -73,6 +75,7 @@ export interface ChangelogOptions extends BasicsOptions {
 export function changelog(o: ChangelogOptions = {}) {
   return collection({
     label: o.label ?? t('Änderungen', 'Changelog', 'Registro de cambios', 'Journal des modifications'),
+    listing: { title: 'version', detail: 'date' },
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },

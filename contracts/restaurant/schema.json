@@ -496,6 +496,10 @@
         "de": "Öffnungszeiten ab Datum",
         "en": "Opening hours from a date"
       },
+      "listing": {
+        "title": "label",
+        "detail": "from"
+      },
       "fields": {
         "label": {
           "type": "text",
@@ -780,6 +784,10 @@
       "label": {
         "de": "Hinweise",
         "en": "Notices"
+      },
+      "listing": {
+        "title": "text",
+        "detail": "until"
       },
       "fields": {
         "text": {
@@ -1150,6 +1158,9 @@
         "de": "Mittagsmenü vorausplanen",
         "en": "Plan the lunch menu ahead"
       },
+      "listing": {
+        "title": "weekOf"
+      },
       "fields": {
         "weekOf": {
           "type": "date",
@@ -1463,6 +1474,11 @@
       "label": {
         "de": "Speisekarte",
         "en": "Menu"
+      },
+      "listing": {
+        "title": "name",
+        "detail": "price",
+        "group": "category"
       },
       "fields": {
         "category": {
@@ -1816,6 +1832,11 @@
       "label": {
         "de": "Veranstaltungen",
         "en": "Events"
+      },
+      "listing": {
+        "title": "title",
+        "detail": "when",
+        "image": "image"
       },
       "fields": {
         "title": {

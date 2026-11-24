@@ -20,7 +20,7 @@ Object.entries({ computed, onMounted, onUnmounted, ref, useI18n }).forEach(([nam
 const schema = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
   pages: { home: { de: '/' } },
-  bricks: { legal: collection({ label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') } }) },
+  bricks: { legal: collection({ listing: { title: 'title' }, label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') } }) },
 }))
 
 vi.stubGlobal('definePageMeta', () => {})
@@ -119,7 +119,7 @@ describe('going back to a version', () => {
     const withTasks = serializeSchema(defineSite({
       site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
       pages: { home: { de: '/' } },
-      bricks: { legal: collection({ label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') }, tasks: [{ id: 'fix', label: 'Titel', kind: 'edit', fields: ['title'] }] }) },
+      bricks: { legal: collection({ listing: { title: 'title' }, label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') }, tasks: [{ id: 'fix', label: 'Titel', kind: 'edit', fields: ['title'] }] }) },
     }))
     changes.value = [row('save', ['title'])]
     answers['entries.versionAt'] = { change: 'c2', diff: [] }

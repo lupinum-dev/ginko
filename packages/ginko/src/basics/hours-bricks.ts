@@ -154,6 +154,7 @@ export function hoursBrick(t: HoursTexts, week: readonly WeekRow[], opts: HoursO
 export function hourPlansBrick(t: HoursTexts, week: readonly WeekRow[], opts: BasicsOptions) {
   return collection({
     label: opts.label ?? t.plans,
+    listing: { title: 'label', detail: 'from' },
     ...sourceOf(opts),
     fields: {
       label: f.text(t.planName, { max: 80 }),

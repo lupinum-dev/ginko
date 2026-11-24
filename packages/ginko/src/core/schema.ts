@@ -9,7 +9,7 @@ import { componentProblems, type ComponentDef, type ComponentRegistry } from './
 import { factComponent, factProblem, FACT_TAG } from './facts.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
-import { isPrefillToken, PREFILL_TOKENS, SCHEMA_FORMAT, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema, type Task } from './types.ts'
+import { isPrefillToken, LISTING_DETAIL_TYPES, LISTING_TITLE_TYPES, PREFILL_TOKENS, SCHEMA_FORMAT, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema, type Task } from './types.ts'
 import { coreMessage } from './messages.ts'
 import { aspectProblems } from './frames.ts'
 import { checkValue } from './validate.ts'
@@ -26,7 +26,7 @@ export const SCHEMA_KEYS = new Set(['format', 'site', 'name', 'url', 'timeZone',
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'listing', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
@@ -393,6 +393,7 @@ function schemaProblems(schema: Schema): string[] {
     if (brick.kind === 'single' && 'plans' in brick) problems.push(`${key}: plans are only allowed for collections.`)
     if (brick.kind === 'collection') {
       if (!(brick.max >= 1 && brick.max <= 500)) problems.push(`${key}: max must be between 1 and 500.`)
+      problems.push(...listingProblems(key, brick))
       if (brick.plans !== undefined) problems.push(...plansProblems(key, brick.plans, brick.fields, schema))
       if (brick.order !== 'manual' && !brick.fields[brick.order.field]) problems.push(`${key}: the sort field is missing.`)
       if (brick.order !== 'manual' && brick.order.dir !== undefined && brick.order.dir !== 'asc' && brick.order.dir !== 'desc') problems.push(`${key}: order.dir must be “asc” or “desc”.`)
@@ -473,6 +474,34 @@ function schemaProblems(schema: Schema): string[] {
     const target = schema.bricks[m.brick]?.fields[m.fills]
     if (!target) problems.push(`Migration “${m.id}”: field “${m.brick}.${m.fills}” is missing.`)
     else if (target.retired) problems.push(`Migration “${m.id}”: “${m.brick}.${m.fills}” is retired.`)
+  }
+  return problems
+}
+
+/**
+ * `listing` of a collection: an object with `title`, and optionally `detail`, `group` and `image`, each naming a live
+ * field of a type that can show it. Required: without it the Studio would have to guess which field names an entry.
+ */
+function listingProblems(key: string, brick: CollectionBrick): string[] {
+  const listing: unknown = brick.listing
+  if (listing === undefined) return [`${key}: listing is missing. Write \`listing: { title: '<field>' }\` with the field that names an entry (a text, longtext or date field).`]
+  if (typeof listing !== 'object' || listing === null || Array.isArray(listing)) return [`${key}: listing must be an object such as { title: 'name' }.`]
+  const problems: string[] = []
+  for (const k of Object.keys(listing)) if (!['title', 'detail', 'group', 'image'].includes(k)) problems.push(`${key}.listing: unknown property “${k}” (known: title, detail, group, image).`)
+  const rules: [string, readonly string[], string][] = [
+    ['title', LISTING_TITLE_TYPES, 'a text, longtext or date field'],
+    ['detail', LISTING_DETAIL_TYPES, 'a field that reads as one line (not a list, Markdown, image, file, reference or address)'],
+    ['group', ['choice'], 'a choice field'],
+    ['image', ['image'], 'an image field'],
+  ]
+  const values = listing as Record<string, unknown>
+  for (const [name, types, what] of rules) {
+    const value = values[name]
+    if (value === undefined && name !== 'title') continue
+    const field = typeof value === 'string' && Object.hasOwn(brick.fields, value) ? brick.fields[value] : undefined
+    if (!field) problems.push(`${key}.listing.${name}: “${String(value)}” is not a field of this brick. Name ${what}.`)
+    else if (field.retired) problems.push(`${key}.listing.${name}: “${String(value)}” is retired. Name another field first.`)
+    else if (!types.includes(field.type)) problems.push(`${key}.listing.${name}: “${String(value)}” is a ${field.type} field. Name ${what}.`)
   }
   return problems
 }

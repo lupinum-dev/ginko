@@ -14,11 +14,12 @@ const schema = serializeSchema(defineSite({
   locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
   bricks: {
     docs: collection({
+      listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]', en: '/en/docs/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), description: f.longtext('Beschreibung', { optional: true }), badge: f.text('Badge', { optional: true }), body: f.markdown('Text') },
     }),
-    drafts: collection({ label: 'Entwürfe', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
+    drafts: collection({ listing: { title: 'title' }, label: 'Entwürfe', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
     legal: single({ label: 'Rechtliches', source: 'files', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
   },
 }))

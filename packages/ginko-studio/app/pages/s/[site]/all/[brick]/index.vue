@@ -3,7 +3,7 @@
 import { ChevronDownIcon, ChevronUpIcon, PlusIcon } from '@lucide/vue'
 import { api } from '#convex/api'
 import { isNavTree, visibleUntil } from '@lupinum/ginko/internal'
-import { formatDay, languageName, relevantDate } from '../../../../../utils/content'
+import { formatDay, languageName, listingDetail } from '../../../../../utils/content'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
 import { opErrorOf } from '../../../../../composables/useOps'
@@ -134,7 +134,7 @@ const ops = useOps(s.slug)
           <li v-for="(e, i) in rows" :key="e._id" class="group/row relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 min-[900px]:min-h-13 min-[900px]:py-2.5 hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03] sm:flex-nowrap" :data-dim="(!!status(e) && !e.pending) || undefined">
             <div class="min-w-0 flex-1">
               <NuxtLink :to="`/s/${s.slug.value}/all/${key}/${e._id}`" class="line-clamp-2 font-medium text-foreground no-underline outline-none after:absolute after:inset-0 focus-visible:after:ring-3 focus-visible:after:ring-ring/80 focus-visible:after:ring-inset group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground min-[900px]:text-sm">{{ rowTitle(e) }}</NuxtLink>
-              <span v-if="relevantDate(brick, e.dates, { t, format })" class="block text-[13px] text-muted-foreground tabular-nums">{{ relevantDate(brick, e.dates, { t, format }) }}</span>
+              <span v-if="listingDetail(brick, e.dates, s.main.value, { t, format })" class="block text-[13px] text-muted-foreground tabular-nums">{{ listingDetail(brick, e.dates, s.main.value, { t, format }) }}</span>
             </div>
             <!-- Phones: badges move under the title so the name keeps the full width. -->
             <div class="relative flex flex-wrap items-center gap-1.5 max-sm:order-last max-sm:basis-full sm:justify-end">

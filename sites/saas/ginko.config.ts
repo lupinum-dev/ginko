@@ -48,6 +48,7 @@ export default defineSite({
       },
     }),
     pricing: collection({
+      listing: { title: 'name' },
       label: 'Preise',
       item: 'Plan',
       max: 6,
@@ -64,6 +65,7 @@ export default defineSite({
       tasks: ['add', { id: 'price', label: 'Preis ändern', fields: ['priceEur', 'priceChf', 'yearEur', 'yearChf', 'note'] }, 'remove'],
     }),
     changelog: collection({
+      listing: { title: 'version', detail: 'date' },
       label: 'Changelog',
       max: 300,
       fields: {
@@ -81,6 +83,7 @@ export default defineSite({
       tasks: ['add', 'edit', 'remove'],
     }),
     blog: collection({
+      listing: { title: 'title', detail: 'date' },
       label: 'Blog',
       item: 'Artikel',
       max: 200,
@@ -102,6 +105,7 @@ export default defineSite({
       ],
     }),
     testimonials: collection({
+      listing: { title: 'quote' },
       label: 'Kundenstimmen',
       item: 'Stimme',
       max: 30,
@@ -114,6 +118,7 @@ export default defineSite({
       tasks: ['add', 'edit', 'remove'],
     }),
     faq: collection({
+      listing: { title: 'question' },
       label: 'Fragen und Antworten',
       item: 'Frage',
       max: 60,
@@ -124,6 +129,7 @@ export default defineSite({
       tasks: ['add', 'edit', 'remove'],
     }),
     notices: collection({
+      listing: { title: 'text', detail: 'until' },
       label: 'Ankündigungen',
       item: 'Ankündigung',
       max: 5,

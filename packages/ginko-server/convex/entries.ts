@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, SLUG_PATTERN, entryBytes, fitsBudget, isNavTree, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, ordered, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, SLUG_PATTERN, entryBytes, fitsBudget, isNavTree, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -964,12 +964,13 @@ function withCopySuffix(field: Field, value: Json, main: string): Json {
 }
 
 /**
- * The data of the copy: live fields only; slugs left out (create makes new, free ones from the title,
- * so "Wildwoche (Kopie)" becomes `wildwoche-kopie`, then `wildwoche-kopie-2`).
+ * The data of the copy: live fields only; slugs left out (create makes new, free ones from their source,
+ * so "Wildwoche (Kopie)" becomes `wildwoche-kopie`, then `wildwoche-kopie-2`). The copy mark goes on the text field
+ * that names an entry (`listing.title`) and on the text a slug is made from.
  */
 function copyOf(brick: CollectionBrick, data: Data, opId: string, main: string): Data {
   const slugSources = new Set(Object.values(brick.fields).flatMap((field) => (field.type === 'slug' && !field.retired ? [field.from] : [])))
-  const label = ordered(brick.fields).find(([, field]) => field.type === 'text' && !field.retired)?.[0]
+  const label = brick.listing.title
   const out: Data = {}
   for (const [name, field] of Object.entries(brick.fields)) {
     if (field.retired || field.type === 'slug' || data[name] === undefined) continue

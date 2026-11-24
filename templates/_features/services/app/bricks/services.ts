@@ -54,6 +54,7 @@ const common = {
   // The words for one entry as they stand in a task: "Leistung bearbeiten", "Edit a service", "Modifier une prestation".
   item: { de: 'Leistung', en: 'a service', fr: 'une prestation' },
   max: 50,
+  listing: { title: 'title', image: 'image' },
   tasks: [
     { id: 'price', label: { de: 'Preis ändern', en: 'Change a price', fr: 'Modifier un prix' }, fields: ['pricing', 'price'] },
     'edit',

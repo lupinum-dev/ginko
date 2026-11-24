@@ -17,6 +17,7 @@ const config = defineSite({
   }),
   bricks: {
     blog: collection({
+      listing: { title: 'title' },
       label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]', en: '/en/blog/[slug]' },
       fields: {
         title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text', { profile: 'rich' }),

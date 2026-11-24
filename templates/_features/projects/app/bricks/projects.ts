@@ -23,6 +23,7 @@ const common = {
 const campaigns = () => collection({
   ...common,
   fields: { ...fields(), ...campaign(), body: body() },
+  listing: { title: 'title', detail: 'ends', image: 'image' },
   showUntil: 'ends',
   status: { show: 'ending' },
   tasks: ['edit', 'add'],
@@ -32,6 +33,7 @@ const campaigns = () => collection({
 const detailed = () => collection({
   ...common,
   fields: { ...fields(), ...details(), body: body() },
+  listing: { title: 'title', image: 'image' },
   tasks: [
     { id: 'edit', fields: ['title', 'summary', 'client', 'year', 'place', 'scope', 'image', 'photos', 'body'] },
     { id: 'photos', label: { de: 'Fotos hinzufügen', en: 'Add photos', fr: 'Ajouter des photos' }, fields: ['image', 'photos'] },

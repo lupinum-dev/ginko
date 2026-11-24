@@ -239,6 +239,9 @@
       ],
       "max": 6,
       "order": "manual",
+      "listing": {
+        "title": "name"
+      },
       "pos": 2
     },
     "changelog": {
@@ -313,6 +316,10 @@
       "order": {
         "field": "date",
         "dir": "desc"
+      },
+      "listing": {
+        "title": "version",
+        "detail": "date"
       },
       "pos": 3
     },
@@ -396,6 +403,10 @@
         "field": "date",
         "dir": "desc"
       },
+      "listing": {
+        "title": "title",
+        "detail": "date"
+      },
       "route": {
         "de": "/blog/[slug]",
         "en": "/en/blog/[slug]",
@@ -460,6 +471,9 @@
       ],
       "max": 30,
       "order": "manual",
+      "listing": {
+        "title": "quote"
+      },
       "pos": 5
     },
     "faq": {
@@ -504,6 +518,9 @@
       ],
       "max": 60,
       "order": "manual",
+      "listing": {
+        "title": "question"
+      },
       "pos": 6
     },
     "notices": {
@@ -544,6 +561,10 @@
       ],
       "max": 5,
       "order": "manual",
+      "listing": {
+        "title": "text",
+        "detail": "until"
+      },
       "visible": {
         "mode": "until",
         "field": "until",

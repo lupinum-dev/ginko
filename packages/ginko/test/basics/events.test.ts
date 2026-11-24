@@ -60,7 +60,7 @@ const site = (withPeople: boolean) => defineSite({
   site: 'odd', name: 'Open Data Days', url: 'https://odd.example', timeZone: 'Europe/Vienna', locales: ['en', 'de'], currency: 'EUR', pages: { home: '/' },
   bricks: {
     events: events({ route: { en: '/events/[slug]', de: '/de/veranstaltungen/[slug]' } }),
-    ...(withPeople ? { people: collection({ label: 'People', max: 100, order: 'manual', fields: { name: f.text('Name') } }), sessions: sessions({ people: 'people' }) } : { sessions: sessions() }),
+    ...(withPeople ? { people: collection({ listing: { title: 'name' }, label: 'People', max: 100, order: 'manual', fields: { name: f.text('Name') } }), sessions: sessions({ people: 'people' }) } : { sessions: sessions() }),
   },
 })
 const pairs = (issues: Issue[]) => issues.map((i) => [i.path, i.code])
@@ -92,7 +92,7 @@ describe('sessions', () => {
   it('a time order needs another time field of the brick', () => {
     const schema = serializeSchema(defineSite({
       ...site(false),
-      bricks: { slots: collection({ label: 'Slots', max: 5, order: 'manual', fields: { day: f.date('Day'), to: f.time('To', { after: 'day' }) } }) },
+      bricks: { slots: collection({ listing: { title: 'day' }, label: 'Slots', max: 5, order: 'manual', fields: { day: f.date('Day'), to: f.time('To', { after: 'day' }) } }) },
     }))
     expect(checkSchema(schema)).toEqual(['slots.to.after: “day” is not another time field of the brick.'])
   })

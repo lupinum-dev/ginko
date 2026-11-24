@@ -32,7 +32,7 @@ vi.stubGlobal('useOps', () => ({}))
 const schema = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
   pages: { home: { de: '/' } },
-  bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }), story: f.markdown('Geschichte', { optional: true }) } }) },
+  bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }), story: f.markdown('Geschichte', { optional: true }) } }) },
 }))
 
 // Wrong behaviour caught: a new draft is asked about by a generic name (the old "Neuer Eintrag" heading), or by its brick label "Blog" while empty.
@@ -140,7 +140,7 @@ test('a new entry starts like its create task: the task title and the prefill th
   const blog = (tasks: NonNullable<Parameters<typeof collection>[0]['tasks']>) => serializeSchema(defineSite({
     site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
     pages: { home: { de: '/' } },
-    bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', tasks, fields: { title: f.text('Titel'), date: f.date('Datum') } }) },
+    bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, tasks, fields: { title: f.text('Titel'), date: f.date('Datum') } }) },
   }))
   const posts = blog([{ id: 'write', label: 'Beitrag schreiben', kind: 'create', prefill: { date: '@today' } }])
   const open = (schema: ReturnType<typeof blog>) => mount(EntryEditor, {
@@ -355,7 +355,7 @@ test('the preview of a new entry shows its own page once the title is typed, and
     const routed = serializeSchema(defineSite({
       site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
       pages: { about: { de: '/ueber-uns' } },
-      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/blog/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
     vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
     const wrapper = mount(EntryEditor, {
@@ -425,7 +425,7 @@ test.each([
     const routed = serializeSchema(defineSite({
       site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
       pages: { about: { de: '/ueber-uns', en: '/en/about-us' } },
-      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]', en: '/en/blog/[slug]' }, ...(untranslated ? { untranslated } : {}), fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/blog/[slug]', en: '/en/blog/[slug]' }, ...(untranslated ? { untranslated } : {}), fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
     vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
     const wrapper = mount(EntryEditor, {
@@ -541,7 +541,7 @@ test('Alles bearbeiten on the English tab says a cleared title takes the entry o
     const routed = serializeSchema(defineSite({
       site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
       pages: { home: { de: '/', en: '/en' } },
-      bricks: { events: collection({ label: 'Events', max: 50, order: 'manual', route: { de: '/events/[slug]', en: '/en/events/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+      bricks: { events: collection({ label: 'Events', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/events/[slug]', en: '/en/events/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
     const entry = { _id: 'e1', brick: 'events', kind: 'item', order: 0, data: { title: { de: 'Kürbisabend', en: 'Pumpkin night' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live', translation: { en: { page: 'shown', blocking: [], missing: [], outdated: [] } } } as const
     // The fields: the note under the title, as GinkoField reads it from the translation view.

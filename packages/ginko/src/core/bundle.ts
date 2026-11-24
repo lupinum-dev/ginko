@@ -1,5 +1,5 @@
 import { parseMarkdown, type MarkdownTree } from './markdown.ts'
-import type { Currency, Fields, Json, Locale, Schema } from './types.ts'
+import type { Brick, Currency, Fields, Json, Locale, Schema } from './types.ts'
 
 /** 3: text fields carry comark trees; collection items carry `updatedAt` and, for file entries, `source`. Other formats are refused. */
 export const BUNDLE_FORMAT = 3
@@ -20,13 +20,12 @@ export interface BundleItem {
 }
 
 /**
- * The name of an entry in a list or a heading (llms.txt, its Markdown twin, the search): its `title`, else the text
- * field its slug is made from (a person's `name`), else its id.
+ * The name of an entry in a list or a heading (llms.txt, its Markdown twin, the search, the navigation): the value of
+ * the field its brick's `listing.title` names, else its id. A bundle item is in one language, so the value is a text
+ * (a date field gives its ISO day).
  */
-export function entryTitle(item: BundleItem, fields: Fields | undefined): string {
-  if (typeof item.data.title === 'string') return item.data.title
-  const slug = Object.values(fields ?? {}).find((field) => field.type === 'slug')
-  const named = slug?.type === 'slug' ? item.data[slug.from] : undefined
+export function entryTitle(item: BundleItem, brick: Brick | undefined): string {
+  const named = brick?.kind === 'collection' ? item.data[brick.listing.title] : undefined
   return typeof named === 'string' && named.trim() ? named : item.id
 }
 

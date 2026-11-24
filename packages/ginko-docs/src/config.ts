@@ -49,6 +49,7 @@ export function docsCollection(opts: { locales: Locales; label?: string; max?: n
   const base = opts.base ?? '/docs'
   return collection({
     label: opts.label ?? 'Docs',
+    listing: { title: 'title' },
     ...sourceOf(opts.source),
     max: opts.max ?? 500,
     order: 'manual',
