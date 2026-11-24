@@ -363,6 +363,13 @@ describe('a rows field without a stored value', () => {
     expect(value.value).toEqual({ mo: { dish: 'Folgt' }, tu: { dish: 'Gulasch' }, we: { dish: 'Folgt' } })
   })
 
+  // Wrong behaviour caught: the owner reads "Die Zeile „tu“ fehlt", a key she never sees, under the card "Dienstag".
+  test('a row sentence names the weekday, not the row key', () => {
+    const issue = { path: 'days.tu', code: 'REQUIRED', key: 'issues.rowMissing', params: { label: 'Tage', row: 'tu' }, message: '„Tage“: Die Zeile „tu“ fehlt.' }
+    const wrapper = mount(GinkoFieldRows, { props: { id: 'f-days', field, modelValue: undefined, path: 'days', locale: 'de', locales: ['de'], issues: [issue] }, global: { provide: { 'ginko:week': week } } })
+    expect(wrapper.get('[data-row="tu"] [role="alert"]').text()).toBe('„Tage“: Die Zeile „Dienstag“ fehlt.')
+  })
+
   // Wrong behaviour caught: the optional field is stored with default rows although nobody touched it.
   test('an untouched field stays unset', () => {
     const { wrapper, value } = host()

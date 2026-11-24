@@ -306,6 +306,31 @@ describe('rows fields (f.rows)', () => {
     expect(errors.map((e) => [e.path, e.code, e.message])).toEqual([expected])
   })
 
+  // Wrong behaviour caught: inside a row, `showWhen` and `after` read another row's values (or none), so a closed day
+  // still needs its times, an open one may lack them, or an end before its start is stored.
+  describe('after and showWhen inside a row', () => {
+    const open = { field: 'closed', not: true } as const
+    const slots = serializeSchema({
+      ...site,
+      bricks: {
+        ...site.bricks,
+        slots: single({ label: 'Zeiten', fields: { days: f.rows('Tage', { rows: [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }], fields: {
+          closed: f.boolean('Geschlossen', { default: false }),
+          from: f.time('Von', { showWhen: open }),
+          to: f.time('Bis', { after: 'from', showWhen: open }),
+        } }) } }),
+      },
+    })
+    it.each([
+      ['a closed day without times and an open day with them', { closed: false, from: '10:00', to: '12:00' }, []],
+      ['an open day without its start', { closed: false, to: '12:00' }, [['days.tu.from', 'REQUIRED']]],
+      ['an open day that ends before it starts', { closed: false, from: '10:00', to: '09:00' }, [['days.tu.to', 'TIME_ORDER']]],
+    ] as const)('%s', async (_name, tu, expected) => {
+      const { errors } = await validate(slots, 'slots', { days: { mo: { closed: true }, tu } }, check('create'))
+      expect(pairs(errors)).toEqual(expected)
+    })
+  })
+
   // Wrong behaviour caught: the old stored shape (a list of rows with a day column) is read as valid rows.
   it('rejects a list where a rows field needs one object per row', async () => {
     const asList = Object.entries(week()).map(([day, row], i) => ({ _id: `wk${day}00000${i}`, day, ...row }))

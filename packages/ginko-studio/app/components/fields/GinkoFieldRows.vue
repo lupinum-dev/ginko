@@ -123,6 +123,8 @@ function holdSelection(event: MouseEvent) {
 }
 
 const rowIssues = (key: string) => issuesUnder(props.issues, `${props.path}.${key}`).filter((i) => i.path === `${props.path}.${key}`)
+/** A row's own sentence ("the row … is missing") names the row as its heading does (the weekday), not by its key. */
+const rowText = (key: string, e: Issue) => messageOf({ ...e, ...(e.params ? { params: { ...e.params, row: titleOf(key) } } : {}) })
 const fieldIssues = computed(() => props.issues.filter((i) => i.path === props.path))
 </script>
 
@@ -132,7 +134,7 @@ const fieldIssues = computed(() => props.issues.filter((i) => i.path === props.p
     <ol class="m-0 grid list-none gap-3 p-0">
       <li v-for="key in keys" :key="key" class="grid gap-4 rounded-lg border bg-card p-3 sm:p-4" :data-row="key">
         <h3 class="m-0 truncate text-sm font-semibold">{{ titleOf(key) }}</h3>
-        <p v-for="e in rowIssues(key)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
+        <p v-for="e in rowIssues(key)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ rowText(key, e) }}</p>
         <div class="grid gap-4">
           <template v-for="[column, sub] in columns" :key="column">
             <div v-if="shown(rowOf(key), sub)" :class="{ 'rounded-md bg-warning/10 p-3': needsCheck(key, column) }" @focusin="selectPlaceholder(key, column, $event)" @mouseup="holdSelection" @focusout="keepSelection = false">

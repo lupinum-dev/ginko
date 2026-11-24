@@ -132,6 +132,18 @@ describe('agent door', () => {
     expect((await s.t.run((ctx) => ctx.db.get(s.entries.hours!)))!.data).toMatchObject({ closedOn: '2026-10-09' })
   })
 
+  // Wrong behaviour caught: an assistant sends only the day it changed ({ mo: … }), and the lunch week is stored without
+  // the other days, or the answer does not say which row is missing.
+  it('a lunch week with only Monday is refused with the missing-row sentence, and nothing is stored', async () => {
+    const s = await setup()
+    const before = (await s.t.run((ctx) => ctx.db.get(s.entries.lunch!)))!
+    const refused = await call(s, await keyOf(s, 'owner'), 'task_lunch_lunchWeek', { publish: true, days: { mo: { dish: 'Kürbissuppe', allergens: [] } } })
+    expect(refused.isError).toBe(true)
+    expect(refused.text).toContain('days.tu: “Tage”: the row “tu” is missing.')
+    const after = (await s.t.run((ctx) => ctx.db.get(s.entries.lunch!)))!
+    expect([after.rev, after.data]).toEqual([before.rev, before.data])
+  })
+
   it('the cook\'s key sees only the menu and lunch tasks and cannot run another task', async () => {
     const s = await setup()
     const key = await keyOf(s, 'cook')
