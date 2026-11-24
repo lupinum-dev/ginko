@@ -18,7 +18,7 @@ const schema = {
     },
     pages: { kind: 'collection', label: 'Seiten', listing: { title: 'title' }, fields: { title: { type: 'text', label: 'Titel' } } },
     settings: { kind: 'single', label: 'Einstellungen', fields: { title: { type: 'text', label: 'Titel' } } },
-    people: { kind: 'collection', label: 'Vortragende', listing: { title: 'name' }, fields: { name: { type: 'text', label: 'Name' }, slug: { type: 'slug', label: 'Adresse', from: 'name' } } },
+    people: { kind: 'collection', label: 'Vortragende', listing: { title: 'name' }, fields: { name: { type: 'text', label: 'Name' }, title: { type: 'text', label: 'Funktion', optional: true }, slug: { type: 'slug', label: 'Adresse', from: 'name' } } },
   },
 } as unknown as Pick<Schema, 'bricks'>
 
@@ -95,6 +95,13 @@ describe('entries without a title', () => {
     } as unknown as Bundle
     expect(llmsTxt(bundle, { schema, siteName: 'Lupinum', origin: 'https://lupinum.com' })).toContain('- [Lena Hofer](https://lupinum.com/vortragende/lena-hofer.md)')
     expect(await entryMarkdown(lena, 'people', options)).toBe('# Lena Hofer\n')
+  })
+
+  // Wrong behaviour caught: a field called `title` that is not `listing.title` (a speaker's role) is left out of the
+  // twin, because the twin skipped the field by its name.
+  test('keep a field called title that does not name the entry', async () => {
+    const lena = item('people/lena-hofer', { name: 'Lena Hofer', title: 'Gärtnerin', slug: 'lena-hofer' }, { de: '/vortragende/lena-hofer' })
+    expect(await entryMarkdown(lena, 'people', options)).toBe('# Lena Hofer\n\nGärtnerin\n')
   })
 })
 
