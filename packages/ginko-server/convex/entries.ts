@@ -13,7 +13,7 @@ import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
 import { DEFAULT_LOCALE, isLocale, t, type MessageKey } from './lib/i18n'
 import { dropPending, dropPendingRoots, keepsPending, overlay, pendingBySite, pendingInfo, pendingOf, syncPendingRefs, type Pending } from './lib/pending'
-import { countersOf, DELETED_KEPT, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
+import { countersOf, DELETED_KEPT, NO_PLAN, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { translationNotes } from './lib/translation'
@@ -1021,7 +1021,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       ...(actor.role === 'staff' ? { createdBy: actor.user.id } : {}),
     })
     await putTrees(ctx, actor.site._id, entry, trees.json)
-    if (at !== undefined) await ctx.db.patch(entry, { publishAt: at, publishJob: await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry, at }) })
+    if (at !== undefined) await ctx.db.patch(entry, { publishAt: at, publishBy: actor.user.id, publishJob: await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry, at }) })
     for (const row of slugged.slugs) {
       await ctx.db.insert('slugs', { site: actor.site._id, brick: args.brick, locale: row.locale, slug: row.slug, entry })
     }
@@ -1283,7 +1283,7 @@ function failedFields(schema: Schema, brickKey: string, errors: Issue[]): { fiel
 /** Draft → live: state, no schedule, `contentAt`, lifeRev+1, contentRev+1 and one 'publish' change. Shared by `publishAs` and `publishDue`. */
 async function goLive(ctx: MutationCtx, c: Counters, entry: Doc<'entries'>, by: By, opId: string, history: Recorded, now = Date.now()) {
   await cancelJob(ctx, entry)
-  await ctx.db.patch(entry._id, { state: 'live', publishAt: undefined, publishJob: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentAt: now, ...nameFixedFor(entry) })
+  await ctx.db.patch(entry._id, { state: 'live', ...NO_PLAN, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentAt: now, ...nameFixedFor(entry) })
   c.contentRev += 1
   return ctx.db.insert('changes', {
     site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'publish', ...history, entryRev: entry.rev + 1, contentRev: c.contentRev, at: now,
@@ -1339,7 +1339,7 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
       // A new time replaces the old job, so the entry never goes online at the old time.
       await cancelJob(ctx, entry)
       const publishJob = await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry: entry._id, at })
-      await ctx.db.patch(entry._id, { publishAt: at, publishJob, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, ...nameFixedFor(entry) })
+      await ctx.db.patch(entry._id, { publishAt: at, publishJob, publishBy: actor.user.id, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, ...nameFixedFor(entry) })
       change = await ctx.db.insert('changes', {
         site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'schedule',
         ...recorded(msg('history.scheduled', { title: label, at }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: Date.now(),
@@ -1387,7 +1387,7 @@ export async function unpublishAs(ctx: MutationCtx, actor: Actor, args: ObjectTy
 
     const c = countersOf(actor.site)
     await cancelJob(ctx, entry)
-    await ctx.db.patch(entry._id, { state: 'draft', publishAt: undefined, publishJob: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1 })
+    await ctx.db.patch(entry._id, { state: 'draft', ...NO_PLAN, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1 })
     // Only a live entry leaves the bundle; a scheduled draft was never in it.
     if (wasLive) c.contentRev += 1
     const change = await ctx.db.insert('changes', {
@@ -1451,7 +1451,7 @@ export const publishDue = internalMutation({
     // The full check and the links run again: the entry or what it points to may have changed since it was planned
     // (D101). A throwing job would fail silently, so the entry stays a draft and the history says why.
     const stop = async (history: HistoryMsg) => {
-      await ctx.db.patch(entry._id, { publishAt: undefined, publishJob: undefined })
+      await ctx.db.patch(entry._id, NO_PLAN)
       await ctx.db.insert('changes', {
         site: entry.site, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `publish:${entry._id}:${args.at}`, kind: 'publishStopped',
         ...recorded(history, schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),

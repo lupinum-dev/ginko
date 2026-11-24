@@ -226,6 +226,31 @@ describe('the full check where a draft goes online (D101)', () => {
   })
 })
 
+describe('the planner of a draft (D102)', () => {
+  // Wrong behaviour caught: a plan that stops cannot say whom to tell, or an ended plan still names a planner.
+  it('the planner is written with the time and cleared with it: publish now, cancel, remove and the job', async () => {
+    const s = await draftSetup()
+    const at = NOW + 2 * HOUR
+    const by = async (id: string) => (await s.row(id))!.publishBy
+    const call = (fn: typeof api.entries.publish | typeof api.entries.unpublish | typeof api.entries.remove, id: string, extra: object = {}) =>
+      s.as.owner.mutation(fn, { site: 'restaurant', opId: opId(), entry: id, lifeRev: 1, ...extra } as never)
+    const created = await s.createDraft('Erstellt geplant', { at })
+    const published = await s.createDraft('Veröffentlicht')
+    const cancelled = await s.createDraft('Abgesagt')
+    const removed = await s.createDraft('Entfernt', { at })
+    await call(api.entries.publish, published.entry, { at })
+    await call(api.entries.publish, cancelled.entry, { at })
+    for (const id of [created.entry, published.entry, cancelled.entry, removed.entry]) expect(await by(id)).toBe('u-wirtin')
+
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: published.entry, lifeRev: 2 })
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: cancelled.entry, lifeRev: 2 })
+    await call(api.entries.remove, removed.entry)
+    await s.advanceTo(at + 1000)
+    for (const id of [created.entry, published.entry, cancelled.entry, removed.entry]) expect(await by(id)).toBeUndefined()
+    expect(await s.row(created.entry)).toMatchObject({ state: 'live' })
+  })
+})
+
 describe('revisions and slugs of a draft', () => {
   it('editing a draft bumps rev and fieldRevs but not contentRev; publishing a live entry\'s saved changes bumps all three', async () => {
     const s = await draftSetup()

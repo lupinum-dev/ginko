@@ -108,6 +108,8 @@ export default defineSchema({
     publishAt: v.optional(v.number()),
     /** The scheduled `entries.publishDue` run that belongs to `publishAt`. */
     publishJob: v.optional(v.id('_scheduled_functions')),
+    /** Who planned `publishAt` (user id): written and cleared with it (D102). Absent on a plan that came with an import. */
+    publishBy: v.optional(v.string()),
     /**
      * The staff member (user id) who created the entry through a create task: they may change it later with that
      * task (lib/access.ts `authorize`). Absent for entries of owners and admins, and for entries made before it existed.
