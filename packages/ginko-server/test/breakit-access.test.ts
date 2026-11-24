@@ -129,6 +129,7 @@ const publicCalls: Call[] = [
   { fn: 'release.revokePushKey', kind: 'mutation', args: () => ({ ...SITE, key: 'x' }) },
   { fn: 'search.studio', kind: 'query', args: () => ({ ...SITE, query: 'Saibling' }) },
   { fn: 'sites.mine', kind: 'query', args: () => ({}) },
+  { fn: 'sites.mayCreate', kind: 'query', args: () => ({}) },
   { fn: 'sites.deletion', kind: 'query', args: () => SITE },
   { fn: 'sites.startDeletion', kind: 'mutation', args: () => ({ ...SITE, confirm: 'restaurant' }) },
   { fn: 'sites.cancelDeletion', kind: 'mutation', args: () => SITE },

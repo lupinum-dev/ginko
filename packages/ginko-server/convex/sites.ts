@@ -214,13 +214,26 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
   })
 }
 
-/** Admin only, from the platform UI. */
+/** Whether the signed-in person is a platform admin: only they create sites. */
+async function isAdmin(ctx: QueryCtx): Promise<boolean> {
+  const user = await currentUser(ctx)
+  return (await ctx.db.query('admins').withIndex('by_user', (q) => q.eq('user', user.id)).unique()) !== null
+}
+
+/**
+ * Whether the signed-in person may create a site, for "New site" on "My sites". `sites.mine` cannot tell: an admin of
+ * a platform without a site has no row there.
+ */
+export const mayCreate = query({
+  args: {},
+  handler: (ctx) => isAdmin(ctx),
+})
+
+/** Admin only, from the Studio's "New site" page. */
 export const create = mutation({
   args: { slug: v.string(), name: v.string(), url: v.string(), timeZone: v.optional(v.string()), locales: v.optional(v.array(v.string())), currency: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const user = await currentUser(ctx)
-    const admin = await ctx.db.query('admins').withIndex('by_user', (q) => q.eq('user', user.id)).unique()
-    if (!admin) fail('FORBIDDEN', 'errors.onlyAdminsCreateSites')
+    if (!(await isAdmin(ctx))) fail('FORBIDDEN', 'errors.onlyAdminsCreateSites')
     await insertSite(ctx, args)
     return { slug: args.slug }
   },

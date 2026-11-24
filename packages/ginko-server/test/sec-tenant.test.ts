@@ -212,6 +212,7 @@ const NO_SITE: Record<string, string> = {
   'invites.mine': "invites to the caller's own address",
   'sites.mine': "the caller's own memberships",
   'sites.create': 'makes a new site for the caller',
+  'sites.mayCreate': 'answers only whether the caller is a platform admin',
   'mail.signInAvailable': 'answers only whether mail is set up',
 }
 
