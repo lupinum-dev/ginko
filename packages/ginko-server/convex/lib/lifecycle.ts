@@ -45,8 +45,8 @@ export function storageSums(rows: readonly Pick<Doc<'entries'>, 'deletedAt' | 'b
   return { bytes, trashBytes, treeBytes }
 }
 
-/** What a write that ends a draft's plan clears: the time, its job and the planner (D102). */
-export const NO_PLAN = { publishAt: undefined, publishJob: undefined, publishBy: undefined } as const
+/** What a write that ends a draft's plan clears: the time, its job, the planner (D102) and a stopped plan (D103). */
+export const NO_PLAN = { publishAt: undefined, publishJob: undefined, publishBy: undefined, stopped: undefined } as const
 
 /**
  * Soft-deletes one entry (SPEC 4.2 remove): `deletedAt`, lifeRev+1, one change row. Its slug stays reserved and its

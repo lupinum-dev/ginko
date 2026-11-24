@@ -94,6 +94,7 @@ describe('links when a write is not live yet', () => {
       expect(row.state).toBe('draft')
       expect(row.publishAt).toBeUndefined()
       expect(row.publishJob).toBeUndefined()
+      expect(row.stopped).toEqual({ at, by: 'u-wirtin', reason: { code: 'link', href: `$events.${slug.de}` } })
       const lines = await s.t.run((ctx) => ctx.db.query('changes').collect())
       expect(lines.find((c) => c.entry === entry && c.kind === 'publishStopped')?.msg).toMatchObject({ key: 'history.publishStoppedBrokenLink', params: { link: expect.stringContaining('$events.') } })
     } finally {

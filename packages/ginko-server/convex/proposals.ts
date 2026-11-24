@@ -153,7 +153,7 @@ async function staleReason(ctx: QueryCtx, p: Doc<'proposals'>, touched: Touched 
     if (args.rev === undefined) return staleBecause('history.staleAlreadyLive')
     if (entry.rev !== args.rev || !(await pendingOf(ctx, entry._id))) return retry
   }
-  if (p.op === 'unpublish' && (entry.state ?? 'live') === 'draft' && entry.publishAt === undefined) return staleBecause('history.staleAlreadyDraft')
+  if (p.op === 'unpublish' && (entry.state ?? 'live') === 'draft' && entry.publishAt === undefined && !entry.stopped) return staleBecause('history.staleAlreadyDraft')
   // Taking the time off unpublished changes (the entry stays online): only while they still have one.
   if (p.op === 'unpublish' && (p.after as { state?: string } | undefined)?.state === 'live' && (await pendingOf(ctx, entry._id))?.publishAt === undefined) return retry
   touched.set(entry._id, { roots: seen?.roots ?? new Set(), life: true })

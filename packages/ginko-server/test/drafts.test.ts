@@ -40,6 +40,15 @@ async function draftSetup() {
 
 const idsOf = (bundle: Bundle) => bundle.bricks.events!.items!.map((i) => i.id)
 
+/**
+ * Takes the required description out of a stored draft, as an import keeps it (it checks only the shape), so the draft
+ * fails the full check; `false` puts it back.
+ */
+const breakDraft = (s: Awaited<ReturnType<typeof draftSetup>>, id: string, broken = true) => s.t.run(async (ctx) => {
+  const { description: _, ...data } = (await ctx.db.get(id as Id<'entries'>))!.data as Record<string, unknown>
+  await ctx.db.patch(id as Id<'entries'>, { data: broken ? data : { ...data, description: { de: 'Test' } } })
+})
+
 afterEach(() => vi.useRealTimers())
 
 describe('drafts in the public bundle', () => {
@@ -175,18 +184,13 @@ describe('scheduled publishing', () => {
 })
 
 describe('the full check where a draft goes online (D101)', () => {
-  /** Takes the required description out of a stored draft, as an import keeps it (only the shape is checked there). */
-  const dropDescription = (s: Awaited<ReturnType<typeof draftSetup>>, id: string) => s.t.run(async (ctx) => {
-    const { description: _, ...data } = (await ctx.db.get(id as Id<'entries'>))!.data as Record<string, unknown>
-    await ctx.db.patch(id as Id<'entries'>, { data })
-  })
   const paths = (error: { details?: unknown }) => (error.details as { errors: { path: string }[] }).errors.map((e) => e.path)
 
   // Wrong behaviour caught: a draft that misses a required field goes online half-filled, now or by a plan.
   it('publish now and publish with a time refuse a draft that fails the full check, with the field errors', async () => {
     const s = await draftSetup()
     const draft = await s.createDraft('Halb')
-    await dropDescription(s, draft.entry)
+    await breakDraft(s, draft.entry)
     for (const at of [undefined, NOW + 2 * HOUR]) {
       const error = await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 1, ...(at ? { at } : {}) }))
       expect(error.code).toBe('INVALID')
@@ -201,7 +205,7 @@ describe('the full check where a draft goes online (D101)', () => {
     const s = await draftSetup()
     const at = NOW + 2 * HOUR
     const draft = await s.createDraft('Geplant halb', { at })
-    await dropDescription(s, draft.entry)
+    await breakDraft(s, draft.entry)
     await s.advanceTo(at + 1000)
     const row = (await s.row(draft.entry))!
     expect(row).toMatchObject({ state: 'draft' })
@@ -209,6 +213,8 @@ describe('the full check where a draft goes online (D101)', () => {
     expect(idsOf(await s.bundle())).not.toContain(draft.entry)
     const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect())
     expect(changes.at(-1)).toMatchObject({ kind: 'publishStopped', actor: 'system', msg: { key: 'history.publishStoppedInvalid', params: { count: 1, fields: { de: 'Beschreibung', en: 'Description' } } } })
+    // Wrong behaviour caught (D103): the failed plan leaves no trace on the entry, so nobody sees it.
+    expect(row.stopped).toEqual({ at, by: 'u-wirtin', reason: { code: 'invalid', fields: ['description'] } })
   })
 
   // Wrong behaviour caught: a save of a planned draft passes on the changed field alone and the plan stops at its time.
@@ -216,7 +222,7 @@ describe('the full check where a draft goes online (D101)', () => {
     const s = await draftSetup()
     const planned = await s.createDraft('Geplant', { at: NOW + 2 * HOUR })
     const plain = await s.createDraft('Ohne Zeit')
-    for (const id of [planned.entry, plain.entry]) await dropDescription(s, id)
+    for (const id of [planned.entry, plain.entry]) await breakDraft(s, id)
     const retitle = (id: string, baseRev: number) =>
       s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: id, baseRev, fields: { title: { de: 'Neu' } }, sentence: 'Titel' })
     const error = await errorOf(retitle(planned.entry, 1))
@@ -248,6 +254,64 @@ describe('the planner of a draft (D102)', () => {
     await s.advanceTo(at + 1000)
     for (const id of [created.entry, published.entry, cancelled.entry, removed.entry]) expect(await by(id)).toBeUndefined()
     expect(await s.row(created.entry)).toMatchObject({ state: 'live' })
+  })
+})
+
+describe('a stopped plan (D103)', () => {
+  // Wrong behaviour caught: an entry is planned and stopped at once, or a stopped plan outlives the write that ends it.
+  it('planned and stopped are never both set, and a new plan, a publish, cancel and remove clear stopped', async () => {
+    const s = await draftSetup()
+    let time = NOW
+    const life = async (id: string) => (await s.row(id))!.lifeRev
+    const both = async () => (await s.t.run((ctx) => ctx.db.query('entries').collect())).filter((r) => r.publishAt !== undefined && r.stopped !== undefined)
+    const plan = async (id: string) => {
+      time += HOUR
+      await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: id, lifeRev: await life(id), at: time })
+    }
+    /** Plans the draft, breaks it and lets the job run: the plan stops. Then the draft is whole again. */
+    const stop = async (id: string) => {
+      await plan(id)
+      expect(await both()).toEqual([])
+      await breakDraft(s, id)
+      await s.advanceTo(time + 1000)
+      await breakDraft(s, id, false)
+      const row = (await s.row(id))!
+      expect(row.stopped).toMatchObject({ at: time, by: 'u-wirtin' })
+      expect(row.publishAt).toBeUndefined()
+    }
+    const shape = async (id: string) => {
+      const row = (await s.row(id))!
+      return { state: row.state ?? 'live', planned: row.publishAt !== undefined, stopped: row.stopped !== undefined }
+    }
+    const a = await s.createDraft('Stopp A')
+    const b = await s.createDraft('Stopp B')
+
+    await stop(a.entry)
+    await plan(a.entry)
+    expect(await shape(a.entry)).toEqual({ state: 'draft', planned: true, stopped: false })
+
+    await breakDraft(s, a.entry)
+    await s.advanceTo(time + 1000)
+    await breakDraft(s, a.entry, false)
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: a.entry, lifeRev: await life(a.entry) })
+    expect(await shape(a.entry)).toEqual({ state: 'draft', planned: false, stopped: false })
+
+    await stop(a.entry)
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: a.entry, lifeRev: await life(a.entry) })
+    expect(await shape(a.entry)).toEqual({ state: 'live', planned: false, stopped: false })
+
+    await stop(b.entry)
+    const removed = await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: b.entry, lifeRev: await life(b.entry) })
+    expect(await shape(b.entry)).toEqual({ state: 'draft', planned: false, stopped: false })
+    await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: b.entry, lifeRev: (removed as { lifeRev: number }).lifeRev })
+    expect(await shape(b.entry)).toEqual({ state: 'draft', planned: false, stopped: false })
+    expect(await both()).toEqual([])
+  })
+
+  it('a plain draft still has nothing to cancel', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Nichts geplant')
+    expect(await errorOf(s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 1 }))).toMatchObject({ code: 'INVALID', key: 'errors.entryAlreadyDraft' })
   })
 })
 

@@ -5,6 +5,7 @@ import { blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PA
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
+import type { StopReason } from './schema'
 import { internal } from './_generated/api'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, authorizeWriter, byOf, checkRev, createdBy, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
@@ -1339,7 +1340,7 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
       // A new time replaces the old job, so the entry never goes online at the old time.
       await cancelJob(ctx, entry)
       const publishJob = await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry: entry._id, at })
-      await ctx.db.patch(entry._id, { publishAt: at, publishJob, publishBy: actor.user.id, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, ...nameFixedFor(entry) })
+      await ctx.db.patch(entry._id, { publishAt: at, publishJob, publishBy: actor.user.id, stopped: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, ...nameFixedFor(entry) })
       change = await ctx.db.insert('changes', {
         site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'schedule',
         ...recorded(msg('history.scheduled', { title: label, at }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: Date.now(),
@@ -1369,7 +1370,8 @@ export async function unpublishAs(ctx: MutationCtx, actor: Actor, args: ObjectTy
     authorizeWriter(actor, schema, { task: args.task, brick: entry.brick })
     if (entry.deletedAt || entry.lifeRev !== args.lifeRev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
     const wasLive = stateOf(entry) === 'live'
-    if (!wasLive && entry.publishAt === undefined) fail('INVALID', 'errors.entryAlreadyDraft', undefined, lifeStateOf(entry))
+    // A draft with a time or a stopped plan can be cancelled; a plain draft has nothing to cancel.
+    if (!wasLive && entry.publishAt === undefined && !entry.stopped) fail('INVALID', 'errors.entryAlreadyDraft', undefined, lifeStateOf(entry))
     const held = wasLive ? await pendingOf(ctx, entry._id) : null
     // One step back: planned unpublished changes lose their time first, as a scheduled draft does; the entry stays online.
     if (held?.publishAt !== undefined) return await unschedulePending(ctx, actor, entry, held, args)
@@ -1450,8 +1452,9 @@ export const publishDue = internalMutation({
     const label = labelOf(schema, entry.brick, entry.data as Data)
     // The full check and the links run again: the entry or what it points to may have changed since it was planned
     // (D101). A throwing job would fail silently, so the entry stays a draft and the history says why.
-    const stop = async (history: HistoryMsg) => {
-      await ctx.db.patch(entry._id, NO_PLAN)
+    // The entry stays a draft and keeps why, for its planner and the owners (D103).
+    const stop = async (reason: StopReason, history: HistoryMsg) => {
+      await ctx.db.patch(entry._id, { ...NO_PLAN, stopped: { at: args.at, ...(entry.publishBy ? { by: entry.publishBy } : {}), reason } })
       await ctx.db.insert('changes', {
         site: entry.site, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `publish:${entry._id}:${args.at}`, kind: 'publishStopped',
         ...recorded(history, schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
@@ -1459,9 +1462,9 @@ export const publishDue = internalMutation({
       return null
     }
     const invalid = await onlineErrors(ctx, site._id, schema, entry)
-    if (invalid.length) return await stop(msg('history.publishStoppedInvalid', { title: label, ...failedFields(schema, entry.brick, invalid) }))
+    if (invalid.length) return await stop({ code: 'invalid', fields: [...new Set(invalid.map((e) => e.path))] }, msg('history.publishStoppedInvalid', { title: label, ...failedFields(schema, entry.brick, invalid) }))
     const broken = await brokenNewLinks(ctx, site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }])
-    if (broken) return await stop(msg('history.publishStoppedBrokenLink', { title: label, link: broken.href }))
+    if (broken) return await stop({ code: 'link', href: broken.href }, msg('history.publishStoppedBrokenLink', { title: label, link: broken.href }))
     // The job is running now, so there is nothing left to cancel.
     await goLive(ctx, c, { ...entry, publishJob: undefined }, SYSTEM, `publish:${entry._id}:${args.at}`, recorded(msg('history.publishedDue', { title: label }), site.schema as Schema))
     await writeCounters(ctx, site._id, c)
