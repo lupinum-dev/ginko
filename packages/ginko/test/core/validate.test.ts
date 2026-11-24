@@ -466,7 +466,7 @@ describe('slugify and uniqueSlug (SPEC 2.2)', () => {
     ['Straße', 'strasse'],
     ['Über uns & Team', 'ueber-uns-team'],
     ['Café', 'cafe'],
-    ['***', 'eintrag'],
+    ['***', ''],
   ])('slugify(%j) is %j', (input, expected) => {
     expect(slugify(input)).toBe(expected)
   })

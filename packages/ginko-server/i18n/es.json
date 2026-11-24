@@ -160,6 +160,8 @@
     "importTrashTooLarge": "Las entradas eliminadas de la exportación son más grandes que la papelera de un sitio ({used} de {limit}).",
     "importCollectionTooFull": "La colección “{brick}” tiene {count} entradas; admite como máximo {max}.",
     "importDuplicateId": "La entrada “{id}” aparece dos veces.",
+    "importNameShape": "La entrada “{id}” tiene el nombre “{name}”. Un nombre tiene de 1 a 100 letras minúsculas (de la a a la z), cifras y guiones simples entre ellas.",
+    "importDuplicateName": "Dos entradas de “{brick}” tienen el nombre “{name}”. Un nombre es único en su bloque, también en la papelera.",
     "importSameUrl": "“{a}” y “{b}” tienen la misma dirección {url}.",
     "siteNotStartedDev": "El sitio no existe. Inicia primero `pnpm local:dev`.",
     "siteNotPushedSchema": "El sitio no existe. Sube primero el esquema.",

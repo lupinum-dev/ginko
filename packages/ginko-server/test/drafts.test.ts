@@ -225,6 +225,85 @@ describe('revisions and slugs of a draft', () => {
   })
 })
 
+describe('entry names (D96)', () => {
+  const nameOf = async (s: Awaited<ReturnType<typeof draftSetup>>, id: string) => {
+    const row = (await s.row(id))!
+    return { name: row.name, nameFixed: row.nameFixed, slug: (row.data as { slug?: Record<string, string> }).slug?.de }
+  }
+  const slugRows = (s: Awaited<ReturnType<typeof draftSetup>>, id: string) =>
+    s.t.run(async (ctx) => (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', id as Id<'entries'>)).collect()).filter((r) => r.locale === 'de').map((r) => ({ slug: r.slug, old: r.old })))
+  const retitle = (s: Awaited<ReturnType<typeof draftSetup>>, id: string, baseRev: number, title: string) =>
+    s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: id, baseRev, fields: { title: { de: title } }, sentence: 'Titel' })
+
+  // Wrong behaviour caught: two entries get one name, so a link or an export by name points at the wrong one.
+  it('the same title twice gives x and x-2, as name and main slug together', async () => {
+    const s = await draftSetup()
+    const first = await s.createDraft('Martinsfest')
+    const second = await s.createDraft('Martinsfest', {})
+    expect(await nameOf(s, first.entry)).toEqual({ name: 'martinsfest', nameFixed: undefined, slug: 'martinsfest' })
+    // Created online, the name is fixed at once.
+    expect(await nameOf(s, second.entry)).toEqual({ name: 'martinsfest-2', nameFixed: true, slug: 'martinsfest-2' })
+  })
+
+  // Wrong behaviour caught: restoring the removed entry would give two entries one name.
+  it('a name in the trash stays taken', async () => {
+    const s = await draftSetup()
+    const removed = await s.createDraft('Kürbisabend')
+    await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: removed.entry, lifeRev: 1 })
+    const next = await s.createDraft('Kürbisabend')
+    expect((await nameOf(s, next.entry)).name).toBe('kuerbisabend-2')
+  })
+
+  // Wrong behaviour caught: a draft keeps the name of its first rough title, or its old address stays reserved as a
+  // forward that nobody ever saw.
+  it('a draft\'s title change makes the name and the main slug again and leaves no old row', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    await retitle(s, draft.entry, 1, 'Herbstball')
+    expect(await nameOf(s, draft.entry)).toEqual({ name: 'herbstball', nameFixed: undefined, slug: 'herbstball' })
+    expect(await slugRows(s, draft.entry)).toEqual([{ slug: 'herbstball', old: undefined }])
+  })
+
+  // Wrong behaviour caught: a name that links and the export already use changes once the entry was planned or online.
+  it.each([
+    { case: 'published', publish: {} },
+    { case: 'planned', publish: { at: NOW + DAY } },
+  ])('after it is $case, a title change leaves the name', async ({ publish }) => {
+    const s = await draftSetup()
+    const entry = await s.createDraft('Sommerfest', publish)
+    await retitle(s, entry.entry, 1, 'Sommernachtsfest')
+    expect(await nameOf(s, entry.entry)).toEqual({ name: 'sommerfest', nameFixed: true, slug: 'sommerfest' })
+  })
+
+  // Wrong behaviour caught: a new address renames the entry, so its links by name break.
+  it('changeSlug leaves the name', async () => {
+    const s = await draftSetup()
+    const entry = await s.createDraft('Gansl-Essen', {})
+    await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: entry.entry, locale: 'de', slug: 'gansl-im-november' })
+    expect(await nameOf(s, entry.entry)).toEqual({ name: 'gansl-essen', nameFixed: true, slug: 'gansl-im-november' })
+  })
+
+  // Wrong behaviour caught: a live entry removed before its name was fixed comes back with a name that follows its
+  // title, so an unpublish and a title change rename an entry that was online.
+  it('a restored live entry has a fixed name', async () => {
+    const s = await draftSetup()
+    const entry = await s.createDraft('Adventmarkt', {})
+    await s.t.run((ctx) => ctx.db.patch(entry.entry as Id<'entries'>, { nameFixed: undefined }))
+    await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: entry.entry, lifeRev: 1 })
+    await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: entry.entry, lifeRev: 2 })
+    expect((await nameOf(s, entry.entry)).nameFixed).toBe(true)
+  })
+
+  // Wrong behaviour caught: a title without letters gives an empty name, or a German word in an English site.
+  it('a title without letters or digits gives the brick key as name', async () => {
+    const s = await draftSetup()
+    const create = () => s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: { text: { de: '…' }, until: '2026-12-31' } })
+    const first = await create()
+    const second = await create()
+    expect([(await s.row(first.entry))!.name, (await s.row(second.entry))!.name]).toEqual(['notices', 'notices-2'])
+  })
+})
+
 describe('rights', () => {
   it('staff without a create or edit task of the brick is FORBIDDEN on publish and unpublish', async () => {
     const s = await draftSetup()
@@ -310,7 +389,7 @@ describe('readers that treat a draft apart', () => {
     const at = NOW + HOUR
     const draft = await s.createDraft('Gesichert', { at })
     const snapshot = await s.t.query(internal.backup.snapshot, { site: s.site })
-    expect(snapshot.entries.find((e) => e.id === draft.entry)).toMatchObject({ state: 'draft', publishAt: at })
+    expect(snapshot.entries.find((e) => e.id === draft.entry)).toMatchObject({ state: 'draft', publishAt: at, name: 'gesichert', nameFixed: true })
     expect(snapshot.entries.find((e) => e.id === s.entries.weinabend)).not.toHaveProperty('state')
 
     expect(await s.as.cook.query(api.entries.get, { site: 'restaurant', entry: draft.entry })).toMatchObject({ state: 'draft', publishAt: at })

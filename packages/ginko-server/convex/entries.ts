@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, nameBase, nameSource, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -250,10 +250,12 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
     })
   }
 
+  const followed = await followName(ctx, actor, entry, brick, before, data)
   const written = await commitEntry(ctx, {
     actor, entry, fields: brick.fields, roots: changed, data, prints,
     kind: onlyConfirm ? 'confirm' : 'save', history, opId: args.opId,
   })
+  if (followed) await writeFollowedName(ctx, actor, entry, followed)
   if (moved.length) await moveSlugRows(ctx, actor, entry, locale!, moved)
   // What is online now no longer waits; the other unpublished fields do.
   if (held) await dropPendingRoots(ctx, schema, held, changed)
@@ -578,9 +580,11 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     await checkNewFiles(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     if (stateOf(entry) === 'live') await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before: entry.data as Data, after: data }])
 
+    const followed = await followName(ctx, actor, entry, brick, entry.data as Data, data)
     const written = await commitEntry(ctx, {
       actor, entry, fields: brick.fields, roots, data, prints, kind: 'undo', history: recorded(msg('history.undo', { what: change.msg ? (change.msg as HistoryMsg) : change.sentence }), schema), opId: args.opId,
     })
+    if (followed) await writeFollowedName(ctx, actor, entry, followed)
     await ctx.db.patch(change._id, { undoneBy: written.change })
     const result: Json = { entry: entry._id, rev: written.rev, contentRev: written.contentRev, warnings: [], ...(restoredFiles.length ? { restoredFiles: restoredFiles.map((f) => f.name) } : {}) }
     return result
@@ -750,43 +754,91 @@ const lifeStateOf = (entry: Doc<'entries'>): Json => ({
 })
 
 /**
- * The first free slug from `base` in one brick and locale: not used by another entry of the brick (removed ones keep
- * theirs until they are deleted for good), and no URL of a static page or of another brick's entry. `own` is the entry
- * the slug is for: its own slug in that locale is free for it.
+ * The slugs of one brick and locale that `own` may not take: those of the brick's other entries (removed ones keep
+ * theirs until they are deleted for good, old forwarding rows count), and those whose URL a static page or another
+ * brick's entry has.
  */
-async function freeSlug(ctx: MutationCtx, actor: Actor, brick: string, locale: Locale, base: string, own?: Id<'entries'>) {
+async function slugsTaken(ctx: MutationCtx, actor: Actor, brick: string, locale: Locale, own?: Id<'entries'>) {
   const schema = actor.site.schema as Schema
   const rowsOf = (key: string) => ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', actor.site._id).eq('brick', key).eq('locale', locale)).collect()
   const taken = new Set((await rowsOf(brick)).filter((r) => r.entry !== own).map((r) => r.slug))
-  // Other bricks and static pages may own the URL this slug would make.
   const others: Record<string, string[]> = {}
   for (const [key, other] of Object.entries(schema.bricks)) if (key !== brick && other.kind === 'collection' && other.route) others[key] = (await rowsOf(key)).map((r) => r.slug)
   for (const slug of blockedSlugs(schema, brick, locale, others)) taken.add(slug)
+  return taken
+}
+
+/** The first free slug from `base` in one brick and locale (`slugsTaken`). `own` is the entry the slug is for: its own slug in that locale is free for it. */
+async function freeSlug(ctx: MutationCtx, actor: Actor, brick: string, locale: Locale, base: string, own?: Id<'entries'>) {
+  const taken = await slugsTaken(ctx, actor, brick, locale, own)
   return uniqueSlug(base, (s) => taken.has(s))
 }
 
 /**
- * Slugs of a new entry (SPEC 2.2): per locale from its `from` field, unique in the brick and
- * locale. A missing foreign value takes the main-language slug of the same entry until the
- * translated title is saved (`foreignSlugs`).
+ * The first free name from `base` (D96): no other entry of the brick holds it, drafts and the trash included. In a
+ * brick with an address field it is also free as the main-language slug, because the two are made together.
  */
-async function slugsFor(ctx: MutationCtx, actor: Actor, brick: string, fields: Fields, data: Data) {
+async function freeName(ctx: MutationCtx, actor: Actor, brickKey: string, brick: CollectionBrick, base: string, own?: Id<'entries'>) {
+  const main = (actor.site.schema as Schema).locales[0]!
+  const slugs = slugKeyOf(brick) ? await slugsTaken(ctx, actor, brickKey, main, own) : new Set<string>()
+  for (let n = 1; ; n++) {
+    const name = n === 1 ? base : `${base}-${n}`
+    if (slugs.has(name)) continue
+    const holder = await ctx.db.query('entries').withIndex('by_site_brick_name', (q) => q.eq('site', actor.site._id).eq('brick', brickKey).eq('name', name)).first()
+    if (!holder || holder._id === own) return name
+  }
+}
+
+/**
+ * A draft's name follows its title until it is fixed (D96): when a save changes the text the name is made from, the
+ * name is made again, and the main-language slug with it while that slug is still the name (one set by hand stays).
+ * Writes the slug into `data`; returns what the caller writes once the save is committed (`writeFollowedName`).
+ */
+async function followName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, brick: Brick, before: Data, data: Data) {
+  if (entry.kind !== 'item' || entry.nameFixed || stateOf(entry) !== 'draft' || entry.publishAt !== undefined || brick.kind !== 'collection') return undefined
+  const main = (actor.site.schema as Schema).locales[0]!
+  if (entry.name !== undefined && nameSource(brick, data, main) === nameSource(brick, before, main)) return undefined
+  const name = await freeName(ctx, actor, entry.brick, brick, nameBase(entry.brick, brick, data, main), entry._id)
+  const slugKey = slugKeyOf(brick)
+  const slug = slugKey ? textOf(plainObject(data[slugKey])[main]) : ''
+  const followsSlug = slugKey !== undefined && slug === entry.name && slug !== name
+  if (name === entry.name && !followsSlug) return undefined
+  if (followsSlug) data[slugKey] = { ...plainObject(data[slugKey]), [main]: name }
+  return { name, slug: followsSlug ? name : undefined }
+}
+
+/** Writes what `followName` made: the name, and the main slug row in place (a draft has no address online, so no old row stays). */
+async function writeFollowedName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, followed: { name: string; slug?: string }) {
+  await ctx.db.patch(entry._id, { name: followed.name })
+  if (followed.slug === undefined) return
+  const main = (actor.site.schema as Schema).locales[0]!
+  const row = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).find((r) => r.locale === main && !r.old)
+  if (row) await ctx.db.patch(row._id, { slug: followed.slug })
+  else await ctx.db.insert('slugs', { site: actor.site._id, brick: entry.brick, locale: main, slug: followed.slug, entry: entry._id })
+}
+
+/**
+ * The name and slugs of a new entry (SPEC 2.2, D96): the name from the slug's source text in the main language (or
+ * from `listing.title`), free as a name and as the main slug, which is the same text; a foreign slug from its own
+ * text, unique in the brick and locale. A missing foreign value takes the main-language slug of the same entry until
+ * the translated title is saved (`foreignSlugs`).
+ */
+async function namedFor(ctx: MutationCtx, actor: Actor, brickKey: string, brick: CollectionBrick, data: Data) {
   const schema = actor.site.schema as Schema
   const main = schema.locales[0]!
+  const name = await freeName(ctx, actor, brickKey, brick, nameBase(brickKey, brick, data, main))
   const out: Data = { ...data }
   const rows: { locale: string; slug: string }[] = []
-  for (const [name, field] of Object.entries(fields)) {
-    if (field.type !== 'slug') continue
-    const from = plainObject(data[field.from])
-    const bases = slugBases(schema.locales, Object.fromEntries(schema.locales.map((locale) => [locale, textOf(from[locale])])))
-    const made: Record<string, string> = {}
-    for (const locale of schema.locales) {
-      made[locale] = await freeSlug(ctx, actor, brick, locale, bases[locale] ?? made[main]!)
-    }
-    out[name] = made
+  const slugKey = slugKeyOf(brick)
+  if (slugKey !== undefined) {
+    const from = plainObject(data[(brick.fields[slugKey] as { from: string }).from])
+    const bases = slugBases(schema.locales, Object.fromEntries(schema.locales.map((locale) => [locale, textOf(from[locale])])), name)
+    const made: Record<string, string> = { [main]: name }
+    for (const locale of schema.locales) if (locale !== main) made[locale] = await freeSlug(ctx, actor, brickKey, locale, bases[locale] ?? name)
+    out[slugKey] = made
     for (const [locale, slug] of Object.entries(made)) rows.push({ locale, slug })
   }
-  return { data: out, slugs: rows }
+  return { name, data: out, slugs: rows }
 }
 
 /**
@@ -806,7 +858,9 @@ async function foreignSlugs(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'
     if (!from || from.retired || !isTranslatable(from)) continue
     const title = textOf(plainObject(data[field.from])[locale])
     if (!title || title === textOf(plainObject(before[field.from])[locale])) continue
-    const slug = await freeSlug(ctx, actor, entry.brick, locale, slugify(title), entry._id)
+    const base = slugify(title)
+    if (!base) continue
+    const slug = await freeSlug(ctx, actor, entry.brick, locale, base, entry._id)
     if (slug === plainObject(data[key])[locale]) continue
     data[key] = { ...plainObject(data[key]), [locale]: slug }
     made.push({ key, slug })
@@ -855,7 +909,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
 
     // Retired fields are not writable (SPEC 4.1 step 3); validation skips them, so reject them here.
     for (const key of Object.keys(args.data)) liveField(brick, key)
-    const slugged = await slugsFor(ctx, actor, args.brick, brick.fields, args.data as Data)
+    const slugged = await namedFor(ctx, actor, args.brick, brick, args.data as Data)
     const data = slugged.data
     // Translations sent with a new entry are fresh: every foreign leaf gets the print of its main value.
     const prints = nextPrints({ fields: brick.fields, roots: Object.keys(brick.fields), before: {}, after: data, prints: {}, main: schema.locales[0]!, confirm: undefined })
@@ -903,6 +957,8 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       // A draft's `contentAt` is set again when it goes live.
       contentAt: Date.now(),
       ...(draft ? { state: 'draft' as const } : {}),
+      // Online or planned from the start, the name is fixed at once (D96).
+      name: slugged.name, ...(!draft || at !== undefined ? { nameFixed: true as const } : {}),
       // Staff always create through a create task, and may change what they created with it later (`authorize`).
       ...(actor.role === 'staff' ? { createdBy: actor.user.id } : {}),
     })
@@ -1062,7 +1118,9 @@ export const restore = mutation({
       const order = newOrder(brick, rows.map((r) => r.order))
       const now = Date.now()
       await ctx.db.patch(entry._id, {
-        deletedAt: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, order, treeBytes: trees.bytes, ...(entry.state === 'draft' ? {} : { contentAt: now }),
+        deletedAt: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, order, treeBytes: trees.bytes,
+        // A live entry is online again: its name no longer follows the title (D96), also for one removed before names were fixed.
+        ...(entry.state === 'draft' ? {} : { contentAt: now, ...nameFixedFor(entry) }),
       })
       await putTrees(ctx, actor.site._id, entry._id, trees.json)
       c.entryCount += 1
@@ -1135,10 +1193,13 @@ async function cancelJob(ctx: MutationCtx, entry: Doc<'entries'>) {
   if (entry.publishJob) await ctx.scheduler.cancel(entry.publishJob)
 }
 
+/** Planned or online, an item's name no longer follows its title (D96). */
+const nameFixedFor = (entry: Doc<'entries'>) => (entry.kind === 'item' ? { nameFixed: true as const } : {})
+
 /** Draft → live: state, no schedule, `contentAt`, lifeRev+1, contentRev+1 and one 'publish' change. Shared by `publishAs` and `publishDue`. */
 async function goLive(ctx: MutationCtx, c: Counters, entry: Doc<'entries'>, by: By, opId: string, history: Recorded, now = Date.now()) {
   await cancelJob(ctx, entry)
-  await ctx.db.patch(entry._id, { state: 'live', publishAt: undefined, publishJob: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentAt: now })
+  await ctx.db.patch(entry._id, { state: 'live', publishAt: undefined, publishJob: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentAt: now, ...nameFixedFor(entry) })
   c.contentRev += 1
   return ctx.db.insert('changes', {
     site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'publish', ...history, entryRev: entry.rev + 1, contentRev: c.contentRev, at: now,
@@ -1192,7 +1253,7 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
       // A new time replaces the old job, so the entry never goes online at the old time.
       await cancelJob(ctx, entry)
       const publishJob = await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry: entry._id, at })
-      await ctx.db.patch(entry._id, { publishAt: at, publishJob, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1 })
+      await ctx.db.patch(entry._id, { publishAt: at, publishJob, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, ...nameFixedFor(entry) })
       change = await ctx.db.insert('changes', {
         site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'schedule',
         ...recorded(msg('history.scheduled', { title: label, at }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: Date.now(),

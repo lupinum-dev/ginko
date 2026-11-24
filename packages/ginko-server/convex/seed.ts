@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { carryPrints, defaultsFor, entryBytes, fitsBudget, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, withoutUnknownRows, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { carryPrints, defaultsFor, entryBytes, fitsBudget, isEntryName, namesOf, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, withoutUnknownRows, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -243,6 +243,9 @@ export const importExport = internalMutation({
       publishAt: v.optional(v.number()),
       /** When the entry last changed for the public (the bundle's updatedAt); absent in older exports, then the import time. */
       contentAt: v.optional(v.number()),
+      /** A collection entry's name and whether it is fixed (D96); absent in older exports, then made like the upgrade does. */
+      name: v.optional(v.string()),
+      nameFixed: v.optional(v.literal(true)),
     })),
   },
   handler: async (ctx, args) => {
@@ -376,6 +379,44 @@ export const importExport = internalMutation({
       if (seen.has(row.id)) problems.push({ code: 'INVALID', key: 'errors.importDuplicateId', params: { id: row.id } })
       seen.add(row.id)
     }
+    // One name per entry of a brick (D96), also against entries stored by an earlier batch. An entry without one (an
+    // older export) gets one made from its slug or title, as the upgrade makes them.
+    const names = new Map<(typeof rows)[number], { name: string; nameFixed?: true }>()
+    const storedNames = new Map<string, Set<string>>()
+    const namesIn = async (brick: string) => {
+      let set = storedNames.get(brick)
+      if (!set) {
+        const stored = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', brick)).collect()
+        set = new Set(stored.flatMap((e) => (e.name === undefined ? [] : [e.name])))
+        storedNames.set(brick, set)
+      }
+      return set
+    }
+    for (const item of rows) {
+      const { row } = item
+      if (row.kind !== 'item' || row.name === undefined) continue
+      if (!isEntryName(row.name)) {
+        problems.push({ code: 'INVALID', key: 'errors.importNameShape', params: { id: row.id, name: row.name } })
+        continue
+      }
+      const taken = await namesIn(row.brick)
+      if (taken.has(row.name)) problems.push({ code: 'INVALID', key: 'errors.importDuplicateName', params: { brick: row.brick, name: row.name } })
+      taken.add(row.name)
+      names.set(item, { name: row.name, ...(row.nameFixed ? { nameFixed: true as const } : {}) })
+    }
+    for (const [brick, def] of Object.entries(schema.bricks)) {
+      if (def.kind !== 'collection') continue
+      const unnamed = rows.filter((item) => item.row.brick === brick && item.row.kind === 'item' && item.row.name === undefined)
+      if (!unnamed.length) continue
+      const taken = await namesIn(brick)
+      const made = namesOf(brick, def, schema.locales[0]!, unnamed.map((item) => item.data), (name) => taken.has(name))
+      unnamed.forEach((item, i) => {
+        taken.add(made[i]!)
+        // Online or planned at the export, the name is fixed, as the upgrade fixes it; the trash is neither (a restore fixes it).
+        const fixed = item.row.deletedAt === undefined && (item.row.state !== 'draft' || item.row.publishAt !== undefined)
+        names.set(item, { name: made[i]!, ...(fixed ? { nameFixed: true as const } : {}) })
+      })
+    }
     const added = new Map<string, number>()
     for (const { row } of rows) if (row.deletedAt === undefined) added.set(row.brick, (added.get(row.brick) ?? 0) + 1)
     for (const [brick, count] of added) {
@@ -401,13 +442,15 @@ export const importExport = internalMutation({
     // 2. Store.
     const ids: [string, Id<'entries'>][] = []
     const known = new Set<string>(uploads.values())
-    for (const { row, fields, data, prints, size, trees } of rows) {
+    for (const item of rows) {
+      const { row, fields, data, prints, size, trees } = item
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
         fieldRevs: Object.fromEntries(Object.keys(fields).map((f) => [f, row.rev])),
         lifeRev: row.deletedAt === undefined ? 1 : 2, prints, bytes: size, treeBytes: trees.bytes, contentAt: row.contentAt ?? Date.now(),
         ...(row.deletedAt === undefined ? {} : { deletedAt: row.deletedAt }),
         ...(row.state === 'draft' ? { state: 'draft' as const } : {}),
+        ...names.get(item),
       })
       await putTrees(ctx, site._id, id, trees.json)
       // A scheduled draft gets its job back (a time in the past runs at once); `contentRev` is not touched.

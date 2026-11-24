@@ -67,7 +67,8 @@ describe('local:files-export', () => {
     expect(exported.schema.bricks.faq).not.toHaveProperty('source')
 
     const [hallo, zweiter, preis] = exported.entries
-    expect(hallo).toMatchObject({ id: 'blog/hallo', brick: 'blog', kind: 'item', order: 0, rev: 1 })
+    // The name is the file name, fixed: an import keeps it (D96).
+    expect(hallo).toMatchObject({ id: 'blog/hallo', brick: 'blog', kind: 'item', order: 0, rev: 1, name: 'hallo', nameFixed: true })
     expect(hallo!.data.title).toEqual({ de: 'Hallo Welt', en: 'Hello world' })
     expect(hallo!.data.slug).toEqual({ de: 'hallo', en: 'hallo' })
     // The platform stores and the Studio edits Markdown as text, not as the site's parsed tree.

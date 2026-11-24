@@ -65,7 +65,10 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
     list.forEach((entry, index) => {
       const { updatedAt: _updatedAt, sources: _sources, trees: _trees, ...rest } = entry
       // `data` holds each translatable field as { de, en } and `prints` marks each translation as fresh: the shape of a platform entry.
-      entries.push({ id: rest.id, brick, kind: plain.bricks[brick]!.kind === 'single' ? 'single' : 'item', order: index, data: rest.data, prints: (rest.prints ?? {}) as ExportEntry['prints'], rev: 1 })
+      const item = plain.bricks[brick]!.kind !== 'single'
+      // An item's name is its file name (`posts/hello` → `hello`), and it is fixed: the file name is the name (D96).
+      const named = item ? { name: rest.id.slice(brick.length + 1), nameFixed: true as const } : {}
+      entries.push({ id: rest.id, brick, kind: item ? 'item' : 'single', order: index, data: rest.data, prints: (rest.prints ?? {}) as ExportEntry['prints'], rev: 1, ...named })
     })
   }
 

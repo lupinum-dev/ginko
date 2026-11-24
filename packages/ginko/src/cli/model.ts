@@ -102,6 +102,10 @@ export interface ExportEntry {
   prints: Record<string, Record<string, string>>
   rev: number
   deletedAt?: number
+  /** A collection entry's name (D96): the file name in a files export, the stored name in a platform export. */
+  name?: string
+  /** The name no longer follows the title: the entry was planned or online. */
+  nameFixed?: true
 }
 
 /** GET /export (SPEC 9, 12): the site with every entry (deleted ones too) and a signed URL per file. */
@@ -155,7 +159,8 @@ export function parseExport(value: unknown, locator: 'url' | 'path', problem: st
     && typeof value.schemaRev === 'number' && typeof value.contentRev === 'number'
     && Array.isArray(value.entries) && value.entries.every((e) => isObject(e)
       && typeof e.id === 'string' && typeof e.brick === 'string' && (e.kind === 'single' || e.kind === 'item')
-      && typeof e.order === 'number' && isObject(e.data) && isObject(e.prints) && typeof e.rev === 'number' && optionalNumber(e.deletedAt))
+      && typeof e.order === 'number' && isObject(e.data) && isObject(e.prints) && typeof e.rev === 'number' && optionalNumber(e.deletedAt)
+      && optionalString(e.name) && (e.nameFixed === undefined || e.nameFixed === true))
     && Array.isArray(value.files) && value.files.every((f) => isObject(f)
       && typeof f.id === 'string' && typeof f.name === 'string' && typeof f.mime === 'string' && typeof f.size === 'number'
       && typeof f[locator] === 'string' && optionalNumber(f.width) && optionalNumber(f.height)

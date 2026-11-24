@@ -162,6 +162,8 @@
     "importTrashTooLarge": "Les entrées supprimées de l’export dépassent la corbeille d’un site ({used} sur {limit}).",
     "importCollectionTooFull": "La collection « {brick} » compte {count} entrées ; elle en accepte {max} au maximum.",
     "importDuplicateId": "L’entrée « {id} » apparaît deux fois.",
+    "importNameShape": "L’entrée « {id} » a le nom « {name} ». Un nom compte de 1 à 100 lettres minuscules (de a à z), chiffres et tirets simples entre eux.",
+    "importDuplicateName": "Deux entrées de « {brick} » ont le nom « {name} ». Un nom est unique dans sa brique, corbeille comprise.",
     "importSameUrl": "« {a} » et « {b} » ont la même adresse {url}.",
     "siteNotStartedDev": "Le site n’existe pas. Lancez d’abord `pnpm local:dev`.",
     "siteNotPushedSchema": "Le site n’existe pas. Envoyez d’abord le schéma.",

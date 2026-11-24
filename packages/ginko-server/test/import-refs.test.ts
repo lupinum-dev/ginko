@@ -64,7 +64,8 @@ async function withRefBricks(s: Setup, site: Setup['site']) {
   })
 }
 
-const exported = (id: string, brick: string, order: number, data: unknown, prints = {}) => ({ id, brick, kind: 'item', order, data, prints, rev: 1 })
+/** An entry as `ginko files-export` writes it: its name is the file name, fixed (D96). */
+const exported = (id: string, brick: string, order: number, data: unknown, prints = {}) => ({ id, brick, kind: 'item', order, data, prints, rev: 1, name: id.slice(brick.length + 1), nameFixed: true })
 
 async function exportFolder(entries: unknown[] = [
   // The post comes first on purpose: its author is imported after it.
@@ -154,6 +155,18 @@ describe('import keeps references between entries', () => {
     expect(rows.find((e) => e.brick === 'notes')!.data).toEqual({ body: { de: `Von [Anna]($authors.${anna._id}).` } })
   })
 
+  // Wrong behaviour caught: the entries of a files export get new names on the platform, so `$authors.anna` and the file
+  // names no longer match the entries they were written for.
+  it('keeps the file name of a files export as the fixed name of each entry', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const { run, upload } = runnerOf(s)
+    await importSite({ dir: await exportFolder(), run, upload, log: () => undefined })
+    const rows = (await entriesOf(s, s.site)).filter((e) => e.brick === 'posts' || e.brick === 'authors')
+    expect(rows.map((e) => [e.brick, e.name, e.nameFixed]).sort()).toEqual([['authors', 'anna', true], ['posts', 'hello', true]])
+  })
+
   // A post that names a short files-export ID 20000 times: 234 KiB in the export, 684 KiB once each `authors/a` is a
   // 32-character Convex ID. Wrong behaviour caught: the size is checked before the rewrite only, so the import clears the
   // site and stores an entry the Studio then refuses to grow.
@@ -195,6 +208,10 @@ describe('import keeps what the Studio keeps', () => {
     {
       case: 'an entry ID twice', entries: [service('services/a', 'a'), service('services/a', 'b')],
       cli: 'The entry “services/a” appears twice.', server: 'Der Eintrag „services/a“ kommt zweimal vor.',
+    },
+    {
+      case: 'two entries of one brick with one name', entries: [{ ...service('services/a', 'a'), name: 'gleich' }, { ...service('services/b', 'b'), name: 'gleich' }],
+      cli: 'Two entries of “services” have the name “gleich”. A name is unique in its brick, the trash included.', server: 'Zwei Einträge von „services“ haben den Namen „gleich“. Ein Name kommt in seinem Baustein nur einmal vor, auch im Papierkorb.',
     },
     {
       case: 'two entries with one URL', entries: [service('services/a', 'webseiten'), service('services/b', 'webseiten')],

@@ -5,7 +5,7 @@ import type {
   Brick, Field, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, imageSizeProps, isTranslatable, printOf, sha256, slugify, slugKeyOf, routeUrls, wallClockIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, ENTRY_NAME_RULE, imageInfo, imageSizeProps, isEntryName, isTranslatable, printOf, sha256, slugKeyOf, routeUrls, wallClockIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -476,6 +476,10 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const { rel } = src
       const report = (message: string) => errors.push({ file: rel, message, ...(line !== undefined ? { line } : {}) })
       if (parsed.locale !== undefined && parsed.locale === main) return report(`The main language “${main}” takes no suffix in the file name.`)
+      // The name is the same in both homes (D96): an import to the platform keeps it, so it has the shape of a slug.
+      if (folder && !isEntryName(parsed.name)) {
+        return report(src.csv ? `The “slug” cell “${parsed.name}” is no entry name. ${ENTRY_NAME_RULE}` : `The file name gives the entry name “${parsed.name}”. ${ENTRY_NAME_RULE} Rename the file.`)
+      }
       const locale = parsed.locale === undefined ? main : schema.locales.find((l) => l === parsed.locale)
       if (locale === undefined) return report(`Language “${parsed.locale}” is not in the site's locales.`)
       const group = groups.get(parsed.name) ?? { rank, translations: {} }
@@ -719,8 +723,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       }
       if (parsed !== undefined && markdownKey !== undefined && hasBody) view[markdownKey] = parsed.body
       if (markdownKey === undefined && hasBody) fail(cx, 'body', `The text fits no field of “${key}”: the brick states no \`body\` (the markdown field the text of a file fills).`)
-      // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
-      if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
+      // The slug defaults to the entry's name: the file name without its number (CONTENT.md "Slug"), for CSV the `slug` cell.
+      if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.name
       errors.push(...fileErrors)
       if (isMain && fileErrors.length === 0) notePublishedOn(src, fields, publishAt)
       return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, planned: planned ? true : undefined }

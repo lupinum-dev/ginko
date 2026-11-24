@@ -11,7 +11,7 @@
 // storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import { byteSize, entryBytes, entryLinkRefs, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
+import { byteSize, entryBytes, entryLinkRefs, ENTRY_NAME_RULE, isEntryName, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
 import type { Runner } from './local.ts'
 import { CliError, isObject, parseExport, type ExportEntry, type SiteExport } from './model.ts'
 import { english, explainRejected, kib } from './report.ts'
@@ -184,7 +184,7 @@ const NEW_ID = 'x'.repeat(32)
  * What the platform's import (seed.ts importExport, importRefs) would refuse in an export, as English lines: values the
  * Studio cannot open at all, entries over the entry limit (removed ones too: a restore must be able to save them), and
  * live or removed entries over a site's budget, live Markdown trees over the guard the bundle needs; an entry ID twice,
- * a collection over its max, two entries with one address. Values that a save refuses only today are no problem: the platform stores
+ * a collection over its max, two entries with one address, a name of the wrong shape or twice in one brick. Values that a save refuses only today are no problem: the platform stores
  * them and warns. The target site counts as empty: a local import clears it first, and the hosted import takes only an
  * empty site. Sizes count references to other entries with their new IDs: an ID from `ginko files-export` is a path like
  * `authors/anna`, shorter than the Convex ID that replaces it, so an entry with many references grows in step 6.
@@ -200,9 +200,15 @@ export async function checkImport(schema: Schema, entries: ExportEntry[]): Promi
   let live = 0
   const seen = new Set<string>()
   const liveIn = new Map<string, number>()
+  const names = new Set<string>()
   for (const entry of entries) {
     if (seen.has(entry.id)) problems.push(`The entry “${entry.id}” appears twice.`)
     seen.add(entry.id)
+    if (entry.kind === 'item' && entry.name !== undefined) {
+      if (!isEntryName(entry.name)) problems.push(`Entry ${entry.id} (${entry.brick}) has the name “${entry.name}”. ${ENTRY_NAME_RULE}`)
+      else if (names.has(`${entry.brick}/${entry.name}`)) problems.push(`Two entries of “${entry.brick}” have the name “${entry.name}”. A name is unique in its brick, the trash included.`)
+      names.add(`${entry.brick}/${entry.name}`)
+    }
     for (const issue of (await validate(schema, entry.brick, entry.data, { mode: 'restore' })).errors) {
       problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
     }

@@ -162,6 +162,8 @@
     "importTrashTooLarge": "Die entfernten Einträge des Exports sind größer als der Papierkorb einer Seite ({used} von {limit}).",
     "importCollectionTooFull": "Die Sammlung „{brick}“ hat {count} Einträge, höchstens {max} gehen.",
     "importDuplicateId": "Der Eintrag „{id}“ kommt zweimal vor.",
+    "importNameShape": "Der Eintrag „{id}“ hat den Namen „{name}“. Ein Name besteht aus 1 bis 100 Kleinbuchstaben (a bis z), Ziffern und einzelnen Bindestrichen dazwischen.",
+    "importDuplicateName": "Zwei Einträge von „{brick}“ haben den Namen „{name}“. Ein Name kommt in seinem Baustein nur einmal vor, auch im Papierkorb.",
     "importSameUrl": "„{a}“ und „{b}“ haben dieselbe Adresse {url}.",
     "siteNotStartedDev": "Die Seite gibt es nicht. Zuerst `pnpm local:dev` starten.",
     "siteNotPushedSchema": "Die Seite gibt es nicht. Zuerst das Schema pushen.",

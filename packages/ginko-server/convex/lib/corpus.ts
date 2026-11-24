@@ -1,7 +1,7 @@
 // Demo content from a corpus (contracts/<site>/data.json), shared by the local reset (seed.ts) and
 // the demo fill (demo.ts): the entries with their slugs and counters, and invites for the demo people.
 import type { Json } from '@lupinum/ginko'
-import { entryBytes, sha256, type Schema } from '@lupinum/ginko/internal'
+import { entryBytes, namesOf, sha256, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { checkGrants, normalizeEmail } from '../members'
@@ -44,6 +44,8 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
   for (const [brick, rows] of Object.entries(corpus)) {
     const def = schema.bricks[brick]
     if (!def) continue
+    // Corpus entries are online, so their names (D96) are fixed: from the main slug or the title, as the upgrade makes them.
+    const names = def.kind === 'collection' ? namesOf(brick, def, schema.locales[0]!, rows.map((row) => withoutFiles(schema, brick, row.data))) : []
     for (const [index, row] of rows.entries()) {
       const data = withoutFiles(schema, brick, row.data)
       const prints = row.prints ?? {}
@@ -53,6 +55,7 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
       const id = await ctx.db.insert('entries', {
         site: site._id, brick, kind: def.kind === 'single' ? 'single' : 'item', order: row.order ?? index + 1,
         data, rev: 1, fieldRevs, lifeRev: 1, prints, bytes: size, treeBytes: trees.bytes, contentAt: Date.now(),
+        ...(def.kind === 'collection' ? { name: names[index]!, nameFixed: true as const } : {}),
       })
       await putTrees(ctx, site._id, id, trees.json)
       bytes += size

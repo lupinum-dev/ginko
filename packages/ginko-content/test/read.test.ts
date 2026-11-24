@@ -395,6 +395,13 @@ describe('checks that never hide a broken entry', () => {
     expect(r.errors.map((e) => e.message)).toEqual(['Entry “authors/ann” is in two files: content/authors/1.ann.yml and content/authors/10.ann.yml. Keep one and delete or rename the other.'])
   })
 
+  // Wrong behaviour caught: a file name the platform cannot keep as a name (capitals, an underscore) is read, and the
+  // entry changes its name, and so every link by name, when the site moves its content to the platform.
+  it('refuses a file name that is no entry name', async () => {
+    const r = await readBlog({ 'content/authors/Ann_Smith.yml': 'name: Ann' })
+    expect(r.errors).toEqual([{ file: 'authors/Ann_Smith.yml', message: 'The file name gives the entry name “Ann_Smith”. An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-menu”. Rename the file.' }])
+  })
+
   // Wrong behaviour caught: rows are matched by position, so an extra main row shifts every translated reason by one.
   it('needs the same number of list rows in a translation, and lets it leave the list out', async () => {
     const rows = (n: number) => `exceptions:\n${Array.from({ length: n }, (_, i) => `  - reason: R${i}`).join('\n')}`
