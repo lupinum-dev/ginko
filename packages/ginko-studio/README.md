@@ -1,6 +1,8 @@
 # @lupinum/ginko-studio
 
-> Internal: this package is not published to npm. It runs only on the Ginko platform that Lupinum hosts.
+You do not install this package by hand. A platform project from `npm create ginko@latest my-cms -- --platform`
+extends it, and `ginko-platform setup` deploys it to Vercel: the guide [Host the platform](https://ginko.lupinum.com/docs/host-the-platform) has the steps.
+The sections below are the reference for the layer, its environment variables and work on this repository.
 
 The Ginko platform UI as a [Nuxt layer](https://nuxt.com/docs/guide/going-further/layers): sign-in,
 quick tasks, full editor, preview and history. It talks to the Convex backend in

@@ -225,12 +225,12 @@ The dates (`content/events/`, the events list and the event pages) are the core 
 
 ## Move to the Studio
 
-Ginko Studio is Lupinum's hosted editor: during the event, someone on the team moves a session, changes its room or
-marks it sold out or cancelled from their phone in a few taps, and it is right on every page at once; notices end by
-themselves, and the Today page shows the next event and how many speakers have no bio yet. It is
-open by invitation, and Lupinum moves your content with you. The site stays the same code: each brick in
-`ginko.config.ts` loses its `source: 'files'`, and its content then comes from the Studio. Until then, everything here
-works without it. Ask at [lupinum.com](https://lupinum.com).
+Ginko Studio is the editor of the Ginko platform: during the event, someone on the team moves a session, changes its
+room or marks it sold out or cancelled from their phone in a few taps, and it is right on every page at once; notices
+end by themselves, and the Today page shows the next event and how many speakers have no bio yet. You host the
+platform yourself: see [Host the platform](https://ginko.lupinum.com/docs/host-the-platform). The site stays the same
+code: each brick in `ginko.config.ts` loses its `source: 'files'`, and its content then comes from the Studio. Until
+then, everything here works without it.
 
 ## Updating
 

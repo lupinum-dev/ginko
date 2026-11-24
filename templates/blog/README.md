@@ -253,11 +253,11 @@ prefix.
 
 ## Move to the Studio
 
-Ginko Studio is Lupinum's hosted editor: authors write, save drafts and set a time for a post to go live on their
-phone, without Git; Today lists the drafts and the scheduled posts. It is open by invitation, and Lupinum moves your
-content with you. The site stays the same code: each brick in `ginko.config.ts` loses its `source: 'files'`, and its
-content then comes from the Studio. Until then, everything here works without it. Ask at
-[lupinum.com](https://lupinum.com).
+Ginko Studio is the editor of the Ginko platform: authors write, save drafts and set a time for a post to go live on
+their phone, without Git; Today lists the drafts and the scheduled posts. You host the platform yourself: see [Host
+the platform](https://ginko.lupinum.com/docs/host-the-platform). The site stays the same code: each brick in
+`ginko.config.ts` loses its `source: 'files'`, and its content then comes from the Studio. Until then, everything here
+works without it.
 
 ## Updating
 

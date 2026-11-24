@@ -1,6 +1,8 @@
 # @lupinum/ginko-server
 
-> Internal: this package is not published to npm. It runs only on the Ginko platform that Lupinum hosts.
+You do not install this package by hand. A platform project from `npm create ginko@latest my-cms -- --platform`
+depends on it, and `ginko-platform setup` deploys it to Convex: the guide [Host the platform](https://ginko.lupinum.com/docs/host-the-platform) has the steps.
+The sections below are the operator reference for Lupinum's own platform and for work on this repository.
 
 The Ginko platform backend for [Convex](https://convex.dev): sites, entries, releases, uploads and
 sign-in (Better Auth). It ships its Convex source in `convex/`; Convex bundles it when a host deploys.

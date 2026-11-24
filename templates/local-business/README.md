@@ -235,11 +235,12 @@ Links in the content name pages by their key (`[how to find us]($page.contact)`)
 
 ## Move to the Studio
 
-Ginko Studio is Lupinum's hosted editor: from a phone, you close today ("Closed today" with a reason), add your
-holidays, post a notice until a date or change a price, and the Today page starts with today's hours, the notices,
-the treatments and the team. It is open by invitation, and Lupinum moves your content with you. The site stays the
-same code: each brick in `ginko.config.ts` loses its `source: 'files'`, and its content then comes from the Studio.
-Until then, everything here works without it. Ask at [lupinum.com](https://lupinum.com).
+Ginko Studio is the editor of the Ginko platform: from a phone, you close today ("Closed today" with a reason), add
+your holidays, post a notice until a date or change a price, and the Today page starts with today's hours, the
+notices, the treatments and the team. You host the platform yourself: see [Host the
+platform](https://ginko.lupinum.com/docs/host-the-platform). The site stays the same code: each brick in
+`ginko.config.ts` loses its `source: 'files'`, and its content then comes from the Studio. Until then, everything here
+works without it.
 
 ## Updating
 

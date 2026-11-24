@@ -245,12 +245,12 @@ viewer (`"gallery"` in `ginko.features`) is what the project pages show their ph
 
 ## Move to the Studio
 
-Ginko Studio is Lupinum's hosted editor: you add a project as a draft from the browser, add photos to it from your
-phone (the Studio does not save a photo without its description), write a journal entry and publish it now or later,
-and the Today page shows your drafts and how old the newest journal entry is. It is open by invitation, and Lupinum
-moves your content with you. The site stays the same code: each brick in `ginko.config.ts` loses its
-`source: 'files'`, and its content then comes from the Studio. Until then, everything here works without it. Ask at
-[lupinum.com](https://lupinum.com).
+Ginko Studio is the editor of the Ginko platform: you add a project as a draft from the browser, add photos to it from
+your phone (the Studio does not save a photo without its description), write a journal entry and publish it now or
+later, and the Today page shows your drafts and how old the newest journal entry is. You host the platform yourself:
+see [Host the platform](https://ginko.lupinum.com/docs/host-the-platform). The site stays the same code: each brick in
+`ginko.config.ts` loses its `source: 'files'`, and its content then comes from the Studio. Until then, everything here
+works without it.
 
 ## Updating
 
