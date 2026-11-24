@@ -194,7 +194,7 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
   const status = brick.status as { show?: string; rule?: string } | undefined
   if (brick.kind === 'single') {
     // The rule's name and fields are checked with the schema (checkSchema), against the rules the caller knows.
-    if (status && typeof status.rule !== 'string') problems.push(`${key}.status: write \`{ rule: … }\`, such as \`{ rule: 'opening-hours' }\`.`)
+    if (status && typeof status.rule !== 'string') problems.push(`${key}.status: write \`{ rule: '<name of a status rule>' }\`.`)
     return { kind: 'single', ...common, ...(brick.status ? { status: { rule: brick.status.rule, ...(brick.status.plans !== undefined ? { plans: brick.status.plans } : {}) } } : {}) }
   }
   if (status && typeof status.show !== 'string') problems.push(`${key}.status: write \`{ show: … }\`, such as \`{ show: 'next', field: 'when' }\`.`)

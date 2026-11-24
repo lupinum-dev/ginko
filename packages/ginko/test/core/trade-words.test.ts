@@ -1,8 +1,8 @@
-// V2 5.9: the core and the server's general code hold no word of a trade. A pattern brings its own rules; the core
-// and the server only know them by name. This test reads the code (comments left out) and fails on a trade word in a
-// file that has no exception for it. Each exception says why it is still there and when it goes: `cp3` (needs
-// `repeats` or dated changes, checkpoint 3), `cp4` (the Today screen's redesign, checkpoint 4), or `stays` (not a trade
-// word in that place).
+// V2 5.9: the core, the written form (`src/authoring`) and the server's general code hold no word of a trade. A pattern
+// brings its own rules; they only know them by name. This test reads the code (comments left out) and fails on a trade
+// word (singular or plural) in a file that has no exception for it. Each exception says why it is still there and when
+// it goes: `cp3` (needs `repeats` or dated changes, checkpoint 3), `cp4` (the Today screen's redesign, checkpoint 4),
+// or `stays` (not a trade word in that place). `plan` is no term: it names the general planned change (`planned`).
 // An exception that no longer matches anything fails too, so the list always shows what is left.
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -11,7 +11,11 @@ import { describe, expect, it } from 'vitest'
 const repo = join(import.meta.dirname, '../../../..')
 
 /** The trade words, as the lower-case parts of an identifier or a text (`workWeekOf` → work, week, of). */
-const TERMS = ['hours', 'hour plans', 'opening', 'holiday', 'holidays', 'lunch', 'menu', 'dish', 'dishes', 'allergen', 'allergens', 'restaurant', 'gastro', 'food', 'work week', 'weekly', 'plans']
+const TERMS = [
+  'hour', 'hours', 'hour plan', 'hour plans', 'opening', 'openings', 'holiday', 'holidays', 'lunch', 'lunches', 'menu', 'menus',
+  'dish', 'dishes', 'allergen', 'allergens', 'restaurant', 'restaurants', 'gastro', 'food', 'foods', 'work week', 'work weeks',
+  'workweek', 'workweeks', 'weekly', 'plans',
+]
 
 type Until = 'cp3' | 'cp4' | 'stays'
 interface Exception { file: string; term: string; until: Until; reason: string }
@@ -20,10 +24,34 @@ const CALENDAR = 'the site calendar (`holidays`, `country`) stays until the hour
 const PLANS = 'a collection plans a single ahead (`plans`, one plan per week)'
 const WEEKLY = 'the weekly task and the weekly reminder'
 const WORK_WEEK = 'the work week (`@workWeek`, `workWeekOf`)'
+const CLOCK = 'a clock hour (time arithmetic, rate windows, cron times), not opening hours'
 const RENDERER = 'the Studio and the weekly mail render the line of a status rule keyed by its name (`opening-hours`) until the Today redesign decides a general line form (D6)'
 const RULE_PLANS = 'the collection a status rule reads (`status.plans`, D7); `plans` as a concept is reworked with dated changes'
 
 const EXCEPTIONS: Exception[] = [
+  { file: 'packages/ginko-server/convex/crons.ts', term: 'hour', until: 'stays', reason: CLOCK },
+  { file: 'packages/ginko-server/convex/entries.ts', term: 'plans', until: 'cp3', reason: PLANS },
+  { file: 'packages/ginko-server/convex/entries.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
+  { file: 'packages/ginko-server/convex/entries.ts', term: 'work week', until: 'cp3', reason: WORK_WEEK },
+  { file: 'packages/ginko-server/convex/invites.ts', term: 'hour', until: 'stays', reason: CLOCK },
+  { file: 'packages/ginko-server/convex/lib/access.ts', term: 'plans', until: 'cp3', reason: PLANS },
+  { file: 'packages/ginko-server/convex/lib/access.ts', term: 'work week', until: 'cp3', reason: WORK_WEEK },
+  { file: 'packages/ginko-server/convex/lib/history.ts', term: 'hour', until: 'stays', reason: CLOCK },
+  { file: 'packages/ginko-server/convex/lib/list.ts', term: 'plans', until: 'cp3', reason: PLANS },
+  { file: 'packages/ginko-server/convex/lib/reminders.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
+  { file: 'packages/ginko-server/convex/lib/status.ts', term: 'hours', until: 'cp4', reason: RENDERER },
+  { file: 'packages/ginko-server/convex/lib/status.ts', term: 'plans', until: 'cp3', reason: `${PLANS}; ${RULE_PLANS}` },
+  { file: 'packages/ginko-server/convex/reminders.ts', term: 'hour', until: 'stays', reason: CLOCK },
+  { file: 'packages/ginko-server/convex/reminders.ts', term: 'hours', until: 'cp4', reason: RENDERER },
+  { file: 'packages/ginko-server/convex/reminders.ts', term: 'opening', until: 'cp4', reason: RENDERER },
+  { file: 'packages/ginko-server/convex/reminders.ts', term: 'plans', until: 'cp3', reason: PLANS },
+  { file: 'packages/ginko-server/convex/reminders.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
+  { file: 'packages/ginko-server/convex/reminders.ts', term: 'work week', until: 'cp3', reason: WORK_WEEK },
+  { file: 'packages/ginko-server/convex/sites.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
+  { file: 'packages/ginko-server/convex/uploads.ts', term: 'hour', until: 'stays', reason: CLOCK },
+  { file: 'packages/ginko/src/authoring/bricks.ts', term: 'plans', until: 'cp3', reason: `${PLANS}; ${RULE_PLANS}` },
+  { file: 'packages/ginko/src/authoring/from-stored.ts', term: 'plans', until: 'cp3', reason: `${PLANS}; ${RULE_PLANS}` },
+  { file: 'packages/ginko/src/authoring/site.ts', term: 'plans', until: 'cp3', reason: `${PLANS}; ${RULE_PLANS}` },
   { file: 'packages/ginko/src/core/diff.ts', term: 'holidays', until: 'cp3', reason: CALENDAR },
   { file: 'packages/ginko/src/core/diff.ts', term: 'plans', until: 'cp3', reason: PLANS },
   { file: 'packages/ginko/src/core/holidays.ts', term: 'holiday', until: 'cp3', reason: CALENDAR },
@@ -45,25 +73,11 @@ const EXCEPTIONS: Exception[] = [
   { file: 'packages/ginko/src/core/stale.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
   { file: 'packages/ginko/src/core/stale.ts', term: 'work week', until: 'cp3', reason: WORK_WEEK },
   { file: 'packages/ginko/src/core/status.ts', term: 'plans', until: 'cp3', reason: RULE_PLANS },
+  { file: 'packages/ginko/src/core/time.ts', term: 'hour', until: 'stays', reason: CLOCK },
   { file: 'packages/ginko/src/core/time.ts', term: 'work week', until: 'cp3', reason: WORK_WEEK },
   { file: 'packages/ginko/src/core/types.ts', term: 'holidays', until: 'cp3', reason: CALENDAR },
   { file: 'packages/ginko/src/core/types.ts', term: 'plans', until: 'cp3', reason: PLANS },
   { file: 'packages/ginko/src/core/types.ts', term: 'work week', until: 'cp3', reason: WORK_WEEK },
-  { file: 'packages/ginko-server/convex/entries.ts', term: 'plans', until: 'cp3', reason: PLANS },
-  { file: 'packages/ginko-server/convex/entries.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
-  { file: 'packages/ginko-server/convex/entries.ts', term: 'work week', until: 'cp3', reason: WORK_WEEK },
-  { file: 'packages/ginko-server/convex/lib/access.ts', term: 'plans', until: 'cp3', reason: PLANS },
-  { file: 'packages/ginko-server/convex/lib/access.ts', term: 'work week', until: 'cp3', reason: WORK_WEEK },
-  { file: 'packages/ginko-server/convex/lib/list.ts', term: 'plans', until: 'cp3', reason: PLANS },
-  { file: 'packages/ginko-server/convex/lib/reminders.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
-  { file: 'packages/ginko-server/convex/lib/status.ts', term: 'hours', until: 'cp4', reason: RENDERER },
-  { file: 'packages/ginko-server/convex/lib/status.ts', term: 'plans', until: 'cp3', reason: `${PLANS}; ${RULE_PLANS}` },
-  { file: 'packages/ginko-server/convex/reminders.ts', term: 'hours', until: 'cp4', reason: RENDERER },
-  { file: 'packages/ginko-server/convex/reminders.ts', term: 'opening', until: 'cp4', reason: RENDERER },
-  { file: 'packages/ginko-server/convex/reminders.ts', term: 'plans', until: 'cp3', reason: PLANS },
-  { file: 'packages/ginko-server/convex/reminders.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
-  { file: 'packages/ginko-server/convex/reminders.ts', term: 'work week', until: 'cp3', reason: WORK_WEEK },
-  { file: 'packages/ginko-server/convex/sites.ts', term: 'weekly', until: 'cp3', reason: WEEKLY },
 ]
 
 /** Every `.ts` file under `dir`, generated code left out. */
@@ -91,8 +105,8 @@ function termsIn(code: string): Set<string> {
   return found
 }
 
-describe('no trade word in the core and the server (V2 5.9)', () => {
-  const files = [...filesIn('packages/ginko/src/core'), ...filesIn('packages/ginko-server/convex')].sort()
+describe('no trade word in the core, the written form and the server (V2 5.9)', () => {
+  const files = [...filesIn('packages/ginko/src/core'), ...filesIn('packages/ginko/src/authoring'), ...filesIn('packages/ginko-server/convex')].sort()
   const found = files.flatMap((file) => [...termsIn(readFileSync(join(repo, file), 'utf8'))].map((term) => `${file} | ${term}`))
   const allowed = EXCEPTIONS.map((e) => `${e.file} | ${e.term}`)
 
@@ -111,11 +125,14 @@ describe('no trade word in the core and the server (V2 5.9)', () => {
     ['const HOURS_FIELDS = 1', 'hours'],
     ['resolveToken("@workWeek")', 'work week'],
     ["const name = 'summer-menu'", 'menu'],
+    ['const menus = 1', 'menus'],
+    ['const workweek = 2', 'workweek'],
+    ['const REMIND_HOUR = 17', 'hour'],
   ])('reads %s as %s', (code, term) => {
     expect(termsIn(code).has(term)).toBe(true)
   })
 
-  it('does not read a word in a comment, or a part of a longer word', () => {
-    expect([...termsIn('// opening hours\nconst menus = 1; const workweek = 2 /* lunch */')]).toEqual([])
+  it('does not read a word in a comment', () => {
+    expect([...termsIn('// opening hours\nconst x = 1 /* lunch */')]).toEqual([])
   })
 })
