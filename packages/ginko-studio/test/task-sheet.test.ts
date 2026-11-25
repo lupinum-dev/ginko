@@ -707,6 +707,26 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     localStorage.clear()
   })
 
+  // Wrong behaviour caught (H1.2): restoring a copy without a day emptied the day already typed, so the next press put
+  // the values online now.
+  test('a local copy without a day keeps the day typed', async () => {
+    localStorage.clear()
+    const first = mountAsk()
+    await ready(first)
+    first.unmount()
+
+    const second = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    const day = inDays(10)
+    await second.get('#sheet-starts-on').setValue(day)
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    expect([(second.get('input[name="title"]').element as HTMLInputElement).value, (second.get('#sheet-starts-on').element as HTMLInputElement).value]).toEqual(['Neu', day])
+    second.unmount()
+    localStorage.clear()
+  })
+
   // Wrong behaviour caught: someone plans over a waiting change of the same field without being told.
   test('a waiting change of a form field is announced', async () => {
     datedRows.value = [{ id: 'd1', from: '2099-03-05', fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]

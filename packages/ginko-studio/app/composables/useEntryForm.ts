@@ -512,7 +512,8 @@ export function useEntryForm(o: EntryFormOptions) {
       else next[k] = copy(value)
     }
     draft.value = next
-    if (o.day) o.day.value = record.from ?? ''
+    // A copy without a day keeps a day already typed (H1).
+    if (o.day && record.from) o.day.value = record.from
     waiting.value = false
     if (!entry) return
     const clash = own.filter((k) => (entry.fieldRevs[k] ?? 0) > copyBase && !same(entry.data[k], next[k]))
