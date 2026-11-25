@@ -192,6 +192,7 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
     ...(brick.layout ? { layout: brick.layout } : {}),
     ...(tasks ? { tasks } : {}),
     ...(planned ? { planned } : {}),
+    ...(brick.timeline ? { timeline: { public: [...brick.timeline.public] } } : {}),
   }
   const status = brick.status as { show?: string; rule?: string } | undefined
   if (brick.kind === 'single') {

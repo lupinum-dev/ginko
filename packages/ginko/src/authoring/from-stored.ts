@@ -32,6 +32,7 @@ export function defOf(brick: Brick, more: { item?: Label } = {}): BrickDef {
     ...(brick.layout ? { layout: brick.layout } : {}),
     ...(brick.tasks ? { tasks: brick.tasks.map((task) => taskOf(task, brick.kind === 'collection')) } : {}),
     ...(brick.planned ? { planned: brick.planned } : {}),
+    ...(brick.timeline ? { timeline: brick.timeline } : {}),
   }
   if (brick.kind === 'single') {
     const status = brick.status

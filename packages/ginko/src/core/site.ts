@@ -4,7 +4,7 @@ import type { LinkConfig } from './links.ts'
 import type { Redirect } from './redirects.ts'
 import type { SiteWeek } from './time.ts'
 import type {
-  Brick, BrickSource, CollectionBrick, CollectionListing, CollectionStatus, CollectionTree, Currency, Fields, Json, Label, Locale, RetiredRule, ShowUntilRule, SingleBrick, SingleStatus, Task,
+  Brick, BrickSource, BrickTimeline, CollectionBrick, CollectionListing, CollectionStatus, CollectionTree, Currency, Fields, Json, Label, Locale, RetiredRule, ShowUntilRule, SingleBrick, SingleStatus, Task,
 } from './types.ts'
 
 export interface MigrationContext {
@@ -176,7 +176,7 @@ type Planned<F> = { field: keyof F & string; next: keyof F & string; from: keyof
 /** A collection's detail page per locale: a path with `[slug]` where the entry's slug goes, e.g. `/blog/[slug]`. */
 export type RouteTemplate = `/${string}[slug]${string}`
 
-export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; body?: keyof F & string; preview?: string; layout?: 'sections' | 'tabs'; tasks?: readonly Task<F>[]; planned?: Planned<F>; status?: SingleStatus }): SingleBrick<F> {
+export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; body?: keyof F & string; preview?: string; layout?: 'sections' | 'tabs'; tasks?: readonly Task<F>[]; planned?: Planned<F>; timeline?: BrickTimeline<keyof F & string>; status?: SingleStatus }): SingleBrick<F> {
   // A task's prefill is typed by the brick's fields here and stored as JSON; TypeScript cannot relate the two for a generic `F`.
   return { kind: 'single', ...input, tasks: input.tasks as readonly Task[] | undefined }
 }
@@ -194,6 +194,8 @@ export function collection<const F extends Fields, const R extends Record<Locale
   tasks?: readonly Task<F>[]
   /** A planned change of one field: from the date in `from` on, `next` replaces `field`. */
   planned?: Planned<F>
+  /** The fields whose dated changes a page may read ahead (`upcoming`). */
+  timeline?: BrickTimeline<keyof F & string>
   max: number
   order: 'manual' | { field: keyof F & string; dir?: 'asc' | 'desc' }
   /**

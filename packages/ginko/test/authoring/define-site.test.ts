@@ -22,6 +22,7 @@ const services = collection({ untranslated: 'fallback',
     priceFrom: f.date('Gilt ab', { optional: true }),
   },
   planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
+  timeline: { public: ['price'] },
   showUntil: { field: 'until', plusDays: 2, thenDelete: true },
   status: { show: 'ending' },
   tasks: ['add', 'edit', { id: 'price', label: 'Preis ändern', fields: ['price'] }, { id: 'editAll', label: 'Alles ändern', needsApproval: true }, 'remove'],
@@ -71,9 +72,9 @@ describe('defineSite writes the stored form', () => {
 
   // Wrong: a default or a renamed key is stored under another name or value than the stored form reads.
   it('stores the defaults and the renamed keys in the stored form', () => {
-    const { max, order, showUntil, status, label } = site.bricks.services
-    expect({ max, order, showUntil, status, label }).toEqual({
-      max: 500, order: 'manual', showUntil: { field: 'until', plusDays: 2, thenDelete: true }, status: { count: true }, label: { de: 'Leistungen', en: 'Services' },
+    const { max, order, showUntil, status, label, timeline } = site.bricks.services
+    expect({ max, order, showUntil, status, label, timeline }).toEqual({
+      max: 500, order: 'manual', showUntil: { field: 'until', plusDays: 2, thenDelete: true }, status: { count: true }, label: { de: 'Leistungen', en: 'Services' }, timeline: { public: ['price'] },
     })
     expect(checkSite(site, statusRules)).toEqual([])
   })

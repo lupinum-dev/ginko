@@ -1,7 +1,7 @@
 // Links between pages (CONTENT.md, "Links zwischen Seiten"): `$blog.my-post` and `$page.menu` in Markdown,
 // `::snippet{name="…"}` for reusable text, and a link check that runs on bundles before any HTML exists.
 // Pure: works on bundles and comark trees.
-import type { Bundle, BundleItem } from './bundle.ts'
+import type { Bundle, BundleItem, Upcoming } from './bundle.ts'
 import { msg, type CoreKey, type Msg } from './messages.ts'
 import { entryRedirects, matchRedirect, type Redirect } from './redirects.ts'
 import { isTable, rowsIn, slugKeyOf } from './fields.ts'
@@ -51,9 +51,11 @@ export function mapTrees(bundle: Bundle, fn: (tree: Tree, at: { brick: string; i
     return value
   }
   const data = (d: Record<string, unknown>, brick: string, id: string) => walk(d, { brick, id }, '') as Record<string, unknown>
+  // The values a page may read ahead (`upcoming`) are trees too: their links and files resolve like those of `data`.
+  const upcoming = (list: Upcoming[] | undefined, brick: string, id: string) => (list ? { upcoming: list.map((u) => ({ ...u, data: walk(u.data, { brick, id }, `upcoming.${u.from}`) as Record<string, unknown> })) } : {})
   const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, b]) => [key, b.kind === 'single'
-    ? { ...b, data: data(b.data, key, key) }
-    : { ...b, items: b.items.map((item) => ({ ...item, data: data(item.data, key, item.id) })) }]))
+    ? { ...b, data: data(b.data, key, key), ...upcoming(b.upcoming, key, key) }
+    : { ...b, items: b.items.map((item) => ({ ...item, data: data(item.data, key, item.id), ...upcoming(item.upcoming, key, item.id) })) }]))
   return { ...bundle, bricks }
 }
 

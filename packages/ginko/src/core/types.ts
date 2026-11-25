@@ -180,6 +180,9 @@ export type BrickStatus = CollectionStatus | SingleStatus
 /** Where a brick's content comes from: the platform (default) or Markdown files in the site's repo (CONTENT.md). */
 export type BrickSource = 'files'
 
+/** `timeline` of a brick: `public` names the fields whose waiting changes a page may read. */
+export interface BrickTimeline<K extends string = string> { public: readonly K[] }
+
 export interface SingleBrick<F extends Fields = Fields> {
   kind: 'single'
   source?: BrickSource
@@ -203,6 +206,11 @@ export interface SingleBrick<F extends Fields = Fields> {
    * task on the value in effect.
    */
   planned?: { field: string; next: string; from: string }
+  /**
+   * The fields whose dated changes a page may read ahead (`upcoming` in the bundle): "from 1 November 19.50". Live fields
+   * that a change may set. Every other waiting value stays on the server (D121).
+   */
+  timeline?: BrickTimeline
   /** The status line on the Studio's Today page (see `SingleStatus`). */
   status?: SingleStatus
   /** @internal Platform-managed: set when the brick is listed in `retired`. Do not set it. */
@@ -233,6 +241,11 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
    * task on the value in effect.
    */
   planned?: { field: string; next: string; from: string }
+  /**
+   * The fields whose dated changes a page may read ahead (`upcoming` in the bundle): "from 1 November 19.50". Live fields
+   * that a change may set. Every other waiting value stays on the server (D121).
+   */
+  timeline?: BrickTimeline
   max: number
   /** `manual`: the owner sorts the entries. Else by a field, ascending unless `dir: 'desc'`. */
   order: 'manual' | { field: string; dir?: 'asc' | 'desc' }

@@ -3,7 +3,7 @@
 // and the texts of its label files.
 import type { StatusRuleName } from '../patterns/rules.ts'
 import type { ValueInput } from '../core/fields.ts'
-import type { CollectionListing, CollectionTree, Fields, Label } from '../core/types.ts'
+import type { BrickTimeline, CollectionListing, CollectionTree, Fields, Label } from '../core/types.ts'
 
 /** Marks a brick written with `single` or `collection` of this entry. A symbol key, so it is never stored. */
 export const DEF: unique symbol = Symbol.for('ginko.brick.def')
@@ -113,6 +113,8 @@ interface Common<F extends Fields> {
   /** The owner's buttons, in order; the first is the main one. A Studio brick with a task is on the Today page. */
   tasks?: readonly TaskInput<F>[]
   planned?: Planned<F>
+  /** The fields whose dated changes a page may read ahead (`upcoming`): `{ public: ['price'] }`. Other waiting values stay private. */
+  timeline?: BrickTimeline<keyof F & string>
 }
 
 export interface SingleInput<F extends Fields> extends Common<F> { status?: SingleStatusInput }
@@ -140,7 +142,7 @@ export interface CollectionInput<F extends Fields> extends Common<F> {
 }
 
 /** What `single` and `collection` return. The names in tasks and keys are typed by `F` where they are written and kept as plain names. */
-interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; body?: string; preview?: string; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields> }
+interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; body?: string; preview?: string; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields>; timeline?: BrickTimeline }
 export interface SingleDef<F extends Fields = Fields> extends Def<F> { kind: 'single'; status?: SingleStatusInput }
 export interface CollectionDef<F extends Fields = Fields> extends Def<F> {
   kind: 'collection'

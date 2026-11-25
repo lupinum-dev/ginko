@@ -54,6 +54,7 @@ const EXCEPTIONS: Exception[] = [
   { file: 'packages/ginko/src/authoring/from-stored.ts', term: 'plans', until: 'cp3', reason: `${PLANS}; ${RULE_PLANS}` },
   { file: 'packages/ginko/src/authoring/site.ts', term: 'plans', until: 'cp3', reason: `${PLANS}; ${RULE_PLANS}` },
   { file: 'packages/ginko/src/core/diff.ts', term: 'holidays', until: 'cp3', reason: CALENDAR },
+  { file: 'packages/ginko/src/core/changes.ts', term: 'plans', until: 'cp3', reason: `${PLANS}: a dated change may not set the week of a plan` },
   { file: 'packages/ginko/src/core/diff.ts', term: 'plans', until: 'cp3', reason: PLANS },
   { file: 'packages/ginko/src/core/holidays.ts', term: 'holiday', until: 'cp3', reason: CALENDAR },
   { file: 'packages/ginko/src/core/holidays.ts', term: 'holidays', until: 'cp3', reason: CALENDAR },

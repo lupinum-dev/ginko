@@ -49,7 +49,17 @@
     "fileRefPdf": "Eine PDF-Datei lässt sich nicht als Bild zeigen. Verlinke sie stattdessen: [Text]($file.…).",
     "markdownImageAltMissing": "„{label}“: Ein Bild im Text hat keine Beschreibung. Beschreibe es kurz für Menschen, die es nicht sehen.",
     "altTooLong": "„{label}“: Alt-Text zu lang.",
-    "notFile": "„{label}“ ist keine gültige Datei."
+    "notFile": "„{label}“ ist keine gültige Datei.",
+    "changesList": "„$changes“ ist eine Liste von Änderungen, jede mit „from“ und „set“.",
+    "changeShape": "Eine Änderung ist ein Objekt mit „from“ und „set“.",
+    "changeDay": "„{value}“ ist kein Tag. Schreibe „from“ als JJJJ-MM-TT, zum Beispiel 2026-11-01.",
+    "changeEmpty": "Eine Änderung braucht in „set“ mindestens ein Feld.",
+    "changeKey": "„{key}“ gibt es in einer Änderung nicht: sie hat nur „from“ und „set“.",
+    "changeNotYet": "„{key}“ in einer Änderung ist noch nicht gebaut.",
+    "changeTwice": "Zwei Änderungen ab {from} setzen „{label}“.",
+    "changeFixed": "„{label}“ kann nicht ab einem Tag gelten: das Feld bestimmt, wann oder wo der Eintrag erscheint.",
+    "changeTranslated": "„{label}“ hat Text pro Sprache. Eine Änderung ab einem Tag ist für ein solches Feld noch nicht gebaut.",
+    "changeValue": "Änderung ab {from}: {problem}"
   },
   "file": {
     "typeNotAllowed": "Dieser Dateityp ist nicht erlaubt (erlaubt: {allowed}).",
