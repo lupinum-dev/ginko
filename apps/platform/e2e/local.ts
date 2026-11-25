@@ -36,10 +36,15 @@ export function resetAll(): Record<string, string> {
 
 /** The price of a dish as it is online now (the stored entry, in cents), read from the local backend. */
 export function onlinePrice(dish: string): number | undefined {
+  return storedDish(dish)?.price?.amount
+}
+
+/** A dish's stored values in the local backend: what a change for certain days never writes. */
+export function storedDish(dish: string): { name?: { de?: string }; price?: { amount: number }; onMenu?: boolean } | undefined {
   assertLocal()
   const rows = execFileSync('npx', ['convex', 'data', 'entries', '--limit', '500', '--format', 'jsonLines'], { cwd: serverDir, encoding: 'utf8' })
-  const entries = rows.trim().split('\n').map((l) => JSON.parse(l) as { brick: string; deletedAt?: number; data: { name?: { de?: string }; price?: { amount: number } } })
-  return entries.find((e) => e.brick === 'menu' && !e.deletedAt && e.data.name?.de === dish)?.data.price?.amount
+  const entries = rows.trim().split('\n').map((l) => JSON.parse(l) as { brick: string; deletedAt?: number; data: { name?: { de?: string }; price?: { amount: number }; onMenu?: boolean } })
+  return entries.find((e) => e.brick === 'menu' && !e.deletedAt && e.data.name?.de === dish)?.data
 }
 
 /**

@@ -5,7 +5,7 @@
 import { addDays, todayIn } from '@lupinum/ginko/internal'
 import { expect, test, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
-import { onlinePrice, openQuick, resetContent, shownDish } from './local'
+import { onlinePrice, openQuick, resetContent, shownDish, storedDish } from './local'
 
 const DISH = 'Kürbisrisotto'
 const today = () => todayIn('Europe/Vienna')
@@ -104,6 +104,7 @@ test('"Heute nicht auf der Karte" takes the dish off today with one labelled pre
   await expect(sheet).toHaveCount(0)
   await expect.poll(() => shownDish(DISH)?.data.onMenu).toBe(false)
   expect(shownDish(DISH)?.holding).toBeUndefined()
+  expect(storedDish(DISH)?.onMenu).toBe(true)
 })
 
 // Wrong behaviour caught (number 5): the answer to a conflict saved the offer, or saved it without a day; after the
