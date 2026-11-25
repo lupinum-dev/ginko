@@ -14,7 +14,7 @@ import { usageAs } from './files'
 import { ownAs } from './proposals'
 import { actorFor, entryOf, fail, idempotent, memberOf, type Actor } from './lib/access'
 import { searchEntries as searchAll, searchTexts } from './lib/search'
-import { builderTools, BUILDER_TOOLS, DRY_RUN, IMPORT_MAX, isBuilder, suggest, fixedTools, HISTORY_MAX, PROPOSE, PUBLISH, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
+import { builderTools, BUILDER_TOOLS, DRY_RUN, FROM, IMPORT_MAX, isBuilder, suggest, fixedTools, HISTORY_MAX, PROPOSE, PUBLISH, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
 import type { Data } from './lib/content'
 import { leafStatus } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
@@ -155,7 +155,7 @@ export const tools = internalQuery({
       const input = await inputSchemaOf(ctx, actor, tool)
       out.push({
         name: tool.name, description: describeTask(schema.bricks[tool.brick]!, tool.task, schema.locales[0]!),
-        inputSchema: { ...input, properties: { ...input.properties, ...(tool.task.kind === 'remove' ? {} : { publish: PUBLISH }), propose: PROPOSE, request_id: REQUEST_ID } } as unknown as Json, annotations: taskHints(tool.task),
+        inputSchema: { ...input, properties: { ...input.properties, ...(tool.task.kind === 'remove' ? {} : { publish: PUBLISH }), ...(datesTask(tool) ? { from: FROM } : {}), propose: PROPOSE, request_id: REQUEST_ID } } as unknown as Json, annotations: taskHints(tool.task),
       })
     }
     return out
@@ -380,13 +380,24 @@ export const stale = internalQuery({
   },
 })
 
+/** A task tool whose form asks from which day its values hold (`when: { from: 'ask' }`, D123). */
+const datesTask = (tool: TaskTool) => tool.task.kind === 'edit' && tool.task.when?.from === 'ask'
+
+/** `from` of a write tool: absent or a day; the operation checks the day itself. */
+function fromArg(value: Json | undefined): string | undefined {
+  if (value !== undefined && typeof value !== 'string') fail('INVALID', 'errors.dayInvalid')
+  return value
+}
+
 /** When a write shows on the website: in about a minute, or from the day of a week planned ahead or a planned price (`liveFrom`). */
 const liveText = (liveFrom: string | undefined) => (liveFrom ? `On the website from ${liveFrom}.` : 'Live on the website in about a minute.')
 
 /** The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. */
 function savedAs(result: Json, label: string): { text: string; result: Json } {
   if (proposed(result)) return { text: PROPOSED, result }
-  const { change, liveFrom, pending } = result as { change?: string; liveFrom?: string; pending?: boolean }
+  const { change, liveFrom, pending, from } = result as { change?: string; liveFrom?: string; pending?: boolean; from?: string }
+  // A dated change (D125): nothing changes on the website before its day.
+  if (from !== undefined && change) return { text: `Planned: ${label}. On the website from ${from}; until then it keeps the values it has. The person can move or cancel the change in the platform.`, result }
   // A save of a published entry waits as unpublished changes unless `publish` (lib/pending.ts).
   if (pending !== undefined) {
     return {
@@ -456,9 +467,10 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   if (!tool) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name })
   const brick = schema.bricks[tool.brick]!
   const offered = await inputSchemaOf(ctx, actor, tool)
-  const unknown = Object.keys(input).filter((k) => !Object.hasOwn(offered.properties, k) && !(k === 'publish' && tool.task.kind !== 'remove'))
+  const unknown = Object.keys(input).filter((k) => !Object.hasOwn(offered.properties, k) && !(k === 'publish' && tool.task.kind !== 'remove') && !(k === 'from' && datesTask(tool)))
   if (unknown.length) fail('INVALID', 'errors.unknownOption', { unknown: unknown.join(', ') })
-  const { entry: picked, confirm, publish: rawPublish, ...values } = input
+  const { entry: picked, confirm, publish: rawPublish, from: rawFrom, ...values } = input
+  const from = fromArg(rawFrom)
   const publish = publishArg(rawPublish)
   const main = schema.locales[0]!
   // Prefilled values count when the assistant leaves a field out: the tool offers them as defaults.
@@ -497,7 +509,7 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   }
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
   // The assistant acts on the state it just read, so the current revision is its base.
-  return notingCopies(ctx, actor, brick.fields, values, savedAs(await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publish ? { publish: true as const } : {}) }), labelIn(tool.task.label, main, main)))
+  return notingCopies(ctx, actor, brick.fields, values, savedAs(await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publish ? { publish: true as const } : {}), ...(from !== undefined ? { from } : {}) }), labelIn(tool.task.label, main, main)))
 }
 
 /** `publish` of a write tool: absent or a boolean. */
@@ -682,16 +694,17 @@ function schemaOf(actor: Actor, only: Json | undefined) {
 
 /** ginko_write: any fields of an entry or single, in the main language, as the Studio saves them (no task). */
 async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string, batch?: CopyBatch): Promise<{ text: string; result: Json }> {
-  onlyKeys(input, ['brick', 'entry', 'fields', 'publish'])
+  onlyKeys(input, ['brick', 'entry', 'fields', 'publish', 'from'])
   const schema = actor.site.schema as Schema
   const main = schema.locales[0]!
+  const from = fromArg(input.from)
   const { key, def } = brickOf(actor, input.brick)
   const values = objectArg(input.fields, 'fields')
   checkFields(actor, key, def, values)
   const entry = await targetOf(ctx, actor, key, input.entry)
   const fields = fromToolInput(def.fields, values, { mainLocale: main, currency: schema.currency, stored: entry.data as Record<string, Json>, newRowId })
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
-  const result = await saveAs(ctx, actor, { site: actor.site.slug, opId, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publishArg(input.publish) ? { publish: true as const } : {}) })
+  const result = await saveAs(ctx, actor, { site: actor.site.slug, opId, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publishArg(input.publish) ? { publish: true as const } : {}), ...(from !== undefined ? { from } : {}) })
   const studio = studioLink(actor, key, def.kind === 'single' ? undefined : entry._id)
   const saved = savedAs(result, `${labelOf(schema, key, entry.data as Data)}: ${Object.keys(fields).join(', ')}`)
   return notingCopies(ctx, actor, def.fields, values, { text: saved.text, result: { ...(result as object), entry: entry._id, ...(studio ? { studio } : {}) } }, batch)
