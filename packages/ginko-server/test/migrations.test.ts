@@ -1,6 +1,6 @@
 // The data migrations that run by themselves after a deploy (convex/lib/migrations.ts): `migrations:runPending` starts
 // what is pending, the steps run one after another, and a stopped one starts again from where it stopped.
-import { checkSchema, type Schema } from '@lupinum/ginko/internal'
+import { checkSchema, diffSchema, entryBytes, serializeSchema, type Schema } from '@lupinum/ginko/internal'
 import { statusRules } from '@lupinum/ginko/patterns'
 import { convexTest } from 'convex-test'
 import { readFileSync } from 'node:fs'
@@ -9,6 +9,7 @@ import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import { MIGRATIONS } from '../convex/lib/migrations'
 import schema from '../convex/schema'
+import restaurant from '../../../sites/restaurant/ginko.config.ts'
 import { opId, people, setup } from './setup'
 
 type Backend = Awaited<ReturnType<typeof setup>>['t']
@@ -336,6 +337,49 @@ describe('2026-11-25-dated-changes (D130)', () => {
     await runThisOne(s)
     const after = await read()
     expect([after.site.schema, after.site.schemaRev, after.site.contentRev, after.changes, after.dated]).toEqual([before.site.schema, before.site.schemaRev, before.site.contentRev, before.changes, 0])
+  })
+
+  // A8. Wrong behaviour caught: a second run changes a converted site again; a planned value of an entry in the trash
+  // comes back as a waiting change; the byte counters keep the bytes of the plan fields; or the site's next release
+  // with the gastro preset is refused against the converted model.
+  it('runs twice without a second change, leaves the trash without a change, counts bytes, and a release passes', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const [schnitzel, risotto] = [s.entries['menu-schnitzel']!, s.entries['menu-risotto']!]
+    await withPlanned(s)
+    await s.t.run(async (ctx) => {
+      for (const [entry, deleted] of [[schnitzel, false], [risotto, true]] as const) {
+        const row = (await ctx.db.get(entry))!
+        const data = { ...(row.data as object), nextPrice: { amount: 2290 }, priceFrom: '2026-10-18' }
+        const bytes = entryBytes(data, row.prints as never)
+        const site = (await ctx.db.get(s.site))!
+        await ctx.db.patch(entry, { data, bytes, ...(deleted ? { deletedAt: Date.now() } : {}) })
+        await ctx.db.patch(s.site, deleted ? { bytes: site.bytes - row.bytes, trashBytes: (site.trashBytes ?? 0) + bytes } : { bytes: site.bytes - row.bytes + bytes })
+      }
+    })
+    const read = () => s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const entries = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site)).collect()
+      const sum = (rows: typeof entries) => rows.reduce((n, e) => n + e.bytes, 0)
+      return {
+        counters: [site.bytes, site.trashBytes ?? 0], sums: [sum(entries.filter((e) => !e.deletedAt)), sum(entries.filter((e) => e.deletedAt))],
+        site: [site.schema, site.schemaRev, site.contentRev], dated: (await ctx.db.query('datedChanges').collect()).map((d) => [d.entry, d.from, d.fields]),
+        changes: (await ctx.db.query('changes').collect()).length, data: entries.map((e) => e.data),
+      }
+    })
+    const before = await read()
+    expect(before.counters).toEqual(before.sums)
+    await runThisOne(s)
+    const after = await read()
+    expect(after.counters).toEqual(after.sums)
+    expect(after.counters[0]).toBeLessThan(before.counters[0]!)
+    expect(after.counters[1]).toBeLessThan(before.counters[1]!)
+    expect(after.dated).toEqual([[schnitzel, '2026-10-18', { price: { amount: 2290 } }]])
+    expect(JSON.stringify(after.data)).not.toContain('nextPrice')
+
+    await s.t.mutation(internal.datedChanges.migrateOneSite, { site: s.site })
+    expect(await read()).toEqual(after)
+    expect(diffSchema(after.site[0] as Schema, serializeSchema(restaurant)).rejected).toEqual([])
   })
 
   // A2. Wrong behaviour caught: the migration reads the stored model through code written for the new format, so a site
