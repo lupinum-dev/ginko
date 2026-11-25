@@ -145,10 +145,15 @@ describe('a save with a day', () => {
       .toMatchObject({ key: 'errors.datedOnlyOnline' })
   })
 
-  it('takes at most 20 waiting changes per entry', async () => {
+  // Wrong behaviour caught (H2.14): a save into a stopped change starts it waiting again past the limit.
+  it('takes at most 20 waiting changes per entry, a stopped one started again counts', async () => {
     const s = await datedSetup()
+    await s.plan(1390, '2026-12-01')
+    const [stopped] = await s.dated(s.saibling)
+    await s.t.run((ctx) => ctx.db.patch(stopped!._id, { stopped: { at: DAY1, reason: { code: 'failed' } }, job: undefined }))
     for (let day = 1; day <= 20; day++) await s.plan(1400 + day, `2026-11-${String(day).padStart(2, '0')}`)
     expect(await errorOf(s.plan(1500, '2026-11-21'))).toMatchObject({ key: 'errors.tooManyDated', params: { max: 20 } })
+    expect(await errorOf(s.plan(1500, '2026-12-01'))).toMatchObject({ key: 'errors.tooManyDated', params: { max: 20 } })
     // The same day still merges.
     await expect(s.plan(1500, '2026-11-20')).resolves.toMatchObject({ from: '2026-11-20' })
   })

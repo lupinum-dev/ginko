@@ -185,7 +185,8 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   const last = dataOn(live, changes, '9999-12-31')
   const bytes = entryBytes(last, { ...(entry.prints as Prints), ...prints })
   if (!fitsBudget(bytes, entry.bytes, BUDGET.entryBytes)) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(bytes, BUDGET.entryBytes))
-  if (!same && others.filter((r) => !r.stopped).length >= MAX_DATED) fail('TOO_LARGE', 'errors.tooManyDated', { max: MAX_DATED })
+  // A new day, or a stopped change that starts waiting again (H2).
+  if ((!same || same.stopped) && others.filter((r) => !r.stopped).length >= MAX_DATED) fail('TOO_LARGE', 'errors.tooManyDated', { max: MAX_DATED })
   return plan
 }
 
