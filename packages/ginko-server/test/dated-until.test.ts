@@ -514,6 +514,30 @@ describe('a request that holds both days (state table: the person needs a yes)',
     expect(await s.shownPrice(s.saibling)).toBe(990)
   })
 
+  // Round L3, the untested path. Wrong behaviour caught: a yes for a new offer after its first day is refused as a day
+  // before today, or holds from the asked day instead of from today.
+  it('a yes for a new offer after its first day, before its end, holds from today', async () => {
+    const s = await asked(TODAY, '2026-10-12')
+    await s.advanceTo(at('2026-10-09') + 3600_000)
+    await s.as.owner.mutation(api.proposals.approve, { proposal: s.sent.proposal })
+    expect(await s.dated(s.saibling)).toMatchObject([{ from: '2026-10-09', until: '2026-10-12', holds: expect.any(Number) }])
+    expect(await s.shownPrice(s.saibling)).toBe(990)
+  })
+
+  // Round L3. Wrong behaviour caught: a yes on day 2 or later for a request that edits a holding offer moves its start to
+  // today and is refused (its start is fixed), so the longer end never comes.
+  it('a yes on day 2 for a request that extends a holding offer gives the same row the new end', async () => {
+    const s = await untilSetup({ needsApproval: true })
+    await s.offer(990, TODAY, '2026-10-12')
+    const [row] = await s.dated(s.saibling)
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.offer', entry: s.saibling, baseRev: 1, fields: { price: { amount: 990 } }, from: TODAY, until: '2026-10-20', change: row!._id }) as unknown as Proposed
+    await s.advanceTo(at('2026-10-09') + 3600_000)
+    expect(await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })).not.toMatchObject({ status: 'stale' })
+    expect(await s.dated(s.saibling)).toMatchObject([{ _id: row!._id, from: TODAY, until: '2026-10-20' }])
+    await s.advanceTo(at('2026-10-15') + 1000)
+    expect(await s.shownPrice(s.saibling)).toBe(990)
+  })
+
   // Wrong behaviour caught: a yes after the offer ended puts the offer online (or writes it into the entry for good).
   it('a yes after the end is stale (timeGone) and writes nothing', async () => {
     const s = await asked(TODAY, TODAY)

@@ -179,6 +179,13 @@ async function refuseSecondPlan(ctx: QueryCtx, actor: Actor, brickKey: string, b
  */
 type Unchanged = { entry: Id<'entries'>; rev: number; contentRev: number; warnings: Json[] }
 
+/** Whether `id` names a dated change that holds now (a request that edits an offer names its row). */
+async function holdingRow(ctx: QueryCtx, id: string): Promise<boolean> {
+  const normalized = ctx.db.normalizeId('datedChanges', id)
+  const row = normalized ? await ctx.db.get(normalized) : null
+  return !!row && isHolding(row)
+}
+
 /** The save itself, steps 3 to 7 of SPEC 4.1 without the repeated-op step: `revert` wraps it in its own and words the line (`line`). */
 async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof saveArgs>, line?: HistoryMsg) {
   const entry = await entryOf(ctx, actor, input.entry)
@@ -193,7 +200,10 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   // (stale), a yes inside its days lets it hold from today.
   if (actor.approvedBy !== undefined && input.until !== undefined && input.until < today) fail('INVALID', 'history.staleTimeGone')
   const lateDay = input.from !== undefined && input.until === undefined && actor.approvedBy !== undefined && input.from <= today ? input.from : undefined
-  const lateOffer = input.from !== undefined && input.until !== undefined && actor.approvedBy !== undefined && input.from < today
+  // A request that edits a holding offer (`change`) keeps its start, which is fixed (decision 4); only a new offer holds
+  // from today (round L3).
+  const editsHolding = input.change !== undefined && await holdingRow(ctx, input.change)
+  const lateOffer = input.from !== undefined && input.until !== undefined && actor.approvedBy !== undefined && input.from < today && !editsHolding
   const { from: _from, ...rest } = input
   // A task's fixed values (`set`) are part of every save through it; a value sent for one of them must be that value.
   const fixed = taskSet(schema, input.task)
