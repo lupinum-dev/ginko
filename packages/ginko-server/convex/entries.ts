@@ -22,7 +22,7 @@ import { errorKind, mailStopped, stoppedChangeLines, stoppedLines } from './lib/
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
-import { asChanges, checkDay, datedByBrick, datedOf, dayStart, fieldNames, planDated, refuseTaskWithoutDay, writeDated } from './lib/dated'
+import { asChanges, checkDay, datedByBrick, datedOf, dayStart, fieldNames, planDated, refuseTaskWithoutDay, writeDated, type DatedPlan } from './lib/dated'
 import { advance, stepArgs } from './lib/migrations'
 import { editorEntry, editorEntryWithTranslation, entryLabel as labelOf, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
@@ -317,7 +317,7 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
     const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
     return unchanged
   }
-  const words = { title: labelOf(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, plan.roots), day: dayStart(from, schema.timeZone) }
+  const words = datedWords(schema, entry, plan)
   if (await needsProposal(ctx, actor, 'save', args.task, taskBrick, entry)) {
     return await propose(ctx, actor, {
       op: 'save', brick: entry.brick, entry: entry._id, args: args as unknown as Json,
@@ -325,8 +325,16 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
       before: plan.before as Json, after: plan.after as Json, ...recorded(msg('history.datedProposal', words), schema),
     })
   }
-  const written = await writeDated(ctx, actor, entry, plan, {}, recorded(msg('history.datedSaved', words), schema), args.opId)
+  // A save that leaves nothing for that day takes the change of that day away.
+  const line = Object.keys(plan.fields).length ? msg('history.datedSaved', words) : msg('history.datedCancelled', { ...words, fields: fieldNames(schema, entry.brick, Object.keys(plan.same?.fields ?? {})) })
+  const written = await writeDated(ctx, actor, entry, plan, {}, recorded(line, schema), args.opId)
   return { entry: entry._id, rev: entry.rev, contentRev: written.contentRev, change: written.change, warnings: [], dated: written.dated ?? null, from }
+}
+
+/** The words of a dated save's history line and request: the fields it keeps in the change, not those it gave with their online value. */
+function datedWords(schema: Schema, entry: Doc<'entries'>, plan: DatedPlan) {
+  const kept = plan.roots.filter((r) => Object.hasOwn(plan.fields, r))
+  return { title: labelOf(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, kept.length ? kept : plan.roots), day: dayStart(plan.from, schema.timeZone) }
 }
 
 const printsOf = (p: Prints, root: string) => Object.fromEntries(Object.entries(p).filter(([leaf]) => underRoot(leaf, root)))
@@ -544,9 +552,9 @@ async function publishPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entrie
   // Publishing puts every waiting field online: the person needs the right to change each of them, as for a save.
   authorize(actor, schema, { task: args.task, brick: taskBrickOf(schema, args.task, entry), kind: 'edit', fields: Object.keys(held.fields), entry })
   if (args.rev !== undefined && args.rev !== entry.rev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
+  if (args.at !== undefined) fail('INVALID', 'errors.liveTakesDay')
   const lateDay = args.from !== undefined && actor.approvedBy !== undefined && args.from <= todayIn(schema.timeZone)
   if (args.from !== undefined && !lateDay) return await publishPendingDated(ctx, actor, entry, held, args, args.from)
-  if (args.at !== undefined) fail('INVALID', 'errors.liveTakesDay')
   const late = lateDay
   const plan = await pendingPlan(ctx, actor, entry, held)
   const title = labelOf(schema, entry.brick, entry.data as Data)
@@ -580,7 +588,7 @@ async function publishPendingDated(ctx: MutationCtx, actor: Actor, entry: Doc<'e
   const moved = roots.filter((r) => (entry.fieldRevs[r] ?? 0) > (held.revs[r] ?? 0))
   if (moved.length) fail('CHANGED_SINCE', 'errors.liveChangedMeanwhile', undefined, { ...(current(entry) as object), conflicts: moved })
   const plan = await planDated(ctx, actor.site, entry, from, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
-  const words = { title: labelOf(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, roots), day: dayStart(from, schema.timeZone) }
+  const words = datedWords(schema, entry, plan)
   if (await needsProposal(ctx, actor, 'publish', args.task, entry.brick, entry)) {
     return await propose(ctx, actor, {
       op: 'publish', brick: entry.brick, entry: entry._id, args: { ...args, rev: entry.rev } as unknown as Json, base: { lifeRev: entry.lifeRev, rev: entry.rev },

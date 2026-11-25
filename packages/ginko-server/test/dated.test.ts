@@ -100,6 +100,14 @@ describe('a save with a day', () => {
     expect(await s.dated(s.saibling)).toEqual([])
   })
 
+  // Wrong behaviour caught: the history names a field that was given with its online value and so is not in the change.
+  it('the history names only the fields the change keeps', async () => {
+    const s = await datedSetup()
+    await s.plan(1450, '2026-10-09', { fields: { price: { amount: 1450 }, veg: 'none' } })
+    expect(await s.dated(s.saibling)).toMatchObject([{ fields: { price: { amount: 1450 } } }])
+    expect((await s.history(s.saibling)).at(-1)).toMatchObject({ msg: { key: 'history.datedSaved', params: { fields: { de: 'Preis' } } } })
+  })
+
   it('refuses a task that does not ask a day, and a draft', async () => {
     const s = await datedSetup()
     expect(await errorOf(s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-09' })))
@@ -322,8 +330,11 @@ describe('publishing unpublished changes on a day', () => {
     const s = await datedSetup()
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } } })
     const lifeRev = (await s.row(s.saibling))!.lifeRev
-    expect(await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev, at: DAY1 })))
-      .toMatchObject({ key: 'errors.liveTakesDay' })
+    // A day and a time together are refused too (wrong behaviour caught: the time was dropped without a word).
+    for (const both of [{ at: DAY1 }, { at: DAY1, from: '2026-10-09' }]) {
+      expect(await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev, ...both })))
+        .toMatchObject({ key: 'errors.liveTakesDay' })
+    }
     await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev, from: '2026-10-09' })
     expect(await s.dated(s.saibling)).toMatchObject([{ from: '2026-10-09', fields: { price: { amount: 1450 } } }])
     expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').withIndex('by_entry', (q) => q.eq('entry', s.saibling)).collect())).toEqual([])
