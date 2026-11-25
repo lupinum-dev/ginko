@@ -627,6 +627,22 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
   }
   afterEach(() => { datedRows.value = [] })
 
+  // Wrong behaviour caught (I2.1): a reopened own request for a later day showed an empty day, so Veröffentlichen
+  // replaced it with a request for now.
+  test('reopening an own dated request puts its day into the field', async () => {
+    const day = inDays(10)
+    ownProposal.value = { task: 'items.price', status: 'rejected', fits: true, proposal: 'p1', fields: { title: 'Vorschlag' }, from: day, createdAt: 0, reason: 'Zu früh' }
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Deinen Vorschlag wieder öffnen')!.trigger('click')
+    await flushPromises()
+    const short = new Intl.DateTimeFormat('de', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+    expect([(wrapper.get('#sheet-starts-on').element as HTMLInputElement).value, footer(wrapper)[0]]).toEqual([day, `Ab ${short} veröffentlichen`])
+    ownProposal.value = null
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught: the field is missing, an empty field plans a change (instead of saving as today), or a day
   // goes out as a publish now, without `from`, or with "Speichern" still offered beside it (it would drop the day).
   test('empty saves as today; a day saves with from', async () => {
@@ -669,6 +685,26 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
+  // Wrong behaviour caught (I2.3): someone took the entry offline while the sheet was open; the day field went, and the
+  // save wrote the value into the draft without a word, though the person had set a later day.
+  test('an entry taken offline with a day typed: the save sends the day and shows the refusal', async () => {
+    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'INVALID', message: 'Nur ein Eintrag, der online ist, bekommt eine Änderung ab einem Tag.' } })
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = inDays(10)
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    await wrapper.setProps({ entry: { ...stored, state: 'draft' } as never })
+    expect((wrapper.get('#sheet-starts-on').element as HTMLInputElement).value).toBe(day)
+    // J2: the button says what it sends, a change of that day, not "Speichern".
+    const short = new Intl.DateTimeFormat('de', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+    expect(footer(wrapper)[0]).toBe(`Ab ${short} veröffentlichen`)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    const calls = ops.saveEntry.mock.calls.map((c) => (c as unknown as [{ from?: string; publish?: true }])[0])
+    expect([calls.map((c) => [c.from, c.publish]), wrapper.get('[role="alert"]').text(), wrapper.emitted('close')]).toEqual([[[day, undefined]], 'Nur ein Eintrag, der online ist, bekommt eine Änderung ab einem Tag.', undefined])
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught (E1): a day typed by keyboard and not finished leaves the input empty, which read as "no day",
   // so the button, Enter or Ctrl+S put the value online now, although it was meant for a later day.
   test.each([['the button'], ['Enter'], ['Ctrl+S']] as const)('a day typed and not finished is refused (%s)', async (how) => {
@@ -687,6 +723,38 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
+  // Wrong behaviour caught (H1.5): a date typed and not finished had no "Leeren" (the model is empty), so the person had
+  // to delete each part of it by hand to save as today.
+  test('"Leeren" empties a day typed and not finished', async () => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(day.element, 'validity', { value: { badInput: true }, configurable: true })
+    await day.trigger('keyup')
+    // The browser drops the typed parts with the value: the emptied input is no longer "not a date".
+    Object.defineProperty(day.element, 'validity', { value: { badInput: false }, configurable: true })
+    await wrapper.findAll('button').find((b) => b.text() === 'Leeren')!.trigger('click')
+    await flushPromises()
+    expect([(day.element as HTMLInputElement).value, wrapper.text().includes('Das ist kein Datum.'), document.activeElement === day.element]).toEqual(['', false, true])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I2.2): a browser that keeps the typed parts after "Leeren" still showed nothing wrong, and
+  // the next press saved as "today" while the field showed a half-typed day.
+  test('"Leeren" keeps "not a date" while the input still reports typed parts', async () => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(day.element, 'validity', { value: { badInput: true }, configurable: true })
+    await day.trigger('keyup')
+    await wrapper.findAll('button').find((b) => b.text() === 'Leeren')!.trigger('click')
+    await flushPromises()
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    expect([wrapper.text().includes('Das ist kein Datum.'), ops.saveEntry.mock.calls.length]).toEqual([true, 0])
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught (E1): a reload brought back the typed values without their day, and the next press of the
   // button put them online now.
   test('the local copy brings the day back with the values', async () => {
@@ -700,6 +768,26 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     const second = mountAsk()
     answer({ data: {} })
     await flushPromises()
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    expect([(second.get('input[name="title"]').element as HTMLInputElement).value, (second.get('#sheet-starts-on').element as HTMLInputElement).value]).toEqual(['Neu', day])
+    second.unmount()
+    localStorage.clear()
+  })
+
+  // Wrong behaviour caught (H1.2): restoring a copy without a day emptied the day already typed, so the next press put
+  // the values online now.
+  test('a local copy without a day keeps the day typed', async () => {
+    localStorage.clear()
+    const first = mountAsk()
+    await ready(first)
+    first.unmount()
+
+    const second = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    const day = inDays(10)
+    await second.get('#sheet-starts-on').setValue(day)
     await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
     await flushPromises()
     expect([(second.get('input[name="title"]').element as HTMLInputElement).value, (second.get('#sheet-starts-on').element as HTMLInputElement).value]).toEqual(['Neu', day])
@@ -733,6 +821,79 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await flushPromises()
     const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ fields: unknown; from?: string }]
     expect([sent.fields, sent.from]).toEqual([{ title: 'Alt' }, day])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1.6): a half-typed day stayed "not a date" after "Bearbeiten" put a day into the field, so
+  // the save of that day was refused.
+  test('"Bearbeiten" over a day typed and not finished saves with its day', async () => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    const field = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(field.element, 'validity', { value: { badInput: true }, configurable: true })
+    await field.trigger('keyup')
+    Object.defineProperty(field.element, 'validity', { value: { badInput: false }, configurable: true })
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Das ist kein Datum.')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => s.from)).toEqual([day])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1.4): after "Bearbeiten" another day silently planned a second change, and the person
+  // believed the edited one was moved.
+  test('after "Bearbeiten" another day says the edited change stays', async () => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    const status = () => wrapper.find('#sheet-starts-on-status')
+    expect(status().exists()).toBe(false)
+    await wrapper.get('#sheet-starts-on').setValue(inDays(21))
+    const long = new Intl.DateTimeFormat('de', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+    expect([status().text(), status().attributes('role'), wrapper.get('#sheet-starts-on').attributes('aria-invalid')]).toEqual([`Die geplante Änderung ab ${long} bleibt bestehen. Das hier wird eine zweite Änderung.`, 'status', 'false'])
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    expect(status().exists()).toBe(false)
+    await wrapper.get('#sheet-starts-on').setValue('')
+    expect(status().exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I2.4, J3): the edited change was cancelled (or went online) while the sheet was open, yet
+  // the sheet still spoke of it as staying and sent its fields as if replacing it, so a value equal to the stored one was
+  // planned as a change; or another person's change planned on the same day meanwhile counted as the edited one, and the
+  // fields of the cancelled change were forced into it.
+  test.each([
+    ['cancelled, nothing else on that day', false, 'Alt'],
+    ['cancelled, another change on the same day', true, 'Alt'],
+    ['cancelled, another change on the same day, a value typed', true, 'Neu'],
+  ] as const)('"Bearbeiten" counts only while its own change still waits (%s)', async (_case, other, typed) => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    datedRows.value = other ? [{ id: 'd2', from: day, fields: ['title'], values: { title: 'Fremd' }, by: null, at: 0, changedSince: [] }] : []
+    await wrapper.get('#sheet-starts-on').setValue(inDays(21))
+    expect(wrapper.find('#sheet-starts-on-status').exists()).toBe(false)
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    await wrapper.get('input[name="title"]').setValue(typed)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    const fields = ops.saveEntry.mock.calls.map((c) => (c as unknown as [{ fields: object }])[0].fields)
+    // A value equal to the stored one is no change: no call, and the field says so. A typed value is the only field sent.
+    if (typed === 'Alt') expect([fields, wrapper.get('#sheet-starts-on-status').text()]).toEqual([[], 'Es ist noch nichts geändert. Ändere zuerst einen Wert.'])
+    else expect(fields).toEqual([{ title: 'Neu' }])
     wrapper.unmount()
   })
 
@@ -786,7 +947,9 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await press(wrapper, footer(wrapper)[0]!)
     await flushPromises()
     expect(ops.saveEntry).toHaveBeenCalledTimes(typed ? 1 : 0)
-    expect(wrapper.text()).toContain('Es ist noch nichts geändert. Ändere zuerst einen Wert.')
+    // H1.9: a status under the field, not its error: the day itself is valid.
+    const status = wrapper.get('#sheet-starts-on-status')
+    expect([status.text(), status.attributes('role'), wrapper.get('#sheet-starts-on').attributes('aria-invalid')]).toEqual(['Es ist noch nichts geändert. Ändere zuerst einen Wert.', 'status', 'false'])
     expect(wrapper.emitted('close')).toBeUndefined()
     expect(document.activeElement).toBe(wrapper.get('#sheet-starts-on').element)
     wrapper.unmount()
@@ -803,6 +966,10 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await press(wrapper, footer(wrapper)[0]!)
     await flushPromises()
     const fields = () => wrapper.get('[data-test="sheet-fields"]').attributes('inert')
+    expect(fields()).toBeDefined()
+    // H1.8: the day is inert too, and a change of it meanwhile does not end the wait.
+    expect(wrapper.find('[data-test="sheet-fields"] #sheet-starts-on').exists()).toBe(true)
+    await wrapper.get('#sheet-starts-on').setValue('')
     expect(fields()).toBeDefined()
     land({ rev: 4 })
     await flushPromises()
@@ -824,37 +991,176 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
-  // Wrong behaviour caught (E10): "Meine Eingaben speichern" after a conflict sent the input again without its day, so
-  // the value went online now.
-  test('the conflict answer saves again with the day', async () => {
-    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data: { title: 'Fremd' }, rev: 5, conflicts: ['title'] } } })
+  // I1: a conflict answer in the sheet only merges. While the conflict was open the entry may have gone online and the
+  // day may have changed, so the person presses the button that says what it does now.
+  const clash = (data: Record<string, unknown> = { title: 'Fremd' }, conflicts = ['title']) =>
+    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data, rev: 5, conflicts } } })
+  const answerWith = (wrapper: ReturnType<typeof mountAsk>, label: string) => wrapper.findAll('button').find((b) => b.text() === label)!.trigger('click')
+  const keepMine = (wrapper: ReturnType<typeof mountAsk>) => answerWith(wrapper, 'Meine Eingaben behalten')
+  type Sent = { from?: string; publish?: true; baseRev: number }
+  const sent = (): Sent[] => ops.saveEntry.mock.calls.map((c) => (c as unknown as [Sent])[0])
+  /** Calls of every op of the ops mock (saves, creates, whatever is added later). */
+  const opCalls = () => Object.values(ops).reduce((n, op) => n + (vi.isMockFunction(op) ? op.mock.calls.length : 0), 0)
+  /**
+   * The answer sent nothing: `calls` op calls so far (all before the answer), a status line says the input is not saved
+   * (with `extra` when the entry went online or offline meanwhile), and the focus is on that line, not on a button (J1).
+   */
+  const onlyMerged = (wrapper: ReturnType<typeof mountAsk>, calls: number, extra = '') => {
+    const line = wrapper.get('[data-test="merged-input"]')
+    expect([opCalls(), line.text(), line.attributes('role'), document.activeElement === line.element, document.activeElement?.tagName])
+      .toEqual([calls, `Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.${extra ? ` ${extra}` : ''}`, 'status', true, 'P'])
+  }
+
+  // Wrong behaviour caught (I1 a, b; E10): the answer saved again with the step or the day of the first try, so a day set
+  // after the conflict was dropped (online now), a day cleared after it was still sent, or a kept day was lost.
+  test.each([
+    ['a day kept', 10, 10],
+    ['a day set after the conflict', '', 10],
+    ['a day cleared after the conflict', 10, ''],
+  ] as const)('the answer saves nothing; the primary button then sends what it says (%s)', async (_case, first, then) => {
+    clash()
     const wrapper = mountAsk()
     await ready(wrapper)
-    const day = inDays(10)
-    await wrapper.get('#sheet-starts-on').setValue(day)
+    if (first !== '') await wrapper.get('#sheet-starts-on').setValue(inDays(first))
     await press(wrapper, footer(wrapper)[0]!)
     await flushPromises()
-    await wrapper.findAll('button').find((b) => b.text() === 'Meine Eingaben speichern')!.trigger('click')
+    if (then !== first) await wrapper.get('#sheet-starts-on').setValue(then === '' ? '' : inDays(then))
+    await keepMine(wrapper)
     await flushPromises()
-    const [, again] = ops.saveEntry.mock.calls as unknown as [unknown, [{ from?: string; publish?: true; baseRev: number; fields: unknown }]]
-    expect([again[0].from, again[0].publish, again[0].baseRev, again[0].fields]).toEqual([day, undefined, 5, { title: 'Neu' }])
+    onlyMerged(wrapper, 1)
+    const [primary] = footer(wrapper)
+    if (then === '') expect(primary).toBe('Veröffentlichen')
+    await press(wrapper, primary!)
+    await flushPromises()
+    const again = sent()[1]!
+    expect([again.from, again.publish, again.baseRev]).toEqual(then === '' ? [undefined, true, 5] : [inDays(then), undefined, 5])
+    expect(wrapper.find('[data-test="merged-input"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I1 c, J1): the person saved into a draft; meanwhile someone published the entry, and the
+  // answer repeated the step of the first press, which is "publish" on the now online entry: the input went online
+  // unasked. Or the focus sat on Veröffentlichen, so the next Enter published, and nothing said the entry was online now.
+  test.each([
+    ['Speichern keeps the input off the website', 'Speichern', undefined],
+    ['Veröffentlichen publishes it', 'Veröffentlichen', true],
+  ] as const)('a draft published during the conflict: the answer saves nothing; %s', async (_case, button, publish) => {
+    clash()
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: { ...stored, state: 'draft' } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    await ready(wrapper)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    await wrapper.setProps({ entry: { ...stored, rev: 5, fieldRevs: { title: 5 }, data: { title: 'Fremd' } } as never })
+    await keepMine(wrapper)
+    await flushPromises()
+    onlyMerged(wrapper, 1, 'Der Eintrag ist inzwischen online.')
+    expect(footer(wrapper)).toEqual(['Veröffentlichen', 'Speichern', 'Abbrechen'])
+    await press(wrapper, button)
+    await flushPromises()
+    const again = sent()[1]!
+    expect([sent().length, again.from, again.publish, again.baseRev]).toEqual([2, undefined, publish, 5])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I1 d): a restored local copy whose field someone saved meanwhile opens the conflict, and the
+  // answer saved the copy at once (with a step nobody chose), or lost its day.
+  test('after restoring a local copy the answer saves nothing and the day stays', async () => {
+    localStorage.clear()
+    const day = inDays(10)
+    const first = mountAsk()
+    await ready(first)
+    await first.get('#sheet-starts-on').setValue(day)
+    first.unmount()
+
+    const second = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: { ...stored, rev: 5, fieldRevs: { title: 5 }, data: { title: 'Fremd' } } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    answer({ data: {} })
+    await flushPromises()
+    await answerWith(second, 'Wiederherstellen')
+    await flushPromises()
+    await keepMine(second)
+    await flushPromises()
+    onlyMerged(second, 0)
+    expect((second.get('#sheet-starts-on').element as HTMLInputElement).value).toBe(day)
+    second.unmount()
+    localStorage.clear()
+  })
+
+  // Wrong behaviour caught (I1 e): "Beides behalten" saved at once with the step of the first try, as the other answer did.
+  test('"Beides behalten" saves nothing; the primary button then sends the day', async () => {
+    const listed = serializeSchema(defineSite({
+      site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+      pages: { home: { de: '/' } },
+      bricks: {
+        items: collection({
+          label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' },
+          fields: { title: f.text('Titel', { translate: false }), sides: f.list('Beilagen', { of: { name: f.text('Name', { translate: false }) } }) },
+          tasks: [{ id: 'sides', label: 'Beilagen ändern', kind: 'edit', fields: ['sides'], pick: true, when: { from: 'ask' } }],
+        }),
+      },
+    }))
+    const salad = { _id: 'r1', name: 'Salat' }
+    // The list as typed: the stored row and one row more.
+    const ListStub = defineComponent({ props: fieldProps, emits: ['update:modelValue'], setup: (props, { emit }) => () => h('input', { name: props.path, onInput: (e: Event) => emit('update:modelValue', [salad, { _id: 'r3', name: (e.target as HTMLInputElement).value }]) }) })
+    clash({ title: 'Alt', sides: [salad, { _id: 'r2', name: 'Suppe' }] }, ['sides'])
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick: listed.bricks.items!, task: listed.bricks.items!.tasks![0]!, main: 'de', locales: ['de'], schema: listed, entry: { ...stored, data: { title: 'Alt', sides: [salad] } } as never },
+      global: { stubs: { GinkoField: ListStub } },
+      attachTo: document.body,
+    })
+    answer({ data: { sides: [salad] } })
+    await flushPromises()
+    await wrapper.get('input[name="sides"]').setValue('Knödel')
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    await wrapper.get('#sheet-starts-on').setValue(inDays(10))
+    await answerWith(wrapper, 'Beides behalten')
+    await flushPromises()
+    onlyMerged(wrapper, 1)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    const again = sent()[1]!
+    expect([again.from, again.publish, again.baseRev]).toEqual([inDays(10), undefined, 5])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I1): an answer pressed while a save is on its way merged onto a base that save is changing.
+  test('the conflict answers wait while a save is on its way', async () => {
+    clash()
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    ops.saveEntry.mockImplementationOnce(() => new Promise(() => {}))
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    const answers = ['Meine Eingaben behalten', 'Neuen Stand übernehmen'].map((label) => wrapper.findAll('button').find((b) => b.text() === label)!)
+    expect(answers.map((b) => b.attributes('disabled'))).toEqual(['', ''])
     wrapper.unmount()
   })
 
   // Wrong behaviour caught (E10): in the English view the day field is not shown, and a press there put the German
   // input online now instead of on its day.
-  test('the second language view keeps the day', async () => {
-    const both = serializeSchema(defineSite({
-      site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
-      pages: { home: { de: '/', en: '/en' } },
-      bricks: {
-        items: collection({
-          label: 'Karte', max: 50, order: 'manual', listing: { title: 'name' },
-          fields: { name: f.text('Name'), price: f.money('Preis') },
-          tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', fields: ['name', 'price'], pick: true, when: { from: 'ask' } }],
-        }),
-      },
-    }))
+  const both = serializeSchema(defineSite({
+    site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    pages: { home: { de: '/', en: '/en' } },
+    bricks: {
+      items: collection({
+        label: 'Karte', max: 50, order: 'manual', listing: { title: 'name' },
+        fields: { name: f.text('Name'), price: f.money('Preis') },
+        tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', fields: ['name', 'price'], pick: true, when: { from: 'ask' } }],
+      }),
+    },
+  }))
+  /** A sheet in German and English, the price typed (or not) and the day set in German, then the English view. */
+  const inEnglish = async (price: string | undefined, day: string) => {
     const items = both.bricks.items!
     const wrapper = mount(TaskSheet, {
       props: { site: 'cafe', brickKey: 'items', brick: items, task: items.tasks![0]!, main: 'de', locales: ['de', 'en'], schema: both, entry: { ...stored, data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } } as never },
@@ -863,11 +1169,16 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     })
     answer({ data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } })
     await flushPromises()
-    await wrapper.get('input[name="price"]').setValue('990')
-    const day = inDays(10)
+    if (price !== undefined) await wrapper.get('input[name="price"]').setValue(price)
     await wrapper.get('#sheet-starts-on').setValue(day)
     await wrapper.findAll('[role="group"] button, [role="radio"]').find((b) => b.text().startsWith('Englisch'))!.trigger('click')
     await flushPromises()
+    return wrapper
+  }
+
+  test('the second language view keeps the day', async () => {
+    const day = inDays(10)
+    const wrapper = await inEnglish('990', day)
     expect(wrapper.find('#sheet-starts-on').exists()).toBe(false)
     const [primary] = footer(wrapper)
     expect(primary).toMatch(/^Ab .+ veröffentlichen$/)
@@ -875,6 +1186,20 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await flushPromises()
     const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ from?: string; publish?: true }]
     expect([sent.from, sent.publish]).toEqual([day, undefined])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1.7): in the English view a refused day said nothing, because the day field with its message
+  // shows only in German and the focus went nowhere.
+  test.each([
+    ['today', '990', 0, 'Der Tag muss nach heute liegen.'],
+    ['nothing changed', undefined, 10, 'Es ist noch nichts geändert. Ändere zuerst einen Wert.'],
+  ] as const)('a refused day in the English view goes back to German: %s', async (_case, price, days, message) => {
+    const wrapper = await inEnglish(price, inDays(days))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(ops.saveEntry).not.toHaveBeenCalled()
+    expect([wrapper.text().includes(message), document.activeElement?.id]).toEqual([true, 'sheet-starts-on'])
     wrapper.unmount()
   })
 

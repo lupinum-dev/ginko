@@ -417,11 +417,12 @@ function onFormKey(event: KeyboardEvent) {
   save()
 }
 
+// A conflict answer merges; the save repeats the last one's publish step.
 async function keepMine() {
-  if (await form.keepMine() && !waiting.value) savedOnce.value = true
+  if (form.keepMine() && await form.saveAgain() && !waiting.value) savedOnce.value = true
 }
 async function keepBoth() {
-  if (await form.mergeLists() && !waiting.value) savedOnce.value = true
+  if (form.mergeLists() && await form.saveAgain() && !waiting.value) savedOnce.value = true
 }
 
 const ops = useOps(computed(() => props.site.slug))
@@ -507,6 +508,8 @@ const statusNote = computed(() => {
 })
 /** Publishing belongs to the brick's create and edit tasks (staff need one of them). */
 const publishTask = computed(() => props.tasks?.save ?? props.tasks?.create)
+/** That task needs a yes: the publish goes to review (owners and managers hold no tasks here). */
+const publishReviewed = computed(() => props.tasks?.held?.find((task) => taskRef(props.brickKey, task) === publishTask.value)?.needsApproval === true)
 
 const publishing = ref(false)
 const when = ref<'now' | 'later'>('now')
@@ -713,7 +716,8 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <header class="grid gap-2.5">
           <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <h1 class="text-2xl min-[900px]:text-[1.875rem]">{{ title }}</h1>
+              <!-- tabindex: the focus lands here when the last notice of a planned change goes (DatedNotices). -->
+              <h1 id="entry-title" class="text-2xl outline-none min-[900px]:text-[1.875rem]" tabindex="-1">{{ title }}</h1>
               <Badge v-if="bar && !sideMode && statusText" :variant="statusVariant">{{ statusText }}</Badge>
             </div>
             <DropdownMenu v-if="entry && !removed">
@@ -764,7 +768,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <template v-if="bar && !sideMode">
           <EntryPublishPanel
             v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
-            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError"
+            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError" :review="publishReviewed"
             @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
           />
           <div v-if="askUnpublish" class="grid gap-2.5 rounded-lg border bg-sidebar p-3.5">
@@ -783,8 +787,8 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           :may-restore="canRemove" :may-create="mayCreate"
           @restore="restoreRemoved" @save-as-new="saveAsNew" @discard="discardRemoved"
         />
-        <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
-        <DatedNotices v-if="entry && !removed" :site="site.slug" :entry="entry._id" :brick="brick" :main="main" :time-zone="timeZone" :currency="schema.currency" :task="tasks?.save" />
+        <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :planned-from="localOffer.from" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
+        <DatedNotices v-if="entry && !removed" :site="site.slug" :entry="entry._id" :brick="brick" :main="main" :time-zone="timeZone" :currency="schema.currency" :task="tasks?.save" last-focus="entry-title" />
         <ConflictPanel
           v-if="conflict"
           :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="locale" :main="main"
@@ -850,7 +854,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
             </template>
             <EntryPublishPanel
               v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
-              :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError"
+              :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError" :review="publishReviewed"
               @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
             />
           </template>
@@ -879,7 +883,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           </Popover>
           <EntryPublishPanel
             v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
-            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError"
+            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError" :review="publishReviewed"
             @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
           />
           <div v-else-if="!removed" class="flex flex-wrap gap-2">

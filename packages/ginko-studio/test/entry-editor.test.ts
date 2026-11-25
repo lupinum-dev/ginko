@@ -11,6 +11,7 @@ import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { useEntryForm } from '../app/composables/useEntryForm'
+import { localDraftKey, writeLocalDraft } from '../app/composables/useLocalDraft'
 import { allAccess } from '../app/composables/useAll'
 import EntryEditor from '../app/components/EntryEditor.vue'
 import PreviewPane from '../app/components/PreviewPane.vue'
@@ -320,6 +321,46 @@ test('Ctrl+S in the form saves a change once, and an unchanged form not at all',
     await pressSave()
     expect(saveEntry).toHaveBeenCalledTimes(1)
     expect(saveEntry.mock.calls[0]![0]).toMatchObject({ entry: 'e1', fields: { title: { de: 'Neu' } } })
+  } finally {
+    vi.stubGlobal('useOps', () => ({}))
+  }
+})
+
+// Wrong behaviour caught (H1.3): a copy typed in a task sheet for a later day was offered here without its day, so a
+// restore and Speichern made a value for a later day an unpublished change of now, unnoticed.
+test('the offer of a local copy planned for a day names the day', async () => {
+  localStorage.clear()
+  writeLocalDraft(localDraftKey('restaurant', 'u1', 'e1'), { v: 1, savedAt: Date.now(), baseRev: 1, locale: 'de', fields: { title: { de: 'Neu' } }, from: '2099-12-06' })
+  const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 0, data: { title: { de: 'Alt' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' } as const
+  const wrapper = mount(EntryEditor, {
+    props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false },
+    global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+  })
+  await flushPromises()
+  expect(wrapper.get('[data-test="local-planned-from"]').text()).toBe('Die Eingaben waren ab Sonntag, 6. Dezember geplant. Den Tag musst du hier neu wählen.')
+  wrapper.unmount()
+  localStorage.clear()
+})
+
+// Wrong behaviour caught (H1 guard): once the form's conflict answer only merges, "Meine Eingaben speichern" here merged
+// and saved nothing, or saved on the old base.
+test('the conflict answer saves the input again on the new base', async () => {
+  const saveEntry = vi.fn(async () => ({ rev: 6 }))
+  saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data: { title: { de: 'Fremd' } }, rev: 5, conflicts: ['title'] } } })
+  vi.stubGlobal('useOps', () => ({ opId: () => `op${saveEntry.mock.calls.length}`, saveEntry }))
+  try {
+    const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 0, data: { title: { de: 'Alt' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' } as const
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false },
+      global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    })
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Neu' })
+    await flushPromises()
+    wrapper.get('form').element.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }))
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Meine Eingaben speichern')!.trigger('click')
+    await flushPromises()
+    expect(saveEntry.mock.calls.map((c) => (c as unknown as [{ baseRev: number; fields: unknown }])[0]).map((c) => [c.baseRev, c.fields])).toEqual([[1, { title: { de: 'Neu' } }], [5, { title: { de: 'Neu' } }]])
   } finally {
     vi.stubGlobal('useOps', () => ({}))
   }
@@ -692,5 +733,20 @@ describe('the footer of a live entry with unpublished changes', () => {
     } finally {
       vi.stubGlobal('useOps', () => ({}))
     }
+  })
+
+  // Wrong behaviour caught (H1.10): under approval the day's button said "Planen", so staff could not tell the changes
+  // go to review, not online on that day.
+  test('under approval the day\'s button names review and the day', async () => {
+    const tasks = { save: 'blog.edit', held: [{ id: 'edit', label: 'Bearbeiten', kind: 'edit' as const, needsApproval: true }] }
+    const wrapper = mount(EntryEditor, { props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry: entryOf({ pending: { since: at, at, fields: ['title'] } }), canRemove: false, tasks }, global: { stubs } })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Veröffentlichen …')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('#publish-later').trigger('click')
+    await flushPromises()
+    expect(buttons(wrapper)).toContain('Planen')
+    await wrapper.get('#publish-day').setValue(new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
+    expect(buttons(wrapper).filter((b) => /^Ab .+ zur Prüfung senden$/.test(b))).toHaveLength(1)
   })
 })

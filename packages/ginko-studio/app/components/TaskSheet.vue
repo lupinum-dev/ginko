@@ -137,6 +137,8 @@ const proposedValues = (o: NonNullable<typeof mine.value>): Data =>
 /** Starts the form from an own proposal's values over `start`. */
 function loadProposal(start: Data, o: NonNullable<typeof mine.value>) {
   form.load({ ...start, ...proposedValues(o) })
+  // A dated request keeps its day: sending it again replaces it with a request for that day, not for now (I2).
+  if (o.from) startsOn.value = o.from
   fromProposal.value = true
   proposalWeek.value = fixedWeek.value ? (o.fields as Data)[fixedWeek.value] : undefined
 }
@@ -350,20 +352,34 @@ function toggleLater() {
 // "Gilt ab" (D131): a task that asks for the day, on an online entry. Empty is today: the save goes online as without
 // it. A day sends the changed fields as a change that starts on that day; the entry stays as it is until then. Only in
 // the main language's view: a change holds whole values, written in the main language (D119).
-const asksDay = computed(() => props.task.kind === 'edit' && props.task.when?.from === 'ask' && publishStep.value && !isCreate.value && !removedHere.value)
+const taskAsksDay = computed(() => props.task.kind === 'edit' && props.task.when?.from === 'ask' && !isCreate.value && !removedHere.value)
+// The field shows on an online entry, and stays while it holds a day (also half typed) when the entry goes offline
+// meanwhile: the day is still sent, and the server's refusal for a draft says why nothing was saved (I2).
+const asksDay = computed(() => taskAsksDay.value && (publishStep.value || !!startsOn.value || startsOnBad.value))
 const startsOnError = ref('')
 watch(startsOn, () => { startsOnError.value = '' })
 // "Es ist noch nichts geändert" (E6) under the day field until the day or a value changes.
 const { unchangedDay } = form
 // By content: a save puts an equal copy into the draft, which is no change.
 watch(() => `${startsOn.value}\u0000${stableJson(draft.value)}`, () => { unchangedDay.value = false })
-const dayOn = computed(() => (asksDay.value && startsOn.value ? startsOn.value : undefined))
+const dayOn = computed(() => (taskAsksDay.value && startsOn.value ? startsOn.value : undefined))
 /**
  * A save with a day is on its way (E8): the form goes back to the entry when it lands, so input typed meanwhile would
- * be lost. The fields and the day are inert until then.
+ * be lost. The fields and the day are inert until then. Set by that save itself, so nothing typed meanwhile ends it (H1).
  */
-const datedSaving = computed(() => busy.value && dayOn.value !== undefined)
+const datedSaving = ref(false)
 const shortDay = (day: string) => format.date(day, { weekday: 'short', day: 'numeric', month: 'short' })
+/**
+ * The primary button says what it sends: a day sends a change of that day, also when the entry went offline meanwhile
+ * (the server refuses it then and says why, J2).
+ */
+const primaryLabel = computed(() => {
+  if (busy.value) return offline.value ? t('entry.save.waiting') : t('entry.save.saving')
+  if (dayOn.value) return t(props.approval ? 'dated.reviewFrom' : 'dated.publishFrom', { day: shortDay(dayOn.value) })
+  if (!publishStep.value) return t('entry.save.save')
+  if (props.approval) return t('entry.publish.review')
+  return later.value ? t('entry.publish.schedule') : t('entry.publish.go')
+})
 // Changes of the form's fields that wait for a later day (datedChanges.list): one notice each, so nobody plans over one
 // without knowing. "Bearbeiten" (E3) puts its day and values into the form; cancelling or moving one is done in Alles
 // bearbeiten.
@@ -376,19 +392,33 @@ const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopp
   return ours.length ? [{ id: c.id, from: c.from, fields: ours, values: c.values as Data, text: t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), changes }) }] : []
 }))
 /** The waiting change "Bearbeiten" filled the form from: saved on its day, it is replaced (every field of it is sent). */
-const editing = ref<{ from: string; fields: string[] }>()
+const editing = ref<{ id: string; fields: string[] }>()
 function editChange(n: (typeof waitingNotices.value)[number]) {
   startsOn.value = n.from
   for (const key of n.fields) form.setField(key, n.values[key] ?? undefined)
-  editing.value = { from: n.from, fields: n.fields }
+  editing.value = { id: n.id, fields: n.fields }
   nextTick(() => document.getElementById('sheet-starts-on')?.focus())
 }
+/**
+ * The change being edited, by its row, while it still waits: cancelled, gone online or stopped meanwhile, it counts no
+ * more (I2), also when someone plans another change on the same day (J3). Its day is the row's day now.
+ */
+const edited = computed(() => {
+  const row = editing.value && waitingNotices.value.find((n) => n.id === editing.value!.id)
+  return row ? { from: row.from, fields: editing.value!.fields } : undefined
+})
+/** After "Bearbeiten", another day in the field plans a second change; the one being edited stays (H1). */
+const secondChange = computed(() => {
+  const was = edited.value?.from
+  return was && startsOn.value && !startsOnBad.value && startsOn.value !== was ? t('dated.secondChange', { day: format.date(was, { weekday: 'long', day: 'numeric', month: 'long' }) }) : ''
+})
 
 /**
  * What a save does: `publish` goes online now (or waits for a yes), `draft` stays off the website (a new entry is a
  * draft, a change waits unpublished), `later` plans a new entry.
  */
 type Step = 'publish' | 'draft' | 'later'
+/** Every save goes through here: the buttons, Enter and Ctrl+S. A conflict answer never saves (I1). */
 async function save(step: Step = 'publish') {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || !ready.value || removedHere.value) return
@@ -402,12 +432,24 @@ async function save(step: Step = 'publish') {
   if (from !== undefined) {
     // Enter in a field and Ctrl+S never publish (below), and a change for a later day is a publish: the button does it.
     if (step === 'draft') return document.getElementById('sheet-primary')?.focus()
+    // The day field shows only in the main language's view: switch there before the focus (H1).
     if (from <= todayIn(props.schema.timeZone)) {
       startsOnError.value = messageOf({ key: 'errors.dayNotAhead' })
-      return document.getElementById('sheet-starts-on')?.focus()
+      await switchLanguage(props.main)
+      return nextTick(() => document.getElementById('sheet-starts-on')?.focus())
     }
-    const ok = await form.save(undefined, undefined, from, editing.value?.from === from ? editing.value.fields : undefined)
-    if (!ok && unchangedDay.value) nextTick(() => document.getElementById('sheet-starts-on')?.focus())
+    let ok: boolean
+    beforeSend()
+    datedSaving.value = true
+    try {
+      ok = await form.save(undefined, undefined, from, edited.value?.from === from ? edited.value.fields : undefined)
+    } finally {
+      datedSaving.value = false
+    }
+    if (!ok && unchangedDay.value) {
+      await switchLanguage(props.main)
+      nextTick(() => document.getElementById('sheet-starts-on')?.focus())
+    }
     await finish(ok)
     return
   }
@@ -428,6 +470,7 @@ async function save(step: Step = 'publish') {
     await switchLanguage(props.main)
     nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
   }
+  beforeSend()
   await finish(await form.save(undefined, publish))
 }
 /** Cmd/Ctrl+S anywhere in the sheet's form saves like the button, never the browser's "Save page as". */
@@ -439,12 +482,26 @@ function onFormKey(event: KeyboardEvent) {
   // On the publish step the key keeps the entry off the website: nobody publishes by pressing Ctrl+S.
   save(publishStep.value ? 'draft' : 'publish')
 }
-async function keepMine() {
-  await finish(await form.keepMine())
+// A conflict answer only merges (I1): while the conflict was open, the entry may have gone online or offline and the
+// day may have changed, so a remembered step or day could put the input online unasked. The person then presses the
+// button that says what it does now. The line "not saved yet" stays until the next save, and takes the focus: on the
+// primary button the next Enter could publish a draft someone published meanwhile (J1).
+const merged = ref(false)
+/** Whether the entry was online (`publishStep`) when the last save was sent: the line says when that changed since. */
+let onlineAtSave: boolean | undefined
+const movedSince = ref('')
+function beforeSend() {
+  merged.value = false
+  onlineAtSave = publishStep.value
 }
-async function keepBoth() {
-  await finish(await form.mergeLists())
+function afterMerge(ok: boolean) {
+  if (!ok) return
+  merged.value = true
+  movedSince.value = onlineAtSave === undefined || onlineAtSave === publishStep.value ? '' : t(publishStep.value ? 'entry.conflict.nowOnline' : 'entry.conflict.nowOffline')
+  nextTick(() => document.getElementById('sheet-merged')?.focus())
 }
+const keepMine = () => afterMerge(form.keepMine())
+const keepBoth = () => afterMerge(form.mergeLists())
 // Someone removed the entry (N1): bring it back and save the input, or drop it.
 const removedHere = computed(() => !isCreate.value && !!props.removed && !!props.entry)
 async function restoreRemoved(lifeRev: number) {
@@ -539,9 +596,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             <ConflictPanel
               v-if="conflict"
               :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="main" :main="main"
-              :can-keep-both="!!form.listMerge.value"
+              :can-keep-both="!!form.listMerge.value" merge-only :busy="busy"
               @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
             />
+            <p v-else-if="merged" id="sheet-merged" tabindex="-1" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning outline-none" role="status" data-test="merged-input">{{ movedSince ? `${t('entry.conflict.inForm')} ${movedSince}` : t('entry.conflict.inForm') }}</p>
             <div v-if="mine?.status === 'open'" class="flex flex-wrap items-center justify-between gap-x-3 rounded-md bg-warning/10 py-1 pr-1 pl-3" role="status" data-test="own-proposal">
               <p class="py-1.5 font-semibold text-warning">{{ pendingText }}</p>
               <ProposalWithdraw :proposal="mine.proposal" />
@@ -582,8 +640,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
                 />
                 <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
               </template>
+              <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
             </div>
-            <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :time-zone="schema.timeZone" :error="startsOnError || (unchangedDay ? t('dated.nothingChanged') : '')" />
           </template>
         </div>
 
@@ -604,7 +662,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             </div>
             <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
             <!-- On the publish step only a press on this button publishes (Enter in a field saves a draft, like Ctrl+S); with the time open it plans instead, so there is one primary per state. -->
-            <Button id="sheet-primary" :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : publishStep ? (approval ? (dayOn ? t('dated.reviewFrom', { day: shortDay(dayOn) }) : t('entry.publish.review')) : later ? t('entry.publish.schedule') : dayOn ? t('dated.publishFrom', { day: shortDay(dayOn) }) : t('entry.publish.go')) : t('entry.save.save') }}</Button>
+            <Button id="sheet-primary" :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ primaryLabel }}</Button>
             <template v-if="publishStep">
               <!-- With a day, Speichern (unpublished) would drop it: the day's button is the one way. -->
               <Button v-if="!dayOn" type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ isCreate ? t('entry.publish.asDraft') : t('entry.save.save') }}</Button>

@@ -4,6 +4,8 @@ import { factComponent, SITE_BUDGET as BUDGET, type Schema } from '@lupinum/gink
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
+import { ConvexError } from 'convex/values'
+import { writeStop } from '../convex/lib/stopped'
 import { errorOf, opId, people, setup, upload } from './setup'
 
 // Mail is the one thing mocked besides the clock: the outbox records it.
@@ -123,6 +125,19 @@ describe('a save with a day', () => {
     expect(written.map((c) => [c.kind, c.msg!.key, (c.msg!.params!.fields as { de: string }).de])).toEqual(lines)
   })
 
+  // Wrong behaviour caught (H2.13): a save that starts a stopped change again named only the fields it gave, so the
+  // history did not say that the change's other fields were planned again.
+  it('a save that starts a stopped change again names every field left in it', async () => {
+    const s = await datedSetup()
+    await s.plan(1450, '2026-10-09', { fields: { price: { amount: 1450 }, veg: 'vegan' } })
+    const [row] = await s.dated(s.saibling)
+    await s.t.run((ctx) => ctx.db.patch(row!._id, { stopped: { at: DAY1, reason: { code: 'failed' } }, job: undefined }))
+    const count = (await s.history(s.saibling)).length
+    await s.plan(0, '2026-10-09', { fields: { veg: 'none' } })
+    const written = (await s.history(s.saibling)).slice(count)
+    expect(written.map((c) => [c.kind, c.msg!.key, (c.msg!.params!.fields as { de: string }).de])).toEqual([['dated', 'history.datedSaved', 'Preis'], ['datedCancelled', 'history.datedCancelled', 'Vegetarisch']])
+  })
+
   it('refuses a task that does not ask a day, and a draft', async () => {
     const s = await datedSetup()
     expect(await errorOf(s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-09' })))
@@ -132,10 +147,15 @@ describe('a save with a day', () => {
       .toMatchObject({ key: 'errors.datedOnlyOnline' })
   })
 
-  it('takes at most 20 waiting changes per entry', async () => {
+  // Wrong behaviour caught (H2.14): a save into a stopped change starts it waiting again past the limit.
+  it('takes at most 20 waiting changes per entry, a stopped one started again counts', async () => {
     const s = await datedSetup()
+    await s.plan(1390, '2026-12-01')
+    const [stopped] = await s.dated(s.saibling)
+    await s.t.run((ctx) => ctx.db.patch(stopped!._id, { stopped: { at: DAY1, reason: { code: 'failed' } }, job: undefined }))
     for (let day = 1; day <= 20; day++) await s.plan(1400 + day, `2026-11-${String(day).padStart(2, '0')}`)
     expect(await errorOf(s.plan(1500, '2026-11-21'))).toMatchObject({ key: 'errors.tooManyDated', params: { max: 20 } })
+    expect(await errorOf(s.plan(1500, '2026-12-01'))).toMatchObject({ key: 'errors.tooManyDated', params: { max: 20 } })
     // The same day still merges.
     await expect(s.plan(1500, '2026-11-20')).resolves.toMatchObject({ from: '2026-11-20' })
   })
@@ -256,6 +276,18 @@ describe('on the day', () => {
     const today = await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })
     expect(today[0]!.causeText).toBe('Die Werte ließen sich nicht speichern: Der Textspeicher der Seite ist voll (4.1 MB von 4 MB). Kürze oder entferne Einträge. Änderungen, die nichts vergrößern, lassen sich immer speichern.')
     log.mockRestore()
+  })
+
+  // Wrong behaviour caught (H2.15): a ConvexError without a message key out of the write (none of the product's own
+  // throws today) stopped the change as fields that are "missing or not valid", which no field is. Tested on the function
+  // `applyDue` decides with: no write path throws such an error to reach it through the run, and only mail and the clock
+  // are mocked.
+  it.each([
+    ['a refusal with its message', new ConvexError({ code: 'TOO_LARGE', key: 'errors.entryTooComplex' }), { code: 'invalid', fields: ['price'], cause: { key: 'errors.entryTooComplex' } }],
+    ['a ConvexError without a message key', new ConvexError({ code: 'INVALID' }), { code: 'failed' }],
+    ['another error', new TypeError('x'), { code: 'failed' }],
+  ])('the stop of a write that threw: %s', (_, error, reason) => {
+    expect(writeStop(error, ['price'])).toEqual(reason)
   })
 
   it('an error of the run stops the change with "failed" and logs only the class', async () => {
@@ -476,6 +508,13 @@ describe('a dated change that needs a yes', () => {
     return { ...s, sent }
   }
 
+  // Wrong behaviour caught (I2.1): the asker's form reopened the request without its day, so sending it again asked
+  // for the change now.
+  it('the asker\'s own request names its day', async () => {
+    const s = await proposed()
+    expect(await s.as.cook.query(api.proposals.ownFor, { site: 'restaurant', entry: s.saibling })).toMatchObject({ proposal: s.sent.proposal, from: '2026-10-09' })
+  })
+
   it('a yes before the day makes the change in the asker\'s name', async () => {
     const s = await proposed()
     await s.as.owner.mutation(api.proposals.approve, { proposal: s.sent.proposal })
@@ -530,6 +569,63 @@ describe('a dated change that needs a yes', () => {
       .map((c) => [c.from, c.mayCancel, c.mayMove])
     expect(await steps('cook')).toEqual([['2026-10-09', true, false], ['2026-12-01', false, false]])
     expect(await steps('owner')).toEqual([['2026-10-09', true, true], ['2026-12-01', true, true]])
+  })
+
+  // Wrong behaviour caught (H2.12): a request approved into the owner's change of that day made the asker its `by`, so
+  // they could cancel the owner's planned values with it, without a yes.
+  it('staff cannot cancel a change that holds someone else\'s values too', async () => {
+    const s = await datedSetup({ needsApproval: true })
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      for (const task of schema.bricks.menu!.tasks ?? []) if (task.id === 'price') (task as { fields: string[] }).fields = ['price', 'veg']
+      await ctx.db.patch(s.site, { schema })
+    })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { veg: 'vegan' }, from: '2026-10-09' })
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-09' }) as unknown as Proposed
+    await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })
+    const [row] = await s.dated(s.saibling)
+    expect([row!.by, row!.shared, Object.keys(row!.fields).sort()]).toEqual([people.cook, true, ['price', 'veg']])
+    const as = { site: 'restaurant', task: 'menu.price' }
+    expect(await errorOf(s.as.cook.mutation(api.datedChanges.cancel, { ...as, opId: opId(), change: row!._id }))).toMatchObject({ code: 'FORBIDDEN', key: 'errors.needsApprovalProposeAgain' })
+    expect((await s.as.cook.query(api.datedChanges.list, { site: 'restaurant', entry: s.saibling, task: 'menu.price' })).map((c) => c.mayCancel)).toEqual([false])
+    await s.as.owner.mutation(api.datedChanges.cancel, { site: 'restaurant', opId: opId(), change: row!._id })
+    expect(await s.dated(s.saibling)).toEqual([])
+  })
+
+  // Wrong behaviour caught (I2.6 a): a request approved into the owner's STOPPED change of that day restarted it with
+  // the owner's values kept, but not as shared, so the asker could cancel the owner's values without a yes.
+  it('a restart of someone else\'s stopped change that keeps its values is shared', async () => {
+    const s = await datedSetup({ needsApproval: true })
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      for (const task of schema.bricks.menu!.tasks ?? []) if (task.id === 'price') (task as { fields: string[] }).fields = ['price', 'veg']
+      await ctx.db.patch(s.site, { schema })
+    })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { veg: 'vegan' }, from: '2026-10-09' })
+    const [owners] = await s.dated(s.saibling)
+    await s.t.run((ctx) => ctx.db.patch(owners!._id, { stopped: { at: DAY1, reason: { code: 'failed' } }, job: undefined }))
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-09' }) as unknown as Proposed
+    await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })
+    const [row] = await s.dated(s.saibling)
+    expect([row!.by, row!.stopped, row!.shared, Object.keys(row!.fields).sort()]).toEqual([people.cook, undefined, true, ['price', 'veg']])
+  })
+
+  // Wrong behaviour caught (I2.6 b): the owner moved the asker's change into the owner's own change of another day; the
+  // merged row was the owner's alone, so the asker's values in it were not marked as someone else's.
+  it('moving someone else\'s change into another day\'s change marks the merged row shared', async () => {
+    const s = await datedSetup({ needsApproval: true })
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      for (const task of schema.bricks.menu!.tasks ?? []) if (task.id === 'price') (task as { fields: string[] }).fields = ['price', 'veg']
+      await ctx.db.patch(s.site, { schema })
+    })
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-10' }) as unknown as Proposed
+    await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { veg: 'vegan' }, from: '2026-10-09' })
+    const cooks = (await s.dated(s.saibling)).find((r) => r.from === '2026-10-10')!
+    await s.as.owner.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), change: cooks._id, from: '2026-10-09' })
+    const rows = await s.dated(s.saibling)
+    expect(rows.map((r) => [r.from, r.by, r.shared, Object.keys(r.fields).sort()])).toEqual([['2026-10-09', people.owner, true, ['price', 'veg']]])
   })
 
   // Wrong behaviour caught: a late yes publishes like a save with "publish now" and so throws away an unpublished

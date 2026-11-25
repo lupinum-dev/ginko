@@ -15,7 +15,8 @@ import { messageOf } from '../utils/messageOf'
 import type { OpError } from '../composables/useOps'
 import StartsOnField from './StartsOnField.vue'
 
-const props = defineProps<{ site: string; entry: string; brick: Brick; main: string; timeZone: string; currency: Currency; task?: string }>()
+/** `lastFocus`: the id of the element (the entry's title) that takes the focus when a cancel leaves no notice. */
+const props = defineProps<{ site: string; entry: string; brick: Brick; main: string; timeZone: string; currency: Currency; task?: string; lastFocus?: string }>()
 const { t, format } = useI18n()
 const ops = useOps(computed(() => props.site))
 const { data } = useConvexQuery(api.datedChanges.list, () => ({ site: props.site, entry: props.entry, ...(props.task ? { task: props.task } : {}) }), { server: false })
@@ -55,8 +56,10 @@ async function run(work: () => Promise<void>, gone = false) {
   try {
     await work()
     open.value = undefined
-    // A cancelled change's notice goes (`gone`): then the first button of another notice, when there is one.
-    nextTick(() => (gone ? document.querySelector<HTMLElement>(`[data-notice]:not([data-notice="${id}"]) button`) : document.getElementById(`dated-day-${id}-open`))?.focus())
+    // A cancelled change's notice goes (`gone`): then the first button of another notice, when there is one, else
+    // `lastFocus` (H1).
+    const next = () => document.querySelector<HTMLElement>(`[data-notice]:not([data-notice="${id}"]) button`) ?? (props.lastFocus ? document.getElementById(props.lastFocus) : null)
+    nextTick(() => (gone ? next() : document.getElementById(`dated-day-${id}-open`))?.focus())
   } catch (e) {
     error.value = (e as OpError).message
     if (open.value?.step === 'day') focus(`dated-day-${open.value.id}`)

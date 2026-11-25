@@ -187,10 +187,8 @@ export function useEntryForm(o: EntryFormOptions) {
     return true
   }
 
-  /** What the last save asked for: the conflict answers (keepMine, mergeLists) repeat it, so Veröffentlichen stays one. */
+  /** What the last save asked for: `saveAgain` repeats it after a conflict answer, so Veröffentlichen stays one. */
   let asked: { at?: number } | true | undefined
-  let askedFrom: string | undefined
-  let askedSend: readonly string[] | undefined
   /**
    * Saves; resolves true when done (nothing to save counts as done). `publish` when creating: `{}` online now, `{ at }` scheduled; absent a draft. On a live entry `true` puts the
    * saved fields online at once; absent, they wait as unpublished changes. `from` (a day after today, an online entry):
@@ -202,9 +200,15 @@ export function useEntryForm(o: EntryFormOptions) {
     // A removed entry cannot take a save: the person restores it or saves the input as a new entry.
     if (o.removed?.()) return Promise.resolve(false)
     asked = publish
-    askedFrom = from
-    askedSend = send
     return write(rev, publish, undefined, from, send)
+  }
+
+  /**
+   * The last save's publish step again, on the base a conflict answer merged onto (Alles bearbeiten). The task sheet saves
+   * through its own step instead, which reads its day field at that moment (H1).
+   */
+  function saveAgain(): Promise<boolean> {
+    return save(baseRev.value, asked)
   }
 
   /** The input of a removed entry as a new entry (EntryGoneBanner); the server makes new addresses. */
@@ -345,9 +349,10 @@ export function useEntryForm(o: EntryFormOptions) {
 
   /**
    * The person's own changes over the current server state; untouched fields take the server's values. A changed text
-   * keeps the languages someone else changed meanwhile (a whole-value save would send the old ones back).
+   * keeps the languages someone else changed meanwhile (a whole-value save would send the old ones back). It merges and
+   * closes the conflict; the caller saves (H1). False without a conflict.
    */
-  async function keepMine() {
+  function keepMine(): boolean {
     const c = conflict.value
     if (!c) return false
     const theirs = storedOf(c.data)
@@ -356,7 +361,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy({ ...theirs, ...mine } as Data)
     baseRev.value = c.rev
     conflict.value = null
-    return save(c.rev, asked, askedFrom, askedSend)
+    return true
   }
   /**
    * Both people's rows, when every conflicting field is a list or a rows field and no row was changed by both or
@@ -381,8 +386,8 @@ export function useEntryForm(o: EntryFormOptions) {
     }
     return merged
   })
-  /** "Beides behalten": the merged lists and the person's other changes over the current server state, saved at once. */
-  async function mergeLists() {
+  /** "Beides behalten": the merged lists and the person's other changes over the current server state; the caller saves. */
+  function mergeLists(): boolean {
     const c = conflict.value
     const merged = listMerge.value
     if (!c || !merged) return false
@@ -392,7 +397,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy({ ...theirs, ...mine, ...merged } as Data)
     baseRev.value = c.rev
     conflict.value = null
-    return save(c.rev, asked, askedFrom, askedSend)
+    return true
   }
 
   /** The stored values for the conflicting fields; the person's other changes stay in the form, unsaved. */
@@ -507,7 +512,8 @@ export function useEntryForm(o: EntryFormOptions) {
       else next[k] = copy(value)
     }
     draft.value = next
-    if (o.day) o.day.value = record.from ?? ''
+    // A copy without a day keeps a day already typed (H1).
+    if (o.day && record.from) o.day.value = record.from
     waiting.value = false
     if (!entry) return
     const clash = own.filter((k) => (entry.fieldRevs[k] ?? 0) > copyBase && !same(entry.data[k], next[k]))
@@ -528,5 +534,5 @@ export function useEntryForm(o: EntryFormOptions) {
     localOffer.value = null
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, notes, fieldIssues, showFieldErrors, problem, conflict, busy, offline, waiting, unchangedDay, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
+  return { draft, baseline, initial, baseRev, ready, issues, notes, fieldIssues, showFieldErrors, problem, conflict, busy, offline, waiting, unchangedDay, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAgain, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
 }

@@ -374,9 +374,11 @@ export const ownFor = query({
     const p = entry ? await followUp(ctx, await ownDocs(ctx, actor), entry) : null
     if (!p) return null
     const names = await labeler(ctx, actor)
-    const sent = p.args as { fields?: Record<string, Json> }
+    const sent = p.args as { fields?: Record<string, Json>; from?: string }
     return {
       proposal: p._id, status: p.status, task: taskOf(p.args) ?? null, fields: sent.fields ?? {}, createdAt: p.createdAt,
+      // The day a dated request starts on: a form that reopens it keeps it (I2).
+      from: sent.from ?? null,
       // A rejection `followUp` returns fits already.
       fits: p.status !== 'open' || (await staleReason(ctx, p)) === null,
       decidedAt: p.decidedAt ?? null, decidedBy: p.decidedBy ? await names.who(p.decidedBy) : null, reason: p.reason ?? null,

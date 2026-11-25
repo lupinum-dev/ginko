@@ -1,6 +1,6 @@
 <!-- Someone saved fields the person is editing (UI.md 3.2): their value next to the person's input, and the
      choice of one version. A list says row by row what each side added, removed or changed ("Du hast „…“
-     hinzugefügt", "Anna hat „…“ entfernt"), and when no row was changed by both, "Beides behalten" saves
+     hinzugefügt", "Anna hat „…“ entfernt"), and when no row was changed by both, "Beides behalten" keeps
      both. When the other save was the person's own (another window or tab), it says so instead of naming them.
      Used by Alles bearbeiten and Schnell ändern. -->
 <script setup lang="ts">
@@ -26,6 +26,10 @@ const props = defineProps<{
   main: Locale
   /** "Beides behalten" is possible (useEntryForm.listMerge). */
   canKeepBoth: boolean
+  /** The answers only merge and the person saves with the form's own button (Schnell ändern, I1): "Meine Eingaben behalten". */
+  mergeOnly?: boolean
+  /** A save is on its way: the answers wait for it. */
+  busy?: boolean
 }>()
 const emit = defineEmits<{ keepMine: []; takeTheirs: []; keepBoth: [] }>()
 const { t, format } = useI18n()
@@ -127,9 +131,9 @@ const items = computed(() => props.conflict.fields.map((key) => {
         </li>
       </ul>
       <div class="flex flex-wrap gap-2">
-        <Button v-if="canKeepBoth" type="button" size="sm" @click="emit('keepBoth')">{{ t('entry.conflict.keepBoth') }}</Button>
-        <Button type="button" size="sm" :variant="canKeepBoth ? 'outline' : 'default'" @click="emit('keepMine')">{{ t('entry.conflict.keepMine') }}</Button>
-        <Button type="button" size="sm" variant="outline" @click="emit('takeTheirs')">{{ t('entry.conflict.takeTheirs') }}</Button>
+        <Button v-if="canKeepBoth" type="button" size="sm" :disabled="busy" @click="emit('keepBoth')">{{ t('entry.conflict.keepBoth') }}</Button>
+        <Button type="button" size="sm" :variant="canKeepBoth ? 'outline' : 'default'" :disabled="busy" @click="emit('keepMine')">{{ mergeOnly ? t('entry.conflict.keepInput') : t('entry.conflict.keepMine') }}</Button>
+        <Button type="button" size="sm" variant="outline" :disabled="busy" @click="emit('takeTheirs')">{{ t('entry.conflict.takeTheirs') }}</Button>
       </div>
     </AlertDescription>
   </Alert>

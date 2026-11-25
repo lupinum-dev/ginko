@@ -1,7 +1,7 @@
 // Dated changes (D125–D127): moving one to another day, cancelling it, listing an entry's for the editor, and the run
 // on its day that writes it into the entry. Making one is `entries.save` or `entries.publish` with `from` (entries.ts).
 import type { Brick, Json } from '@lupinum/ginko'
-import { changeRefusal, entryBytes, todayIn, validate, type Schema } from '@lupinum/ginko/internal'
+import { changeRefusal, entryBytes, isDate, todayIn, validate, type Schema } from '@lupinum/ginko/internal'
 import { ConvexError, v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
@@ -13,7 +13,7 @@ import { entryLabel } from './lib/list'
 import { labeler } from './lib/names'
 import { dropPending, dropPendingRoots, overlay, pendingOf, underRoot } from './lib/pending'
 import { needsProposal } from './lib/policy'
-import { errorKind, mailStoppedChange, refusalOf, stoppedBecause } from './lib/stopped'
+import { errorKind, mailStoppedChange, stoppedBecause, writeStop } from './lib/stopped'
 import { brokenNewLinks, commitEntry, lookupsFor } from './lib/write'
 import type { StopReason } from './schema'
 import { internal } from './_generated/api'
@@ -41,13 +41,15 @@ function mayChange(actor: Actor, schema: Schema, task: string | undefined, entry
 /**
  * Why `actor` may not take `step` on `row` through `task`, as the error the step throws; undefined when it may. One rule
  * for `cancel`, `setDay` and the list the editor reads (G7): the task's rights over the change's fields; and a person
- * whose change needs a yes moves none and cancels only their own (taking away someone else's planned values needs one).
+ * whose change needs a yes moves none and cancels only their own (taking away someone else's planned values needs one):
+ * a row they saved last that holds no one else's values (`shared`, H2). On a draft nothing needs a yes, as for a save on a
+ * draft (`needsProposal`), so this last rule does not apply there.
  */
 async function datedRefusal(ctx: QueryCtx, actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated, step: 'cancel' | 'move'): Promise<ConvexError<Json> | undefined> {
   try {
     mayChange(actor, schema, task, entry, row)
     if (step === 'move' && entry.deletedAt) fail('NOT_FOUND', 'errors.datedNotFound')
-    if ((step === 'move' || row.by !== actor.user.id) && await needsProposal(ctx, actor, 'save', task, taskBrickOf(schema, task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
+    if ((step === 'move' || row.by !== actor.user.id || row.shared) && await needsProposal(ctx, actor, 'save', task, taskBrickOf(schema, task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
     return undefined
   } catch (error) {
     if (error instanceof ConvexError) return error as ConvexError<Json>
@@ -80,6 +82,8 @@ export const setDay = mutation({
         // Into the change of that day, or nothing left that differs on that day: the moved row goes.
         await dropDated(ctx, row)
         const written = await writeDated(ctx, actor, entry, plan, row.revs, [{ kind: 'dated', history }], args.opId)
+        // The moved values are someone else's (or already several people's): the merged row holds them too (I2).
+        if (written.dated && (row.shared || row.by !== actor.user.id)) await ctx.db.patch(written.dated, { shared: true })
         return { change: written.dated ?? null, from: args.from, contentRev: written.contentRev }
       }
       if (row.job) await ctx.scheduler.cancel(row.job)
@@ -185,15 +189,10 @@ export const applyDue = internalMutation({
       if (!reason) await ctx.runMutation(internal.datedChanges.writeDue, { change: row._id })
     } catch (error) {
       // A refusal of the write (a budget the site reached since) stops it as `invalid` with that refusal as its cause; the
-      // class survives `runMutation`. Any other error of the run stops the change with `failed`; `writeDue` is a
-      // transaction of its own, so nothing of it stays written.
-      if (writing && error instanceof ConvexError) {
-        const cause = refusalOf(error)
-        reason = { code: 'invalid', fields: Object.keys(row.fields), ...(cause ? { cause } : {}) }
-      } else {
-        console.error(`Dated change ${row._id} failed (${errorKind(error)}).`)
-        reason = { code: 'failed' }
-      }
+      // class survives `runMutation`. Any other error of the run stops the change with `failed` (`writeStop`);
+      // `writeDue` is a transaction of its own, so nothing of it stays written.
+      reason = writing ? writeStop(error, Object.keys(row.fields)) : { code: 'failed' }
+      if (reason.code === 'failed') console.error(`Dated change ${row._id} failed (${errorKind(error)}).`)
     }
     return reason ? await stop(ctx, site, entry, row, reason, title) : null
   },
@@ -405,9 +404,18 @@ async function convertTimedRow(ctx: MutationCtx, id: Id<'pendingChanges'>, publi
     await ctx.db.patch(written.change, { plannedBy: held.by })
     return
   }
-  if (Object.keys(held.fields).some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
-  const words = { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, Object.keys(held.fields)), day: dayStart(day, schema.timeZone) }
-  const plan = await planDated(ctx, site, entry, day, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
+  const roots = Object.keys(held.fields)
+  if (roots.some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
+  // A field changed online since the save (also by a passed plan of this migration): refused, as "Publish" with a day
+  // refuses it (`publishPendingDated`).
+  if (roots.some((root) => (entry.fieldRevs[root] ?? 0) > (held.revs[root] ?? 0))) throw new ConvexError({ code: 'CHANGED_SINCE' })
+  const rows = await datedOf(ctx, entry._id)
+  // The row of that day already sets one of these fields (a planned value converted above, or a dated change saved
+  // since the deploy): neither value may silently win, so the change stays unpublished without a time.
+  const sameDay = rows.find((row) => row.from === day)
+  if (sameDay && roots.some((root) => Object.hasOwn(sameDay.fields as object, root))) throw new ConvexError({ code: 'INVALID' })
+  const words = { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, roots), day: dayStart(day, schema.timeZone) }
+  const plan = await planDated(ctx, site, entry, day, held.fields as Record<string, Json>, rows)
   const written = await writeDated(ctx, actor, entry, plan, held.revs, [{ kind: 'dated', history: recorded(msg('history.datedFromPending', words), schema) }], migrateOpId(held._id))
   if (written.dated) await ctx.db.patch(written.dated, { by: held.by })
   await dropPending(ctx, held)
@@ -447,16 +455,29 @@ async function convertPlanned(ctx: MutationCtx, site: Doc<'sites'>) {
   let trashBytes = 0
   for (const { key, rule } of planned) {
     for (const entry of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()) {
+      // One line for a plan that goes, so the person learns it is gone and plans it again.
+      const dropLine = (id: string, roots: string[]) => ctx.db.insert('changes', {
+        site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `${migrateOpId(id)}:plan`, kind: 'planDropped',
+        ...recorded(msg('history.planDropped', { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, roots) }), schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
+      })
       // An unpublished change of a plan field goes with the field, also on an entry without a plan.
       const held = await pendingOf(ctx, entry._id)
-      if (held) await dropPendingRoots(ctx, schema, held, [rule.next, rule.from])
+      const dropped = held ? [rule.next, rule.from].filter((root) => Object.hasOwn(held.fields, root)) : []
+      if (held && dropped.length) {
+        await dropPendingRoots(ctx, schema, held, dropped)
+        await dropLine(held._id, dropped)
+      }
       const data = { ...(entry.data as Data) }
       if (!Object.hasOwn(data, rule.next) && !Object.hasOwn(data, rule.from)) continue
       const value = data[rule.next]
       const day = data[rule.from]
       delete data[rule.next]
       delete data[rule.from]
-      const planned = value !== undefined && value !== null && typeof day === 'string'
+      // A plan day that is no date (an empty text, a phrase) is no plan: the two plan fields go, the value is not written,
+      // and a value that was set gets its line (I2).
+      const set = value !== undefined && value !== null
+      const planned = set && isDate(day)
+      if (set && !planned) await dropLine(entry._id, [rule.next])
       if (planned && day <= today) data[rule.field] = value
       const fieldRevs = { ...(entry.fieldRevs as Record<string, number>) }
       for (const name of [...(planned && day <= today ? [rule.field] : []), rule.next, rule.from]) fieldRevs[name] = (fieldRevs[name] ?? 0) + 1

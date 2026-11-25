@@ -9,7 +9,8 @@ import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
 import FieldFrame from './fields/FieldFrame.vue'
 
-const props = defineProps<{ id: string; timeZone: string; error?: string; label?: string; hint?: string; optional?: boolean }>()
+/** `status`: a warning about the day that is not an error (the field stays valid), shown under it. */
+const props = defineProps<{ id: string; timeZone: string; error?: string; status?: string; label?: string; hint?: string; optional?: boolean }>()
 const day = defineModel<string>({ required: true })
 /**
  * A day typed by keyboard and not finished, or no date at all: the input's value is then empty, the same as no day, and
@@ -17,6 +18,8 @@ const day = defineModel<string>({ required: true })
  */
 const bad = defineModel<boolean>('bad', { default: false })
 const check = (event: Event) => { bad.value = (event.target as HTMLInputElement).validity?.badInput === true }
+// A day set from outside ("Bearbeiten", a restored copy) replaces whatever was half typed (H1).
+watch(day, (value) => { if (value) bad.value = false })
 const errors = computed(() => (bad.value ? [t('dated.notADate')] : props.error ? [props.error] : []))
 function pick(value: string) {
   bad.value = false
@@ -26,22 +29,31 @@ const { t } = useI18n()
 const today = useToday(computed(() => props.timeZone))
 const tomorrow = computed(() => addDays(today.value, 1))
 const max = computed(() => `${Number(today.value.slice(0, 4)) + 1}${today.value.slice(4)}`)
+/** "Leeren", also for a date typed and not finished: the input's own typed parts go too, which the model cannot reach. */
 function clear() {
+  const input = document.getElementById(props.id) as HTMLInputElement | null
+  if (input) input.value = ''
   pick('')
-  nextTick(() => document.getElementById(props.id)?.focus())
+  // A browser that keeps typed parts in the input after this still reports them: the field stays "not a date" (I2).
+  bad.value = input?.validity?.badInput === true
+  nextTick(() => input?.focus())
 }
 </script>
 
 <template>
-  <FieldFrame :id="id" :label="label ?? t('dated.startsOn')" :hint="hint ?? (optional ? t('dated.startsOnHint') : undefined)" :optional="optional" :errors="errors">
-    <template #default="{ describedBy, invalid }">
-      <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
-        <Input :id="id" v-model="day" type="date" class="min-w-0 max-w-56 flex-1 basis-40" :min="tomorrow" :max="max" :aria-invalid="invalid" :aria-describedby="describedBy" @input="check" @change="check" @keyup="check" @blur="check" />
-        <div class="flex min-w-0 flex-wrap gap-1.5">
-          <Button type="button" variant="secondary" size="sm" class="px-2.5 aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:ring-1 aria-pressed:ring-ring" :aria-pressed="day === tomorrow" @click="pick(tomorrow)">{{ t('fields.date.tomorrow') }}</Button>
-          <Button v-if="optional && day" type="button" variant="ghost" size="sm" @click="clear">{{ t('fields.clear') }}</Button>
+  <div class="grid gap-1.5">
+    <FieldFrame :id="id" :label="label ?? t('dated.startsOn')" :hint="hint ?? (optional ? t('dated.startsOnHint') : undefined)" :optional="optional" :errors="errors">
+      <template #default="{ describedBy, invalid }">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
+          <Input :id="id" v-model="day" type="date" class="min-w-0 max-w-56 flex-1 basis-40" :min="tomorrow" :max="max" :aria-invalid="invalid" :aria-describedby="describedBy" @input="check" @change="check" @keyup="check" @blur="check" />
+          <div class="flex min-w-0 flex-wrap gap-1.5">
+            <Button type="button" variant="secondary" size="sm" class="px-2.5 aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:ring-1 aria-pressed:ring-ring" :aria-pressed="day === tomorrow" @click="pick(tomorrow)">{{ t('fields.date.tomorrow') }}</Button>
+            <Button v-if="optional && (day || bad)" type="button" variant="ghost" size="sm" @click="clear">{{ t('fields.clear') }}</Button>
+          </div>
         </div>
-      </div>
-    </template>
-  </FieldFrame>
+      </template>
+    </FieldFrame>
+    <!-- Not an error: the day is valid, so the field is not marked invalid (H1). -->
+    <p v-if="status" :id="`${id}-status`" class="text-sm font-medium text-warning" role="status">{{ status }}</p>
+  </div>
 </template>

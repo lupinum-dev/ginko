@@ -179,6 +179,10 @@
       "keepMine": "Save my changes",
       "takeTheirs": "Use the new version",
       "keepBoth": "Keep both",
+      "keepInput": "Keep my input",
+      "inForm": "Your input is in the form. It is not saved yet.",
+      "nowOnline": "The entry is online now.",
+      "nowOffline": "The entry is offline now.",
       "someone": "Someone",
       "row": {
         "youAdded": "You added “{row}”",
@@ -272,6 +276,7 @@
     },
     "localDraft": {
       "offer": "Restore your unsaved changes from {time}?",
+      "plannedFrom": "This input was planned from {day}. Choose the day again here.",
       "restore": "Restore",
       "discard": "Do not restore",
       "restoredConflict": "Restored. Someone changed {fields} in the meantime; please decide below."
@@ -332,6 +337,7 @@
     "dayRequired": "Please choose a day.",
     "notADate": "This is not a date. Choose a day or clear the field.",
     "nothingChanged": "Nothing is changed yet. Change a value first.",
+    "secondChange": "The planned change from {day} stays. This will be a second change.",
     "cancelled": "Planned change cancelled.",
     "moved": "The change now starts on {day}."
   },

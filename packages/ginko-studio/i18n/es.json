@@ -179,6 +179,10 @@
       "keepMine": "Guardar mis cambios",
       "takeTheirs": "Usar la versión nueva",
       "keepBoth": "Conservar ambos",
+      "keepInput": "Conservar mis datos",
+      "inForm": "Tus datos están en el formulario. Aún no están guardados.",
+      "nowOnline": "La entrada ya está en línea.",
+      "nowOffline": "La entrada ya no está en línea.",
       "someone": "Alguien",
       "row": {
         "youAdded": "Has añadido “{row}”",
@@ -272,6 +276,7 @@
     },
     "localDraft": {
       "offer": "¿Restaurar los cambios sin guardar de {time}?",
+      "plannedFrom": "Estos datos estaban planificados desde el {day}. Elige el día de nuevo aquí.",
       "restore": "Restaurar",
       "discard": "No restaurar",
       "restoredConflict": "Restaurado. Alguien cambió {fields} mientras tanto; decide abajo."
@@ -332,6 +337,7 @@
     "dayRequired": "Elige un día.",
     "notADate": "Esto no es una fecha. Elige un día o vacía el campo.",
     "nothingChanged": "Todavía no has cambiado nada. Cambia primero un valor.",
+    "secondChange": "El cambio planificado desde el {day} se mantiene. Esto será un segundo cambio.",
     "cancelled": "Cambio planificado anulado.",
     "moved": "El cambio empieza ahora el {day}."
   },

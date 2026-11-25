@@ -335,14 +335,13 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
     })
   }
   // The history names the fields the save keeps in the change and, as a cancel, those it takes out (given their value of
-  // the day before); a save that leaves nothing takes the change of that day away (G8).
-  const kept = plan.roots.filter((r) => Object.hasOwn(plan.fields, r))
+  // the day before); a save that leaves nothing takes the change of that day away (G8). A stopped change the save starts
+  // again is saved as a whole: every field left in it (H2).
+  const kept = plan.same?.stopped ? Object.keys(plan.fields) : plan.roots.filter((r) => Object.hasOwn(plan.fields, r))
   const removed = Object.keys(plan.same?.fields ?? {}).filter((r) => !Object.hasOwn(plan.fields, r))
   const lines: DatedLine[] = []
   if (kept.length) lines.push({ kind: 'dated', history: recorded(msg('history.datedSaved', { ...words, fields: fieldNames(schema, entry.brick, kept) }), schema) })
   if (removed.length) lines.push({ kind: 'datedCancelled', history: recorded(msg('history.datedCancelled', { ...words, fields: fieldNames(schema, entry.brick, removed) }), schema) })
-  // A stopped change started again by a save that gives none of its fields: its fields, as a save of them.
-  if (!lines.length) lines.push({ kind: 'dated', history: recorded(msg('history.datedSaved', { ...words, fields: fieldNames(schema, entry.brick, Object.keys(plan.fields)) }), schema) })
   const written = await writeDated(ctx, actor, entry, plan, {}, lines, args.opId)
   return { entry: entry._id, rev: entry.rev, contentRev: written.contentRev, change: written.change, warnings: [], dated: written.dated ?? null, from }
 }

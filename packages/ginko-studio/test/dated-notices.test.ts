@@ -8,8 +8,8 @@ import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import DatedNotices from '../app/components/DatedNotices.vue'
 
-const { computed, nextTick, ref } = vue
-Object.entries({ computed, nextTick, ref, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
+const { computed, nextTick, ref, watch } = vue
+Object.entries({ computed, nextTick, ref, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 const rows = ref<unknown>([])
 vi.stubGlobal('useConvexQuery', () => ({ data: rows, error: ref(undefined) }))
 const ops = {
@@ -117,6 +117,20 @@ describe('the notices of changes for a later day', () => {
     await press(wrapper, 'Änderung aufheben')
     expect(document.activeElement?.id).toBe('dated-day-d2-open')
     wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1.11): cancelling the last notice dropped the focus to the page top.
+  test('a cancel that leaves no notice gives the focus to the entry\'s title', async () => {
+    const title = document.createElement('h1')
+    Object.assign(title, { id: 'entry-title', tabIndex: -1 })
+    document.body.append(title)
+    rows.value = [change('d1', '2099-03-05')]
+    const wrapper = mount(DatedNotices, { props: { site: 'cafe', entry: 'i1', brick: schema.bricks.items!, main: 'de', timeZone: 'Europe/Vienna', currency: 'EUR', lastFocus: 'entry-title' }, attachTo: document.body })
+    await press(wrapper, 'Änderung aufheben')
+    await press(wrapper, 'Änderung aufheben')
+    expect(document.activeElement).toBe(title)
+    wrapper.unmount()
+    title.remove()
   })
 
   // Wrong behaviour caught (G7): a step the server refuses this person (staff whose change needs a yes, someone else's

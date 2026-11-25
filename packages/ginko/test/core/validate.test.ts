@@ -563,6 +563,10 @@ describe('the draft check (D115): well formed to be stored, not complete', () =>
     ['RANGE', 'warns', 'kit', { ...base, count: 11 }, ['count', 'RANGE']],
     ['STEP', 'warns', 'kit', { ...base, count: 1.5 }, ['count', 'STEP']],
     ['CHOICE', 'warns', 'kit', { ...base, kind: 'c' }, ['kind', 'CHOICE']],
+    // I2.5: stored data that passed before (a choice key as a number, a multiple choice as one string) stays a warning,
+    // so a restore and a save of such a draft are not refused.
+    ['CHOICE: a choice stored as a number', 'warns', 'kit', { ...base, kind: 1 }, ['kind', 'CHOICE']],
+    ['CHOICE: a multiple choice stored as one string', 'warns', 'kit', { ...base, tags: 'a' }, ['tags', 'CHOICE']],
     ['DATE_ORDER', 'warns', 'kit', { ...base, span: { from: '2026-10-09', to: '2026-10-08' } }, ['span', 'DATE_ORDER']],
     ['REQUIRED: a period without its end', 'warns', 'kit', { ...base, span: { from: '2026-10-09' } }, ['span', 'REQUIRED']],
     ['REQUIRED: a period without its start', 'warns', 'kit', { ...base, span: { to: '2026-10-09' } }, ['span', 'REQUIRED']],

@@ -179,6 +179,10 @@
       "keepMine": "Meine Eingaben speichern",
       "takeTheirs": "Neuen Stand übernehmen",
       "keepBoth": "Beides behalten",
+      "keepInput": "Meine Eingaben behalten",
+      "inForm": "Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.",
+      "nowOnline": "Der Eintrag ist inzwischen online.",
+      "nowOffline": "Der Eintrag ist inzwischen offline.",
       "someone": "Jemand",
       "row": {
         "youAdded": "Du hast „{row}“ hinzugefügt",
@@ -272,6 +276,7 @@
     },
     "localDraft": {
       "offer": "Ungespeicherte Änderungen vom {time} wiederherstellen?",
+      "plannedFrom": "Die Eingaben waren ab {day} geplant. Den Tag musst du hier neu wählen.",
       "restore": "Wiederherstellen",
       "discard": "Nicht wiederherstellen",
       "restoredConflict": "Wiederhergestellt. Inzwischen hat jemand {fields} geändert, bitte unten entscheiden."
@@ -332,6 +337,7 @@
     "dayRequired": "Bitte einen Tag wählen.",
     "notADate": "Das ist kein Datum. Bitte wähle einen Tag oder leere das Feld.",
     "nothingChanged": "Es ist noch nichts geändert. Ändere zuerst einen Wert.",
+    "secondChange": "Die geplante Änderung ab {day} bleibt bestehen. Das hier wird eine zweite Änderung.",
     "cancelled": "Geplante Änderung aufgehoben.",
     "moved": "Die Änderung gilt jetzt ab {day}."
   },

@@ -96,7 +96,8 @@ export async function insertWaiting(ctx: MutationCtx, schema: Schema, entry: Pic
     if (same) {
       const added = Object.keys(change.set).filter((root) => !Object.hasOwn(same.fields as object, root))
       const fields = { ...Object.fromEntries(added.map((root) => [root, change.set[root]!])), ...(same.fields as Record<string, Json>) }
-      await ctx.db.patch(same._id, { fields, revs: { ...Object.fromEntries(added.map((root) => [root, entry.rev])), ...same.revs } })
+      // Fields joined into a waiting row come from someone other than its `by` (H2).
+      await ctx.db.patch(same._id, { fields, revs: { ...Object.fromEntries(added.map((root) => [root, entry.rev])), ...same.revs }, ...(added.length && !same.stopped ? { shared: true as const } : {}) })
       await syncDatedRefs(ctx, schema, { _id: same._id, site: entry.site, brick: entry.brick, fields })
       continue
     }
@@ -184,7 +185,8 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   const last = dataOn(live, changes, '9999-12-31')
   const bytes = entryBytes(last, { ...(entry.prints as Prints), ...prints })
   if (!fitsBudget(bytes, entry.bytes, BUDGET.entryBytes)) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(bytes, BUDGET.entryBytes))
-  if (!same && others.filter((r) => !r.stopped).length >= MAX_DATED) fail('TOO_LARGE', 'errors.tooManyDated', { max: MAX_DATED })
+  // A new day, or a stopped change that starts waiting again (H2).
+  if ((!same || same.stopped) && others.filter((r) => !r.stopped).length >= MAX_DATED) fail('TOO_LARGE', 'errors.tooManyDated', { max: MAX_DATED })
   return plan
 }
 
@@ -210,7 +212,11 @@ export async function writeDated(ctx: MutationCtx, actor: Actor, entry: Doc<'ent
     const row = { fields: plan.fields, prints: plan.prints, revs: { ...keptRevs, ...Object.fromEntries(plan.roots.filter((r) => Object.hasOwn(plan.fields, r)).map((r) => [r, revs[r] ?? entry.rev])) }, by: actor.user.id, at: now }
     if (plan.same) {
       id = plan.same._id
-      await ctx.db.patch(id, { ...row, stopped: undefined })
+      // Someone else saves into a waiting row, or restarts a stopped one and keeps fields of it: it now holds values of
+      // several people (H2, I2); a patch keeps a set flag.
+      const keepsOld = Object.keys(plan.same.fields).some((root) => !plan.roots.includes(root) && Object.hasOwn(plan.fields, root))
+      const shared = plan.same.by !== actor.user.id && (!plan.same.stopped || keepsOld)
+      await ctx.db.patch(id, { ...row, stopped: undefined, ...(shared ? { shared: true as const } : {}) })
       if (!plan.same.job) await ctx.db.patch(id, { job: await ctx.scheduler.runAt(dayStart(plan.from, schema.timeZone), internal.datedChanges.applyDue, { change: id, from: plan.from }) })
     } else {
       id = await ctx.db.insert('datedChanges', { site: site._id, entry: entry._id, brick: entry.brick, from: plan.from, ...row })

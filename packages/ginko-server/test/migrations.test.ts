@@ -219,6 +219,9 @@ describe('2026-11-25-dated-changes (D130)', () => {
     await runThisOne(s)
     expect(await datedRows(s)).toEqual([[risotto, '2026-10-20', { price: { amount: 1500 } }]])
     expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).toEqual([])
+    // H3.24. Wrong behaviour caught: the unpublished planned price went without a word, so nobody plans it again.
+    const lines = (await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', risotto)).collect())).filter((c) => c.kind === 'planDropped')
+    expect(lines.map((c) => c.sentence)).toEqual(['„Kürbisrisotto“: Die unveröffentlichte Planung (Geplanter Preis) gibt es nicht mehr. Bitte plane sie neu.'])
   })
 
   // A4. Wrong behaviour caught: a request approved for a time opened again without a word on its entry (nobody learns
@@ -308,8 +311,69 @@ describe('2026-11-25-dated-changes (D130)', () => {
     expect(await datedRows(s)).toEqual([[schnitzel, '2026-10-20', { price: { amount: 2290 }, veg: 'vegan' }]])
   })
 
+  /** The schnitzel with a planned price before D129. */
+  async function plannedSchnitzel(s: Awaited<ReturnType<typeof setup>>, price: number, from: string) {
+    const schnitzel = s.entries['menu-schnitzel']!
+    await withPlanned(s)
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(schnitzel))!
+      await ctx.db.patch(schnitzel, { data: { ...(row.data as object), nextPrice: { amount: price }, priceFrom: from } })
+    })
+    return schnitzel
+  }
+  const kept = (s: Awaited<ReturnType<typeof setup>>, entry: Id<'entries'>) => s.t.run(async (ctx) => ({
+    pending: (await ctx.db.query('pendingChanges').collect()).map((p) => [p.fields, p.publishAt ?? null]),
+    line: (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).at(-1),
+  }))
+
+  // H3.21. Wrong behaviour caught: a planned price and a timed price of the same day became one row, and the timed one
+  // silently replaced the planned one (or the other way round).
+  it('keeps a timed change unpublished when the row of its day already sets the same field', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = await plannedSchnitzel(s, 2290, '2026-10-20')
+    await timedRow(s, schnitzel, { price: { amount: 1500 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await runThisOne(s)
+    expect(await datedRows(s)).toEqual([[schnitzel, '2026-10-20', { price: { amount: 2290 } }]])
+    const after = await kept(s, schnitzel)
+    expect(after.pending).toEqual([[{ price: { amount: 1500 } }, null]])
+    expect(after.line).toMatchObject({ kind: 'unschedule', msg: { key: 'history.changesUnscheduled' } })
+  })
+
+  // H3.22. Wrong behaviour caught: a passed plan wrote the price during the migration, and a timed price for a later
+  // day, saved before that, became a dated change on top of it without the check "Publish" with a day makes.
+  it('keeps a timed change for a later day unpublished when its field changed online since the save', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = await plannedSchnitzel(s, 1200, '2026-10-01')
+    const rev = await s.t.run(async (ctx) => ((await ctx.db.get(schnitzel))!.fieldRevs as Record<string, number>).price ?? 0)
+    await s.t.run((ctx) => ctx.db.insert('pendingChanges', { site: s.site, entry: schnitzel, brick: 'menu', fields: { price: { amount: 1100 } }, prints: {}, revs: { price: rev }, by: people.owner, since: 0, at: 0, publishAt: Date.parse('2026-10-20T08:00:00Z') }))
+    await runThisOne(s)
+    expect([((await s.t.run((ctx) => ctx.db.get(schnitzel)))!.data as { price: unknown }).price, await datedRows(s)]).toEqual([{ amount: 1200 }, []])
+    const after = await kept(s, schnitzel)
+    expect(after.pending).toEqual([[{ price: { amount: 1100 } }, null]])
+    expect(after.line).toMatchObject({ kind: 'unschedule', msg: { key: 'history.changesUnscheduled' } })
+  })
+
+  // H3.23. Wrong behaviour caught: an empty plan day sorts before every day, so the planned price went online at once.
+  it('treats a plan day that is no date as no plan', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = await plannedSchnitzel(s, 1200, '')
+    await runThisOne(s)
+    const data = (await s.t.run((ctx) => ctx.db.get(schnitzel)))!.data as Record<string, unknown>
+    expect([data.price, Object.hasOwn(data, 'nextPrice'), Object.hasOwn(data, 'priceFrom'), await datedRows(s)]).toEqual([{ amount: 2190 }, false, false, []])
+    // I2.7. Wrong behaviour caught: the set plan value went without a word, so nobody plans it again.
+    const lines = (await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', schnitzel)).collect())).filter((c) => c.kind === 'planDropped')
+    expect(lines.map((c) => [c.msg?.key, c.sentence?.includes('(Geplanter Preis)')])).toEqual([['history.planDropped', true]])
+  })
+
   // Wrong behaviour caught: the migration cancels a job that already ran or failed, which rewrites its record in
-  // `_scheduled_functions` (the only place a failed run is remembered) as cancelled.
+  // `_scheduled_functions` (the only place a failed run is remembered) as cancelled. This guards the record under
+  // convex-test, which rewrites it; the real backend leaves a finished job as it is.
   it('cancels only a job that still waits', async () => {
     vi.useFakeTimers()
     const s = await setup()

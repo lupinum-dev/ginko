@@ -179,6 +179,10 @@
       "keepMine": "Enregistrer mes modifications",
       "takeTheirs": "Utiliser la nouvelle version",
       "keepBoth": "Garder les deux",
+      "keepInput": "Garder mes saisies",
+      "inForm": "Vos saisies sont dans le formulaire. Elles ne sont pas encore enregistrées.",
+      "nowOnline": "L’entrée est désormais en ligne.",
+      "nowOffline": "L’entrée est désormais hors ligne.",
       "someone": "Quelqu’un",
       "row": {
         "youAdded": "Vous avez ajouté « {row} »",
@@ -271,6 +275,7 @@
       "noRights": "Vos modifications restent sur cet appareil. Demandez au propriétaire de restaurer l’entrée, puis rouvrez-la."
     },
     "localDraft": {
+      "plannedFrom": "Ces saisies étaient planifiées à partir du {day}. Choisissez à nouveau le jour ici.",
       "offer": "Restaurer vos modifications non enregistrées de {time} ?",
       "restore": "Restaurer",
       "discard": "Ne pas restaurer",
@@ -332,6 +337,7 @@
     "dayRequired": "Choisissez un jour.",
     "notADate": "Ce n’est pas une date. Choisissez un jour ou videz le champ.",
     "nothingChanged": "Rien n’est encore modifié. Modifiez d’abord une valeur.",
+    "secondChange": "Le changement planifié à partir du {day} reste en place. Ceci sera un deuxième changement.",
     "cancelled": "Changement prévu annulé.",
     "moved": "Le changement commence désormais le {day}."
   },

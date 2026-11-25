@@ -2,7 +2,6 @@
 // lists and editor, the Studio, later Changes, the agent door and `ginko diff`) asks this function, so they cannot
 // disagree. It returns data; the reader words it in its own language.
 import { shownOn, shownUntil } from './resolve.ts'
-import { dayStartIn, wallClockIn, zonedDateTime } from './time.ts'
 import type { Brick, Json } from './types.ts'
 
 /** A moment in ms since the epoch. */
@@ -31,7 +30,7 @@ export interface EntryStatus {
   waiting: Waiting[]
 }
 
-/** What `statusOf` reads of an entry, the same for a platform row and a file entry (`fileStatusInput`). */
+/** What `statusOf` reads of an entry. */
 export interface StatusInput {
   data: Record<string, Json | undefined>
   state: 'draft' | 'live'
@@ -74,18 +73,4 @@ function changesOf(entry: StatusInput): Waiting[] {
       ? { kind: 'stopped', at: c.stopped.at, ...by, reason: c.stopped.reason, change: { from: c.from, fields: [...c.fields] } }
       : { kind: 'change', from: c.from, fields: [...c.fields], ...by }
   })
-}
-
-/**
- * The `statusOf` input of a file entry: `$draft: true` is a draft; a `$publishAt` (a day, or a day and time, on the
- * site's wall clock) still to come at `now` is a planned draft; any other entry is online.
- */
-export function fileStatusInput(dollar: { $draft?: boolean; $publishAt?: string }, data: StatusInput['data'], timeZone: string, now: Date = new Date()): StatusInput {
-  if (dollar.$draft === true) return { data, state: 'draft' }
-  const at = dollar.$publishAt
-  if (at === undefined) return { data, state: 'live' }
-  const [day, time] = at.split('T') as [string, string?]
-  if (`${day}T${time ?? '00:00'}` <= wallClockIn(timeZone, now)) return { data, state: 'live' }
-  // A day alone is its first instant, which is not 00:00 where the clock jumps at midnight (Havana, G6).
-  return { data, state: 'draft', publishAt: time === undefined ? dayStartIn(day, timeZone) : Date.parse(zonedDateTime(day, time, timeZone)) }
 }
