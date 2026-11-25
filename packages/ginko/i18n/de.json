@@ -56,10 +56,10 @@
     "changeEmpty": "Eine Änderung braucht in „set“ mindestens ein Feld.",
     "changeKey": "„{key}“ gibt es in einer Änderung nicht: sie hat nur „from“ und „set“.",
     "changeNotYet": "„{key}“ gibt es für eine Änderung noch nicht.",
-    "changeTwice": "Zwei Änderungen haben den Tag {from}. Schreibe sie als eine Änderung.",
+    "changeTwice": "Zwei Änderungen haben den Tag {day}. Schreibe sie als eine Änderung.",
     "changeFixed": "„{label}“ kann nicht ab einem Tag gelten: das Feld bestimmt, wann oder wo der Eintrag erscheint.",
     "changeTranslated": "„{label}“ hat Text pro Sprache. Für ein solches Feld ist eine Änderung ab einem Tag noch nicht möglich.",
-    "changeValue": "Änderung ab {from}: {problem}"
+    "changeValue": "Änderung ab {day}: {problem}"
   },
   "file": {
     "typeNotAllowed": "Dieser Dateityp ist nicht erlaubt (erlaubt: {allowed}).",

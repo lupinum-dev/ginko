@@ -487,7 +487,7 @@ export const compiled: Record<string, MessageTree> = {
     "Zwei Änderungen haben den Tag ",
     [
      "a",
-     "from"
+     "day"
     ],
     ". Schreibe sie als eine Änderung."
    ],
@@ -511,7 +511,7 @@ export const compiled: Record<string, MessageTree> = {
     "Änderung ab ",
     [
      "a",
-     "from"
+     "day"
     ],
     ": ",
     [
@@ -1960,7 +1960,7 @@ export const compiled: Record<string, MessageTree> = {
     "Two changes have the day ",
     [
      "a",
-     "from"
+     "day"
     ],
     ". Write them as one change."
    ],
@@ -1984,7 +1984,7 @@ export const compiled: Record<string, MessageTree> = {
     "Change from ",
     [
      "a",
-     "from"
+     "day"
     ],
     ": ",
     [
@@ -3433,7 +3433,7 @@ export const compiled: Record<string, MessageTree> = {
     "Dos cambios tienen el día ",
     [
      "a",
-     "from"
+     "day"
     ],
     ". Escríbelos como un solo cambio."
    ],
@@ -3457,7 +3457,7 @@ export const compiled: Record<string, MessageTree> = {
     "Cambio desde el ",
     [
      "a",
-     "from"
+     "day"
     ],
     ": ",
     [
@@ -4908,7 +4908,7 @@ export const compiled: Record<string, MessageTree> = {
     "Deux modifications ont le jour ",
     [
      "a",
-     "from"
+     "day"
     ],
     ". Écris-les comme une seule modification."
    ],
@@ -4932,7 +4932,7 @@ export const compiled: Record<string, MessageTree> = {
     "Modification à partir du ",
     [
      "a",
-     "from"
+     "day"
     ],
     " : ",
     [
@@ -6382,7 +6382,7 @@ export const compiled: Record<string, MessageTree> = {
     "Due modifiche hanno il giorno ",
     [
      "a",
-     "from"
+     "day"
     ],
     ". Scrivile come una sola modifica."
    ],
@@ -6406,7 +6406,7 @@ export const compiled: Record<string, MessageTree> = {
     "Modifica dal ",
     [
      "a",
-     "from"
+     "day"
     ],
     ": ",
     [
@@ -7925,7 +7925,7 @@ export const compiled: Record<string, MessageTree> = {
     "تغييران لهما اليوم ",
     [
      "a",
-     "from"
+     "day"
     ],
     ". اكتبهما كتغيير واحد."
    ],
@@ -7949,7 +7949,7 @@ export const compiled: Record<string, MessageTree> = {
     "التغيير من ",
     [
      "a",
-     "from"
+     "day"
     ],
     ": ",
     [

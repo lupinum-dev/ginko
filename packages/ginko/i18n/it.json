@@ -56,10 +56,10 @@
     "changeEmpty": "Una modifica ha bisogno di almeno un campo in «set».",
     "changeKey": "Una modifica non ha «{key}»: ha solo «from» e «set».",
     "changeNotYet": "«{key}» in una modifica non è ancora disponibile.",
-    "changeTwice": "Due modifiche hanno il giorno {from}. Scrivile come una sola modifica.",
+    "changeTwice": "Due modifiche hanno il giorno {day}. Scrivile come una sola modifica.",
     "changeFixed": "«{label}» non può iniziare da un giorno: decide quando o dove appare la voce.",
     "changeTranslated": "«{label}» ha un testo per lingua. Una modifica da un giorno non è ancora disponibile per un campo così.",
-    "changeValue": "Modifica dal {from}: {problem}"
+    "changeValue": "Modifica dal {day}: {problem}"
   },
   "file": {
     "typeNotAllowed": "Questo tipo di file non è consentito (consentiti: {allowed}).",

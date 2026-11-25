@@ -351,6 +351,54 @@ describe('every field sent is meant', () => {
   })
 })
 
+describe('a new change against the changes that wait (round F)', () => {
+  /** The saibling with a note shown on a switch: `showNote` false, `note` "x", the note required while shown. */
+  async function noteSetup() {
+    const s = await datedSetup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      schema.bricks.menu!.fields.showNote = { type: 'boolean', label: 'Hinweis zeigen', optional: true }
+      schema.bricks.menu!.fields.note = { type: 'text', label: 'Hinweis', max: 40, translate: false, showWhen: { field: 'showNote', is: true } }
+      await ctx.db.patch(s.site, { schema })
+      const entry = (await ctx.db.get(s.saibling))!
+      await ctx.db.patch(s.saibling, { data: { ...entry.data, showNote: false, note: 'x' } })
+    })
+    const save = (fields: Record<string, unknown>, from: string) => s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields, from })
+    return { ...s, save }
+  }
+
+  // Row 8. Wrong behaviour caught: only the problems the check gave to the new change refused it, so a change that
+  // clears a field a later waiting change shows passed, and the later change stopped on its day.
+  it('refuses a change that breaks a later waiting change, and names that day', async () => {
+    const s = await noteSetup()
+    await s.save({ showNote: true }, '2026-10-10')
+    const error = await errorOf(s.save({ note: null }, '2026-10-09'))
+    expect(error).toMatchObject({ code: 'INVALID', details: { errors: [{ path: 'note', code: 'REQUIRED', message: expect.stringContaining('2026-10-10') }] } })
+    expect((await s.dated(s.saibling)).map((r) => r.from)).toEqual(['2026-10-10'])
+  })
+
+  // Wrong behaviour caught: the same, for a change moved to a day before a change that then breaks.
+  it('refuses moving a change to a day where a later waiting change breaks', async () => {
+    const s = await noteSetup()
+    await s.save({ note: null }, '2026-10-12')
+    await s.save({ showNote: true, note: 'y' }, '2026-10-15')
+    const moved = (await s.dated(s.saibling)).find((r) => r.from === '2026-10-15')!
+    const error = await errorOf(s.as.owner.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), change: moved._id, from: '2026-10-10' }))
+    expect(error).toMatchObject({ code: 'INVALID', details: { errors: [{ path: 'note', code: 'REQUIRED', message: expect.stringContaining('2026-10-12') }] } })
+    expect((await s.dated(s.saibling)).map((r) => r.from).sort()).toEqual(['2026-10-12', '2026-10-15'])
+  })
+
+  // Row 9. Wrong behaviour caught: a waiting change that broke by itself (the entry was edited after it) blocks every
+  // other change of the entry.
+  it('accepts a change of another field while a waiting change is broken by itself', async () => {
+    const s = await noteSetup()
+    await s.save({ note: null }, '2026-10-10')
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { showNote: true }, publish: true })
+    await s.plan(1450, '2026-10-09', { baseRev: 2 })
+    expect((await s.dated(s.saibling)).map((r) => [r.from, r.fields]).sort()).toEqual([['2026-10-09', { price: { amount: 1450 } }], ['2026-10-10', { note: null }]])
+  })
+})
+
 describe('publishing unpublished changes on a day', () => {
   it('turns the unpublished changes into one dated change and refuses a time for an online entry', async () => {
     const s = await datedSetup()

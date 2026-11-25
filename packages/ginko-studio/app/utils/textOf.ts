@@ -27,8 +27,11 @@ export interface TextEnv {
   day?: (iso: string) => string
 }
 
-/** The params that hold a day (`issues.changeValue`, the day of a dated change): shown in the reader's form, while a file's message keeps the ISO day. */
-const DAY_PARAMS = new Set(['from', 'day'])
+/**
+ * The one param that holds a day (`issues.changeValue`, the day of a dated change): shown in the reader's form, while a
+ * file's message keeps the ISO day. Only `day`: a `from` can be an old address, and "2026-11-01" is a valid slug.
+ */
+const DAY_PARAM = 'day'
 
 /** A value in `params`: text, a number (a date in ms), a label per locale or a nested message. */
 type Param = string | number | Record<string, unknown>
@@ -39,7 +42,7 @@ const isMsg = (value: Param): value is { key: string; params?: Record<string, Pa
 function translate(msg: StoredMsg, env: TextEnv): string | undefined {
   const params: Record<string, string | number> = {}
   for (const [name, value] of Object.entries((msg.params ?? {}) as Record<string, Param>)) {
-    if (typeof value === 'string' && env.day && DAY_PARAMS.has(name) && isDate(value)) {
+    if (typeof value === 'string' && env.day && name === DAY_PARAM && isDate(value)) {
       params[name] = env.day(value)
     } else if (typeof value === 'string' || typeof value === 'number') {
       params[name] = value

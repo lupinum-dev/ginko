@@ -3,7 +3,7 @@
 // first minute of its day. The core decides what a change may set and how it is applied (`changeIssues`, `dataOn`); this
 // file holds what the save, the publish, the run on the day and the readers share.
 import type { Json, Label } from '@lupinum/ginko'
-import { changeIssues, dataOn, dayStartIn, entryBytes, fitsBudget, isDate, labelOf, MAX_DATED, todayIn, type Change, type Schema } from '@lupinum/ginko/internal'
+import { changeIssues, dataOn, dayStartIn, entryBytes, fitsBudget, isDate, labelOf, MAX_DATED, todayIn, type Change, type ChangeIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
 import { internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
@@ -122,9 +122,20 @@ export interface DatedPlan {
 }
 
 /**
+ * The problems that `changes` has and `others` (the same list without the new change) does not, by day, path and code:
+ * what the new change breaks on any day, also on the day of another change (a field it clears that a later change
+ * shows). A problem a waiting change already has by itself is not the new change's.
+ */
+async function newIssues(schema: Schema, brick: string, live: Data, others: Change[], changes: Change[], lookups: Omit<ValidateOptions, 'mode' | 'changed'>) {
+  const keyOf = (i: ChangeIssue) => `${i.from}\u0000${i.path}\u0000${i.code}`
+  const had = new Set((await changeIssues(schema, brick, live, others, lookups)).map(keyOf))
+  return (await changeIssues(schema, brick, live, changes, lookups)).filter((i) => !had.has(keyOf(i)))
+}
+
+/**
  * Checks a dated change of `entry` and merges it into the row of the same day (D125): `set` holds root fields in storage
- * format (null clears). The check of D119 runs on the entry with every waiting change up to that day applied, and only
- * the problems of this change refuse it; then the files and the links it adds (a draft planned for that day counts as
+ * format (null clears). The check of D119 runs over every waiting change, and only what this change adds refuses it
+ * (`newIssues`); then the files and the links it adds (a draft planned for that day counts as
  * online), the entry's budget with every waiting change applied, and at most `MAX_DATED` waiting changes. A field given
  * with the value it already has on that day leaves the row; `fields` empty means nothing waits for that day any more.
  */
@@ -155,10 +166,8 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   if (!keys.length) return plan
 
   const changes: Change[] = [...asChanges(others), { from, set: fields }]
-  // In the entry's own mode: a draft without a time may lack what it lacks (D115, D126).
-  const mode = entry.state === 'draft' && entry.publishAt === undefined ? 'draft' : 'release'
-  const issues = (await changeIssues(schema, entry.brick, live, changes, { ...await lookupsFor(ctx, site._id, brick.fields, after), mode })).filter((i) => i.change === changes.length - 1)
-  if (issues.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: issues.map(({ change: _, ...issue }) => issue) as unknown as Json })
+  const issues = await newIssues(schema, entry.brick, live, asChanges(others), changes, await lookupsFor(ctx, site._id, brick.fields, after))
+  if (issues.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: issues.map(({ change: _, from: _day, ...issue }) => issue) as unknown as Json })
   await checkNewFiles(ctx, site._id, brick.fields, before, after)
   await checkNewLinks(ctx, site, [{ entry, fields: brick.fields, before, after }], dayStart(from, schema.timeZone))
   // Every waiting change applied: the entry as it will be after its last day must still fit.

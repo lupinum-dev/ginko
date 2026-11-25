@@ -76,8 +76,15 @@ describe('useTextOf', () => {
   // Wrong behaviour caught: the Studio says "Änderung ab 2026-11-01" in the file's ISO form instead of the reader's day.
   it('shows the day of a change in the reader\'s form', () => {
     const text = useTextOf(() => ({ timeZone: 'Europe/Vienna', main: 'de' }))
-    const issue = { key: 'issues.changeValue', params: { from: '2026-11-01', problem: { key: 'issues.fieldMissing', params: { label: 'Preis' } } } }
+    const issue = { key: 'issues.changeValue', params: { day: '2026-11-01', problem: { key: 'issues.fieldMissing', params: { label: 'Preis' } } } }
     expect(text(issue, '')).toBe('Änderung ab Sonntag, 1. November: „Preis“ fehlt.')
+  })
+
+  // Wrong behaviour caught: every `from` was read as a day, so an address changed from the slug "2026-11-01" showed a weekday.
+  it('shows an old address that looks like a day as written', () => {
+    const text = useTextOf(() => ({ timeZone: 'Europe/Vienna', main: 'de' }))
+    const changed = { key: 'history.addressChanged', params: { title: 'Fest', from: '2026-11-01', to: 'fest' } }
+    expect(text(changed, '')).toBe('Adresse von „Fest“ geändert: 2026-11-01 → fest')
   })
 
   // Wrong behaviour caught: the wait for the zone blanks every site text, also one without a time in it.
