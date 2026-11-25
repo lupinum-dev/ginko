@@ -6,12 +6,14 @@ import type { Doc } from '../_generated/dataModel'
 import type { Data } from './content'
 import { leafStatus, type LeafStatus } from './translation'
 import { overlay, pendingInfo, type Pending } from './pending'
+import { statusChanges, type Dated } from './dated'
 
 /**
- * `statusOf` of a stored row (D113): what visitors see now and what waits, from its state, plan, stop and unpublished
- * changes, on the site's day `today`. The server's readers ask this; the Studio asks `statusOf` with the same input.
+ * `statusOf` of a stored row (D113): what visitors see now and what waits, from its state, plan, stop, unpublished
+ * changes and dated changes (D124), on the site's day `today`. The server's readers ask this; the Studio asks `statusOf`
+ * with the same input.
  */
-export function statusOfRow(brick: Brick, row: Doc<'entries'>, held: Pending | null | undefined, today: string): EntryStatus {
+export function statusOfRow(brick: Brick, row: Doc<'entries'>, held: Pending | null | undefined, today: string, dated?: readonly Dated[]): EntryStatus {
   return statusOf(brick, {
     data: row.data as Data,
     state: row.state ?? 'live',
@@ -19,6 +21,7 @@ export function statusOfRow(brick: Brick, row: Doc<'entries'>, held: Pending | n
     ...(row.publishBy === undefined ? {} : { publishBy: row.publishBy }),
     ...(row.stopped === undefined ? {} : { stopped: row.stopped }),
     ...(held ? { unpublished: { by: held.by, since: held.since } } : {}),
+    ...(dated?.length ? { changes: statusChanges(dated) } : {}),
   }, today)
 }
 
@@ -54,8 +57,19 @@ export function titleOf(schema: Schema, brick: Brick, data: Data, language: stri
   return entryTitle(brick, data, main, (label) => labelOf(label, language ?? main, main)) ?? null
 }
 
+/**
+ * Label of an entry for history lines, proposals, search hits and file uses: its title as the Studio shows it (core
+ * `entryTitle`, so a planned week is "Woche ab 19.10.2026"), else the brick's label, in the main language.
+ */
+export function entryLabel(schema: Schema, brickKey: string, data: Data): string {
+  const brick = Object.hasOwn(schema.bricks, brickKey) ? schema.bricks[brickKey] : undefined
+  if (!brick) return brickKey
+  const main = schema.locales[0]!
+  return titleOf(schema, brick, data, undefined) ?? labelOf(brick.label, main, main)
+}
+
 /** One row of a collection list (about 150 B): its title, its state, the values the row shows (`dates`: the expiry and the detail), and its translation gaps. */
-export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, language?: string, held?: Pending) {
+export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, language?: string, held?: Pending, dated?: readonly Dated[]) {
   const def = schema.bricks[brick]!
   const data = row.data as Data
   const dates: Data = {}
@@ -68,6 +82,8 @@ export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, lang
     // Saved changes wait to be published since then (lib/pending.ts); the title stays the website's. With `state`,
     // `publishAt` and `dates` it is the input of the Studio's `statusOf` (D113).
     ...(held ? { pending: { since: held.since } } : {}),
+    // Its dated changes, waiting or stopped, as `statusOf` reads them (D124).
+    ...(dated?.length ? { changes: statusChanges(dated) } : {}),
     title: titleOf(schema, def, data, language),
     dates,
     gaps: gapsOf(schema, brick, row),
@@ -80,7 +96,7 @@ export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, lang
  * changes, `data` and `prints` are the version they make (the editor and the preview show it) and `pending` says so;
  * `user` marks the person's own (`pending.own`).
  */
-export function editorEntry(row: Doc<'entries'>, held?: Pending | null, user?: string) {
+export function editorEntry(row: Doc<'entries'>, held?: Pending | null, user?: string, dated?: readonly Dated[]) {
   const { data, prints } = overlay(row, held)
   return {
     _id: row._id,
@@ -95,6 +111,7 @@ export function editorEntry(row: Doc<'entries'>, held?: Pending | null, user?: s
     ...(row.state === undefined ? {} : { state: row.state }),
     ...(row.publishAt === undefined ? {} : { publishAt: row.publishAt }),
     ...(held ? { pending: pendingInfo(held, user) } : {}),
+    ...(dated?.length ? { changes: statusChanges(dated) } : {}),
     deleted: row.deletedAt !== undefined,
   }
 }
@@ -106,11 +123,11 @@ export function editorEntry(row: Doc<'entries'>, held?: Pending | null, user?: s
  * Long texts, lists and files stay out, so a timed collection near the site budget does not send megabytes on every
  * change; a sheet that edits the entry reads it whole (entries.get).
  */
-export function slimEntry(brick: Brick, row: Doc<'entries'>, held?: Pending | null, user?: string) {
+export function slimEntry(brick: Brick, row: Doc<'entries'>, held?: Pending | null, user?: string, dated?: readonly Dated[]) {
   const dates = new Set([brick.kind === 'collection' ? brick.plans?.field : undefined, brick.kind === 'collection' ? brick.showUntil?.field : undefined, brick.planned?.from])
   const small = new Set(['text', 'longtext', 'choice', 'money', 'boolean'])
   const keep = (key: string) => dates.has(key) || small.has(brick.fields[key]?.type ?? '')
-  const entry = editorEntry(row, held, user)
+  const entry = editorEntry(row, held, user, dated)
   return { ...entry, data: Object.fromEntries(Object.entries(entry.data).filter(([key]) => keep(key))), prints: {} }
 }
 
@@ -118,10 +135,10 @@ export function slimEntry(brick: Brick, row: Doc<'entries'>, held?: Pending | nu
  * `editorEntry` with each foreign language's translation state: the texts it misses or has outdated (the language
  * switch shows a dot), the missing ones that keep the entry from having a page there, and what the website shows.
  */
-export function editorEntryWithTranslation(schema: Schema, row: Doc<'entries'>, held?: Pending | null, user?: string) {
+export function editorEntryWithTranslation(schema: Schema, row: Doc<'entries'>, held?: Pending | null, user?: string, dated?: readonly Dated[]) {
   const translation: Record<Locale, LeafStatus> = {}
   if (row.state !== 'draft' && row.deletedAt === undefined && Object.hasOwn(schema.bricks, row.brick)) {
     for (const locale of schema.locales.slice(1)) translation[locale] = leafStatus(schema, row.brick, row, locale)
   }
-  return { ...editorEntry(row, held, user), translation }
+  return { ...editorEntry(row, held, user, dated), translation }
 }

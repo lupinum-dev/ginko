@@ -62,14 +62,26 @@ const kindOfUpload = (row: Doc<'uploads'>) => (row.mime.startsWith('image/') ? '
 // ---- Uses ----
 
 /**
- * Entries (deleted ones too) whose content or unpublished changes name this file, one reference per entry: the
- * entry's own when it has one (it carries the uses), else that of its unpublished changes.
+ * Entries (deleted ones too) whose content, unpublished changes or dated changes name this file, one reference per
+ * entry: the entry's own when it has one (it carries the uses), else that of its unpublished changes, else that of a
+ * dated change (whose holder is the change, so it is read for its entry).
  */
 async function entryRefsOf(ctx: QueryCtx, file: Id<'uploads'>) {
   const refs = await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', file)).collect()
   const own = refs.filter((r) => r.holder === 'entry')
   const shown = new Set(own.map((r) => r.holderId))
-  return [...own, ...refs.filter((r) => r.holder === 'pending' && !shown.has(r.holderId))]
+  const out = [...own]
+  for (const ref of refs) {
+    let entry: string | undefined = ref.holder === 'pending' ? ref.holderId : undefined
+    if (ref.holder === 'dated') {
+      const id = ctx.db.normalizeId('datedChanges', ref.holderId)
+      entry = id ? (await ctx.db.get(id))?.entry : undefined
+    }
+    if (entry === undefined || shown.has(entry)) continue
+    shown.add(entry)
+    out.push({ ...ref, holderId: entry })
+  }
+  return out
 }
 
 async function usedInOf(ctx: QueryCtx, schema: Schema, refs: Doc<'fileRefs'>[], library?: Record<string, string>) {

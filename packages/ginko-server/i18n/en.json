@@ -235,7 +235,18 @@
     "placeInvalid": "The page can’t go there.",
     "headingOnSubpage": "A subpage follows its parent page and has no heading of its own.",
     "noUnpublishedChanges": "There are no unpublished changes here.",
-    "liveChangedMeanwhile": "The online version has changed in the meantime. Discard the unpublished changes and make them again."
+    "liveChangedMeanwhile": "The online version has changed in the meantime. Discard the unpublished changes and make them again.",
+    "datedNotWith": "A day cannot go with publishing, a language or confirmed translations.",
+    "datedOnlyOnline": "Only an entry that is online takes a change from a day on. A draft takes the value at once: save it without a day.",
+    "dayInvalid": "That is not a valid day.",
+    "dayNotAhead": "The day must be after today.",
+    "dayTooFarAhead": "The day can be at most a year ahead.",
+    "taskCannotDate": "This task changes values at once, not from a day.",
+    "fieldsCannotDate": "These fields cannot start on a day: {fields}. Publish the changes now, or discard these fields.",
+    "tooManyDated": "An entry can have at most {max} planned changes.",
+    "liveTakesDay": "Changes to an entry that is online start on a day, not at a time.",
+    "draftTakesTime": "A draft goes online at a time, not from a day.",
+    "datedNotFound": "This planned change no longer exists."
   },
   "history": {
     "changedSingle": "{label}: {fields} changed",
@@ -302,7 +313,17 @@
     "changesScheduled": "Changes to “{title}”: online from {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "changesUnscheduled": "Changes to “{title}”: schedule cancelled",
     "changesDiscarded": "Unpublished changes to “{title}” discarded",
-    "changesPublishStopped": "Changes to “{title}” did not go online: {why}"
+    "changesPublishStopped": "Changes to “{title}” did not go online: {why}",
+    "datedSaved": "“{title}”: {fields} from {day, date, ::MMMMd}",
+    "datedProposal": "Change {fields} of “{title}” from {day, date, ::MMMMd}",
+    "datedFromPending": "Changes to “{title}” start on {day, date, ::MMMMd}: {fields}",
+    "datedFromPendingProposal": "Publish changes to “{title}” from {day, date, ::MMMMd}: {fields}",
+    "datedMoved": "“{title}”: planned change ({fields}) moved from {was, date, ::MMMMd} to {day, date, ::MMMMd}",
+    "datedCancelled": "“{title}”: planned change from {day, date, ::MMMMd} cancelled ({fields})",
+    "datedCancelledWithEntry": "“{title}”: {count, plural, one {its planned change was} other {its # planned changes were}} cancelled with the entry",
+    "datedApplied": "“{title}”: {fields} changed, as planned from {day, date, ::MMMMd}",
+    "datedAppliedLate": "“{title}”: {fields} changed at once (the planned day, {day, date, ::MMMMd}, had come at approval)",
+    "datedStopped": "The change to “{title}” from {day, date, ::MMMMd} did not start, because {why}"
   },
   "publicness": {
     "deleted": "The entry was removed. You can restore it until {until, date, long}, then it is deleted for good.",
@@ -353,6 +374,10 @@
     "rejected": {
       "subject": "Not approved: your change for {site}",
       "text": "Hello,\n\nyour change for “{site}” was not approved:\n\n{what}\n\nReason: “{reason}”\n\nFix it: {path}\n"
+    },
+    "stoppedChange": {
+      "subject": "Planned change to “{title}” did not start",
+      "text": "Hello,\n\na change of your entry was planned from {day, date, ::EEEEdMMMM}: {fields}. It did not start, because {because}\n\nThe entry is safe: the website shows the values it had. Fix the change and give it a new day, or cancel it.\n\nOpen the entry: {path}\n"
     }
   },
   "stopped": {
@@ -366,7 +391,8 @@
       "link": "it links to a page that does not exist: {href}",
       "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
       "late": "its time had passed when the content was imported."
-    }
+    },
+    "changeTitle": "“{title}”: the change from {day, date, ::MMMMd} did not start"
   },
   "content": {
     "copyOf": "{text} (copy)"

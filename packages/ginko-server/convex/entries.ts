@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesEnded, shownOn, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, shownUntil, weeklyTask, type Schema, type StoredEntry, type ValidationResult } from '@lupinum/ginko/internal'
+import { changeRefusal, dataOn, blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesEnded, shownOn, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, shownUntil, weeklyTask, type Schema, type StoredEntry, type ValidationResult } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -18,12 +18,13 @@ import { countersOf, DELETED_KEPT, NO_PLAN, overflowingTrash, purgeEntry, softRe
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { translationNotes } from './lib/translation'
-import { mailStopped, stoppedLines } from './lib/stopped'
+import { mailStopped, stoppedChangeLines, stoppedLines } from './lib/stopped'
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
+import { asChanges, checkDay, datedByBrick, datedOf, dayStart, fieldNames, planDated, refuseTaskWithoutDay, writeDated } from './lib/dated'
 import { advance, stepArgs } from './lib/migrations'
-import { editorEntry, editorEntryWithTranslation, listRow, slimEntry, titleOf } from './lib/list'
+import { editorEntry, editorEntryWithTranslation, entryLabel as labelOf, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
 
 const underRoot = (leaf: string, root: string) => leaf === root || leaf.startsWith(`${root}.`)
@@ -85,6 +86,11 @@ const saveArgs = {
    * "Veröffentlichen", an assistant asked to publish). Only the saved fields go; other unpublished ones keep waiting.
    */
   publish: v.optional(v.literal(true)),
+  /**
+   * A day (`YYYY-MM-DD`, after the site's today, within a year): the saved fields become a dated change of an online
+   * entry that starts on that day (D125); the entry and its unpublished changes stay as they are.
+   */
+  from: v.optional(v.string()),
 }
 
 export const save = mutation({ args: saveArgs, handler: async (ctx, args) => saveAs(ctx, await actorFor(ctx, args.site), args) })
@@ -161,9 +167,13 @@ async function refuseSecondPlan(ctx: QueryCtx, actor: Actor, brickKey: string, b
 type Unchanged = { entry: Id<'entries'>; rev: number; contentRev: number; warnings: Json[] }
 
 /** The save itself, steps 3 to 7 of SPEC 4.1 without the repeated-op step: `revert` wraps it in its own and words the line (`line`). */
-async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof saveArgs>, line?: HistoryMsg) {
-  const entry = await entryOf(ctx, actor, args.entry)
+async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof saveArgs>, line?: HistoryMsg) {
+  const entry = await entryOf(ctx, actor, input.entry)
   const schema = actor.site.schema as Schema
+  // A yes on or after the day of a dated save writes online at once, as a save with `publish: true` (D127).
+  const lateDay = input.from !== undefined && actor.approvedBy !== undefined && input.from <= todayIn(schema.timeZone) ? input.from : undefined
+  const { from: _from, ...rest } = input
+  const args: ObjectType<typeof saveArgs> = lateDay === undefined ? input : { ...rest, publish: true }
   const brick = brickOf(schema, entry)
   const main = schema.locales[0]!
   const locale = args.locale as Locale | undefined
@@ -189,6 +199,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   const conflicts = roots.filter((r) => (entry.fieldRevs[r] ?? 0) > args.baseRev)
   // The conflict panel shows what the Studio shows: unpublished changes over the live version.
   if (conflicts.length) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, { ...(current(entry) as object), data: overlay(entry, held).data as Json, conflicts, by: await conflictAuthors(ctx, actor, entry, conflicts, args.baseRev, held) })
+  if (args.from !== undefined) return await saveDated(ctx, actor, entry, brick, args, args.from, taskBrick)
 
   // A live entry keeps the save as unpublished changes (SPEC 15): the form showed them, so they are the base.
   // "Show me first" (`forceProposal`) asks for a yes to go online, so it publishes once approved.
@@ -250,7 +261,8 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   // A foreign address made from a new title (`foreignSlugs`) waits with it; its row moves when it is published.
   if (toPending) return await savePending(ctx, actor, { entry, held, roots: [...new Set([...changed, ...moved.map((m) => m.key)])], data, prints, warnings: warnings as unknown as Json })
 
-  const history = recorded(line ?? saveMsg(schema, brick, entry, changed, data, onlyConfirm), schema)
+  const late = lateDay === undefined ? undefined : msg('history.datedAppliedLate', { title: labelOf(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, changed), day: dayStart(lateDay, schema.timeZone) })
+  const history = recorded(line ?? late ?? saveMsg(schema, brick, entry, changed, data, onlyConfirm), schema)
 
   // Everything is checked: a change that needs a yes becomes a proposal and writes nothing (SPEC 17).
   if (await needsProposal(ctx, actor, 'save', args.task, taskBrick, entry)) {
@@ -276,6 +288,39 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   // A week planned ahead or a planned price shows later than "in about a minute": the Studio says from when.
   const from = stateOf(entry) === 'live' ? liveFrom(schema, entry.brick, data, changed, todayIn(schema.timeZone)) : undefined
   return { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json, translation, ...(from ? { liveFrom: from } : {}) }
+}
+
+/**
+ * `save` with `from` (D125): the fields become a dated change of the online entry, merged into the change of that day.
+ * It goes online by itself on its day, so it needs a yes like a save with `publish: true`; the request holds `from`.
+ */
+async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, brick: Brick, args: ObjectType<typeof saveArgs>, from: string, taskBrick: string) {
+  const schema = actor.site.schema as Schema
+  // The main language is the whole value on a site where a change may hold text (one language, D119).
+  if (args.publish || (args.locale !== undefined && args.locale !== schema.locales[0]) || args.confirm?.length) fail('INVALID', 'errors.datedNotWith')
+  if (stateOf(entry) !== 'live') fail('INVALID', 'errors.datedOnlyOnline')
+  checkDay(schema, from)
+  refuseTaskWithoutDay(schema, args.task)
+  const rows = await datedOf(ctx, entry._id)
+  // A value is given as for a save of the entry; its other parts are those it has on that day.
+  const before = dataOn(entry.data as Data, asChanges(rows.filter((r) => r.from !== from)), from)
+  const set: Record<string, Json> = {}
+  for (const [key, value] of Object.entries(args.fields)) set[key] = value === null ? null : (mergeField(brick.fields[key]!, before[key], value as Json, args.locale as Locale | undefined) ?? null)
+  const plan = await planDated(ctx, actor.site, entry, from, set, rows)
+  if (plan.same ? same(plan.fields, plan.same.fields) : !Object.keys(plan.fields).length) {
+    const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
+    return unchanged
+  }
+  const words = { title: labelOf(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, plan.roots), day: dayStart(from, schema.timeZone) }
+  if (await needsProposal(ctx, actor, 'save', args.task, taskBrick, entry)) {
+    return await propose(ctx, actor, {
+      op: 'save', brick: entry.brick, entry: entry._id, args: args as unknown as Json,
+      base: { rev: entry.rev, fieldRevs: Object.fromEntries(plan.roots.map((r) => [r, entry.fieldRevs[r] ?? 0])) },
+      before: plan.before as Json, after: plan.after as Json, ...recorded(msg('history.datedProposal', words), schema),
+    })
+  }
+  const written = await writeDated(ctx, actor, entry, plan, {}, recorded(msg('history.datedSaved', words), schema), args.opId)
+  return { entry: entry._id, rev: entry.rev, contentRev: written.contentRev, change: written.change, warnings: [], dated: written.dated ?? null, from }
 }
 
 const printsOf = (p: Prints, root: string) => Object.fromEntries(Object.entries(p).filter(([leaf]) => underRoot(leaf, root)))
@@ -481,7 +526,11 @@ function fieldsLabel(schema: Schema, brick: Brick, roots: string[]): Label {
   return Object.fromEntries(schema.locales.map((l) => [l, roots.map((k) => labelIn(brick.fields[k]!.label, l, main)).join(', ')]))
 }
 
-/** `publish` of a live entry: its unpublished changes, now or at `at`. `rev` (optional) is the version the person saw. */
+/**
+ * `publish` of a live entry: its unpublished changes, now or, with `from`, as a dated change of that day (D125). A time
+ * (`at`) is for a draft; an approved request whose time or day has passed publishes at once. `rev` (optional) is the
+ * version the person saw.
+ */
 async function publishPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, args: ObjectType<typeof publishArgs>) {
   const schema = actor.site.schema as Schema
   const held = await pendingOf(ctx, entry._id)
@@ -489,9 +538,10 @@ async function publishPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entrie
   // Publishing puts every waiting field online: the person needs the right to change each of them, as for a save.
   authorize(actor, schema, { task: args.task, brick: taskBrickOf(schema, args.task, entry), kind: 'edit', fields: Object.keys(held.fields), entry })
   if (args.rev !== undefined && args.rev !== entry.rev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
-  const late = lapsed(actor, args.at)
-  const at = late ? undefined : args.at
-  if (at !== undefined) checkFuture(at)
+  const lateDay = args.from !== undefined && actor.approvedBy !== undefined && args.from <= todayIn(schema.timeZone)
+  if (args.from !== undefined && !lateDay) return await publishPendingDated(ctx, actor, entry, held, args, args.from)
+  const late = lapsed(actor, args.at) || lateDay
+  if (args.at !== undefined && !late) fail('INVALID', 'errors.liveTakesDay')
   const plan = await pendingPlan(ctx, actor, entry, held)
   const title = labelOf(schema, entry.brick, entry.data as Data)
   const fields = fieldsLabel(schema, plan.brick, plan.roots)
@@ -500,23 +550,40 @@ async function publishPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entrie
     return await propose(ctx, actor, {
       op: 'publish', brick: entry.brick, entry: entry._id, args: { ...args, rev: entry.rev } as unknown as Json, base: { lifeRev: entry.lifeRev, rev: entry.rev },
       before: pickRoots(plan.roots, entry.data as Data) as Json, after: pickRoots(plan.roots, plan.data) as Json,
-      ...recorded(at === undefined ? msg('history.publishChangesProposal', { title, fields }) : msg('history.publishChangesProposalScheduled', { title, fields, at }), schema),
+      ...recorded(msg('history.publishChangesProposal', { title, fields }), schema),
     })
   }
-  if (at === undefined) {
-    const written = await applyPending(ctx, actor, entry, held, plan, recorded(msg(late ? 'history.publishedChangesLate' : 'history.publishedChanges', { title, fields }), schema), args.opId)
-    const translation = translationNotes(schema, entry.brick, { _id: entry._id, data: plan.data, prints: plan.prints }, entry.data as Data, plan.roots)
-    return { entry: entry._id, lifeRev: entry.lifeRev, rev: written.rev, contentRev: written.contentRev, change: written.change, state: 'live', translation }
+  const written = await applyPending(ctx, actor, entry, held, plan, recorded(msg(late ? 'history.publishedChangesLate' : 'history.publishedChanges', { title, fields }), schema), args.opId)
+  const translation = translationNotes(schema, entry.brick, { _id: entry._id, data: plan.data, prints: plan.prints }, entry.data as Data, plan.roots)
+  return { entry: entry._id, lifeRev: entry.lifeRev, rev: written.rev, contentRev: written.contentRev, change: written.change, state: 'live', translation }
+}
+
+/**
+ * `publish` with `from` of a live entry (D125): its unpublished changes become one dated change of that day (fields,
+ * prints and revs move; the unpublished row is gone). The whole call is refused when one of the fields may not be in a
+ * change (the address, the fields that say when or where; a new address in another language waits as the address).
+ */
+async function publishPendingDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, held: Pending, args: ObjectType<typeof publishArgs>, from: string) {
+  const schema = actor.site.schema as Schema
+  const brick = brickOf(schema, entry)
+  checkDay(schema, from)
+  refuseTaskWithoutDay(schema, args.task)
+  const roots = Object.keys(held.fields).sort((a, b) => fieldOrder(brick, a) - fieldOrder(brick, b))
+  const refused = roots.filter((r) => changeRefusal(schema, brick, r) !== undefined)
+  if (refused.length) fail('INVALID', 'errors.fieldsCannotDate', { fields: labelIn(fieldNames(schema, entry.brick, refused), schema.locales[0]!, schema.locales[0]!) }, { fields: refused })
+  const moved = roots.filter((r) => (entry.fieldRevs[r] ?? 0) > (held.revs[r] ?? 0))
+  if (moved.length) fail('CHANGED_SINCE', 'errors.liveChangedMeanwhile', undefined, { ...(current(entry) as object), conflicts: moved })
+  const plan = await planDated(ctx, actor.site, entry, from, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
+  const words = { title: labelOf(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, roots), day: dayStart(from, schema.timeZone) }
+  if (await needsProposal(ctx, actor, 'publish', args.task, entry.brick, entry)) {
+    return await propose(ctx, actor, {
+      op: 'publish', brick: entry.brick, entry: entry._id, args: { ...args, rev: entry.rev } as unknown as Json, base: { lifeRev: entry.lifeRev, rev: entry.rev },
+      before: plan.before as Json, after: plan.after as Json, ...recorded(msg('history.datedFromPendingProposal', words), schema),
+    })
   }
-  // A new time replaces the old job, so the changes never go online at the old time.
-  if (held.publishJob) await ctx.scheduler.cancel(held.publishJob)
-  const publishJob = await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry: entry._id, at })
-  await ctx.db.patch(held._id, { publishAt: at, publishJob })
-  const change = await ctx.db.insert('changes', {
-    site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'schedule',
-    ...recorded(msg('history.changesScheduled', { title, at }), schema), entryRev: entry.rev, contentRev: actor.site.contentRev, at: Date.now(),
-  })
-  return { entry: entry._id, lifeRev: entry.lifeRev, rev: entry.rev, contentRev: actor.site.contentRev, change, state: 'live', publishAt: at, translation: [] }
+  const written = await writeDated(ctx, actor, entry, plan, held.revs, recorded(msg('history.datedFromPending', words), schema), args.opId)
+  await dropPending(ctx, held)
+  return { entry: entry._id, lifeRev: entry.lifeRev, rev: entry.rev, contentRev: written.contentRev, change: written.change, state: 'live', from, translation: [] }
 }
 
 /** The scheduled run of unpublished changes: applies them as the system, or stops with a history line that says why. */
@@ -772,16 +839,7 @@ const plainObject = (value: Json | undefined): Record<string, Json> =>
 
 const textOf = (value: Json | undefined): string => (typeof value === 'string' ? value : '')
 
-/**
- * Label of an entry for history lines, proposals, search hits and file uses: its title as the Studio shows it (core
- * `entryTitle`, so a planned week is "Woche ab 19.10.2026"), else the brick's label, in the main language.
- */
-export function labelOf(schema: Schema, brickKey: string, data: Data): string {
-  const brick = Object.hasOwn(schema.bricks, brickKey) ? schema.bricks[brickKey] : undefined
-  if (!brick) return brickKey
-  const main = schema.locales[0]!
-  return titleOf(schema, brick, data, undefined) ?? labelIn(brick.label, main, main)
-}
+export { labelOf }
 
 function structuralBrick(schema: Schema, key: string): CollectionBrick {
   const brick = Object.hasOwn(schema.bricks, key) ? schema.bricks[key] : undefined
@@ -1375,8 +1433,10 @@ const publishArgs = {
   task: v.optional(v.string()),
   entry: v.string(),
   lifeRev: v.number(),
-  /** Absent: online now. Present: online at this time (ms, in the future, within a year). */
+  /** A draft only. Absent: online now. Present: online at this time (ms, in the future, within a year). */
   at: v.optional(v.number()),
+  /** An online entry only: its unpublished changes start on this day as a dated change (D125). */
+  from: v.optional(v.string()),
   /**
    * The entry rev the person saw. For a live entry's unpublished changes a newer save refuses the publish; for a draft
    * with a time, content saved since refuses the plan (D105).
@@ -1397,6 +1457,7 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     authorizeWriter(actor, schema, { task: args.task, brick: entry.brick })
     if (entry.deletedAt || entry.lifeRev !== args.lifeRev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
     if (stateOf(entry) !== 'draft') return await publishPending(ctx, actor, entry, args)
+    if (args.from !== undefined) fail('INVALID', 'errors.draftTakesTime')
     const late = lapsed(actor, args.at)
     const at = late ? undefined : args.at
     if (at !== undefined) checkFuture(at)
@@ -1767,7 +1828,8 @@ export const list = query({
     }
     if (args.sort) rows = listSort(rows, brick, args.sort, schema.locales[0]!)
     const held = await pendingBySite(ctx, actor.site._id)
-    return { total: rows.length, rows: rows.slice(0, limit).map((row) => listRow(schema, args.brick, row, args.language, held.get(row._id))) }
+    const dated = await datedByBrick(ctx, actor.site._id, args.brick)
+    return { total: rows.length, rows: rows.slice(0, limit).map((row) => listRow(schema, args.brick, row, args.language, held.get(row._id), dated.get(row._id))) }
   },
 })
 
@@ -1783,7 +1845,7 @@ export const get = query({
     const row = id ? await ctx.db.get(id) : null
     if (!row || row.site !== actor.site._id) return null
     // `own`: the person created it, so staff may change it with their create task (lib/access.ts `authorize`).
-    return { ...editorEntryWithTranslation(actor.site.schema as Schema, row, await pendingOf(ctx, row._id), actor.user.id), ...(createdBy(actor, row) ? { own: true } : {}) }
+    return { ...editorEntryWithTranslation(actor.site.schema as Schema, row, await pendingOf(ctx, row._id), actor.user.id, await datedOf(ctx, row._id)), ...(createdBy(actor, row) ? { own: true } : {}) }
   },
 })
 
@@ -1795,7 +1857,7 @@ export const single = query({
     const schema = actor.site.schema as Schema
     if (liveBrick(schema, args.brick).kind !== 'single') return null
     const row = await liveRowsQuery(ctx, actor.site._id, args.brick).first()
-    return row ? editorEntryWithTranslation(schema, row, await pendingOf(ctx, row._id), actor.user.id) : null
+    return row ? editorEntryWithTranslation(schema, row, await pendingOf(ctx, row._id), actor.user.id, await datedOf(ctx, row._id)) : null
   },
 })
 
@@ -1838,9 +1900,10 @@ export const ofBricks = query({
     for (const key of new Set(args.bricks)) {
       const brick = Object.hasOwn(schema.bricks, key) ? schema.bricks[key]! : undefined
       if (!brick) continue
+      const dated = await datedByBrick(ctx, actor.site._id, key)
       for (const row of await liveRowsOf(ctx, actor.site._id, key, brick)) {
         const pending = held.get(row._id)
-        const entry = args.slim && brick.kind === 'collection' ? slimEntry(brick, row, pending, actor.user.id) : editorEntry(row, pending, actor.user.id)
+        const entry = args.slim && brick.kind === 'collection' ? slimEntry(brick, row, pending, actor.user.id, dated.get(row._id)) : editorEntry(row, pending, actor.user.id, dated.get(row._id))
         // A draft says since when it exists and whether the person made it: Heute lists a person's own drafts (staff see no others).
         out.push(row.state === 'draft' ? { ...entry, since: row._creationTime, ...(createdBy(actor, row) ? { own: true } : {}) } : entry)
       }
@@ -1858,9 +1921,10 @@ const trashBricks = (schema: Schema, only?: string) =>
   Object.entries(schema.bricks).filter(([key, def]) => def.kind === 'collection' && !def.retired && (only === undefined || only === key)).map(([key]) => key)
 
 /**
- * Plans that did not go online (D103) for Today's "waits for you" (D104): every one for an owner or admin, a staff
- * member's own. Newest first, at most 50: a stopped plan stays until someone plans, publishes, cancels or removes it.
- * Each row says it in the catalog's words and, as the fallback, in German.
+ * Plans that did not go online (D103) for Today's "waits for you" (D104), and dated changes that did not start on their
+ * day (D127, `change` names the row and its day): every one for an owner or admin, a staff member's own. Newest first,
+ * at most 50: a stopped plan stays until someone plans, publishes, cancels or removes it; a stopped change until it gets
+ * a new day, a save into it, or is cancelled. Each row says it in the catalog's words and, as the fallback, in German.
  */
 export const stoppedPlans = query({
   args: { site: v.string() },
@@ -1874,12 +1938,23 @@ export const stoppedPlans = query({
       ? ctx.db.query('entries').withIndex('by_site_stopped_by', (q) => q.eq('site', actor.site._id).eq('stopped.by', actor.user.id).gt('stopped.at', 0))
       : ctx.db.query('entries').withIndex('by_site_stopped', (q) => q.eq('site', actor.site._id).gt('stopped.at', 0))
     const rows = await query.filter((q) => q.eq(q.field('deletedAt'), undefined)).order('desc').take(50)
-    return rows.flatMap((row) => {
+    const plans = rows.flatMap((row) => {
       const stopped = row.stopped
       if (!stopped) return []
       const { title, cause } = stoppedLines(schema, { brick: row.brick, stopped, title: labelOf(schema, row.brick, row.data as Data) })
       return [{ entry: row._id, brick: row.brick, at: stopped.at, title, titleText: historyText(title, DEFAULT_LOCALE, schema), cause, causeText: historyText(cause, DEFAULT_LOCALE, schema) }]
     })
+    const dated = await (actor.role === 'staff'
+      ? ctx.db.query('datedChanges').withIndex('by_site_by_stopped', (q) => q.eq('site', actor.site._id).eq('by', actor.user.id).gt('stopped.at', 0))
+      : ctx.db.query('datedChanges').withIndex('by_site_stopped', (q) => q.eq('site', actor.site._id).gt('stopped.at', 0))).order('desc').take(50)
+    const changes = []
+    for (const row of dated) {
+      const entry = await ctx.db.get(row.entry)
+      if (!entry || !row.stopped) continue
+      const { title, cause } = stoppedChangeLines(schema, { brick: row.brick, title: labelOf(schema, row.brick, entry.data as Data), day: row.stopped.at, fields: Object.keys(row.fields), reason: row.stopped.reason })
+      changes.push({ entry: entry._id, brick: row.brick, at: row.stopped.at, change: { id: row._id, from: row.from }, title, titleText: historyText(title, DEFAULT_LOCALE, schema), cause, causeText: historyText(cause, DEFAULT_LOCALE, schema) })
+    }
+    return [...plans, ...changes].sort((a, b) => b.at - a.at).slice(0, 50)
   },
 })
 

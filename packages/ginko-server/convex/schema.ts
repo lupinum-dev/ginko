@@ -185,6 +185,39 @@ export default defineSchema({
     publishJob: v.optional(v.id('_scheduled_functions')),
   }).index('by_entry', ['entry']).index('by_site', ['site']),
 
+  /**
+   * Dated changes of an entry (D125, lib/dated.ts): fields that take their values from the first minute of `from` (a day
+   * in the site's zone) on. `entries.save` with `from` and `entries.publish` with `from` make one, `datedChanges.applyDue`
+   * writes it into the entry on its day through `commitEntry` and deletes the row. One row per entry and day. The bundle
+   * reads the waiting rows for `upcoming` (only the fields of `timeline.public`); the website's values stay the entry's.
+   */
+  datedChanges: defineTable({
+    site: v.id('sites'),
+    entry: v.id('entries'),
+    brick: v.string(),
+    /** The day, `YYYY-MM-DD`, in the site's zone. */
+    from: v.string(),
+    /** Root field → its value from that day on; null: the field is cleared. */
+    fields: v.record(v.string(), v.any()),
+    /** The prints of the leaves under those roots. */
+    prints: v.record(v.string(), v.record(v.string(), v.string())),
+    /** Root field → the entry rev its value was saved at: a live write after it shows as "changed since" (`changedSince`). */
+    revs: v.record(v.string(), v.number()),
+    /** Who saved into it last (user id); absent on a change that came with an import. */
+    by: v.optional(v.string()),
+    /** When it was made or last saved into (ms). */
+    at: v.number(),
+    /** The scheduled `datedChanges.applyDue` run at the first minute of `from`. Absent once it stopped. */
+    job: v.optional(v.id('_scheduled_functions')),
+    /** It did not start on its day (D103 reasons): nothing was written; `setDay` or a save into it clears this. */
+    stopped: v.optional(v.object({ at: v.number(), reason: stopReason })),
+  })
+    .index('by_entry', ['entry', 'from'])
+    .index('by_site_brick', ['site', 'brick'])
+    // Today's stopped list (entries.stoppedPlans): every one for an owner, a staff member's own.
+    .index('by_site_stopped', ['site', 'stopped.at'])
+    .index('by_site_by_stopped', ['site', 'by', 'stopped.at']),
+
   slugs: defineTable({
     site: v.id('sites'),
     brick: v.string(),
@@ -214,6 +247,8 @@ export default defineSchema({
     agentKey: v.optional(v.id('agentKeys')),
     /** The owner or admin who approved the proposal this change applies (SPEC 17); `actor` is the author. */
     approvedBy: v.optional(v.string()),
+    /** On the row of a dated change's day (D126): the person who made it; `actor` is the system that wrote it. */
+    plannedBy: v.optional(v.string()),
     opId: v.string(),
     kind: v.string(),
     /** German rendering of `msg`: the fallback for rows from before `msg` (they have no `msg`). Readers render `msg` in their own language. */
@@ -397,7 +432,7 @@ export default defineSchema({
   fileRefs: defineTable({
     site: v.id('sites'),
     file: v.id('uploads'),
-    holder: v.union(v.literal('entry'), v.literal('change'), v.literal('pending')),
+    holder: v.union(v.literal('entry'), v.literal('change'), v.literal('pending'), v.literal('dated')),
     holderId: v.string(),
     /** Entry holders only: where in the entry the file sits, and whether that image lacks a description in a language of the site. */
     uses: v.optional(v.array(v.object({ path: v.string(), missingAlt: v.boolean() }))),

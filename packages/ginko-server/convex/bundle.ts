@@ -6,6 +6,7 @@ import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, internalQuery, type QueryCtx } from './_generated/server'
 import { newOrder } from './lib/content'
+import { asChanges, datedByBrick } from './lib/dated'
 import { readTrees } from './lib/trees'
 
 /** SPEC 6: 600 requests per minute and site. */
@@ -131,13 +132,17 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     // Drafts never leave the platform (SPEC 15); their slugs stay reserved in the slugs table.
     // An override (a save that is about to happen) replaces the stored data and also lets a draft through: the link check reads the state after the write.
     const live = rows.filter((row) => row.state !== 'draft' || overrides?.has(row._id) || (plannedBy !== undefined && row.publishAt !== undefined && row.publishAt <= plannedBy))
+    // The waiting dated changes (D128): core reads only the fields of `timeline.public` from them (`upcoming`). The rows
+    // hold the values of today; a change is written into them by its run on its day.
+    const dated = schema.bricks[key]!.timeline && live.length ? await datedByBrick(ctx, site._id, key) : undefined
     // An overridden row's stored trees belong to its old data: its texts are parsed, as are those of a row without trees.
     const list: StoredEntry[] = await Promise.all(live.map(async (row) => {
       const override = overrides?.get(row._id)
       const trees = override === undefined ? await storedTrees(ctx, row) : undefined
       // `contentAt` is when the entry last changed for the public; an entry from before it counts from its creation.
       const updatedAt = new Date(row.contentAt ?? row._creationTime).toISOString()
-      return { id: row._id, order: row.order, data: override ?? row.data, prints: row.prints, ...(trees ? { trees } : {}), updatedAt }
+      const changes = dated?.get(row._id) ? asChanges(dated.get(row._id)!) : []
+      return { id: row._id, order: row.order, data: override ?? row.data, prints: row.prints, ...(trees ? { trees } : {}), updatedAt, ...(changes.length ? { changes } : {}) }
     }))
     // An entry that does not exist yet (a create that is only proposed) joins its collection where entries.create puts it.
     const brick = schema.bricks[key]!

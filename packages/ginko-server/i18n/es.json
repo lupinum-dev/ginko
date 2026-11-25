@@ -235,7 +235,18 @@
     "placeInvalid": "La página no puede ir ahí.",
     "headingOnSubpage": "Una subpágina sigue a su página superior y no tiene título propio.",
     "noUnpublishedChanges": "Aquí no hay cambios sin publicar.",
-    "liveChangedMeanwhile": "La versión publicada ha cambiado mientras tanto. Descarta los cambios sin publicar y vuelve a hacerlos."
+    "liveChangedMeanwhile": "La versión publicada ha cambiado mientras tanto. Descarta los cambios sin publicar y vuelve a hacerlos.",
+    "datedNotWith": "Un día no puede ir junto con publicar, un idioma o traducciones confirmadas.",
+    "datedOnlyOnline": "Solo una entrada en línea admite un cambio a partir de un día. Un borrador toma el valor enseguida: guárdalo sin día.",
+    "dayInvalid": "No es un día válido.",
+    "dayNotAhead": "El día debe ser posterior a hoy.",
+    "dayTooFarAhead": "El día puede estar como máximo a un año.",
+    "taskCannotDate": "Esta tarea cambia los valores al momento, no a partir de un día.",
+    "fieldsCannotDate": "Estos campos no pueden empezar en un día: {fields}. Publica los cambios ahora o descarta estos campos.",
+    "tooManyDated": "Una entrada puede tener como máximo {max} cambios planificados.",
+    "liveTakesDay": "Los cambios de una entrada en línea empiezan en un día, no a una hora.",
+    "draftTakesTime": "Un borrador se publica a una hora, no a partir de un día.",
+    "datedNotFound": "Este cambio planificado ya no existe."
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",
@@ -302,7 +313,17 @@
     "changesScheduled": "Cambios en “{title}”: en línea desde {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "changesUnscheduled": "Cambios en “{title}”: programación cancelada",
     "changesDiscarded": "Cambios sin publicar en “{title}” descartados",
-    "changesPublishStopped": "Los cambios en “{title}” no se publicaron: {why}"
+    "changesPublishStopped": "Los cambios en “{title}” no se publicaron: {why}",
+    "datedSaved": "“{title}”: {fields} a partir del {day, date, ::MMMMd}",
+    "datedProposal": "Cambiar {fields} de “{title}” a partir del {day, date, ::MMMMd}",
+    "datedFromPending": "Los cambios en “{title}” empiezan el {day, date, ::MMMMd}: {fields}",
+    "datedFromPendingProposal": "Publicar cambios en “{title}” a partir del {day, date, ::MMMMd}: {fields}",
+    "datedMoved": "“{title}”: cambio planificado ({fields}) movido del {was, date, ::MMMMd} al {day, date, ::MMMMd}",
+    "datedCancelled": "“{title}”: cambio planificado a partir del {day, date, ::MMMMd} cancelado ({fields})",
+    "datedCancelledWithEntry": "“{title}”: {count, plural, one {su cambio planificado se canceló} other {sus # cambios planificados se cancelaron}} con la entrada",
+    "datedApplied": "“{title}”: {fields} cambiado, como estaba planificado a partir del {day, date, ::MMMMd}",
+    "datedAppliedLate": "“{title}”: {fields} cambiado de inmediato (el día planificado, {day, date, ::MMMMd}, ya había llegado al aprobarlo)",
+    "datedStopped": "El cambio en “{title}” a partir del {day, date, ::MMMMd} no entró en vigor porque {why}"
   },
   "publicness": {
     "deleted": "La entrada se eliminó. Puedes restaurarla hasta el {until, date, long}; después se borra definitivamente.",
@@ -353,6 +374,10 @@
     "rejected": {
       "subject": "No aprobado: tu cambio para {site}",
       "text": "Hola:\n\ntu cambio para “{site}” no se aprobó:\n\n{what}\n\nMotivo: “{reason}”\n\nCorregir: {path}\n"
+    },
+    "stoppedChange": {
+      "subject": "El cambio planificado en “{title}” no entró en vigor",
+      "text": "Hola:\n\npara tu entrada estaba planificado un cambio a partir del {day, date, ::EEEEdMMMM}: {fields}. No entró en vigor porque {because}\n\nLa entrada está a salvo: la web muestra los valores que tenía. Corrige el cambio y dale un nuevo día, o cancélalo.\n\nAbrir la entrada: {path}\n"
     }
   },
   "stopped": {
@@ -366,7 +391,8 @@
       "link": "enlaza a una página que no existe: {href}",
       "invalid": "{count, plural, one {falta {fields} o no es válido.} other {faltan {fields} o no son válidos.}}",
       "late": "su hora ya había pasado cuando se importó el contenido."
-    }
+    },
+    "changeTitle": "“{title}”: el cambio a partir del {day, date, ::MMMMd} no entró en vigor"
   },
   "content": {
     "copyOf": "{text} (copia)"

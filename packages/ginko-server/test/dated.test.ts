@@ -1,0 +1,266 @@
+// Dated changes on the platform (D125–D128): `entries.save` and `entries.publish` with `from`, the run on the day
+// (`datedChanges.applyDue`), a change that stops, moving and cancelling, removal, the bundle's `upcoming` and the export.
+import type { Schema } from '@lupinum/ginko/internal'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { api, internal } from '../convex/_generated/api'
+import type { Id } from '../convex/_generated/dataModel'
+import { errorOf, opId, people, setup } from './setup'
+
+// Mail is the one thing mocked besides the clock: the outbox records it.
+const NOW = Date.parse('2026-10-08T10:00:00Z')
+/** 9 October 2026, 00:00 in Vienna (CEST): the first minute of the day planned below. A session lasts 24 hours. */
+const DAY1 = Date.parse('2026-10-08T22:00:00Z')
+
+type Item = { id: string; data: Record<string, unknown>; upcoming?: { from: string; data: Record<string, unknown> }[] }
+type Proposed = { proposal: Id<'proposals'> }
+
+/** The restaurant on a fake clock, its menu with `timeline: { public: ['price'] }` and a price task that asks a day. */
+async function datedSetup(opts: { needsApproval?: boolean } = {}) {
+  vi.useFakeTimers()
+  vi.setSystemTime(NOW)
+  vi.stubEnv('GINKO_MAIL', 'outbox')
+  vi.stubEnv('SITE_URL', 'https://ginko.test')
+  const s = await setup()
+  await s.t.run(async (ctx) => {
+    const schema = (await ctx.db.get(s.site))!.schema as Schema
+    const menu = schema.bricks.menu! as { timeline?: { public: string[] } }
+    menu.timeline = { public: ['price'] }
+    for (const task of schema.bricks.menu!.tasks ?? []) {
+      if (task.id === 'price') (task as { when?: { from: 'ask' } }).when = { from: 'ask' }
+      if (opts.needsApproval) (task as { needsApproval?: boolean }).needsApproval = true
+    }
+    await ctx.db.patch(s.site, { schema })
+  })
+  const saibling = s.entries['menu-saibling']!
+  const row = (id: Id<'entries'>) => s.t.run((ctx) => ctx.db.get(id))
+  const dated = (entry: Id<'entries'>) => s.t.run((ctx) => ctx.db.query('datedChanges').withIndex('by_entry', (q) => q.eq('entry', entry)).collect())
+  const history = (entry: Id<'entries'>) => s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).collect())
+  const contentRev = async () => (await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev
+  const item = async (entry: Id<'entries'>): Promise<Item> => {
+    const bundle = await (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json() as { bricks: { menu: { items: Item[] } } }
+    return bundle.bricks.menu.items.find((i) => i.id === entry)!
+  }
+  const bundleText = async () => (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).text()
+  /** The owner plans a price (cents) of the saibling from a day. */
+  const plan = (amount: number, from = '2026-10-09', extra: Record<string, unknown> = {}) =>
+    s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: saibling, baseRev: 1, fields: { price: { amount } }, from, ...extra })
+  const advanceTo = async (time: number) => {
+    vi.advanceTimersByTime(time - Date.now())
+    await s.t.finishInProgressScheduledFunctions()
+  }
+  return { ...s, saibling, row, dated, history, contentRev, item, bundleText, plan, advanceTo }
+}
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllEnvs()
+})
+
+describe('a save with a day', () => {
+  // Wrong behaviour caught: a planned price goes online at once, or waits without the page being able to announce it.
+  it('keeps the entry as it is, stores the change, raises contentRev and puts the price in upcoming', async () => {
+    const s = await datedSetup()
+    const rev = await s.contentRev()
+    const saved = await s.plan(1450)
+    expect(saved).toMatchObject({ from: '2026-10-09', contentRev: rev + 1 })
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+    expect(await s.dated(s.saibling)).toMatchObject([{ from: '2026-10-09', fields: { price: { amount: 1450 } }, by: people.owner }])
+    expect(await s.item(s.saibling)).toMatchObject({ data: { price: { amount: 1350 } }, upcoming: [{ from: '2026-10-09', data: { price: { amount: 1450, currency: 'EUR' } } }] })
+    const listed = await s.as.owner.query(api.datedChanges.list, { site: 'restaurant', entry: s.saibling })
+    expect(listed).toMatchObject([{ from: '2026-10-09', values: { price: { amount: 1450 } }, changedSince: [] }])
+    expect((await s.history(s.saibling)).at(-1)).toMatchObject({ kind: 'dated', msg: { key: 'history.datedSaved' } })
+  })
+
+  // Wrong behaviour caught: a later value of a field that no page may read ahead leaks into the bundle.
+  it('a field outside timeline.public stays out of the bundle and leaves contentRev', async () => {
+    const s = await datedSetup()
+    const rev = await s.contentRev()
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { veg: 'vegan' }, from: '2026-10-09' })
+    expect(await s.contentRev()).toBe(rev)
+    expect((await s.item(s.saibling)).upcoming).toBeUndefined()
+    expect((await s.item(s.saibling)).data).toMatchObject({ veg: 'none' })
+  })
+
+  it('the same day merges into one change, named after the last saver', async () => {
+    const s = await datedSetup()
+    await s.plan(1450)
+    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1490 } }, from: '2026-10-09' })
+    expect(await s.dated(s.saibling)).toMatchObject([{ from: '2026-10-09', fields: { price: { amount: 1490 } }, by: people.cook }])
+  })
+
+  it.each([
+    ['a day that is not a day', { from: '1.11.2026' }, 'errors.dayInvalid'],
+    ['today', { from: '2026-10-08' }, 'errors.dayNotAhead'],
+    ['more than a year ahead', { from: '2027-10-09' }, 'errors.dayTooFarAhead'],
+    ['with publish', { publish: true }, 'errors.datedNotWith'],
+    ['with another language', { locale: 'en' }, 'errors.datedNotWith'],
+  ])('refuses %s', async (_, extra, key) => {
+    const s = await datedSetup()
+    expect(await errorOf(s.plan(1450, '2026-10-09', extra))).toMatchObject({ key })
+    expect(await s.dated(s.saibling)).toEqual([])
+  })
+
+  it('refuses a task that does not ask a day, and a draft', async () => {
+    const s = await datedSetup()
+    expect(await errorOf(s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-09' })))
+      .toMatchObject({ code: 'FORBIDDEN', key: 'errors.taskCannotDate' })
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: { category: 'starters', name: { de: 'Neu' }, price: { amount: 900 }, allergens: [], veg: 'none' } })
+    expect(await errorOf(s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 1, fields: { price: { amount: 950 } }, from: '2026-10-09' })))
+      .toMatchObject({ key: 'errors.datedOnlyOnline' })
+  })
+
+  it('takes at most 20 waiting changes per entry', async () => {
+    const s = await datedSetup()
+    for (let day = 1; day <= 20; day++) await s.plan(1400 + day, `2026-11-${String(day).padStart(2, '0')}`)
+    expect(await errorOf(s.plan(1500, '2026-11-21'))).toMatchObject({ key: 'errors.tooManyDated', params: { max: 20 } })
+    // The same day still merges.
+    await expect(s.plan(1500, '2026-11-20')).resolves.toMatchObject({ from: '2026-11-20' })
+  })
+})
+
+describe('on the day', () => {
+  // Wrong behaviour caught: the change never starts, or starts in the person's name without saying it was planned.
+  it('the system writes the change at the day\'s first minute, names the planner, and the row goes', async () => {
+    const s = await datedSetup()
+    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-09' })
+    await s.advanceTo(DAY1 - 60_000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+    await s.advanceTo(DAY1 + 1000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
+    expect(await s.dated(s.saibling)).toEqual([])
+    expect((await s.history(s.saibling)).at(-1)).toMatchObject({ kind: 'save', actor: 'system', plannedBy: people.cook, msg: { key: 'history.datedApplied' } })
+    const item = await s.item(s.saibling)
+    expect(item.data).toMatchObject({ price: { amount: 1450 } })
+    expect(item.upcoming).toBeUndefined()
+  })
+
+  // D126, a departure from spec 6a: the change was planned for that day, so it wins over an edit made since.
+  it('applies even when the field was edited since', async () => {
+    const s = await datedSetup()
+    await s.plan(1450)
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1390 } }, publish: true })
+    await s.advanceTo(DAY1 + 1000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
+  })
+
+  // Decision 10: an unpublished change and a dated change of the same field. The dated change goes online on its day;
+  // the unpublished value keeps waiting and wins when someone publishes it.
+  it('leaves an unpublished change of the same field waiting', async () => {
+    const s = await datedSetup()
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1600 } } })
+    await s.plan(1450, '2026-10-09', { baseRev: 2 })
+    await s.advanceTo(DAY1 + 1000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
+    const pending = await s.t.run((ctx) => ctx.db.query('pendingChanges').withIndex('by_entry', (q) => q.eq('entry', s.saibling)).collect())
+    expect(pending).toMatchObject([{ fields: { price: { amount: 1600 } } }])
+  })
+
+  // Wrong behaviour caught: a change that can no longer be written fails at night and nobody hears of it.
+  it('a change that fails the check stops: kept with its reason, mailed, on Today; a new day starts it again', async () => {
+    const s = await datedSetup()
+    await s.plan(1450)
+    const [change] = await s.dated(s.saibling)
+    await s.t.run((ctx) => ctx.db.patch(change!._id, { fields: { price: { amount: -5 } } }))
+    await s.advanceTo(DAY1 + 1000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+    const [stopped] = await s.dated(s.saibling)
+    expect(stopped).toMatchObject({ stopped: { at: DAY1, reason: { code: 'invalid' } } })
+    expect(stopped!.job).toBeUndefined()
+    const mails = await s.t.run((ctx) => ctx.db.query('outbox').collect())
+    expect(mails.map((m) => m.to)).toEqual(['wirtin@example.com'])
+    expect(mails[0]!.subject).toContain('Gebeizter Saibling')
+    const today = await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })
+    expect(today).toMatchObject([{ entry: s.saibling, change: { id: change!._id, from: '2026-10-09' } }])
+    expect((await s.item(s.saibling)).upcoming).toBeUndefined()
+
+    await s.t.run((ctx) => ctx.db.patch(change!._id, { fields: { price: { amount: 1450 } } }))
+    await s.as.owner.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), change: change!._id, from: '2026-10-10' })
+    expect((await s.dated(s.saibling))[0]!.stopped).toBeUndefined()
+    await s.advanceTo(DAY1 + 24 * 3600_000 + 1000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
+  })
+})
+
+describe('moving and cancelling', () => {
+  it('a moved change starts on its new day only', async () => {
+    const s = await datedSetup()
+    await s.plan(1450)
+    const [change] = await s.dated(s.saibling)
+    await s.as.owner.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), change: change!._id, from: '2026-11-03' })
+    await s.advanceTo(DAY1 + 1000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+    expect(await s.dated(s.saibling)).toMatchObject([{ from: '2026-11-03' }])
+  })
+
+  it('cancel removes the change and its run; the bundle no longer announces it', async () => {
+    const s = await datedSetup()
+    await s.plan(1450)
+    const [change] = await s.dated(s.saibling)
+    const rev = await s.contentRev()
+    await s.as.owner.mutation(api.datedChanges.cancel, { site: 'restaurant', opId: opId(), change: change!._id })
+    expect(await s.dated(s.saibling)).toEqual([])
+    expect(await s.contentRev()).toBe(rev + 1)
+    await s.advanceTo(DAY1 + 1000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+  })
+
+  it('removing the entry cancels its changes with one history row; restoring does not bring them back', async () => {
+    const s = await datedSetup()
+    await s.plan(1450)
+    await s.plan(1490, '2026-12-01')
+    const lifeRev = (await s.row(s.saibling))!.lifeRev
+    await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev })
+    expect(await s.dated(s.saibling)).toEqual([])
+    expect((await s.history(s.saibling)).filter((c) => c.kind === 'datedCancelled')).toMatchObject([{ msg: { key: 'history.datedCancelledWithEntry', params: { count: 2 } } }])
+    await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: lifeRev + 1 })
+    expect(await s.dated(s.saibling)).toEqual([])
+  })
+})
+
+describe('publishing unpublished changes on a day', () => {
+  it('turns the unpublished changes into one dated change and refuses a time for an online entry', async () => {
+    const s = await datedSetup()
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } } })
+    const lifeRev = (await s.row(s.saibling))!.lifeRev
+    expect(await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev, at: DAY1 })))
+      .toMatchObject({ key: 'errors.liveTakesDay' })
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev, from: '2026-10-09' })
+    expect(await s.dated(s.saibling)).toMatchObject([{ from: '2026-10-09', fields: { price: { amount: 1450 } } }])
+    expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').withIndex('by_entry', (q) => q.eq('entry', s.saibling)).collect())).toEqual([])
+  })
+
+  it('refuses the whole call when one unpublished field may not start on a day', async () => {
+    const s = await datedSetup()
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 }, name: { de: 'Saibling neu' } } })
+    const lifeRev = (await s.row(s.saibling))!.lifeRev
+    expect(await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev, from: '2026-10-09' })))
+      .toMatchObject({ key: 'errors.fieldsCannotDate' })
+    expect(await s.dated(s.saibling)).toEqual([])
+  })
+})
+
+describe('a dated change that needs a yes', () => {
+  async function proposed() {
+    const s = await datedSetup({ needsApproval: true })
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-09' }) as unknown as Proposed
+    expect(sent.proposal).toBeDefined()
+    expect(await s.dated(s.saibling)).toEqual([])
+    return { ...s, sent }
+  }
+
+  it('a yes before the day makes the change in the asker\'s name', async () => {
+    const s = await proposed()
+    await s.as.owner.mutation(api.proposals.approve, { proposal: s.sent.proposal })
+    expect(await s.dated(s.saibling)).toMatchObject([{ from: '2026-10-09', by: people.cook }])
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+  })
+
+  it('a yes on or after the day writes it online at once, as late', async () => {
+    const s = await proposed()
+    await s.advanceTo(DAY1 + 3600_000)
+    await s.as.owner.mutation(api.proposals.approve, { proposal: s.sent.proposal })
+    expect(await s.dated(s.saibling)).toEqual([])
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
+    expect((await s.history(s.saibling)).at(-1)).toMatchObject({ msg: { key: 'history.datedAppliedLate' } })
+  })
+})

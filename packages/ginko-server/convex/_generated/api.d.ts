@@ -17,6 +17,7 @@ import type * as changes from "../changes.js";
 import type * as cleanup from "../cleanup.js";
 import type * as connect from "../connect.js";
 import type * as crons from "../crons.js";
+import type * as datedChanges from "../datedChanges.js";
 import type * as demo from "../demo.js";
 import type * as entries from "../entries.js";
 import type * as facts from "../facts.js";
@@ -93,6 +94,7 @@ declare const fullApi: ApiFromModules<{
   cleanup: typeof cleanup;
   connect: typeof connect;
   crons: typeof crons;
+  datedChanges: typeof datedChanges;
   demo: typeof demo;
   entries: typeof entries;
   facts: typeof facts;

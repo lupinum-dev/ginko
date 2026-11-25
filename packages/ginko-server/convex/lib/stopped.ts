@@ -43,31 +43,56 @@ export function stoppedLines(schema: Schema, entry: Stopped): { title: HistoryMs
   }
 }
 
+/** A dated change that did not start on its day (D127), with its entry's title and the first minute of its day. */
+type StoppedChange = { brick: string; title: string; day: number; fields: string[]; reason: StopReason }
+
+/** Today's row of a stopped dated change: `“{title}”: the change from {day} did not start`, and the cause. */
+export function stoppedChangeLines(schema: Schema, change: StoppedChange): { title: HistoryMsg; cause: HistoryMsg } {
+  return { title: msg('stopped.changeTitle', { title: change.title, day: change.day }), cause: causeOf(schema, change.brick, change.reason, 'cause') }
+}
+
+/** The cause of a stop as the end of "… because", for a history line. */
+export const stoppedBecause = (schema: Schema, brickKey: string, reason: StopReason) => causeOf(schema, brickKey, reason, 'because')
+
 /**
  * Tells the planner, while that person is still a member of the site, and the owners that a plan stopped, each in their
  * language, with a link that opens the entry. Without mail set up, Today's row is the only sign.
  */
 export async function mailStopped(ctx: MutationCtx, site: Doc<'sites'>, entry: Stopped & Pick<Doc<'entries'>, '_id'>) {
+  const schema = site.schema as Schema
+  await mailOwnersAnd(ctx, site, entry.stopped.by, entry, (locale, path) => ({
+    subject: historyText(msg('mail.stopped.subject', { title: entry.title }), locale, schema),
+    text: historyText(msg('mail.stopped.text', { at: entry.stopped.at, because: causeOf(schema, entry.brick, entry.stopped.reason, 'because'), path }), locale, schema),
+  }))
+}
+
+/** `mailStopped` for a dated change that did not start (D127): to the person who made it and the owners. */
+export async function mailStoppedChange(ctx: MutationCtx, site: Doc<'sites'>, entry: Pick<Doc<'entries'>, '_id' | 'brick'>, by: string | undefined, change: StoppedChange) {
+  const schema = site.schema as Schema
+  await mailOwnersAnd(ctx, site, by, entry, (locale, path) => ({
+    subject: historyText(msg('mail.stoppedChange.subject', { title: change.title }), locale, schema),
+    text: historyText(msg('mail.stoppedChange.text', { day: change.day, fields: quotedFields(schema, change.brick, change.fields).fields, because: causeOf(schema, change.brick, change.reason, 'because'), path }), locale, schema),
+  }))
+}
+
+/**
+ * Mails the owners and `by` (while a member) in their language, with a link that opens the entry. Without mail set up,
+ * or without the Studio's address for the link, nobody gets one and Today's row is the sign.
+ */
+async function mailOwnersAnd(ctx: MutationCtx, site: Doc<'sites'>, by: string | undefined, entry: Pick<Doc<'entries'>, '_id' | 'brick'>, words: (locale: string, path: string) => { subject: string; text: string }) {
   if (!mailAvailable()) return
-  // The mail's link needs the Studio's address; without it the mail stays out and Today's row is the sign.
   const origin = knownSiteOrigin()
   if (!origin) {
     console.warn(`Mail stopped ${entry._id} not sent: SITE_URL is not set.`)
     return
   }
-  const schema = site.schema as Schema
   const members = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
   const path = `${origin}/s/${site.slug}/all/${entry.brick}/${entry._id}`
   // Every read and every text first, then the queue: a read that throws queues no mail at all, never some of them.
   const mails: { to: string; subject: string; text: string }[] = []
   for (const member of members) {
-    if (!member.email || (member.role !== 'owner' && member.user !== entry.stopped.by)) continue
-    const locale = await localeOfUser(ctx, member.user)
-    mails.push({
-      to: member.email,
-      subject: historyText(msg('mail.stopped.subject', { title: entry.title }), locale, schema),
-      text: historyText(msg('mail.stopped.text', { at: entry.stopped.at, because: causeOf(schema, entry.brick, entry.stopped.reason, 'because'), path }), locale, schema),
-    })
+    if (!member.email || (member.role !== 'owner' && member.user !== by)) continue
+    mails.push({ to: member.email, ...words(await localeOfUser(ctx, member.user), path) })
   }
   for (const mail of mails) await queueMail(ctx, 'stopped', mail)
 }

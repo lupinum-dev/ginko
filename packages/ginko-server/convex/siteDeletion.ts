@@ -34,6 +34,8 @@ export const purge = internalMutation({
     await sweep(BATCH, (n) => ctx.db.query('revBumps').withIndex('by_site', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('uploadTickets').withIndex('by_site', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('pendingChanges').withIndex('by_site', (q) => q.eq('site', id)).take(n))
+    // A dated change's job finds its row gone, or the site being deleted, and does nothing.
+    await sweep(BATCH, (n) => ctx.db.query('datedChanges').withIndex('by_site_brick', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', id)).take(n))
     // A part of an entry's trees holds up to about 900 KB.
     await sweep(TREE_BATCH, (n) => ctx.db.query('entryTrees').withIndex('by_site', (q) => q.eq('site', id)).take(n))
