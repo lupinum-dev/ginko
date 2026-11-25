@@ -267,7 +267,9 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   }
   if (until !== undefined) {
     const clash = others.find((r) => !r.stopped && r.until !== undefined && r.from === from && Object.keys(fields).some((root) => Object.hasOwn(r.fields as object, root)))
-    if (clash) fail('INVALID', 'errors.datedSameStart', { until: dayStart(clash.until!, schema.timeZone) })
+    // An error's text is worded without the site's zone (UTC on the server, the reader's in the Studio): noon UTC of the
+    // day is that day from UTC-12 to UTC+11, where the first instant of a Vienna day is the day before in UTC.
+    if (clash) fail('INVALID', 'errors.datedSameStart', { until: Date.parse(`${clash.until!}T12:00:00Z`) })
   }
   const own: Change = { from, ...(until !== undefined ? { until } : {}), set: fields }
   const after = dataOn(before, [own], from)

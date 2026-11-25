@@ -141,11 +141,12 @@ describe('the same days and overlaps (state table)', () => {
   })
 
   // Row "same from, other until, same field". Wrong behaviour caught: two offers of one start for one price are both
-  // stored (which one shows?), or the refusal does not say which other offer is in the way.
+  // stored (which one shows?), or the refusal does not say which other offer is in the way, or names the day before its
+  // end (the first instant of a Vienna day is the day before in UTC, where an error's text is worded).
   it('refuses the same start with another end for the same field, naming the other change', async () => {
     const s = await untilSetup()
     await s.offer(990, '2026-10-20', '2026-12-31')
-    expect(await errorOf(s.offer(890, '2026-10-20', '2026-11-30'))).toMatchObject({ key: 'errors.datedSameStart', params: { until: at('2026-12-31') } })
+    expect(await errorOf(s.offer(890, '2026-10-20', '2026-11-30'))).toMatchObject({ key: 'errors.datedSameStart', message: expect.stringContaining('bis 31. Dezember') })
     expect(await s.dated(s.saibling)).toHaveLength(1)
   })
 
