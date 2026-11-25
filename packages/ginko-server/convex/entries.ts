@@ -1383,7 +1383,9 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     const late = lapsed(actor, args.at)
     const at = late ? undefined : args.at
     if (at !== undefined) checkFuture(at)
-    if (at !== undefined && args.rev !== undefined) await refuseChangedSince(ctx, actor, entry, args.rev)
+    // A person's own plan call takes the entry as that person saw it (D105). An approved request is never held to the
+    // asker's rev, before or after its time: a plan does not freeze the text, and what goes online is the entry now.
+    if (at !== undefined && args.rev !== undefined && actor.approvedBy === undefined) await refuseChangedSince(ctx, actor, entry, args.rev)
     // Everything the draft holds goes live: the full check first, then every link in it counts as new. A plan is
     // checked now and again by the job at its time (D101).
     refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, entry, todayIn(schema.timeZone)))
