@@ -3,7 +3,7 @@
 // first minute of its day. The core decides what a change may set and how it is applied (`changeIssues`, `dataOn`); this
 // file holds what the save, the publish, the run on the day and the readers share.
 import type { Json, Label } from '@lupinum/ginko'
-import { changeIssues, dataOn, entryBytes, fitsBudget, isDate, labelOf, MAX_DATED, todayIn, zonedDateTime, type Change, type Schema } from '@lupinum/ginko/internal'
+import { changeIssues, dataOn, dayStartIn, entryBytes, fitsBudget, isDate, labelOf, MAX_DATED, todayIn, type Change, type Schema } from '@lupinum/ginko/internal'
 import { internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
@@ -42,8 +42,8 @@ export function statusChanges(rows: readonly Dated[]) {
   return rows.map((r) => ({ from: r.from, fields: Object.keys(r.fields), ...(r.by ? { by: r.by } : {}), ...(r.stopped ? { stopped: r.stopped } : {}) }))
 }
 
-/** The first minute of `day` in the site's zone, in ms: when a change of that day starts. */
-export const dayStart = (day: string, timeZone: string) => Date.parse(zonedDateTime(day, '00:00', timeZone))
+/** The first instant of `day` in the site's zone, in ms: when a change of that day starts (`dayStartIn`). */
+export const dayStart = dayStartIn
 
 /** A day for a new or moved change: a real day, after the site's today, at most a year ahead (the same date next year). */
 export function checkDay(schema: Schema, from: unknown): asserts from is string {

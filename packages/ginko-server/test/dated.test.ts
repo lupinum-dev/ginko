@@ -179,6 +179,23 @@ describe('on the day', () => {
     await s.advanceTo(DAY1 + 24 * 3600_000 + 1000)
     expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
   })
+  // Wrong behaviour caught: in Havana the clock jumps from 23:59 to 01:00 when summer time starts, so a run planned for
+  // "00:00" lands on the day before and plans itself for that same instant without end.
+  it('a change for the day summer time starts in Havana runs once, at the jump', async () => {
+    const s = await datedSetup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      await ctx.db.patch(s.site, { schema: { ...schema, timeZone: 'America/Havana' } })
+    })
+    await s.plan(1450, '2027-03-14')
+    const jump = Date.parse('2027-03-14T05:00:00Z')
+    await s.advanceTo(jump - 3600_000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+    await s.advanceTo(jump + 120_000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
+    expect(await s.dated(s.saibling)).toEqual([])
+  })
+
   // Wrong behaviour caught: an error that is not a refusal (here a stored choice field without its options) makes the
   // run fail silently; the change then neither starts nor says that it stopped.
   it('an error of the run stops the change with "failed" and logs only the class', async () => {

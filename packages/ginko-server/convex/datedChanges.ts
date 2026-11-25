@@ -144,7 +144,9 @@ export const applyDue = internalMutation({
     if (!entry || entry.deletedAt) return null
     const schema = site.schema as Schema
     if (todayIn(schema.timeZone) < row.from) {
-      await ctx.db.patch(row._id, { job: await ctx.scheduler.runAt(dayStart(row.from, schema.timeZone), internal.datedChanges.applyDue, { change: row._id, from: row.from }) })
+      // Never sooner than a minute from now: a start that has passed would run again at once, again and again.
+      const at = Math.max(dayStart(row.from, schema.timeZone), Date.now() + 60_000)
+      await ctx.db.patch(row._id, { job: await ctx.scheduler.runAt(at, internal.datedChanges.applyDue, { change: row._id, from: row.from }) })
       return null
     }
     const title = entryLabel(schema, entry.brick, entry.data as Data)
