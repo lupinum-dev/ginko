@@ -79,7 +79,10 @@ export const setDay = mutation({
   },
 })
 
-/** Cancels a dated change, waiting or stopped: its values never come, the entry stays as it is. */
+/**
+ * Cancels a dated change, waiting or stopped: its values never come, the entry stays as it is. A person whose change
+ * needs a yes may cancel their own change only: taking away someone else's planned values is a change that needs one.
+ */
 export const cancel = mutation({
   args: { site: v.string(), opId: v.string(), task: v.optional(v.string()), change: v.string() },
   handler: async (ctx, args) => {
@@ -88,6 +91,7 @@ export const cancel = mutation({
       const { row, entry } = await datedRow(ctx, actor, args.change)
       const schema = actor.site.schema as Schema
       mayChange(actor, schema, args.task, entry, row)
+      if (row.by !== actor.user.id && await needsProposal(ctx, actor, 'save', args.task, taskBrickOf(schema, args.task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
       await dropDated(ctx, row)
       // A stopped change was no longer served as coming.
       const contentRev = !row.stopped && touchesPublic(schema, entry.brick, Object.keys(row.fields)) ? actor.site.contentRev + 1 : actor.site.contentRev

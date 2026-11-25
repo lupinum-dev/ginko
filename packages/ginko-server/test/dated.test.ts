@@ -345,6 +345,20 @@ describe('a dated change that needs a yes', () => {
     expect((await s.history(s.saibling)).at(-1)).toMatchObject({ msg: { key: 'history.datedAppliedLate' } })
   })
 
+  // Wrong behaviour caught: staff whose change needs a yes take away someone else's planned price without one, or move
+  // a change to another day past the yes; their own approved change they may still cancel.
+  it('staff who need a yes cancel only their own change and move none', async () => {
+    const s = await proposed()
+    await s.as.owner.mutation(api.proposals.approve, { proposal: s.sent.proposal })
+    await s.plan(1490, '2026-12-01')
+    const [own, other] = await s.dated(s.saibling)
+    const as = { site: 'restaurant', task: 'menu.price' }
+    expect(await errorOf(s.as.cook.mutation(api.datedChanges.cancel, { ...as, opId: opId(), change: other!._id }))).toMatchObject({ code: 'FORBIDDEN', key: 'errors.needsApprovalProposeAgain' })
+    expect(await errorOf(s.as.cook.mutation(api.datedChanges.setDay, { ...as, opId: opId(), change: own!._id, from: '2026-10-20' }))).toMatchObject({ code: 'FORBIDDEN', key: 'errors.needsApprovalProposeAgain' })
+    await s.as.cook.mutation(api.datedChanges.cancel, { ...as, opId: opId(), change: own!._id })
+    expect(await s.dated(s.saibling)).toMatchObject([{ _id: other!._id }])
+  })
+
   // Wrong behaviour caught: a late yes publishes like a save with "publish now" and so throws away an unpublished
   // change of the same field, which the run on the day leaves waiting.
   it('a late yes writes what the run would: an unpublished change of the field keeps waiting', async () => {
