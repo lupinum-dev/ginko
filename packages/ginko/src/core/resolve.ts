@@ -322,6 +322,11 @@ export interface BuildBundleInput {
   generatedAt: string
   /** Today in the site's time zone (`todayIn`). */
   today: string
+  /**
+   * Keeps the entries that ended, without `urls` (an ended entry has no address, so a link to it stays broken). For the
+   * link checks only, which read the links inside every live entry: an end date moved forward puts them online (D111).
+   */
+  keepEnded?: boolean
 }
 
 /**
@@ -356,7 +361,8 @@ export function buildBundle(input: BuildBundleInput): Bundle {
     for (const entry of sortEntries(brick, stored, { locale, main })) {
       const r = resolveEntry(schema, key, entry, ctx)
       // An entry outside its life is not in what a page gets, in files and on the platform alike (D111).
-      if (r.hidden || !shownOn(brick, r.data, input.today)) continue
+      const ended = !shownOn(brick, r.data, input.today)
+      if (r.hidden || (ended && !input.keepEnded)) continue
       const item: BundleItem = { id: entry.id, data: r.data, fallback: r.fallback }
       // `data` holds the fields only; a file entry's old paths forward to its page in this language.
       if (entry.redirectFrom?.length) item.oldUrls = { [locale]: [...entry.redirectFrom] }
@@ -364,7 +370,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
       // The file of this locale ("edit this page" opens the translation), else the main-language file.
       const source = entry.sources?.[locale] ?? entry.sources?.[main]
       if (source !== undefined) item.source = source
-      if (brick.route) item.urls = urlsFor(schema, key, brick, entry)
+      if (brick.route && !ended) item.urls = urlsFor(schema, key, brick, entry)
       items.push(item)
     }
     bricks[key] = { kind: 'collection', items }

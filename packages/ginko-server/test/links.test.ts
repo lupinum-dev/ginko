@@ -124,6 +124,21 @@ describe('links when a write is not live yet', () => {
   })
 })
 
+describe('links inside an entry that ended (D111)', () => {
+  // Wrong behaviour caught: the link check read the bundle, which leaves ended entries out, so an ended entry took a
+  // broken link and a later edit that moved its end date forward put the link online unseen. A link TO an ended entry
+  // stays broken: it has no address.
+  it('a save of an ended entry checks the links it adds; a link to an ended entry is broken', async () => {
+    const s = await linkSetup()
+    const past = { from: '2026-10-01', to: '2026-10-02' }
+    const ended = (await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: { title: { de: 'Vorbei' }, when: past, description: { de: 'x' } }, publish: {} })) as { entry: Id<'entries'> }
+    const publish = s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: ended.entry, baseRev: 1, publish: true, fields: { description: { de: '[Weg]($events.gibt-es-nicht)' } }, sentence: 'x' })
+    expect(await errorOf(publish)).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
+    const slug = (await s.t.run((ctx) => ctx.db.get(ended.entry)))!.data.slug as Record<string, string>
+    expect(await errorOf(s.create(`[Vorbei]($events.${slug.de})`, {}))).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
+  })
+})
+
 describe('links of a plan (D106)', () => {
   const HOUR = 60 * 60 * 1000
   /** Draft A links to draft B; B gets `bAt` (or no time), then A is planned for `at`. */

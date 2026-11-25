@@ -40,6 +40,7 @@ export async function buildFileBundles(options: BuildOptions): Promise<BuildResu
   const build = (locale: Locale) => buildBundle({
     schema: files, requestedLocale: locale, entries, files: (id) => fileInfo[id],
     schemaRev: 0, contentRev: 0, generatedAt: now.toISOString(), today: todayIn(schema.timeZone, now),
+    ...(options.keepEnded ? { keepEnded: true } : {}),
   })
   // Links to an entry left out of a language (not translated) go to its main-language page.
   const main = build(schema.locales[0]!)
@@ -56,6 +57,8 @@ export interface BuildOptions extends ReadOptions {
   schema: Schema
   /** Where the WebP variants of the site's images are written (the folder served at `/_ginko/img`). Without it, no variants are made. */
   imageDir?: string
+  /** For `ginko check`: keep the entries that ended, without an address, so their links are checked too (core `buildBundle`). */
+  keepEnded?: boolean
 }
 
 export interface BuildResult {

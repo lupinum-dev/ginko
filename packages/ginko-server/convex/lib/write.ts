@@ -126,7 +126,7 @@ export async function brokenNewLinks(ctx: QueryCtx, site: Doc<'sites'>, edits: L
   const schema = site.schema as Schema
   const overrides = new Map(edits.map((e) => [e.entry._id as string, e.after]))
   const items: NewItem[] = edits.filter((e) => e.isNew).map((e) => ({ brick: e.entry.brick, id: e.entry._id, data: e.after }))
-  const bundles = await Promise.all(schema.locales.map((locale) => bundleOf(ctx, site, locale, overrides, items, false, plannedBy)))
+  const bundles = await Promise.all(schema.locales.map((locale) => bundleOf(ctx, site, locale, { overrides, added: items, plannedBy, keepEnded: true })))
   for (const issue of checkLinks(bundles, schema)) {
     if (issue.severity !== 'error') continue
     const edit = edits.find((e) => issue.brick === e.entry.brick && (issue.id === e.entry._id || issue.id === e.entry.brick))
