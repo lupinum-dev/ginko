@@ -6,7 +6,7 @@ import { useI18n } from '#imports'
 import { isConvexCallError, normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import type { InjectionKey } from 'vue'
 import type { Json } from '@lupinum/ginko'
-import type { Place } from '@lupinum/ginko/internal'
+import { todayIn, type Place } from '@lupinum/ginko/internal'
 import { dayWords, whenText } from '../utils/when'
 import { translationNote } from '../utils/content'
 import { UploadError } from './useUpload'
@@ -127,8 +127,15 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   const noteOf = (notes: Parameters<typeof translationNote>[0], main: string) => translationNote(notes, t, language.value, main)
   /** "Samstag, 17. Oktober": the day a dated change or a week planned ahead starts on. */
   const dayText = (day: string) => dayWords(day, format)
+  /** A change for one day (`from` = `until`) names that day, or "heute" in the site's zone (L13). */
+  const oneDay = (from: string, timeZone: string | undefined) => timeZone !== undefined && from === todayIn(timeZone)
   /** A write that became a request (SPEC 17); `from`: it is a change for that day, which the message names (E5). */
-  const sentForApproval = (from?: string) => show(from === undefined ? t('review.sent') : t('dated.sentFrom', { day: dayText(from) }))
+  const sentForApproval = (from?: string, until?: string, timeZone?: string) => show(
+    from === undefined ? t('review.sent')
+    : until === undefined ? t('dated.sentFrom', { day: dayText(from) })
+    : until !== from ? t('dated.sentFromUntil', { day: dayText(from), until: dayText(until) })
+    : oneDay(from, timeZone) ? t('dated.sentToday') : t('dated.sentOn', { day: dayText(from) }),
+  )
   /**
    * When a write shows on the website: "in about a minute", or the day the server names, so nobody takes it for live
    * now: `liveFrom` for a week planned ahead, `from` for a dated change (D125).
@@ -220,10 +227,11 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
       throw opErrorOf(error)
     }
   }
-  async function moveChange(change: string, from: string, task?: string) {
+  /** `until`: the new last day of an exception (slice 3). */
+  async function moveChange(change: string, from: string, task?: string, until?: string) {
     try {
-      await moveDated.mutate({ site: site.value, opId: opId(), task, change, from })
-      show(t('dated.moved', { day: dayText(from) }))
+      await moveDated.mutate({ site: site.value, opId: opId(), task, change, from, ...(until === undefined ? {} : { until }) })
+      show(until === undefined ? t('dated.moved', { day: dayText(from) }) : t('dated.movedUntil', { day: dayText(from), until: dayText(until) }))
     } catch (error) {
       throw opErrorOf(error)
     }
@@ -332,12 +340,16 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
      * Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. The message also says
      * what the other languages show now (the server's `translation`), named from the site's `main` locale.
      */
-    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string; publish?: true; from?: string }) {
+    /**
+     * `until` (with `from`): the last day of an exception (slice 3); `change`: the exception a save edits (its end and
+     * values; its start stays). `timeZone`: the site's, so a change for today alone says "heute".
+     */
+    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string; publish?: true; from?: string; until?: string; change?: string; timeZone?: string }) {
       try {
-        const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm, publish: args.publish, ...(args.from === undefined ? {} : { from: args.from }) })
+        const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm, publish: args.publish, ...(args.from === undefined ? {} : { from: args.from }), ...(args.until === undefined ? {} : { until: args.until }), ...(args.change === undefined ? {} : { change: args.change }) })
         // A change that needs a yes writes nothing yet (SPEC 17): say so instead of "Saved".
         if (isProposal(result)) {
-          sentForApproval(args.from)
+          sentForApproval(args.from, args.until, args.timeZone)
           return { proposal: result.proposal }
         }
         const change = 'change' in result ? result.change : undefined
@@ -346,7 +358,10 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
         // change waits for that day (E6): an answer without `dated` wrote nothing, and `dated: null` emptied that day.
         if (args.from !== undefined) {
           if (!('dated' in result)) return { proposal: undefined, rev: result.rev, unchanged: true as const }
-          show(result.dated === null ? t('dated.cancelled') : `${t('ops.saved')} ${liveText({ from: args.from })}`)
+          const days = args.until === undefined ? liveText({ from: args.from })
+            : args.until !== args.from ? t('dated.liveFromUntil', { date: dayText(args.from), until: dayText(args.until) })
+            : oneDay(args.from, args.timeZone) ? t('dated.liveToday') : t('dated.liveOn', { date: dayText(args.from) })
+          show(result.dated === null ? t('dated.cancelled') : `${t('ops.saved')} ${days}`)
           return { proposal: undefined, rev: result.rev }
         }
         // A live entry keeps the save unpublished unless `publish`: the message says so, and there is nothing to undo on the website.

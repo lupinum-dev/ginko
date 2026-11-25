@@ -20,6 +20,8 @@ describe('leafValue', () => {
     ['images.r1.image.alt', { de: 'Garten' }],
     ['days.mo.dish', { de: 'Kürbiscremesuppe' }],
     ['days.di.dish', undefined],
+    // Wrong behaviour caught (tidy-up of K1.4): a path of two parts that is not an image description read the alt text.
+    ['image.file', undefined],
   ])('%s', (path, expected) => {
     expect(leafValue(data, path)).toEqual(expected)
   })

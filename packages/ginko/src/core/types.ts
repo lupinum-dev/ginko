@@ -135,18 +135,27 @@ export const isPrefillToken = (value: unknown): value is PrefillToken => PREFILL
  * those (besides its prefill and the fields' defaults), like an `edit` task. Without `fields` it asks for every field
  * but the slug and the plan of a planned change. The release check wants every required field without a default
  * (and not a slug) in `fields` or in the prefill. `when` on an `edit` task says whether its form asks from which day the
- * values hold (`TaskWhen`).
+ * values hold, and until which day (`TaskWhen`). `set` on an `edit` task gives fields fixed values that every save of
+ * the task writes, such as `{ onMenu: false }` for "Heute nicht auf der Karte"; a field is either in `fields` or in `set`.
  */
 export type Task<F extends Fields = Fields> =
-  | { id: string; label: Label; kind: 'edit'; fields: readonly (keyof F & string)[]; pick?: boolean; prefill?: Prefill<F>; needsApproval?: boolean; when?: TaskWhen }
+  | { id: string; label: Label; kind: 'edit'; fields: readonly (keyof F & string)[]; pick?: boolean; prefill?: Prefill<F>; needsApproval?: boolean; when?: TaskWhen; set?: TaskSet<F> }
   | { id: string; label: Label; kind: 'create'; fields?: readonly (keyof F & string)[]; prefill?: Prefill<F>; needsApproval?: boolean }
   | { id: string; label: Label; kind: 'remove'; needsApproval?: boolean }
 
 /**
- * From when the values of an edit task hold (D123): `'now'` (the default when absent) at once; `'ask'` the form asks for
- * a day, and a day ahead saves them as a dated change (`Change`). Every field of the task must be one a change may set.
+ * From when, and until when, the values of an edit task hold (D123, slice 3): `{ from: 'now' }` (the default when absent)
+ * at once, for good; `{ from: 'ask' }` the form asks for a day, and a day ahead saves them as a dated change (`Change`);
+ * `{ from: 'ask', until: 'ask' }` the form asks for both days and saves an exception that ends by itself;
+ * `{ from: '@today', until: '@today' }` an exception for today only, with no day field. Every field of a task that asks
+ * a day must be one a change may set.
  */
-export interface TaskWhen { from: 'now' | 'ask' }
+export type TaskWhen = { from: 'now' | 'ask' } | { from: 'ask'; until: 'ask' } | { from: '@today'; until: '@today' }
+
+/** Fixed values of an edit task (`set`), written like the fields' values. */
+type TaskSet<F extends Fields> = Fields extends F
+  ? { readonly [name: string]: Json | undefined }
+  : { readonly [P in keyof F]?: ValueInput<F[P]> }
 
 /** Prefill values by field name. Without known fields (the stored schema) any JSON or token. */
 type Prefill<F extends Fields> = Fields extends F

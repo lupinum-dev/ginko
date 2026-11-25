@@ -117,7 +117,8 @@ export function hasTranslation(f: Field): boolean {
 export function leafValue(data: Record<string, unknown> | undefined, path: string): unknown {
   const [root, ...rest] = path.split('.')
   let value: unknown = data?.[root!]
-  if (rest.length === 1) return (value as { alt?: unknown } | undefined)?.alt
+  // A path of two parts is an image's description (`image.alt`); any other two-part path names no text.
+  if (rest.length === 1) return rest[0] === 'alt' ? (value as { alt?: unknown } | undefined)?.alt : undefined
   if (rest.length) {
     const [row, column, ...tail] = rest
     // A list keeps its rows in order, each with an `_id`; a rows field (f.rows) keeps them by row key.
@@ -267,15 +268,29 @@ const SHORT_VALUES: ReadonlySet<Field['type']> = new Set(['money', 'number', 'da
 
 /**
  * What a planned change sets, for its notice (E2): "Preis 22,90 €, Beschreibung". A field with a short value (money,
- * number, date, time, choice, switch) shows its label and the value as a list shows it; any other field its label.
+ * number, date, time, choice) shows its label and the value as a list shows it, a switch "Auf der Karte: nein"; any
+ * other field its label.
  */
 export function changesText(fields: Fields, keys: readonly string[], values: Data, main: Locale, words: ValueWords): string {
   return keys.map((key) => {
     const field = Object.hasOwn(fields, key) ? fields[key] : undefined
     if (!field) return key
     const name = shownLabel(field.label, main)
+    if (field.type === 'boolean') return words.t('ops.value.flag', { label: name, on: values[key] === true ? 'yes' : 'no' })
     return SHORT_VALUES.has(field.type) ? `${name} ${displayValue(field, values[key], main, words)}` : name
   }).join(', ')
+}
+
+/**
+ * The values alone, as a list shows them ("12,90 €"), for the normal value an exception covers (slice 3); undefined when
+ * one of the fields has no short value, which only its label could name.
+ */
+export function valuesText(fields: Fields, keys: readonly string[], values: Data, main: Locale, words: ValueWords): string | undefined {
+  const shown = keys.map((key) => {
+    const field = Object.hasOwn(fields, key) ? fields[key] : undefined
+    return field && SHORT_VALUES.has(field.type) ? displayValue(field, values[key], main, words) : undefined
+  })
+  return shown.every((s) => s !== undefined) ? shown.join(', ') : undefined
 }
 
 /** 2026-10-08 → 8.10.2026 in German, 10/8/2026 in English: a calendar date, so no time zone shifts it. */

@@ -49,7 +49,12 @@ export function serializeSchema(site: SiteInput): Schema {
       const field = storedField(input, site.locales)
       return [name, isRetired(`${key}.${name}`) ? { ...field, retired: true as const } : field]
     }))
-    const tasks = brick.tasks?.map((task) => 'prefill' in task && task.prefill ? { ...task, prefill: storedPrefill(task.prefill, brick.fields, site.locales) } : task)
+    const tasks = brick.tasks?.map((task) => {
+      const prefill = 'prefill' in task && task.prefill ? { prefill: storedPrefill(task.prefill, brick.fields, site.locales) } : {}
+      // Fixed values are stored like a prefill; a token is not resolved in them (the check refuses it as a value).
+      const set = 'set' in task && task.set ? { set: storedPrefill(task.set, brick.fields, site.locales) } : {}
+      return { ...task, ...prefill, ...set }
+    })
     // A config written for 0.12 or older may still say `drafts`: the new schema leaves it out (BRICK_KEYS).
     const { drafts: _drafts, ...rest } = brick as typeof brick & { drafts?: unknown }
     return [key, { ...rest, pos, fields: positioned(fields), ...(tasks ? { tasks } : {}), ...(isRetired(key) ? { retired: true as const } : {}) }]
@@ -428,6 +433,7 @@ function schemaProblems(schema: Schema, rules: StatusRules): string[] {
       if (task.kind === 'create' && task.fields !== undefined) problems.push(...createFieldsProblems(`${key}.${task.id}.fields`, task, brick))
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
       if ('when' in task && task.when !== undefined) problems.push(...whenProblems(`${key}.${task.id}`, task, task.when, brick, schema))
+      if ('set' in task && task.set !== undefined) problems.push(...setProblems(`${key}.${task.id}`, task, task.set, brick, schema))
     }
     if (Object.hasOwn(brick, 'planned')) problems.push(`${key}.planned: a planned change is a dated change now. Remove planned and its two fields, and write \`timeline: { public: ['<field>'] }\` on the brick and \`when: { from: 'ask' }\` on the task that changes the field.`)
     if (brick.timeline !== undefined) problems.push(...timelineProblems(key, brick, schema))
@@ -660,21 +666,51 @@ function taskIdProblems(key: string, brick: Brick): string[] {
   return problems
 }
 
+/** A task whose form saves a dated change: it asks a day, or holds for today only. */
+export const taskDates = (task: Task): boolean => task.kind === 'edit' && task.when !== undefined && task.when.from !== 'now'
+
+/** A task whose saves are exceptions that end by themselves (`when.until`). */
+export const taskEnds = (task: Task): boolean => task.kind === 'edit' && task.when !== undefined && 'until' in task.when
+
 /**
- * `when` of a task (D123): an edit task only, `{ from: 'now' | 'ask' }`, and with `'ask'` every field of the task is one
- * a change may set (`changeRefusal`), so the form never offers a day for a field that cannot take one.
+ * `when` of a task (D123, slice 3): an edit task only, one of `{ from: 'now' }`, `{ from: 'ask' }`, `{ from: 'ask',
+ * until: 'ask' }`, `{ from: '@today', until: '@today' }`; a task that dates its values has only fields a change may set
+ * (`changeRefusal`), so the form never offers a day for a field that cannot take one.
  */
 function whenProblems(path: string, task: Task, when: unknown, brick: Brick, schema: Schema): string[] {
   if (task.kind !== 'edit') return [`${path}: when is only for an edit task.`]
-  if (typeof when !== 'object' || when === null || Array.isArray(when) || !('from' in when) || (when.from !== 'now' && when.from !== 'ask') || Object.keys(when).some((k) => k !== 'from')) {
-    return [`${path}.when must be { from: 'now' } or { from: 'ask' }.`]
-  }
-  if (when.from !== 'ask') return []
+  const forms = `${path}.when must be { from: 'now' }, { from: 'ask' }, { from: 'ask', until: 'ask' } or { from: '@today', until: '@today' }.`
+  if (typeof when !== 'object' || when === null || Array.isArray(when) || Object.keys(when).some((k) => k !== 'from' && k !== 'until')) return [forms]
+  const { from, until } = when as { from?: unknown; until?: unknown }
+  if (from === 'now' && (until === 'ask' || until === '@today')) return [`${path}.when: until needs from: 'ask' or '@today'. With from: 'now' the values hold at once, for good.`]
+  const valid = (from === 'now' && until === undefined) || (from === 'ask' && (until === undefined || until === 'ask')) || (from === '@today' && until === '@today')
+  if (!valid) return [forms]
+  if (from === 'now') return []
   const out: string[] = []
   for (const name of task.fields) {
     const refusal = changeRefusal(schema, brick, name)
     if (refusal === 'changeFixed') out.push(`${path}.when: “${name}” decides when or where an entry shows, so it cannot start on a day. Leave it out of the task or drop when.`)
     else if (refusal === 'changeTranslated') out.push(`${path}.when: “${name}” has text per language. A change from a day is not possible for such a field yet.`)
+  }
+  return out
+}
+
+/**
+ * `set` of a task (slice 3): an edit task only; each field is one of the brick, not also asked in `fields`, holds a
+ * value the field takes, and in a task that dates its values is one a change may set.
+ */
+function setProblems(path: string, task: Task, set: unknown, brick: Brick, schema: Schema): string[] {
+  if (task.kind !== 'edit') return [`${path}: set is only for an edit task.`]
+  if (typeof set !== 'object' || set === null || Array.isArray(set)) return [`${path}.set must be an object of field values, such as { shown: false }.`]
+  const out: string[] = []
+  for (const [name, value] of Object.entries(set)) {
+    const field = Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
+    if (!field || field.retired) { out.push(`${path}.set: “${name}” is not a field of this brick.`); continue }
+    if (task.fields.includes(name)) { out.push(`${path}.set: “${name}” is in the task's fields too. A field is either asked or set.`); continue }
+    const refusal = taskDates(task) ? changeRefusal(schema, brick, name) : undefined
+    if (refusal === 'changeFixed') { out.push(`${path}.set: “${name}” decides when or where an entry shows, so it cannot start on a day.`); continue }
+    if (refusal === 'changeTranslated') { out.push(`${path}.set: “${name}” has text per language. A change from a day is not possible for such a field yet.`); continue }
+    for (const p of checkValueIn(schema, field, value, `${path}.set.${name}`)) out.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
   }
   return out
 }

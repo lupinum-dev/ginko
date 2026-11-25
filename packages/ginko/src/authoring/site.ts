@@ -227,11 +227,14 @@ function compileTask(key: string, input: TaskInput, brick: BrickDef, editable: r
   const label = task.label ?? replaceTexts(standardLabel(task.id as StandardTask, words, main), main, taskTexts(task.id))
   const approval = task.needsApproval ? { needsApproval: true } : {}
   if (task.when !== undefined && kind !== 'edit') problems.push(`${key}.tasks.${task.id}: when is only for an edit task.`)
-  const when = task.when !== undefined && kind === 'edit' ? { when: { from: task.when.from } } : {}
+  if (task.set !== undefined && kind !== 'edit') problems.push(`${key}.tasks.${task.id}: set is only for an edit task.`)
+  // `checkSchema` checks the form of `when` and the values of `set` against the fields.
+  const when = task.when !== undefined && kind === 'edit' ? { when: task.when } : {}
+  const set = task.set !== undefined && kind === 'edit' ? { set: task.set as Extract<Task, { kind: 'edit' }>['set'] } : {}
   // The stored prefill is JSON (`serializeSchema` checks it against the fields).
   const prefill = task.prefill ? { prefill: task.prefill as Extract<Task, { kind: 'edit' }>['prefill'] } : {}
   if (kind === 'remove') return { id: task.id, label, kind, ...approval }
   if (kind === 'create') return { id: task.id, label, kind, ...(task.fields ? { fields: task.fields } : {}), ...prefill, ...approval }
   // An edit task on a collection first asks which entry.
-  return { id: task.id, label, kind, ...(brick.kind === 'collection' ? { pick: true } : {}), fields: task.fields ?? editable, ...prefill, ...approval, ...when }
+  return { id: task.id, label, kind, ...(brick.kind === 'collection' ? { pick: true } : {}), fields: task.fields ?? editable, ...prefill, ...approval, ...when, ...set }
 }

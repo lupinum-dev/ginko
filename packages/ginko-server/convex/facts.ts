@@ -1,7 +1,7 @@
 // Facts (`facts` in the site config, `:fact{name="…"}` in texts) as editors and agents need them: what each one
 // shows now, which texts quote it, and a release that would leave a quote without its fact.
 import type { Label } from '@lupinum/ginko'
-import { effectiveProfile, factCopiesInMarkdown, factNames, factValues, msg, resolveEntry, todayIn, upcomingOf, type FactValue, type Upcoming, type Schema, type SchemaChange } from '@lupinum/ginko/internal'
+import { effectiveProfile, factCopiesInMarkdown, factNames, factValues, msg, resolveEntry, todayIn, upcomingOf, withHolding, type FactValue, type Upcoming, type Schema, type SchemaChange } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
@@ -9,7 +9,7 @@ import { actorFor } from './lib/access'
 import type { Fields } from '@lupinum/ginko'
 import { factQuotesOf, fieldLabelAt, markdownTextsOf, type Data } from './lib/content'
 import { labelOf } from './entries'
-import { asChanges, datedOf } from './lib/dated'
+import { datedOf, isHolding, shownChanges } from './lib/dated'
 
 /** One text that quotes a fact, in the form the Studio's "used in" list reads (UsedInList). */
 export interface FactQuote { entry: Id<'entries'>; brick: string; title: string; paths: string[]; fieldLabels: (Label | null)[]; deleted: false; state: 'draft' | 'live' }
@@ -17,7 +17,10 @@ export interface FactQuote { entry: Id<'entries'>; brick: string; title: string;
 /** A fact for the Studio: its value (FactValue), the label of its brick and the entry the Studio links to. */
 export type StudioFact = FactValue & { brickLabel: Label; entry: Id<'entries'> | null }
 
-/** The single bricks' data in `locale` and their waiting public changes, as the website serves them, and their entry IDs. */
+/**
+ * The single bricks' data in `locale` and their waiting public changes, as the website serves them today (a holding
+ * temporary change laid over, round L4), and their entry IDs. The rows are picked and laid as the bundle does it.
+ */
 async function singlesIn(ctx: QueryCtx, site: Doc<'sites'>, schema: Schema, locale: string) {
   const data: Record<string, Record<string, unknown>> = {}
   const upcoming: Record<string, Upcoming[]> = {}
@@ -27,10 +30,13 @@ async function singlesIn(ctx: QueryCtx, site: Doc<'sites'>, schema: Schema, loca
     const row = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', site._id).eq('brick', brick).eq('deletedAt', undefined)).first()
     if (!row || !Object.hasOwn(schema.bricks, brick)) continue
     entries[brick] = row._id
-    const stored = { id: row._id, order: row.order, data: row.data as Data, prints: row.prints }
+    const timeline = schema.bricks[brick]!.timeline !== undefined
+    const rows = await datedOf(ctx, row._id)
+    const changes = shownChanges(timeline ? rows : rows.filter(isHolding), today)
+    const stored = withHolding({ id: row._id, order: row.order, data: row.data as Data, prints: row.prints, ...(changes.length ? { changes } : {}) }, today)
     data[brick] = resolveEntry(schema, brick, stored, { locale, files: () => undefined }).data
     // A fact of a `timeline.public` field names its next value (FactValue.next), as a page may read it.
-    const coming = schema.bricks[brick]!.timeline ? upcomingOf(schema, brick, { ...stored, changes: asChanges(await datedOf(ctx, row._id)) }, { locale, files: () => undefined }, today) : undefined
+    const coming = timeline ? upcomingOf(schema, brick, stored, { locale, files: () => undefined }, today) : undefined
     if (coming) upcoming[brick] = coming
   }
   return { data, upcoming, entries }

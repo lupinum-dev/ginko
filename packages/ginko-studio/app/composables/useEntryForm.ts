@@ -56,7 +56,15 @@ export interface EntryFormOptions {
   otherLocale?: (locale: Locale) => Promise<boolean>
   /** "Gilt ab" of the form (a task sheet): the local copy keeps the day with the input and brings it back with it. */
   day?: Ref<string>
+  /** "Gilt bis" of the form (a task that asks both days): kept and brought back with the day. */
+  until?: Ref<string>
 }
+
+/**
+ * What a save with a day also sends (slice 3): `until`, the last day of an exception; `change`, the holding exception it
+ * edits; `empty`, a save without a changed field is still sent (a today-only task, whose values the task fixes).
+ */
+export interface DatedExtra { until?: string; change?: string; empty?: boolean }
 
 export function useEntryForm(o: EntryFormOptions) {
   const ops = useOps(o.site)
@@ -196,11 +204,11 @@ export function useEntryForm(o: EntryFormOptions) {
    * `send`: fields sent even when they equal the stored value, so a change of that day the form was filled from is
    * replaced, a field put back to its stored value included (the task sheet's "Bearbeiten", E3).
    */
-  function save(rev = baseRev.value, publish?: { at?: number } | true, from?: string, send?: readonly string[]): Promise<boolean> {
+  function save(rev = baseRev.value, publish?: { at?: number } | true, from?: string, send?: readonly string[], extra: DatedExtra = {}): Promise<boolean> {
     // A removed entry cannot take a save: the person restores it or saves the input as a new entry.
     if (o.removed?.()) return Promise.resolve(false)
     asked = publish
-    return write(rev, publish, undefined, from, send)
+    return write(rev, publish, undefined, from, send, extra)
   }
 
   /**
@@ -233,7 +241,7 @@ export function useEntryForm(o: EntryFormOptions) {
     await Promise.all([...flushers].map((run) => run()))
   }
 
-  async function write(rev: number, publishAs?: { at?: number } | true, asNew?: { task?: string }, from?: string, send: readonly string[] = []): Promise<boolean> {
+  async function write(rev: number, publishAs?: { at?: number } | true, asNew?: { task?: string }, from?: string, send: readonly string[] = [], extra: DatedExtra = {}): Promise<boolean> {
     if (busy.value) return false
     await flush()
     if (blockers.size) {
@@ -266,7 +274,7 @@ export function useEntryForm(o: EntryFormOptions) {
         // Published at once, the form's fields that wait unpublished go too: the form showed them, so they are the input.
         const held = publishAs === true ? (o.entry()!.pending?.fields ?? []) : []
         const roots = [...new Set([...changedRoots(baseline.value, submitted), ...held, ...send])].filter((k) => keys().includes(k))
-        if (!roots.length && !confirm.value.length) {
+        if (!roots.length && !confirm.value.length && !(extra.empty && from !== undefined)) {
           // Nothing for that day: not done, so the sheet does not close as if a change were planned.
           if (from === undefined) return true
           unchangedDay.value = true
@@ -275,8 +283,8 @@ export function useEntryForm(o: EntryFormOptions) {
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
         // The server checks the task against the changed fields and the confirmed ones (entries.ts saveNow).
         const task = o.task?.([...new Set([...roots, ...confirm.value.map((leaf) => leaf.split('.')[0]!)])])
-        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}), ...(publishAs === true ? { publish: true as const } : {}), ...(from === undefined ? {} : { from }) }
-        const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main() })
+        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}), ...(publishAs === true ? { publish: true as const } : {}), ...(from === undefined ? {} : { from }), ...(from !== undefined && extra.until !== undefined ? { until: extra.until } : {}), ...(from !== undefined && extra.change !== undefined ? { change: extra.change } : {}) }
+        const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main(), timeZone: o.timeZone?.() })
         // A draft saved as a draft: what it lacks shows as notes. A live entry's warnings are about fields it did not
         // change, which its form does not show.
         notes.value = o.draft?.() && publishAs !== true ? result.warnings ?? [] : []
@@ -477,10 +485,11 @@ export function useEntryForm(o: EntryFormOptions) {
     const brick = o.brick()
     const title = brick.kind === 'collection' ? typedTitle(brick, draft.value, o.main()) : undefined
     const from = o.day?.value
-    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}), ...(from ? { from } : {}) })
+    const until = o.until?.value
+    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}), ...(from ? { from } : {}), ...(until ? { until } : {}) })
   }
   // Typed back to what was there: the next write removes the copy (a save removes it at once, in write()).
-  const localWriter = useLocalDraftWriter(() => [draft.value, o.day?.value], keepLocal)
+  const localWriter = useLocalDraftWriter(() => [draft.value, o.day?.value, o.until?.value], keepLocal)
 
   function forgetLocal() {
     localWriter.cancel()
@@ -514,6 +523,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = next
     // A copy without a day keeps a day already typed (H1).
     if (o.day && record.from) o.day.value = record.from
+    if (o.until && record.until) o.until.value = record.until
     waiting.value = false
     if (!entry) return
     const clash = own.filter((k) => (entry.fieldRevs[k] ?? 0) > copyBase && !same(entry.data[k], next[k]))

@@ -25,7 +25,7 @@ export { factText, type FactContext } from './core/facts.ts'
 export { safeHref } from './core/href.ts'
 export { plainText, wordsOf, type MarkdownProfile, type MarkdownValue, type MarkdownTree, type MarkdownToc, type TocLink } from './core/markdown.ts'
 export { startOfWeek, type WeekInfo } from './core/time.ts'
-export type { DataOf, ItemOf, UpcomingOf, Money, ImageValue, FileValue, UnknownChoice } from './core/infer.ts'
+export type { DataOf, ItemOf, UpcomingOf, HoldingOf, Money, ImageValue, FileValue, UnknownChoice } from './core/infer.ts'
 export type { NavNode } from './core/navigation.ts'
 export type { Query, Condition } from './core/query.ts'
 export type {

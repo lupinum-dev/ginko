@@ -681,6 +681,24 @@ describe('export and import', () => {
     const large = await errorOf(s.t.mutation(internal.seed.importExport, { site: 'restaurant', files: [], entries: [{ id: 'm2', brick: 'menu', kind: 'item', order: 99, prints: {}, rev: 1, data: dish, changes: [{ from: '2026-12-01', set: { description: long } }] }] }))
     expect(large.details).toMatchObject({ problems: expect.arrayContaining([expect.objectContaining({ key: 'errors.importEntryTooLarge', params: expect.objectContaining({ id: 'm2' }) })]) })
   })
+
+  // Round L5. Wrong behaviour caught: the budget check measures only the values after the last change without an end, so
+  // an exception that takes the entry over the budget on its days gets in (by import or by a save) and breaks the bundle.
+  it('an exception that takes the entry over the budget on its days is refused, by import and by a save', async () => {
+    const s = await datedSetup()
+    vi.stubEnv('GINKO_LOCAL', '1')
+    // `street` has no languages, so a change may hold it on this two-language site; a longer limit lets it grow.
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.contact!.fields.street as { max?: number }).max = 600_000
+      await ctx.db.patch(s.site, { schema })
+    })
+    const long = 'x'.repeat(500_000)
+    const contact = (await s.row(s.entries.contact!))!
+    const imported = await errorOf(s.t.mutation(internal.seed.importExport, { site: 'restaurant', files: [], entries: [{ id: 'c1', brick: 'contact', kind: 'single', order: 0, prints: {}, rev: 1, data: contact.data, changes: [{ from: '2026-12-01', until: '2026-12-03', set: { street: long } }] }] }))
+    expect(imported.details).toMatchObject({ problems: [expect.objectContaining({ key: 'errors.importEntryTooLarge', params: expect.objectContaining({ id: 'c1' }) })] })
+    expect(await errorOf(s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.contact!, baseRev: contact.rev, fields: { street: long }, from: '2026-10-20', until: '2026-10-22' }))).toMatchObject({ code: 'TOO_LARGE', key: 'errors.entryTooLarge' })
+  })
 })
 
 // The case behind slice 2 (made-up values): a practice keeps one price as a fact that its texts quote, and a staff member

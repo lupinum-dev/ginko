@@ -203,6 +203,16 @@ export default defineSchema({
     brick: v.string(),
     /** The day, `YYYY-MM-DD`, in the site's zone. */
     from: v.string(),
+    /**
+     * The last day of an exception (slice 3): its values lie over the entry's from the first minute of `from` to the last
+     * minute of `until` and are never written into it. Absent: a change for good, written into the entry on its day.
+     */
+    until: v.optional(v.string()),
+    /**
+     * When the start run of an exception let it through (ms): only then does the read lay it over the entry. Absent while
+     * it waits, and on a change without an end.
+     */
+    holds: v.optional(v.number()),
     /** Root field → its value from that day on; null: the field is cleared. */
     fields: v.record(v.string(), v.any()),
     /** The prints of the leaves under those roots. */
@@ -218,7 +228,10 @@ export default defineSchema({
     shared: v.optional(v.literal(true)),
     /** When it was made or last saved into (ms). */
     at: v.number(),
-    /** The scheduled `datedChanges.applyDue` run at the first minute of `from`. Absent once it stopped. */
+    /**
+     * The scheduled `datedChanges.applyDue` run at the first minute of `from` (the start run of an exception); once an
+     * exception holds, its `datedChanges.endDue` run at the first minute after `until`. Absent once it stopped.
+     */
     job: v.optional(v.id('_scheduled_functions')),
     /** It did not take effect on its day (D103 reasons): nothing was written; `setDay` or a save into it clears this. */
     stopped: v.optional(v.object({ at: v.number(), reason: stopReason })),

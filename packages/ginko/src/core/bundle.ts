@@ -20,13 +20,23 @@ export interface BundleItem {
   source?: string
   /** The waiting changes of the fields in the brick's `timeline.public`, in the order of their days (D121). */
   upcoming?: Upcoming[]
+  /** The exceptions that hold today and set a field of the brick's `timeline.public`, in the order of their starts. */
+  holding?: Holding[]
 }
 
 /**
- * A change that starts later, as a page may read it: its day and only the fields of the brick's `timeline.public`,
- * resolved like `data` (one language, file references, Markdown trees). A field the change clears is `null`.
+ * A change that starts later, as a page may read it: its day, its last day when it is an exception (`until`), and only
+ * the fields of the brick's `timeline.public`, resolved like `data` (one language, file references, Markdown trees). A
+ * field the change clears is `null`.
  */
-export interface Upcoming { from: string; data: Record<string, unknown> }
+export interface Upcoming { from: string; until?: string; data: Record<string, unknown> }
+
+/**
+ * An exception that holds today, as a page may read it to show an offer as an offer ("9,90 € bis 31. Dez., sonst
+ * 12,90 €"): its days, its values (already in `data`) and the normal values it covers (`normal`), only the fields of the
+ * brick's `timeline.public`, resolved like `data`. A field without a normal value is `null` in `normal`.
+ */
+export interface Holding { from: string; until: string; data: Record<string, unknown>; normal: Record<string, unknown> }
 
 /**
  * The name of an entry in a list or a heading (llms.txt, its Markdown twin, the search, the navigation): the value of
@@ -39,7 +49,7 @@ export function entryTitle(item: BundleItem, brick: Brick | undefined): string {
 }
 
 export type BundleBrick =
-  | { kind: 'single'; data: Record<string, unknown>; fallback: string[]; upcoming?: Upcoming[] }
+  | { kind: 'single'; data: Record<string, unknown>; fallback: string[]; upcoming?: Upcoming[]; holding?: Holding[] }
   | { kind: 'collection'; items: BundleItem[] }
 
 /** GET <platform>/bundle/<site>?format=3&locale=<l> (SPEC part 6). */
@@ -138,12 +148,17 @@ export async function withMarkdownTrees(bundle: Bundle, schema: Pick<Schema, 'br
     return out
   }
   const fillUpcoming = (fields: Fields, upcoming: Upcoming[]) => Promise.all(upcoming.map(async (u) => ({ ...u, data: await fill(fields, u.data) })))
+  const fillHolding = (fields: Fields, holding: Holding[]) => Promise.all(holding.map(async (h) => ({ ...h, data: await fill(fields, h.data), normal: await fill(fields, h.normal) })))
+  const ahead = async (fields: Fields, of: { upcoming?: Upcoming[]; holding?: Holding[] }) => ({
+    ...(of.upcoming ? { upcoming: await fillUpcoming(fields, of.upcoming) } : {}),
+    ...(of.holding ? { holding: await fillHolding(fields, of.holding) } : {}),
+  })
   const bricks: Record<string, BundleBrick> = {}
   for (const [key, brick] of Object.entries(bundle.bricks)) {
     const fields = Object.hasOwn(schema.bricks, key) ? schema.bricks[key]!.fields : undefined
     if (!fields) bricks[key] = brick
-    else if (brick.kind === 'single') bricks[key] = { ...brick, data: await fill(fields, brick.data), ...(brick.upcoming ? { upcoming: await fillUpcoming(fields, brick.upcoming) } : {}) }
-    else bricks[key] = { ...brick, items: await Promise.all(brick.items.map(async (item) => ({ ...item, data: await fill(fields, item.data), ...(item.upcoming ? { upcoming: await fillUpcoming(fields, item.upcoming) } : {}) }))) }
+    else if (brick.kind === 'single') bricks[key] = { ...brick, data: await fill(fields, brick.data), ...await ahead(fields, brick) }
+    else bricks[key] = { ...brick, items: await Promise.all(brick.items.map(async (item) => ({ ...item, data: await fill(fields, item.data), ...await ahead(fields, item) }))) }
   }
   return { ...bundle, bricks }
 }
@@ -158,16 +173,20 @@ export function bundleFits(bundle: Bundle, schema: Pick<Schema, 'bricks'>): bool
 
 function isBundleBrick(brick: unknown): boolean {
   if (!isRecord(brick)) return false
-  if (brick.kind === 'single') return isRecord(brick.data) && isStrings(brick.fallback) && isUpcoming(brick.upcoming)
+  if (brick.kind === 'single') return isRecord(brick.data) && isStrings(brick.fallback) && isUpcoming(brick.upcoming) && isHolding(brick.holding)
   if (brick.kind !== 'collection' || !Array.isArray(brick.items)) return false
   return brick.items.every((item) => isRecord(item) && typeof item.id === 'string' && isRecord(item.data) && isStrings(item.fallback)
     && (item.urls === undefined || (isRecord(item.urls) && Object.values(item.urls).every((u) => typeof u === 'string')))
     && (item.updatedAt === undefined || typeof item.updatedAt === 'string') && (item.source === undefined || typeof item.source === 'string')
-    && isUpcoming(item.upcoming))
+    && isUpcoming(item.upcoming) && isHolding(item.holding))
 }
 
 function isUpcoming(value: unknown): boolean {
-  return value === undefined || (Array.isArray(value) && value.every((u) => isRecord(u) && typeof u.from === 'string' && isRecord(u.data)))
+  return value === undefined || (Array.isArray(value) && value.every((u) => isRecord(u) && typeof u.from === 'string' && (u.until === undefined || typeof u.until === 'string') && isRecord(u.data)))
+}
+
+function isHolding(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every((h) => isRecord(h) && typeof h.from === 'string' && typeof h.until === 'string' && isRecord(h.data) && isRecord(h.normal)))
 }
 
 function isStrings(value: unknown): boolean {

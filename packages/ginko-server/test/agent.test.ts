@@ -796,3 +796,36 @@ describe('sites.create: site settings', () => {
     expect(await schemaOf('standard')).toMatchObject({ timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR' })
   })
 })
+
+// Round L1: a task with an end (`when.until`) lies over the entry for its days only. The door cannot ask the days yet
+// (checkpoint 5), so it offers no such task. Wrong behaviour caught: an assistant calls it without days and writes its
+// values into the entry for good.
+describe('a task with an end through the door', () => {
+  async function withTaskWithEnd() {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.menu!.tasks as unknown[]).push(
+        { id: 'offer', label: 'Aktionspreis', kind: 'edit', pick: true, fields: ['price'], when: { from: 'ask', until: 'ask' } },
+        { id: 'offToday', label: 'Heute nicht auf der Karte', kind: 'edit', pick: true, fields: [], when: { from: '@today', until: '@today' }, set: { onMenu: false } },
+      )
+      await ctx.db.patch(s.site, { schema })
+    })
+    return s
+  }
+
+  it('is not offered as a tool', async () => {
+    const s = await withTaskWithEnd()
+    const listed = await names(s, await keyOf(s, 'owner'))
+    expect([listed.includes('task_menu_offer'), listed.includes('task_menu_offToday'), listed.includes('task_menu_price')]).toEqual([false, false, true])
+  })
+
+  it('cannot be called; the entry stays', async () => {
+    const s = await withTaskWithEnd()
+    const entry = s.entries['menu-saibling']!
+    const before = (await entryRow(s, entry))!.data
+    const answer = await call(s, await keyOf(s, 'owner'), 'task_menu_offer', { entry, price: 9.9, publish: true })
+    expect(answer.isError).toBe(true)
+    expect((await entryRow(s, entry))!.data).toEqual(before)
+  })
+})

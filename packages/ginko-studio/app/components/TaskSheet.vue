@@ -4,12 +4,14 @@
      proposal on the entry (SPEC 17) is where an edit starts while it waits; a rejected one can be reopened. A create task
      ends in a publish step (TEMPLATES 7.3): Veröffentlichen, Als Entwurf speichern, Später veröffentlichen. An edit of a
      live entry offers Veröffentlichen (only its fields go online) and Speichern (they wait unpublished, SPEC 15). A task
-     with `when: { from: 'ask' }` adds "Gilt ab" under its fields: a day makes the save a dated change (D125, D131). -->
+     with `when: { from: 'ask' }` adds "Gilt ab" under its fields: a day makes the save a dated change (D125, D131).
+     With `until: 'ask'` it adds "Gilt bis" too, and every save is an exception for those days (slice 3); a task with
+     `when: { from: '@today', until: '@today' }` shows no field, only its fixed values and one button for today. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, leavesOf, stableJson, todayIn, weeklyTask, type Schema } from '@lupinum/ginko/internal'
-import { textIn, TRANSLATION } from '@lupinum/ginko-editor'
+import { defaultsFor, isShown, leavesOf, stableJson, taskEnds as endsByThemselves, todayIn, weeklyTask, type Schema } from '@lupinum/ginko/internal'
+import { textIn, TRANSLATION, useToday } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
@@ -26,16 +28,18 @@ import { XIcon } from '@lucide/vue'
 import { ConfigProvider, injectConfigProviderContext } from 'reka-ui'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
-import { changesText, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
+import { changesText, valuesText, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { planOwner } from '../utils/today'
 import { opErrorOf } from '../composables/useOps'
+import type { DatedExtra } from '../composables/useEntryForm'
 import { messageOf } from '../utils/messageOf'
 import { isModKey } from '../utils/keys'
 import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { refDebounced } from '@vueuse/core'
 import { msToZoned, scheduleProblem, whenFull } from '../utils/when'
 import { whoText } from '../utils/who'
+import { coveredHint as coveredText, coveredId, datedLine } from '../utils/datedLines'
 
 const props = defineProps<{
   site: string
@@ -85,6 +89,9 @@ const dayText = (value: Json | undefined) => (typeof value === 'string' ? format
 const startsOn = ref('')
 /** The day field holds a date typed by keyboard and not finished (StartsOnField): no save until it is a day or empty. */
 const startsOnBad = ref(false)
+/** "Gilt bis" of a task that asks both days (slice 3), with its own "not finished" state. */
+const untilOn = ref('')
+const untilBad = ref(false)
 const form = useEntryForm({
   site: computed(() => props.site),
   brickKey: () => props.brickKey,
@@ -102,6 +109,7 @@ const form = useEntryForm({
   draft: () => !isCreate.value && props.entry?.state === 'draft',
   removed: () => !isCreate.value && !!props.removed,
   day: startsOn,
+  until: untilOn,
 })
 const { draft, baseline, initial, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
 /** The form holds the values of an own proposal, not the stored ones. */
@@ -139,6 +147,7 @@ function loadProposal(start: Data, o: NonNullable<typeof mine.value>) {
   form.load({ ...start, ...proposedValues(o) })
   // A dated request keeps its day: sending it again replaces it with a request for that day, not for now (I2).
   if (o.from) startsOn.value = o.from
+  if (o.until) untilOn.value = o.until
   fromProposal.value = true
   proposalWeek.value = fixedWeek.value ? (o.fields as Data)[fixedWeek.value] : undefined
 }
@@ -353,11 +362,22 @@ function toggleLater() {
 // it. A day sends the changed fields as a change that starts on that day; the entry stays as it is until then. Only in
 // the main language's view: a change holds whole values, written in the main language (D119).
 const taskAsksDay = computed(() => props.task.kind === 'edit' && props.task.when?.from === 'ask' && !isCreate.value && !removedHere.value)
+const when = computed(() => (props.task.kind === 'edit' ? props.task.when : undefined))
+/**
+ * The task asks both days (`when.until: 'ask'`, slice 3): every save is an exception for those days, never a new normal
+ * value. Its day fields stay also on an entry that went offline: the save is still an exception, which the server refuses.
+ */
+const taskEnds = computed(() => taskAsksDay.value && endsByThemselves(props.task))
+/** A today-only task (`when: { from: '@today', until: '@today' }`): one labelled press sends its fixed values for today. */
+const todayOnly = computed(() => !!when.value && when.value.from === '@today' && !isCreate.value && !removedHere.value)
+const today = useToday(computed(() => props.schema.timeZone))
 // The field shows on an online entry, and stays while it holds a day (also half typed) when the entry goes offline
 // meanwhile: the day is still sent, and the server's refusal for a draft says why nothing was saved (I2).
-const asksDay = computed(() => taskAsksDay.value && (publishStep.value || !!startsOn.value || startsOnBad.value))
+const asksDay = computed(() => taskAsksDay.value && (taskEnds.value || publishStep.value || !!startsOn.value || startsOnBad.value))
 const startsOnError = ref('')
 watch(startsOn, () => { startsOnError.value = '' })
+const untilError = ref('')
+watch([startsOn, untilOn], () => { untilError.value = '' })
 // "Es ist noch nichts geändert" (E6) under the day field until the day or a value changes.
 const { unchangedDay } = form
 // By content: a save puts an equal copy into the draft, which is no change.
@@ -369,12 +389,49 @@ const dayOn = computed(() => (taskAsksDay.value && startsOn.value ? startsOn.val
  */
 const datedSaving = ref(false)
 const shortDay = (day: string) => format.date(day, { weekday: 'short', day: 'numeric', month: 'short' })
+/** "26. Nov.": the days of an exception in the button and the hint. */
+const dayMonth = (day: string) => format.date(day, { day: 'numeric', month: 'short' })
+/** The first day of an exception save: "Gilt ab", empty is today; fixed for a holding exception being edited. */
+const exceptionFrom = computed(() => holdingEdit.value?.from ?? (startsOn.value || today.value))
+/**
+ * Why the days of an exception cannot be sent yet (the press names it at its field): "Gilt ab" half typed or before
+ * today; "Gilt bis" half typed, empty, before "Gilt ab", or before today (a holding exception, whose start passed).
+ */
+const daysProblem = computed(() => {
+  if (!taskEnds.value) return undefined
+  const holding = holdingEdit.value
+  if (!holding && startsOnBad.value) return 'startsBad' as const
+  if (!holding && exceptionFrom.value < today.value) return 'startsPast' as const
+  if (untilBad.value) return 'untilBad' as const
+  if (!untilOn.value) return 'untilEmpty' as const
+  if (untilOn.value < exceptionFrom.value) return 'untilBeforeFrom' as const
+  return untilOn.value < today.value ? 'untilPast' as const : undefined
+})
+/** The days an exception save sends; undefined while they are not both valid. */
+const exceptionDays = computed(() => {
+  if (todayOnly.value) return { from: today.value, until: today.value }
+  if (!taskEnds.value || daysProblem.value) return undefined
+  return { from: exceptionFrom.value, until: untilOn.value }
+})
+/**
+ * What the primary button says for an exception: "Für 26. Nov. bis 31. Dez. …", "Bis 31. Dez. …", "Für heute …", and
+ * "Bis heute …" for one that started before today.
+ */
+function exceptionLabel({ from, until }: { from: string; until: string }) {
+  const verb = props.approval ? 'review' : 'publish'
+  if (until === today.value) return t(from < today.value ? `dated.${verb}UntilToday` : `dated.${verb}Today`)
+  if (from <= today.value) return t(`dated.${verb}Until`, { until: dayMonth(until) })
+  return t(`dated.${verb}FromUntil`, { day: dayMonth(from), until: dayMonth(until) })
+}
 /**
  * The primary button says what it sends: a day sends a change of that day, also when the entry went offline meanwhile
- * (the server refuses it then and says why, J2).
+ * (the server refuses it then and says why, J2). A task with an end sends only values for certain days, also while its
+ * days are not valid yet: it never names a change for good (L6).
  */
 const primaryLabel = computed(() => {
   if (busy.value) return offline.value ? t('entry.save.waiting') : t('entry.save.saving')
+  if (exceptionDays.value) return exceptionLabel(exceptionDays.value)
+  if (taskEnds.value) return t(props.approval ? 'dated.reviewDays' : 'dated.publishDays')
   if (dayOn.value) return t(props.approval ? 'dated.reviewFrom' : 'dated.publishFrom', { day: shortDay(dayOn.value) })
   if (!publishStep.value) return t('entry.save.save')
   if (props.approval) return t('entry.publish.review')
@@ -386,33 +443,93 @@ const primaryLabel = computed(() => {
 // A draft too: an entry taken offline keeps its changes, which then go into the draft on their day (D126, E4).
 const datedArgs = () => (props.entry && !isCreate.value ? { site: props.site, entry: props.entry._id } : 'skip' as const)
 const { data: dated } = useConvexQuery(api.datedChanges.list, datedArgs, { server: false })
+const valueWords = computed(() => ({ t, format, currency: props.schema.currency }))
 const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopped).flatMap((c) => {
   const ours = c.fields.filter((k) => Object.hasOwn(fields.value, k))
-  const changes = changesText(fields.value, ours, c.values as Data, props.main, { t, format, currency: props.schema.currency })
-  return ours.length ? [{ id: c.id, from: c.from, fields: ours, values: c.values as Data, text: t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), changes }) }] : []
+  if (!ours.length) return []
+  const values = c.values as Data
+  const changes = changesText(fields.value, ours, values, props.main, valueWords.value)
+  const holds = c.holds === true
+  let text: string
+  if (c.until === undefined) text = t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), changes })
+  else if (!holds) text = t('dated.waitingUntil', { day: shortDay(c.from), until: shortDay(c.until), changes })
+  else {
+    // What visitors see now, and the normal value it covers ("sonst 12,90 €") when that has a short form.
+    const normal = c.normal ? valuesText(fields.value, ours, c.normal as Data, props.main, valueWords.value) : undefined
+    text = normal ? t('dated.holding', { until: shortDay(c.until), changes, normal }) : t('dated.holdingPlain', { until: shortDay(c.until), changes })
+  }
+  return [{ id: c.id, from: c.from, until: c.until, holds, fields: ours, values, text }]
 }))
+type Notice = (typeof waitingNotices.value)[number]
+/** The line under a notice: two offers on the same days, a change that waits for an offer's end (datedLines). */
+const lineOf = (n: Notice) => datedLine(waitingNotices.value, n, valueWords.value)
+/** Under a field an exception covers today: what the website shows instead, and until when (spec rule 5). */
+const coveredHint = (key: string) => coveredText(waitingNotices.value, key, fields.value, props.main, valueWords.value)
+/**
+ * "Bearbeiten" on a notice of the kind the task makes (an exception for a task that asks both days, else a change
+ * without an end): its days and values go into the form. A holding exception keeps its start (decision 4).
+ */
+const mayEdit = (n: Notice) => asksDay.value && !foreign.value && (n.until !== undefined) === taskEnds.value
 /** The waiting change "Bearbeiten" filled the form from: saved on its day, it is replaced (every field of it is sent). */
 const editing = ref<{ id: string; fields: string[] }>()
-function editChange(n: (typeof waitingNotices.value)[number]) {
-  startsOn.value = n.from
+function editChange(n: Notice) {
+  if (!n.holds) startsOn.value = n.from
+  if (n.until !== undefined) untilOn.value = n.until
   for (const key of n.fields) form.setField(key, n.values[key] ?? undefined)
   editing.value = { id: n.id, fields: n.fields }
-  nextTick(() => document.getElementById('sheet-starts-on')?.focus())
+  nextTick(() => document.getElementById(n.holds ? 'sheet-until' : 'sheet-starts-on')?.focus())
 }
 /**
- * The change being edited, by its row, while it still waits: cancelled, gone online or stopped meanwhile, it counts no
- * more (I2), also when someone plans another change on the same day (J3). Its day is the row's day now.
+ * The change being edited, by its row, while it still waits or holds: cancelled, gone online, ended or stopped
+ * meanwhile, it counts no more (I2), also when someone plans another change on the same day (J3). Its days are the row's.
  */
 const edited = computed(() => {
   const row = editing.value && waitingNotices.value.find((n) => n.id === editing.value!.id)
-  return row ? { from: row.from, fields: editing.value!.fields } : undefined
+  return row ? { id: row.id, from: row.from, until: row.until, holds: row.holds, fields: editing.value!.fields } : undefined
 })
-/** After "Bearbeiten", another day in the field plans a second change; the one being edited stays (H1). */
+/** A holding exception being edited: "Gilt ab" is fixed and shown as text; the save edits that row (`change`). */
+const holdingEdit = computed(() => (edited.value?.holds ? edited.value : undefined))
+/**
+ * After "Bearbeiten", another start plans a second change; the one being edited stays (H1). An exception keeps being
+ * the one edited while its start stays (an empty "Gilt ab" is today), whatever its end (L7).
+ */
 const secondChange = computed(() => {
-  const was = edited.value?.from
-  return was && startsOn.value && !startsOnBad.value && startsOn.value !== was ? t('dated.secondChange', { day: format.date(was, { weekday: 'long', day: 'numeric', month: 'long' }) }) : ''
+  const was = edited.value
+  if (!was || was.holds || startsOnBad.value) return ''
+  const from = taskEnds.value ? exceptionFrom.value : startsOn.value
+  return from && from !== was.from ? t('dated.secondChange', { day: format.date(was.from, { weekday: 'long', day: 'numeric', month: 'long' }) }) : ''
+})
+/** A press that changed nothing in a sheet without "Gilt ab" (today only, a holding exception): said by the button (L8). */
+const unchangedHere = computed(() => unchangedDay.value && (todayOnly.value || !!holdingEdit.value))
+const primaryDescribedBy = computed(() => [shrunk.value.length ? 'sheet-shrunk' : '', unchangedHere.value ? 'sheet-unchanged' : ''].filter(Boolean).join(' ') || undefined)
+/** A today-only task: the values it sets, as the notices write them ("Nur heute: Aus"). */
+const todayValues = computed(() => {
+  const set = (props.task.kind === 'edit' ? props.task.set : undefined) as Data | undefined
+  return set ? changesText(props.brick.fields, Object.keys(set), set, props.main, valueWords.value) : ''
 })
 
+/** A day field shows only in the main language's view: switch there before the focus (H1). */
+async function focusDay(id: string) {
+  await switchLanguage(props.main)
+  return nextTick(() => document.getElementById(id)?.focus())
+}
+/**
+ * The save of a change with a day (`from`), and for an exception its end (`extra`): the fields and days are inert while
+ * it is on its way (E8); a save that changed nothing for those days keeps the form open and says so under the day.
+ * `same`: the fields of the change being edited, sent even when equal to the stored value, so it is replaced (E3).
+ */
+async function sendDated(from: string, same?: readonly string[], extra?: DatedExtra) {
+  let ok: boolean
+  beforeSend()
+  datedSaving.value = true
+  try {
+    ok = await form.save(undefined, undefined, from, same, extra)
+  } finally {
+    datedSaving.value = false
+  }
+  if (!ok && unchangedDay.value) await focusDay(holdingEdit.value || todayOnly.value ? 'sheet-primary' : 'sheet-starts-on')
+  await finish(ok)
+}
 /**
  * What a save does: `publish` goes online now (or waits for a yes), `draft` stays off the website (a new entry is a
  * draft, a change waits unpublished), `later` plans a new entry.
@@ -424,34 +541,32 @@ async function save(step: Step = 'publish') {
   if (busy.value || !ready.value || removedHere.value) return
   laterProblem.value = ''
   // A day typed and not finished is not "today": nothing is saved until it is a day or the field is empty (E1).
-  if (asksDay.value && startsOnBad.value) {
-    await switchLanguage(props.main)
-    return nextTick(() => document.getElementById('sheet-starts-on')?.focus())
+  if (asksDay.value && startsOnBad.value && !holdingEdit.value) return focusDay('sheet-starts-on')
+  // Enter in a field and Ctrl+S never publish (below), and a change for other days is a publish: the button does it.
+  if ((taskEnds.value || todayOnly.value) && step === 'draft') return document.getElementById('sheet-primary')?.focus()
+  if (todayOnly.value) return sendDated(today.value, undefined, { until: today.value, empty: true })
+  if (taskEnds.value) {
+    // An exception (slice 3): "Gilt ab" empty is today, never before; "Gilt bis" is required, not before it nor today.
+    const problem = daysProblem.value
+    if (problem === 'startsPast') startsOnError.value = messageOf({ key: 'errors.dayBeforeToday' })
+    if (problem === 'startsBad' || problem === 'startsPast') return focusDay('sheet-starts-on')
+    if (problem) {
+      if (problem !== 'untilBad') untilError.value = problem === 'untilEmpty' ? t('dated.dayRequired') : problem === 'untilBeforeFrom' ? t('dated.untilBeforeFrom') : messageOf({ key: 'errors.dayBeforeToday' })
+      return focusDay('sheet-until')
+    }
+    const from = exceptionFrom.value
+    // "Bearbeiten" edits that exception while its start stays (L7): its values are all sent, so it is replaced.
+    const was = edited.value?.until !== undefined && edited.value.from === from ? edited.value : undefined
+    return sendDated(from, was?.fields, { until: untilOn.value, ...(was ? { change: was.id } : {}) })
   }
   const from = dayOn.value
   if (from !== undefined) {
-    // Enter in a field and Ctrl+S never publish (below), and a change for a later day is a publish: the button does it.
     if (step === 'draft') return document.getElementById('sheet-primary')?.focus()
-    // The day field shows only in the main language's view: switch there before the focus (H1).
     if (from <= todayIn(props.schema.timeZone)) {
       startsOnError.value = messageOf({ key: 'errors.dayNotAhead' })
-      await switchLanguage(props.main)
-      return nextTick(() => document.getElementById('sheet-starts-on')?.focus())
+      return focusDay('sheet-starts-on')
     }
-    let ok: boolean
-    beforeSend()
-    datedSaving.value = true
-    try {
-      ok = await form.save(undefined, undefined, from, edited.value?.from === from ? edited.value.fields : undefined)
-    } finally {
-      datedSaving.value = false
-    }
-    if (!ok && unchangedDay.value) {
-      await switchLanguage(props.main)
-      nextTick(() => document.getElementById('sheet-starts-on')?.focus())
-    }
-    await finish(ok)
-    return
+    return sendDated(from, edited.value?.from === from ? edited.value.fields : undefined)
   }
   let publish: { at?: number } | true | undefined
   if (publishStep.value && !isCreate.value) publish = step === 'draft' ? undefined : true
@@ -612,8 +727,13 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
             <div v-for="n in waitingNotices" :key="n.id" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md bg-warning/10 py-1 pr-1 pl-3">
               <p class="py-1.5 font-semibold text-warning [overflow-wrap:anywhere]" role="status" data-test="dated-waiting">{{ n.text }}</p>
-              <Button v-if="asksDay && !foreign" type="button" variant="outline" size="sm" @click="editChange(n)">{{ t('dated.edit') }}</Button>
+              <Button v-if="mayEdit(n)" type="button" variant="outline" size="sm" @click="editChange(n)">{{ t('dated.edit') }}</Button>
+              <p v-if="lineOf(n)" class="basis-full pb-1.5 text-sm text-warning" :data-test="lineOf(n)!.test">{{ lineOf(n)!.text }}</p>
             </div>
+            <template v-if="todayOnly">
+              <p v-if="todayValues" class="font-semibold" data-test="today-values">{{ t('dated.todayOnlyValues', { changes: todayValues }) }}</p>
+              <p data-test="today-only">{{ t('dated.todayOnly') }}</p>
+            </template>
             <p v-if="oldWeek" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.oldWeek', { date: formatDay(oldWeek, format) }) }}</p>
             <!-- Like "Deinen Vorschlag wieder öffnen" above, it replaces the form's values: offered only before anything is typed. -->
             <Button v-if="isCreate && copyFrom && !copied && !dirty" type="button" variant="outline" class="justify-self-start" :disabled="copying" @click="copyThisWeek">{{ t('entry.copyThisWeek') }}</Button>
@@ -636,11 +756,20 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
                   :locale="lang"
                   :locales="locales"
                   :issues="shownIssues"
+                  :hint-id="coveredHint(String(key)) ? coveredId(String(key)) : undefined"
                   @update:model-value="form.setField(String(key), $event)"
                 />
+                <!-- The form edits the normal value; an exception that holds today covers it on the website. -->
+                <p v-if="coveredHint(String(key))" v-show="isShown(field, draft)" :id="coveredId(String(key))" class="-mt-2 text-sm font-medium text-muted-foreground" data-test="covered-hint">{{ coveredHint(String(key)) }}</p>
                 <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
               </template>
-              <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
+              <div v-if="asksDay && !foreign && holdingEdit" class="grid gap-1" role="group" aria-labelledby="sheet-fixed-from" data-slot="field" data-test="fixed-from">
+                <p id="sheet-fixed-from" class="text-sm font-medium">{{ t('dated.startsOn') }}</p>
+                <p class="font-semibold">{{ shortDay(holdingEdit.from) }}</p>
+                <p class="text-sm text-muted-foreground">{{ t('dated.fromFixed') }}</p>
+              </div>
+              <StartsOnField v-else-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :hint="taskEnds ? t('dated.startsOnHintToday') : undefined" :earliest="taskEnds ? today : undefined" :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
+              <StartsOnField v-if="asksDay && taskEnds && !foreign" id="sheet-until" v-model="untilOn" v-model:bad="untilBad" :label="t('dated.until')" :earliest="startsOn || today" :time-zone="schema.timeZone" :error="untilError" />
             </div>
           </template>
         </div>
@@ -655,6 +784,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
           </template>
           <template v-else>
             <p v-if="shrunk.length" id="sheet-shrunk" class="basis-full text-sm text-muted-foreground">{{ shrunk.join(' ') }}</p>
+            <p v-if="unchangedHere" id="sheet-unchanged" class="basis-full text-sm font-medium text-warning" role="status">{{ t('dated.nothingChanged') }}</p>
             <div v-if="publishStep && later" class="grid basis-full gap-2" data-test="publish-later" @keydown.enter.prevent="save('later')">
               <label for="sheet-publish-at" class="text-sm font-medium">{{ t('entry.publish.dateTime') }}</label>
               <ScheduleField v-model:local="at" v-model:picked="picked" :zone="schema.timeZone" input-id="sheet-publish-at" />
@@ -662,10 +792,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             </div>
             <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
             <!-- On the publish step only a press on this button publishes (Enter in a field saves a draft, like Ctrl+S); with the time open it plans instead, so there is one primary per state. -->
-            <Button id="sheet-primary" :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ primaryLabel }}</Button>
+            <Button id="sheet-primary" :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="primaryDescribedBy" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ primaryLabel }}</Button>
             <template v-if="publishStep">
               <!-- With a day, Speichern (unpublished) would drop it: the day's button is the one way. -->
-              <Button v-if="!dayOn" type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ isCreate ? t('entry.publish.asDraft') : t('entry.save.save') }}</Button>
+              <Button v-if="!dayOn && !taskEnds && !todayOnly" type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ isCreate ? t('entry.publish.asDraft') : t('entry.save.save') }}</Button>
               <Button v-if="laterOffered" type="button" variant="outline" :aria-expanded="later" @click="toggleLater">{{ t('entry.publish.laterOpen') }}</Button>
             </template>
             <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>

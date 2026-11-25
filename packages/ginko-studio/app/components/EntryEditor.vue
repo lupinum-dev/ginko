@@ -8,7 +8,8 @@ import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale }
 import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, slugKeyOf, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, shownUntil, statusOf, type Place, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
+import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Data, type Task } from '../utils/content'
+import { COVERED, coveredHint, type DatedRow } from '../utils/datedLines'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -80,6 +81,11 @@ const main = computed(() => props.schema.locales[0]!)
 provideSiteRefs(() => props.site.slug, () => props.schema, () => main.value)
 // Fact fields say which texts quote them (EntryFields).
 provideFactUses(() => props.site.slug, () => props.schema, () => props.brickKey)
+// A field an exception covers today says what the website shows instead, as in the task sheet (EntryFields, L11). The
+// same query as the notices (DatedNotices), so one subscription serves both.
+const { data: datedRows } = useConvexQuery(api.datedChanges.list, () => (props.entry && !props.removed ? { site: props.site.slug, entry: props.entry._id, ...(props.tasks?.save ? { task: props.tasks.save } : {}) } : 'skip' as const), { server: false })
+const holdingRows = computed<DatedRow[]>(() => (datedRows.value ?? []).filter((c) => !c.stopped).map((c) => ({ id: c.id, from: c.from, until: c.until, holds: c.holds === true, fields: c.fields, values: c.values as Data })))
+provide(COVERED, (key: string) => coveredHint(holdingRows.value, key, props.brick.fields, main.value, { t, format, currency: props.schema.currency }))
 // A link from a translation badge opens the entry in that language (?lang=en).
 const wantedLocale = String(useRoute().query.lang ?? '')
 const locale = ref<Locale>(props.schema.locales.includes(wantedLocale) ? wantedLocale : main.value)

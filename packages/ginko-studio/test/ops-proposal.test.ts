@@ -4,6 +4,7 @@
 import { ConvexError } from 'convex/values'
 import { ConvexCallError, normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import { describe, expect, test, vi } from 'vitest'
+import { todayIn } from '@lupinum/ginko/internal'
 
 const mocks = vi.hoisted(() => ({ results: new Map<string, unknown>(), toasts: [] as { text: string; action?: unknown }[], actionError: undefined as unknown }))
 vi.mock('#imports', async () => {
@@ -68,6 +69,21 @@ test.each([
   mocks.results.set('entries.save', answer)
   const result = await ops.saveEntry({ entry: 'e', baseRev: 1, fields: { price: { amount: 2290 } }, op: 'o', main: 'de', from: '2026-12-05' })
   expect([mocks.toasts.map((m) => m.text), 'unchanged' in result ? result.unchanged : undefined]).toEqual([toasts, unchanged])
+})
+
+// Round L13. Wrong behaviour caught: a change for one day said "from Saturday 5 December to Saturday 5 December", and
+// one for today did not say it is on the website today.
+test.each([
+  ['saved, today', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, 'today', 'Saved. On the website today.'],
+  ['saved, another day', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, '2026-12-05', 'Saved. On the website on Saturday 5 December.'],
+  ['sent for review, today', proposal, 'today', 'Sent for review. Planned for today.'],
+  ['sent for review, another day', proposal, '2026-12-05', 'Sent for review. Planned for Saturday 5 December.'],
+] as const)('a change for one day: %s', async (_case, answer, day, toast) => {
+  mocks.toasts.length = 0
+  mocks.results.set('entries.save', answer)
+  const from = day === 'today' ? todayIn('Europe/Vienna') : day
+  await ops.saveEntry({ entry: 'e', baseRev: 1, fields: { price: { amount: 990 } }, op: 'o', main: 'de', from, until: from, timeZone: 'Europe/Vienna' })
+  expect(mocks.toasts.map((m) => m.text)).toEqual([toast])
 })
 
 describe('writes that become proposals', () => {

@@ -56,9 +56,12 @@
     "changeShape": "التغيير كائن فيه «from» و«set».",
     "changeDay": "«{value}» ليس يومًا. اكتب «from» بالشكل YYYY-MM-DD، مثل 2026-11-01.",
     "changeEmpty": "يحتاج التغيير إلى حقل واحد على الأقل في «set».",
-    "changeKey": "لا يوجد «{key}» في التغيير: فيه «from» و«set» فقط.",
+    "changeKey": "لا يوجد «{key}» في التغيير: فيه «from» و«until» و«set» فقط.",
     "changeNotYet": "«{key}» في التغيير غير متاح بعد.",
     "changeTwice": "تغييران لهما اليوم {day}. اكتبهما كتغيير واحد.",
+    "changeUntilDay": "«{value}» ليس يومًا. اكتب «until» بالشكل YYYY-MM-DD، مثل 2026-12-31.",
+    "changeUntilBefore": "نهاية التغيير ({until}) تسبق بدايته ({from}).",
+    "changeSameStart": "تغييران لهما نهاية يبدآن في {day} ويحدد كلاهما «{label}». اجعل لأحدهما بداية أخرى أو اكتبهما كتغيير واحد.",
     "changeFixed": "لا يمكن أن يبدأ «{label}» من يوم معيّن: فهو يحدد متى أو أين يظهر الإدخال.",
     "changeTranslated": "في «{label}» نص لكل لغة. التغيير من يوم معيّن غير متاح بعد لمثل هذا الحقل.",
     "changeValue": "التغيير من {day}: {problem}"

@@ -56,9 +56,12 @@
     "changeShape": "A change is an object with “from” and “set”.",
     "changeDay": "“{value}” is not a day. Write “from” as YYYY-MM-DD, for example 2026-11-01.",
     "changeEmpty": "A change needs at least one field in “set”.",
-    "changeKey": "A change has no “{key}”: it has only “from” and “set”.",
+    "changeKey": "A change has no “{key}”: it has only “from”, “until” and “set”.",
     "changeNotYet": "“{key}” is not available for a change yet.",
     "changeTwice": "Two changes have the day {day}. Write them as one change.",
+    "changeUntilDay": "“{value}” is not a day. Write “until” as YYYY-MM-DD, for example 2026-12-31.",
+    "changeUntilBefore": "The end of a change ({until}) is before its start ({from}).",
+    "changeSameStart": "Two changes with an end start on {day} and both set “{label}”. Give one of them another start, or write them as one.",
     "changeFixed": "“{label}” cannot start on a day: it decides when or where the entry shows.",
     "changeTranslated": "“{label}” has text per language. A change from a day is not possible for such a field yet.",
     "changeValue": "Change from {day}: {problem}"

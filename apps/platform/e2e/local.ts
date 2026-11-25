@@ -36,10 +36,26 @@ export function resetAll(): Record<string, string> {
 
 /** The price of a dish as it is online now (the stored entry, in cents), read from the local backend. */
 export function onlinePrice(dish: string): number | undefined {
+  return storedDish(dish)?.price?.amount
+}
+
+/** A dish's stored values in the local backend: what a change for certain days never writes. */
+export function storedDish(dish: string): { name?: { de?: string }; price?: { amount: number }; onMenu?: boolean } | undefined {
   assertLocal()
   const rows = execFileSync('npx', ['convex', 'data', 'entries', '--limit', '500', '--format', 'jsonLines'], { cwd: serverDir, encoding: 'utf8' })
-  const entries = rows.trim().split('\n').map((l) => JSON.parse(l) as { brick: string; deletedAt?: number; data: { name?: { de?: string }; price?: { amount: number } } })
-  return entries.find((e) => e.brick === 'menu' && !e.deletedAt && e.data.name?.de === dish)?.data.price?.amount
+  const entries = rows.trim().split('\n').map((l) => JSON.parse(l) as { brick: string; deletedAt?: number; data: { name?: { de?: string }; price?: { amount: number }; onMenu?: boolean } })
+  return entries.find((e) => e.brick === 'menu' && !e.deletedAt && e.data.name?.de === dish)?.data
+}
+
+/**
+ * A dish as the website gets it now: the German bundle item from the local backend, with a change that holds for a time
+ * laid over its stored values (slice 3). `onlinePrice` reads the stored entry, which such a change never writes.
+ */
+export function shownDish(dish: string): { data: { price?: { amount: number }; onMenu?: boolean }; holding?: { from: string; until: string; data: Record<string, unknown> }[] } | undefined {
+  assertLocal()
+  const out = execFileSync('npx', ['convex', 'run', 'bundle:build', JSON.stringify({ slug: 'restaurant', locale: 'de' })], { cwd: serverDir, encoding: 'utf8' })
+  const bundle = JSON.parse(out.slice(out.indexOf('{'))) as { bricks: Record<string, { items?: { data: { name?: string; price?: { amount: number }; onMenu?: boolean } }[] }> }
+  return bundle.bricks.menu?.items?.find((item) => item.data.name === dish) as ReturnType<typeof shownDish>
 }
 
 /** Resets the content only; members stay signed in and keep their rights. `many` adds copies (seed-local `--many`). */

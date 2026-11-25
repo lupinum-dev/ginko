@@ -1449,6 +1449,39 @@
             "en": "Remove a dish"
           },
           "kind": "remove"
+        },
+        {
+          "id": "offer",
+          "label": {
+            "de": "Aktionspreis",
+            "en": "Special price"
+          },
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "price"
+          ],
+          "when": {
+            "from": "ask",
+            "until": "ask"
+          }
+        },
+        {
+          "id": "offToday",
+          "label": {
+            "de": "Heute nicht auf der Karte",
+            "en": "Not on the menu today"
+          },
+          "kind": "edit",
+          "pick": true,
+          "fields": [],
+          "when": {
+            "from": "@today",
+            "until": "@today"
+          },
+          "set": {
+            "onMenu": false
+          }
         }
       ],
       "timeline": {

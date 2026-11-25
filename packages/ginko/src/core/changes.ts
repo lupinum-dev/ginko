@@ -4,35 +4,61 @@ import { isTranslatable, slugKeyOf } from './fields.ts'
 import { labelOf } from './labels.ts'
 import { bare, DEFAULT_LOCALE, msg, type CoreKey, type Msg } from './messages.ts'
 import { treeFields } from './outline.ts'
+import { addDays } from './time.ts'
 import { isDate, validate, type ValidateOptions } from './validate.ts'
 import type { Day } from './entry-status.ts'
 import type { Brick, Field, Issue, Json, Schema } from './types.ts'
 
 /**
- * Fields that take new values from the first minute of `from` (a day in the site's zone) on, for good. `set` holds
- * whole fields in storage format (a list is one field); `null` clears an optional field.
+ * Fields that take new values from the first minute of `from` (a day in the site's zone). Without `until` the values
+ * hold for good (a new normal value). With `until` the change is an exception: its values lie over the normal values
+ * from `from` to the last minute of `until` and are never written into the entry; with overlaps the later `from` wins.
+ * `set` holds whole fields in storage format (a list is one field); `null` clears an optional field.
  */
-export interface Change { from: Day; set: Record<string, Json> }
+export interface Change { from: Day; until?: Day; set: Record<string, Json> }
 
-/** The keys a change will have later (a change with an end, a yearly one, a named one); refused as "not built yet". */
-const LATER_KEYS = ['until', 'yearly', 'name']
+/** The keys a change will have later (a yearly one, a named one); refused as "not built yet". */
+const LATER_KEYS = ['yearly', 'name']
 
-/** `a` before `b` by their days; changes of one day keep their order. */
-/** At most this many changes wait for an entry (the platform's save and import, D125, D128). */
+/** At most this many changes wait for an entry (the platform's save and import, D125, D128); both kinds count. */
 export const MAX_DATED = 20
 
+/** `a` before `b` by their days; changes of one day keep their order. */
 const byDay = (a: Change, b: Change) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0)
 
+/** A change with an end. */
+export const isException = (change: Change): change is Change & { until: Day } => change.until !== undefined
+
+/** The exceptions that hold on `day`, in the order of their starts (the last one wins where they overlap). */
+export function holdingOn(changes: readonly Change[] | undefined, day: Day): (Change & { until: Day })[] {
+  return (changes ?? []).filter(isException).filter((c) => c.from <= day && day <= c.until).sort(byDay)
+}
+
 /**
- * The values of `day`: `data` (stored form) with every change whose `from` is at or before `day` applied, in the order
- * of their days. The one place a change is applied (D118): the file reader with the build's day, the platform's run on
- * the day, and the check.
+ * The days on which an entry's values with `changes` can be largest, for the budget check (round L5): after its last
+ * change, every first day of a change (an exception lies over the values of its days only), and the day after each
+ * exception's end (the values it covered come back).
+ */
+export function sizeDays(changes: readonly Change[] | undefined): Day[] {
+  const days = new Set<Day>(['9999-12-31'])
+  for (const change of changes ?? []) {
+    days.add(change.from)
+    if (isException(change)) days.add(addDays(change.until, 1))
+  }
+  return [...days]
+}
+
+/**
+ * The values of `day`: `data` (stored form) with every change without an end whose `from` is at or before `day`
+ * applied in the order of their days, then the exceptions that hold on `day` laid over them in the order of their
+ * starts. The one place a change is applied (D118): the file reader with the build's day, the platform's run on the
+ * day and its read, and the check.
  */
 export function dataOn(data: Record<string, Json>, changes: readonly Change[] | undefined, day: Day): Record<string, Json> {
-  const due = (changes ?? []).filter((c) => c.from <= day)
+  const due = [...(changes ?? []).filter((c) => !isException(c) && c.from <= day).sort(byDay), ...holdingOn(changes, day)]
   if (!due.length) return data
   const out = { ...data }
-  for (const change of [...due].sort(byDay)) {
+  for (const change of due) {
     for (const [field, value] of Object.entries(change.set)) {
       if (value === null) delete out[field]
       else out[field] = value
@@ -44,6 +70,15 @@ export function dataOn(data: Record<string, Json>, changes: readonly Change[] | 
 /** The changes whose day is still ahead of `day`, in the order of their days. */
 export function waitingChanges(changes: readonly Change[] | undefined, day: Day): Change[] {
   return (changes ?? []).filter((c) => c.from > day).sort(byDay)
+}
+
+/**
+ * The changes that still matter on `day`, in the order of their days: those without an end still ahead (the others are
+ * written into the entry) and the exceptions that hold or wait (one that ended changes nothing any more). What a file
+ * entry keeps beside its values, and what an import keeps as rows; each counts toward `MAX_DATED`.
+ */
+export function keptChanges(changes: readonly Change[] | undefined, day: Day): Change[] {
+  return (changes ?? []).filter((c) => (isException(c) ? c.until >= day : c.from > day)).sort(byDay)
 }
 
 /**
@@ -114,25 +149,46 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
   }
   const good: { index: number; change: Change }[] = []
   const dayTaken = new Set<string>()
+  // The fields that exceptions starting on a day set: two exceptions of one start may not set one field (which wins?).
+  const startTaken = new Map<string, Set<string>>()
   changes.forEach((raw: unknown, index) => {
     const at = `$changes.${index}`
     if (!isRecord(raw)) return add(index, at, 'CHANGE', 'issues.changeShape')
     let ok = true
     for (const key of Object.keys(raw)) {
-      if (key === 'from' || key === 'set') continue
+      if (key === 'from' || key === 'until' || key === 'set') continue
       ok = false
       if (LATER_KEYS.includes(key)) add(index, `${at}.${key}`, 'NOT_YET', 'issues.changeNotYet', { key })
       else add(index, `${at}.${key}`, 'CHANGE', 'issues.changeKey', { key })
     }
+    const ends = Object.hasOwn(raw, 'until')
+    if (ends && !isDate(raw.until)) {
+      ok = false
+      add(index, `${at}.until`, 'CHANGE', 'issues.changeUntilDay', { value: String(raw.until ?? '') })
+    } else if (ends && isDate(raw.from) && (raw.until as string) < raw.from) {
+      ok = false
+      add(index, `${at}.until`, 'CHANGE', 'issues.changeUntilBefore', { until: raw.until as string, from: raw.from })
+    }
+    const set = raw.set
     if (!isDate(raw.from)) {
       ok = false
       add(index, `${at}.from`, 'CHANGE', 'issues.changeDay', { value: String(raw.from ?? '') })
+    } else if (ends) {
+      const taken = startTaken.get(raw.from) ?? new Set<string>()
+      const twice = isRecord(set) ? Object.keys(set).find((name) => taken.has(name)) : undefined
+      if (twice) {
+        ok = false
+        const field = Object.hasOwn(brick.fields, twice) ? brick.fields[twice]! : undefined
+        add(index, `${at}.from`, 'CHANGE', 'issues.changeSameStart', { day: raw.from, label: field ? labelOf(field.label, DEFAULT_LOCALE, main) : twice })
+      }
+      if (isRecord(set)) for (const name of Object.keys(set)) taken.add(name)
+      startTaken.set(raw.from, taken)
     } else if (dayTaken.has(raw.from)) {
-      // One change per day and entry: the platform keeps one row per day, so two would merge into one silently.
+      // One change without an end per day and entry: the platform keeps one row per day, so two would merge into one
+      // silently.
       ok = false
       add(index, `${at}.from`, 'CHANGE', 'issues.changeTwice', { day: raw.from })
     } else dayTaken.add(raw.from)
-    const set = raw.set
     if (!isRecord(set) || !Object.keys(set).length) {
       add(index, `${at}.set`, 'CHANGE', 'issues.changeEmpty')
       return
@@ -146,33 +202,42 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
         continue
       }
     }
-    if (ok) good.push({ index, change: { from: raw.from as Day, set: set as Record<string, Json> } })
+    if (ok) good.push({ index, change: { from: raw.from as Day, ...(ends ? { until: raw.until as Day } : {}), set: set as Record<string, Json> } })
   })
-  // The entry after each day, in the order of the days: a later day builds on the values an earlier one left, and the
-  // changes of one day count together (one may show a field that the other fills).
+  // The entry on each day where something starts or an exception has ended, in the order of the days (`dataOn` of all
+  // changes on that day): a later day builds on the values an earlier one left, the changes of one day count together
+  // (one may show a field that the other fills), and the day after an exception's end shows what comes back.
   const strict = async (d: Record<string, Json>) => (await validate(schema, brickKey, d, { ...options, mode: 'create' })).errors
   const keyOf = (issue: Issue) => `${issue.path}\u0000${issue.code}`
-  let current = data
-  let known = new Set((await strict(current)).map(keyOf))
-  const days = [...new Set(good.map((g) => g.change.from))].sort()
+  const all = good.map((g) => g.change)
+  let known = new Set((await strict(data)).map(keyOf))
+  const days = [...new Set(good.flatMap((g) => (g.change.until ? [g.change.from, addDay(g.change.until)] : [g.change.from])))].sort()
   for (const day of days) {
     const ofDay = good.filter((g) => g.change.from === day)
-    current = dataOn(current, ofDay.map((g) => g.change), day)
+    const current = dataOn(data, all, day)
     const changed = new Set(ofDay.flatMap((g) => Object.keys(g.change.set)))
-    const saved = (await validate(schema, brickKey, current, { ...options, mode: 'patch', changed })).errors
+    // A day where only exceptions end saves nothing new: its values are checked for what they newly break.
+    const saved = changed.size ? (await validate(schema, brickKey, current, { ...options, mode: 'patch', changed })).errors : []
     const errors = await strict(current)
     const taken = new Set<string>()
+    const ended = good.filter((g) => g.change.until !== undefined && addDay(g.change.until) === day)
     for (const problem of [...saved, ...errors.filter((e) => !known.has(keyOf(e)))]) {
       if (taken.has(keyOf(problem))) continue
       taken.add(keyOf(problem))
       const root = problem.path.split('.')[0]!
-      const owner = ofDay.find((g) => Object.hasOwn(g.change.set, root)) ?? ofDay.at(-1)!
+      const sets = (g: { change: Change }) => Object.hasOwn(g.change.set, root)
+      // The change of the day that sets the field; else after an end the normal change that set it, or the exception
+      // that ended; else the day's last change.
+      const normal = good.filter((g) => !g.change.until && g.change.from <= day && sets(g)).at(-1)
+      const owner = ofDay.find(sets) ?? ofDay.at(-1) ?? normal ?? ended.find(sets) ?? ended.at(-1)!
       out.push({ path: problem.path, code: problem.code, change: owner.index, from: day, ...msg('issues.changeValue', { day, problem: bare(problem) }) })
     }
     known = new Set(errors.map(keyOf))
   }
   return out
 }
+
+const addDay = (day: Day) => addDays(day, 1) as Day
 
 function isRecord(value: unknown): value is Record<string, Json> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
