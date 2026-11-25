@@ -57,6 +57,19 @@ test('a change for a later day sent for review names its day', async () => {
   expect(mocks.toasts.map((m) => m.text)).toEqual(['Sent for review. Planned from Saturday 5 December.'])
 })
 
+// Wrong behaviour caught (E6): a save with a day said "Saved. Online from …" when the server wrote nothing, or when the
+// save emptied that day's change, so the person believed a change was planned.
+test.each([
+  ['a change waits for that day', { entry: 'e', rev: 2, change: 'c1', dated: 'd1', from: '2026-12-05' }, ['Saved. On the website from Saturday 5 December.'], undefined],
+  ['the save emptied that day', { entry: 'e', rev: 2, change: 'c1', dated: null, from: '2026-12-05' }, ['Planned change cancelled. The website stays as it is.'], undefined],
+  ['nothing was written', { entry: 'e', rev: 2, contentRev: 3, warnings: [] }, [], true],
+] as const)('a save with a day: %s', async (_case, answer, toasts, unchanged) => {
+  mocks.toasts.length = 0
+  mocks.results.set('entries.save', answer)
+  const result = await ops.saveEntry({ entry: 'e', baseRev: 1, fields: { price: { amount: 2290 } }, op: 'o', main: 'de', from: '2026-12-05' })
+  expect([mocks.toasts.map((m) => m.text), 'unchanged' in result ? result.unchanged : undefined]).toEqual([toasts, unchanged])
+})
+
 describe('writes that become proposals', () => {
   test.each(paths)('%s: proposal says "Sent for approval", no Undo, no throw', async (_name, mutation, _normal, run) => {
     mocks.toasts.length = 0

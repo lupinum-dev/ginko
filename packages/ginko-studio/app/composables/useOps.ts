@@ -342,10 +342,11 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
         }
         const change = 'change' in result ? result.change : undefined
         // A change for a later day (D125): the day it starts on. It is cancelled or moved in the editor's notice of it,
-        // not undone from the history, so no Rückgängig.
+        // not undone from the history, so no Rückgängig. The message says "saved" only when the server answers that a
+        // change waits for that day (E6): an answer without `dated` wrote nothing, and `dated: null` emptied that day.
         if (args.from !== undefined) {
-          // The same change already waits for that day when the server wrote nothing: still true.
-          show(`${t('ops.saved')} ${liveText({ from: args.from })}`)
+          if (!('dated' in result)) return { proposal: undefined, rev: result.rev, unchanged: true as const }
+          show(result.dated === null ? t('dated.cancelled') : `${t('ops.saved')} ${liveText({ from: args.from })}`)
           return { proposal: undefined, rev: result.rev }
         }
         // A live entry keeps the save unpublished unless `publish`: the message says so, and there is nothing to undo on the website.

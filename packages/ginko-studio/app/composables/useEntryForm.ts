@@ -82,6 +82,11 @@ export function useEntryForm(o: EntryFormOptions) {
   const busy = ref(false)
   /** The last save went to approval (SPEC 17): the input stays, nothing changed on the website, so no new rev. Cleared by the next edit. */
   const waiting = ref(false)
+  /**
+   * The last save with a day changed nothing for that day (E6): no field differed from the stored one, or the server
+   * answered that the day already holds these values. The form keeps its input and says so.
+   */
+  const unchangedDay = ref(false)
   // A save does not fail while the connection is down: Convex sends it once it is back. Until then the button says so.
   // Both signals count: Convex notices a lost network only when its socket closes, which can take up to a minute (its
   // inactivity check); the browser's own signal comes at once. A slow save on a working connection is not offline.
@@ -232,6 +237,7 @@ export function useEntryForm(o: EntryFormOptions) {
       return false
     }
     busy.value = true
+    unchangedDay.value = false
     // Read now: a sheet closed while the save waits for the connection is gone when it lands.
     const key = localKey.value
     try {
@@ -256,7 +262,12 @@ export function useEntryForm(o: EntryFormOptions) {
         // Published at once, the form's fields that wait unpublished go too: the form showed them, so they are the input.
         const held = publishAs === true ? (o.entry()!.pending?.fields ?? []) : []
         const roots = [...new Set([...changedRoots(baseline.value, submitted), ...held, ...send])].filter((k) => keys().includes(k))
-        if (!roots.length && !confirm.value.length) return true
+        if (!roots.length && !confirm.value.length) {
+          // Nothing for that day: not done, so the sheet does not close as if a change were planned.
+          if (from === undefined) return true
+          unchangedDay.value = true
+          return false
+        }
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
         // The server checks the task against the changed fields and the confirmed ones (entries.ts saveNow).
         const task = o.task?.([...new Set([...roots, ...confirm.value.map((leaf) => leaf.split('.')[0]!)])])
@@ -268,6 +279,9 @@ export function useEntryForm(o: EntryFormOptions) {
         if (result.rev === undefined) {
           // Nothing was written: the stored state, base and rev stay; only the input counts as handed in.
           waiting.value = true
+        } else if (from !== undefined && 'unchanged' in result) {
+          unchangedDay.value = true
+          return false
         } else if (from !== undefined) {
           // The input went into a change for that day: the entry is as it was, and so is the form.
           baseRev.value = result.rev
@@ -514,5 +528,5 @@ export function useEntryForm(o: EntryFormOptions) {
     localOffer.value = null
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, notes, fieldIssues, showFieldErrors, problem, conflict, busy, offline, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
+  return { draft, baseline, initial, baseRev, ready, issues, notes, fieldIssues, showFieldErrors, problem, conflict, busy, offline, waiting, unchangedDay, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
 }

@@ -331,6 +331,7 @@
     "saveDay": "Tag speichern",
     "dayRequired": "Bitte einen Tag wählen.",
     "notADate": "Das ist kein Datum. Bitte wähle einen Tag oder leere das Feld.",
+    "nothingChanged": "Es ist noch nichts geändert. Ändere zuerst einen Wert.",
     "cancelled": "Geplante Änderung aufgehoben. Die Website bleibt, wie sie ist.",
     "moved": "Die Änderung gilt jetzt ab {day}."
   },

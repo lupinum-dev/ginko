@@ -768,4 +768,26 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     expect([sent.from, sent.publish]).toEqual([day, undefined])
     wrapper.unmount()
   })
+
+  // Wrong behaviour caught (E6): a day set and nothing changed (or only values the day already holds) closed the sheet
+  // with "Gespeichert. Auf der Website ab …", so the person believed a change was planned that was not.
+  test.each([
+    ['no field changed', false],
+    ['the server answers that the day already holds the values', true],
+  ] as const)('a day with nothing new keeps the sheet open and says so: %s', async (_case, typed) => {
+    if (typed) ops.saveEntry.mockImplementationOnce(async () => ({ rev: 4, unchanged: true }) as never)
+    const wrapper = mountAsk()
+    // The prefill holds the stored values of the task's fields.
+    answer({ data: { title: 'Alt' } })
+    await flushPromises()
+    if (typed) await wrapper.get('input[name="title"]').setValue('Später')
+    await wrapper.get('#sheet-starts-on').setValue(inDays(10))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(ops.saveEntry).toHaveBeenCalledTimes(typed ? 1 : 0)
+    expect(wrapper.text()).toContain('Es ist noch nichts geändert. Ändere zuerst einen Wert.')
+    expect(wrapper.emitted('close')).toBeUndefined()
+    expect(document.activeElement).toBe(wrapper.get('#sheet-starts-on').element)
+    wrapper.unmount()
+  })
 })
