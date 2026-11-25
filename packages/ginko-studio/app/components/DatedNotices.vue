@@ -16,6 +16,7 @@ import { changesText, valuesText, type Data } from '../utils/content'
 import { messageOf } from '../utils/messageOf'
 import type { OpError } from '../composables/useOps'
 import StartsOnField from './StartsOnField.vue'
+import { datedLine, type DatedRow } from '../utils/datedLines'
 
 /** `lastFocus`: the id of the element (the entry's title) that takes the focus when a cancel leaves no notice. */
 const props = defineProps<{ site: string; entry: string; brick: Brick; main: string; timeZone: string; currency: Currency; task?: string; lastFocus?: string }>()
@@ -33,6 +34,8 @@ function textOf(c: NonNullable<typeof data.value>[number]) {
   const normal = c.normal ? valuesText(props.brick.fields, c.fields, c.normal as Data, props.main, words) : undefined
   return normal ? t('dated.holding', { until: shortDay(c.until), changes, normal }) : t('dated.holdingPlain', { until: shortDay(c.until), changes })
 }
+/** The changes that wait or hold, for the line under each notice (datedLines, as the task sheet shows it). */
+const active = computed<DatedRow[]>(() => (data.value ?? []).filter((c) => !c.stopped).map((c) => ({ id: c.id, from: c.from, until: c.until, holds: c.holds === true, fields: c.fields, values: c.values as Data })))
 const notices = computed(() => (data.value ?? []).map((c) => ({
   id: c.id,
   from: c.from,
@@ -42,6 +45,7 @@ const notices = computed(() => (data.value ?? []).map((c) => ({
   mayMove: c.mayMove,
   text: textOf(c),
   since: !c.stopped && c.changedSince.length ? t('dated.changedSince', { fields: names(c.changedSince) }) : '',
+  line: c.stopped ? undefined : datedLine(active.value, active.value.find((r) => r.id === c.id)!, { t, format, currency: props.currency }),
 })))
 type Notice = (typeof notices.value)[number]
 
@@ -120,6 +124,7 @@ function moveDays(n: Notice) {
     <div v-for="n in notices" :key="n.id" class="grid gap-2 rounded-md bg-warning/10 px-3 py-2.5" role="status" :data-notice="n.id">
       <p class="font-semibold text-warning [overflow-wrap:anywhere]">{{ n.text }}</p>
       <p v-if="n.since" class="text-sm text-warning">{{ n.since }}</p>
+      <p v-if="n.line" class="text-sm text-warning" :data-test="n.line.test">{{ n.line.text }}</p>
       <template v-if="open?.id === n.id && open.step === 'cancel'">
         <p class="text-sm font-semibold" role="alert">{{ t(n.holds ? 'dated.endQuestion' : 'dated.cancelQuestion') }}</p>
         <div class="flex flex-wrap gap-2">

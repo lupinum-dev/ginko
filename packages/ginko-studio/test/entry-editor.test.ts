@@ -750,3 +750,32 @@ describe('the footer of a live entry with unpublished changes', () => {
     expect(buttons(wrapper).filter((b) => /^Ab .+ zur Prüfung senden$/.test(b))).toHaveLength(1)
   })
 })
+
+// Round L11, the rule "the form always edits the normal value". Wrong behaviour caught: in Alles bearbeiten the price
+// field under a holding offer looked like what the website shows (only the task sheet said otherwise), or the hint
+// was not read with the field.
+test('a field a holding offer covers says what the website shows until when, read with the field', async () => {
+  const offers = serializeSchema(defineSite({
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
+    pages: { home: { de: '/' } },
+    bricks: { menu: collection({ label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' }, timeline: { public: ['price'] }, fields: { title: f.text('Titel', { translate: false }), price: f.money('Preis') } }) },
+  }))
+  const until = '2099-12-31'
+  const rows = [{ id: 'd1', from: '2026-11-01', until, holds: true, fields: ['price'], values: { price: { amount: 990 } }, normal: { price: { amount: 1290 } }, by: null, at: 0, changedSince: [], mayCancel: true, mayMove: true }]
+  vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: ref(String(fn) === 'datedChanges.list' ? rows : undefined), error: ref(undefined) }))
+  try {
+    const entry = { _id: 'e1', brick: 'menu', kind: 'item' as const, order: 1, data: { title: 'Suppe', price: { amount: 1290 } }, rev: 3, fieldRevs: {}, lifeRev: 1, prints: {} }
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema: offers, brickKey: 'menu', brick: offers.bricks.menu!, entry, canRemove: false },
+      global: { stubs: { PreviewPane: true, NuxtLink: true, DatedNotices: true } },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    const hint = wrapper.get('[data-test="covered-hint"]')
+    const short = new Intl.DateTimeFormat('de-AT', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${until}T12:00:00Z`))
+    expect([hint.text().replace(/\s/g, ' '), wrapper.get('#f-price').attributes('aria-describedby')?.split(' ')]).toEqual([`Die Website zeigt bis ${short} 9,90 €.`, expect.arrayContaining([hint.attributes('id')])])
+    wrapper.unmount()
+  } finally {
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
+  }
+})

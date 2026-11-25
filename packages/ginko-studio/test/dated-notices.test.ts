@@ -161,6 +161,18 @@ describe('the notices of a change with an end', () => {
     wrapper.unmount()
   })
 
+  // Round L11, rows "overlap with another exception" and "a change without an end inside". Wrong behaviour caught: the
+  // editor showed two offers on the same days with no word which one the website shows, and a new normal price inside
+  // an offer as if it started on its day (only the task sheet said so).
+  test('an overlap says which offer the website shows; a normal change inside an offer says it waits for the end', () => {
+    const short = (day: string) => new Intl.DateTimeFormat('de-AT', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+    rows.value = [offer('d1', '2099-12-01', '2099-12-20'), offer('d2', '2099-12-10', '2099-12-31'), change('d3', '2099-12-15')]
+    const wrapper = mountNotices()
+    expect([wrapper.get('[data-notice="d2"] [data-test="dated-overlap"]').text(), wrapper.get('[data-notice="d3"] [data-test="dated-after-end"]').text(), wrapper.find('[data-notice="d1"] [data-test^="dated-"]').exists()])
+      .toEqual([`Vom ${short('2099-12-10')} bis ${short('2099-12-20')} gelten beide. Die Website zeigt die ab ${short('2099-12-10')}.`, 'Gilt, sobald die Ausnahme endet', false])
+    wrapper.unmount()
+  })
+
   // Row "Tage ändern". Wrong behaviour caught: a move of a waiting offer loses its end; a holding offer's start can be
   // moved (decision 4).
   test('"Tage ändern" moves both days of a waiting offer and only the end of a holding one', async () => {

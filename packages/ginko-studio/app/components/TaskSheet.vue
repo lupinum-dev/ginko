@@ -39,6 +39,7 @@ import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { refDebounced } from '@vueuse/core'
 import { msToZoned, scheduleProblem, whenFull } from '../utils/when'
 import { whoText } from '../utils/who'
+import { coveredHint as coveredText, coveredId, datedLine } from '../utils/datedLines'
 
 const props = defineProps<{
   site: string
@@ -460,26 +461,10 @@ const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopp
   return [{ id: c.id, from: c.from, until: c.until, holds, fields: ours, values, text }]
 }))
 type Notice = (typeof waitingNotices.value)[number]
-/**
- * The line under a notice (slice 3): an exception that starts inside an earlier one of a shared field says which one the
- * website shows on the days both hold (the later start wins); a change without an end inside an exception says it
- * waits for the end.
- */
-function lineOf(n: Notice): { test: string; text: string } | undefined {
-  const around = waitingNotices.value.filter((o) => o.id !== n.id && o.until !== undefined && o.fields.some((k) => n.fields.includes(k)))
-  if (n.until === undefined) return around.some((o) => o.from <= n.from && n.from <= o.until!) ? { test: 'dated-after-end', text: t('dated.afterEnd') } : undefined
-  const earlier = around.find((o) => o.from < n.from && n.from <= o.until!)
-  if (!earlier) return undefined
-  const end = earlier.until! < n.until ? earlier.until! : n.until
-  return { test: 'dated-overlap', text: t('dated.overlap', { from: dayMonth(n.from), until: dayMonth(end) }) }
-}
+/** The line under a notice: two offers on the same days, a change that waits for an offer's end (datedLines). */
+const lineOf = (n: Notice) => datedLine(waitingNotices.value, n, valueWords.value)
 /** Under a field an exception covers today: what the website shows instead, and until when (spec rule 5). */
-function coveredHint(key: string): string {
-  const n = waitingNotices.value.find((o) => o.holds && o.fields.includes(key))
-  if (!n?.until) return ''
-  const value = valuesText(fields.value, [key], n.values, props.main, valueWords.value)
-  return value ? t('dated.covered', { until: dayMonth(n.until), value }) : t('dated.coveredOther', { until: dayMonth(n.until) })
-}
+const coveredHint = (key: string) => coveredText(waitingNotices.value, key, fields.value, props.main, valueWords.value)
 /**
  * "Bearbeiten" on a notice of the kind the task makes (an exception for a task that asks both days, else a change
  * without an end): its days and values go into the form. A holding exception keeps its start (decision 4).
@@ -771,10 +756,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
                   :locale="lang"
                   :locales="locales"
                   :issues="shownIssues"
+                  :hint-id="coveredHint(String(key)) ? coveredId(String(key)) : undefined"
                   @update:model-value="form.setField(String(key), $event)"
                 />
                 <!-- The form edits the normal value; an exception that holds today covers it on the website. -->
-                <p v-if="coveredHint(String(key))" v-show="isShown(field, draft)" class="-mt-2 text-sm font-medium text-muted-foreground" data-test="covered-hint">{{ coveredHint(String(key)) }}</p>
+                <p v-if="coveredHint(String(key))" v-show="isShown(field, draft)" :id="coveredId(String(key))" class="-mt-2 text-sm font-medium text-muted-foreground" data-test="covered-hint">{{ coveredHint(String(key)) }}</p>
                 <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
               </template>
               <div v-if="asksDay && !foreign && holdingEdit" class="grid gap-1" role="group" aria-labelledby="sheet-fixed-from" data-slot="field" data-test="fixed-from">
