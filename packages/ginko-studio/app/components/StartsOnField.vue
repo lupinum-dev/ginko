@@ -34,6 +34,8 @@ function clear() {
   const input = document.getElementById(props.id) as HTMLInputElement | null
   if (input) input.value = ''
   pick('')
+  // A browser that keeps typed parts in the input after this still reports them: the field stays "not a date" (I2).
+  bad.value = input?.validity?.badInput === true
   nextTick(() => input?.focus())
 }
 </script>

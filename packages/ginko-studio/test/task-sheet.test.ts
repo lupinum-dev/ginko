@@ -711,9 +711,27 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     const day = wrapper.get('#sheet-starts-on')
     Object.defineProperty(day.element, 'validity', { value: { badInput: true }, configurable: true })
     await day.trigger('keyup')
+    // The browser drops the typed parts with the value: the emptied input is no longer "not a date".
+    Object.defineProperty(day.element, 'validity', { value: { badInput: false }, configurable: true })
     await wrapper.findAll('button').find((b) => b.text() === 'Leeren')!.trigger('click')
     await flushPromises()
     expect([(day.element as HTMLInputElement).value, wrapper.text().includes('Das ist kein Datum.'), document.activeElement === day.element]).toEqual(['', false, true])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I2.2): a browser that keeps the typed parts after "Leeren" still showed nothing wrong, and
+  // the next press saved as "today" while the field showed a half-typed day.
+  test('"Leeren" keeps "not a date" while the input still reports typed parts', async () => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(day.element, 'validity', { value: { badInput: true }, configurable: true })
+    await day.trigger('keyup')
+    await wrapper.findAll('button').find((b) => b.text() === 'Leeren')!.trigger('click')
+    await flushPromises()
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    expect([wrapper.text().includes('Das ist kein Datum.'), ops.saveEntry.mock.calls.length]).toEqual([true, 0])
     wrapper.unmount()
   })
 
