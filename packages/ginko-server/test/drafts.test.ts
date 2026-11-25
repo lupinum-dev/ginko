@@ -368,7 +368,7 @@ describe('people are told when a plan stops (D104)', () => {
     expect(mails.map((m) => m.to).sort()).toEqual(['koch@example.com', 'wirtin@example.com'])
     expect(mails[0]).toMatchObject({
       subject: '„Herbstfest“ ging nicht online',
-      text: `Hallo,\n\ndein Eintrag war für Donnerstag, 8. Oktober, 14:30 Uhr geplant. Er ging nicht online, weil „Beschreibung“ fehlt oder ungültig ist.\n\nDer Eintrag ist sicher. Korrigiere ihn, dann veröffentliche ihn oder gib ihm einen neuen Tag.\n\nEintrag öffnen: https://ginko.test/s/restaurant/all/events/${s.draft.entry}\n`,
+      text: `Hallo,\n\ndein Eintrag war für Donnerstag, 8. Oktober, 14:30 Uhr geplant. Er ging nicht online, weil „Beschreibung“ fehlt oder ungültig ist.\n\nDem Eintrag ist nichts passiert. Korrigiere ihn, dann veröffentliche ihn oder gib ihm einen neuen Tag.\n\nEintrag öffnen: https://ginko.test/s/restaurant/all/events/${s.draft.entry}\n`,
     })
 
     const left = await stoppedBy('u-weg')

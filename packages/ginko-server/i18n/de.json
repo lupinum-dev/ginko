@@ -348,7 +348,7 @@
     },
     "stopped": {
       "subject": "„{title}“ ging nicht online",
-      "text": "Hallo,\n\ndein Eintrag war für {at, date, ::EEEEdMMMM}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm} Uhr}} geplant. Er ging nicht online, weil {because}\n\nDer Eintrag ist sicher. Korrigiere ihn, dann veröffentliche ihn oder gib ihm einen neuen Tag.\n\nEintrag öffnen: {path}\n"
+      "text": "Hallo,\n\ndein Eintrag war für {at, date, ::EEEEdMMMM}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm} Uhr}} geplant. Er ging nicht online, weil {because}\n\nDem Eintrag ist nichts passiert. Korrigiere ihn, dann veröffentliche ihn oder gib ihm einen neuen Tag.\n\nEintrag öffnen: {path}\n"
     },
     "rejected": {
       "subject": "Nicht freigegeben: deine Änderung für {site}",
