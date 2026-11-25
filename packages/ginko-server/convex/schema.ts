@@ -211,6 +211,11 @@ export default defineSchema({
     revs: v.record(v.string(), v.number()),
     /** Who saved into it last (user id); absent on a change that came with an import. */
     by: v.optional(v.string()),
+    /**
+     * Someone other than `by` saved into it while it waited (a save, an approved request, the migration's join): it holds
+     * values of several people, so it is nobody's own to cancel without a yes (H2). Set once, for the row's life.
+     */
+    shared: v.optional(v.literal(true)),
     /** When it was made or last saved into (ms). */
     at: v.number(),
     /** The scheduled `datedChanges.applyDue` run at the first minute of `from`. Absent once it stopped. */

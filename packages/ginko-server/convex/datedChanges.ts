@@ -41,13 +41,14 @@ function mayChange(actor: Actor, schema: Schema, task: string | undefined, entry
 /**
  * Why `actor` may not take `step` on `row` through `task`, as the error the step throws; undefined when it may. One rule
  * for `cancel`, `setDay` and the list the editor reads (G7): the task's rights over the change's fields; and a person
- * whose change needs a yes moves none and cancels only their own (taking away someone else's planned values needs one).
+ * whose change needs a yes moves none and cancels only their own (taking away someone else's planned values needs one):
+ * a row they saved last that holds no one else's values (`shared`, H2).
  */
 async function datedRefusal(ctx: QueryCtx, actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated, step: 'cancel' | 'move'): Promise<ConvexError<Json> | undefined> {
   try {
     mayChange(actor, schema, task, entry, row)
     if (step === 'move' && entry.deletedAt) fail('NOT_FOUND', 'errors.datedNotFound')
-    if ((step === 'move' || row.by !== actor.user.id) && await needsProposal(ctx, actor, 'save', task, taskBrickOf(schema, task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
+    if ((step === 'move' || row.by !== actor.user.id || row.shared) && await needsProposal(ctx, actor, 'save', task, taskBrickOf(schema, task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
     return undefined
   } catch (error) {
     if (error instanceof ConvexError) return error as ConvexError<Json>

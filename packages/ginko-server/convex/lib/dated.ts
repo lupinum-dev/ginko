@@ -96,7 +96,8 @@ export async function insertWaiting(ctx: MutationCtx, schema: Schema, entry: Pic
     if (same) {
       const added = Object.keys(change.set).filter((root) => !Object.hasOwn(same.fields as object, root))
       const fields = { ...Object.fromEntries(added.map((root) => [root, change.set[root]!])), ...(same.fields as Record<string, Json>) }
-      await ctx.db.patch(same._id, { fields, revs: { ...Object.fromEntries(added.map((root) => [root, entry.rev])), ...same.revs } })
+      // Fields joined into a waiting row come from someone other than its `by` (H2).
+      await ctx.db.patch(same._id, { fields, revs: { ...Object.fromEntries(added.map((root) => [root, entry.rev])), ...same.revs }, ...(added.length && !same.stopped ? { shared: true as const } : {}) })
       await syncDatedRefs(ctx, schema, { _id: same._id, site: entry.site, brick: entry.brick, fields })
       continue
     }
@@ -210,7 +211,9 @@ export async function writeDated(ctx: MutationCtx, actor: Actor, entry: Doc<'ent
     const row = { fields: plan.fields, prints: plan.prints, revs: { ...keptRevs, ...Object.fromEntries(plan.roots.filter((r) => Object.hasOwn(plan.fields, r)).map((r) => [r, revs[r] ?? entry.rev])) }, by: actor.user.id, at: now }
     if (plan.same) {
       id = plan.same._id
-      await ctx.db.patch(id, { ...row, stopped: undefined })
+      // Someone else saves into a waiting row: it now holds values of several people (H2); a patch keeps a set flag.
+      const shared = !plan.same.stopped && plan.same.by !== actor.user.id
+      await ctx.db.patch(id, { ...row, stopped: undefined, ...(shared ? { shared: true as const } : {}) })
       if (!plan.same.job) await ctx.db.patch(id, { job: await ctx.scheduler.runAt(dayStart(plan.from, schema.timeZone), internal.datedChanges.applyDue, { change: id, from: plan.from }) })
     } else {
       id = await ctx.db.insert('datedChanges', { site: site._id, entry: entry._id, brick: entry.brick, from: plan.from, ...row })

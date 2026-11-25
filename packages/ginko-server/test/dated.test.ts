@@ -532,6 +532,27 @@ describe('a dated change that needs a yes', () => {
     expect(await steps('owner')).toEqual([['2026-10-09', true, true], ['2026-12-01', true, true]])
   })
 
+  // Wrong behaviour caught (H2.12): a request approved into the owner's change of that day made the asker its `by`, so
+  // they could cancel the owner's planned values with it, without a yes.
+  it('staff cannot cancel a change that holds someone else\'s values too', async () => {
+    const s = await datedSetup({ needsApproval: true })
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      for (const task of schema.bricks.menu!.tasks ?? []) if (task.id === 'price') (task as { fields: string[] }).fields = ['price', 'veg']
+      await ctx.db.patch(s.site, { schema })
+    })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { veg: 'vegan' }, from: '2026-10-09' })
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-09' }) as unknown as Proposed
+    await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })
+    const [row] = await s.dated(s.saibling)
+    expect([row!.by, row!.shared, Object.keys(row!.fields).sort()]).toEqual([people.cook, true, ['price', 'veg']])
+    const as = { site: 'restaurant', task: 'menu.price' }
+    expect(await errorOf(s.as.cook.mutation(api.datedChanges.cancel, { ...as, opId: opId(), change: row!._id }))).toMatchObject({ code: 'FORBIDDEN', key: 'errors.needsApprovalProposeAgain' })
+    expect((await s.as.cook.query(api.datedChanges.list, { site: 'restaurant', entry: s.saibling, task: 'menu.price' })).map((c) => c.mayCancel)).toEqual([false])
+    await s.as.owner.mutation(api.datedChanges.cancel, { site: 'restaurant', opId: opId(), change: row!._id })
+    expect(await s.dated(s.saibling)).toEqual([])
+  })
+
   // Wrong behaviour caught: a late yes publishes like a save with "publish now" and so throws away an unpublished
   // change of the same field, which the run on the day leaves waiting.
   it('a late yes writes what the run would: an unpublished change of the field keeps waiting', async () => {
