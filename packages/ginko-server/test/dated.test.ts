@@ -344,6 +344,19 @@ describe('a dated change that needs a yes', () => {
     expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
     expect((await s.history(s.saibling)).at(-1)).toMatchObject({ msg: { key: 'history.datedAppliedLate' } })
   })
+
+  // Wrong behaviour caught: a late yes publishes like a save with "publish now" and so throws away an unpublished
+  // change of the same field, which the run on the day leaves waiting.
+  it('a late yes writes what the run would: an unpublished change of the field keeps waiting', async () => {
+    const s = await datedSetup({ needsApproval: true })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1600 } } })
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 2, fields: { price: { amount: 1450 } }, from: '2026-10-09' }) as unknown as Proposed
+    await s.advanceTo(DAY1 + 3600_000)
+    await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
+    const pending = await s.t.run((ctx) => ctx.db.query('pendingChanges').withIndex('by_entry', (q) => q.eq('entry', s.saibling)).collect())
+    expect(pending).toMatchObject([{ fields: { price: { amount: 1600 } } }])
+  })
 })
 
 describe('export and import', () => {

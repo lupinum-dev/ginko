@@ -170,7 +170,9 @@ type Unchanged = { entry: Id<'entries'>; rev: number; contentRev: number; warnin
 async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof saveArgs>, line?: HistoryMsg) {
   const entry = await entryOf(ctx, actor, input.entry)
   const schema = actor.site.schema as Schema
-  // A yes on or after the day of a dated save writes online at once, as a save with `publish: true` (D127).
+  // A yes on or after the day of a dated save writes online at once what the run on that day would have written (D127):
+  // the values onto the online entry, as a save with `publish: true`, while unpublished changes of its fields keep
+  // waiting, as the run leaves them.
   const lateDay = input.from !== undefined && actor.approvedBy !== undefined && input.from <= todayIn(schema.timeZone) ? input.from : undefined
   const { from: _from, ...rest } = input
   const args: ObjectType<typeof saveArgs> = lateDay === undefined ? input : { ...rest, publish: true }
@@ -215,8 +217,8 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   const data: Data = { ...before }
   for (const [key, value] of Object.entries(args.fields)) {
     const field = brick.fields[key]!
-    // The form's value (an unpublished one included) is what the input changed.
-    const was = shown.data[key]
+    // The form's value (an unpublished one included) is what the input changed; a dated value is given over the online one.
+    const was = lateDay === undefined ? shown.data[key] : before[key]
     // Cleared in a foreign language: only that language's value goes, the main language stays.
     const merged = value === null
       ? (locale && locale !== main && isTranslatable(field) ? withoutLocale(was, locale) : undefined)
@@ -240,7 +242,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   const check = async () => await validate(schema, entry.brick, checked, { mode, changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
   if (!changed.length) {
     // Published as it is online: what waited for these fields is no longer wanted.
-    if (held && !toPending) await dropPendingRoots(ctx, schema, held, roots)
+    if (held && !toPending && lateDay === undefined) await dropPendingRoots(ctx, schema, held, roots)
     // A draft saved unchanged still lacks what it lacked: its warnings come back, so the form keeps its notes (D116).
     const warnings = stateOf(entry) === 'draft' ? (await check()).warnings as unknown as Json[] : []
     const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings }
@@ -285,7 +287,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   if (followed) await writeFollowedName(ctx, actor, entry, followed)
   if (moved.length) await moveSlugRows(ctx, actor, entry, locale!, moved)
   // What is online now no longer waits; the other unpublished fields do.
-  if (held) await dropPendingRoots(ctx, schema, held, changed)
+  if (held && lateDay === undefined) await dropPendingRoots(ctx, schema, held, changed)
   // What the other languages show now (the Studio's message after saving); a draft is not on the website.
   const translation = stateOf(entry) === 'draft' ? [] : translationNotes(schema, entry.brick, { _id: entry._id, data, prints }, before, changed, locale)
   // A week planned ahead shows later than "in about a minute": the Studio says from when.
