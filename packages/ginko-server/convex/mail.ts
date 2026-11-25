@@ -91,7 +91,8 @@ async function deliver(mail: Mail, key: string | undefined): Promise<{ sent: tru
     return { sent: false, retry: true, reason: `network error: ${String(error).slice(0, 200)}` }
   }
   if (response.ok) return { sent: true }
-  return { sent: false, retry: response.status === 429 || response.status >= 500, reason: `${response.status} ${(await response.text()).slice(0, 300)}` }
+  // The status alone: the provider's reply can repeat the address, and the reason goes to the logs.
+  return { sent: false, retry: response.status === 429 || response.status >= 500, reason: String(response.status) }
 }
 
 /**

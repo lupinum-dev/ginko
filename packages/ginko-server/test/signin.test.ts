@@ -75,7 +75,7 @@ it('a code mail that Resend refuses with 503 goes out on the retry with the same
   vi.stubEnv('GINKO_MAIL_FROM', 'Ginko <onboarding@resend.dev>')
   vi.stubEnv('RESEND_API_KEY', 're_test')
   const statuses = [503, 200, 400]
-  const fetch = vi.fn(async () => new Response('{}', { status: statuses.shift() }))
+  const fetch = vi.fn(async () => new Response('{"message":"wirtin@example.com"}', { status: statuses.shift() }))
   vi.stubGlobal('fetch', fetch)
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
   vi.useFakeTimers()
@@ -90,8 +90,9 @@ it('a code mail that Resend refuses with 503 goes out on the retry with the same
   expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/)
   expect(keys[1]).toBe(keys[0])
   expect(keys[2]).not.toBe(keys[0])
-  // Wrong behaviour caught: the log holds the subject, which for some mails is a title a client typed.
-  expect(warn.mock.calls.map((call) => String(call[0]))).toEqual([`Mail code ${keys[0]} not sent (503 {}); retry 1 in 5 s.`])
+  // Wrong behaviour caught: the log holds the subject, which for some mails is a title a client typed, or the provider's
+  // reply, which can repeat the address.
+  expect(warn.mock.calls.map((call) => String(call[0]))).toEqual([`Mail code ${keys[0]} not sent (503); retry 1 in 5 s.`])
   warn.mockRestore()
 })
 
