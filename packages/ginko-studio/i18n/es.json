@@ -325,6 +325,7 @@
     "cancelQuestion": "¿Anular este cambio planificado? No se puede deshacer.",
     "keep": "Mantener",
     "changeDay": "Cambiar día",
+    "edit": "Editar",
     "saveDay": "Guardar día",
     "dayRequired": "Elige un día.",
     "notADate": "Esto no es una fecha. Elige un día o vacía el campo.",

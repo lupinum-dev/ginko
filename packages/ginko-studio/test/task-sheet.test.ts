@@ -713,4 +713,24 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     expect(wrapper.get('[data-test="dated-waiting"]').text()).toBe('Ab Donnerstag, 5. März: Titel.')
     wrapper.unmount()
   })
+
+  // Wrong behaviour caught (E3): to change a planned price, the person had to know the day and retype every value, and
+  // putting a field back to its online value left the old planned value in that day's change.
+  test('"Bearbeiten" fills the day and the values, and the save replaces that day\'s change', async () => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    const day_ = wrapper.get('#sheet-starts-on').element as HTMLInputElement
+    expect([(wrapper.get('input[name="title"]').element as HTMLInputElement).value, day_.value, document.activeElement === day_]).toEqual(['Später', day, true])
+    await wrapper.get('input[name="title"]').setValue('Alt')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ fields: unknown; from?: string }]
+    expect([sent.fields, sent.from]).toEqual([{ title: 'Alt' }, day])
+    wrapper.unmount()
+  })
 })

@@ -325,6 +325,7 @@
     "cancelQuestion": "Diese geplante Änderung aufheben? Das lässt sich nicht rückgängig machen.",
     "keep": "Behalten",
     "changeDay": "Tag ändern",
+    "edit": "Bearbeiten",
     "saveDay": "Tag speichern",
     "dayRequired": "Bitte einen Tag wählen.",
     "notADate": "Das ist kein Datum. Bitte wähle einen Tag oder leere das Feld.",

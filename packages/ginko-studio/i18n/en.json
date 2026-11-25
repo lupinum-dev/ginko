@@ -325,6 +325,7 @@
     "cancelQuestion": "Cancel this planned change? This cannot be undone.",
     "keep": "Keep it",
     "changeDay": "Change day",
+    "edit": "Edit",
     "saveDay": "Save day",
     "dayRequired": "Please choose a day.",
     "notADate": "This is not a date. Choose a day or clear the field.",

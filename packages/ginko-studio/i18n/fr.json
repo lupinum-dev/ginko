@@ -325,6 +325,7 @@
     "cancelQuestion": "Annuler ce changement prévu ? C’est irréversible.",
     "keep": "Garder",
     "changeDay": "Changer de jour",
+    "edit": "Modifier",
     "saveDay": "Enregistrer le jour",
     "dayRequired": "Choisissez un jour.",
     "notADate": "Ce n’est pas une date. Choisissez un jour ou videz le champ.",

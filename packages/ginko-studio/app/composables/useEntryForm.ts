@@ -185,17 +185,21 @@ export function useEntryForm(o: EntryFormOptions) {
   /** What the last save asked for: the conflict answers (keepMine, mergeLists) repeat it, so Veröffentlichen stays one. */
   let asked: { at?: number } | true | undefined
   let askedFrom: string | undefined
+  let askedSend: readonly string[] | undefined
   /**
    * Saves; resolves true when done (nothing to save counts as done). `publish` when creating: `{}` online now, `{ at }` scheduled; absent a draft. On a live entry `true` puts the
    * saved fields online at once; absent, they wait as unpublished changes. `from` (a day after today, an online entry):
    * the changed fields become a dated change of that day (D125); the entry stays as it is, so the form goes back to it.
+   * `send`: fields sent even when they equal the stored value, so a change of that day the form was filled from is
+   * replaced, a field put back to its stored value included (the task sheet's "Bearbeiten", E3).
    */
-  function save(rev = baseRev.value, publish?: { at?: number } | true, from?: string): Promise<boolean> {
+  function save(rev = baseRev.value, publish?: { at?: number } | true, from?: string, send?: readonly string[]): Promise<boolean> {
     // A removed entry cannot take a save: the person restores it or saves the input as a new entry.
     if (o.removed?.()) return Promise.resolve(false)
     asked = publish
     askedFrom = from
-    return write(rev, publish, undefined, from)
+    askedSend = send
+    return write(rev, publish, undefined, from, send)
   }
 
   /** The input of a removed entry as a new entry (EntryGoneBanner); the server makes new addresses. */
@@ -220,7 +224,7 @@ export function useEntryForm(o: EntryFormOptions) {
     await Promise.all([...flushers].map((run) => run()))
   }
 
-  async function write(rev: number, publishAs?: { at?: number } | true, asNew?: { task?: string }, from?: string): Promise<boolean> {
+  async function write(rev: number, publishAs?: { at?: number } | true, asNew?: { task?: string }, from?: string, send: readonly string[] = []): Promise<boolean> {
     if (busy.value) return false
     await flush()
     if (blockers.size) {
@@ -251,7 +255,7 @@ export function useEntryForm(o: EntryFormOptions) {
       } else {
         // Published at once, the form's fields that wait unpublished go too: the form showed them, so they are the input.
         const held = publishAs === true ? (o.entry()!.pending?.fields ?? []) : []
-        const roots = [...new Set([...changedRoots(baseline.value, submitted), ...held])].filter((k) => keys().includes(k))
+        const roots = [...new Set([...changedRoots(baseline.value, submitted), ...held, ...send])].filter((k) => keys().includes(k))
         if (!roots.length && !confirm.value.length) return true
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
         // The server checks the task against the changed fields and the confirmed ones (entries.ts saveNow).
@@ -338,7 +342,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy({ ...theirs, ...mine } as Data)
     baseRev.value = c.rev
     conflict.value = null
-    return save(c.rev, asked, askedFrom)
+    return save(c.rev, asked, askedFrom, askedSend)
   }
   /**
    * Both people's rows, when every conflicting field is a list or a rows field and no row was changed by both or
@@ -374,7 +378,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy({ ...theirs, ...mine, ...merged } as Data)
     baseRev.value = c.rev
     conflict.value = null
-    return save(c.rev, asked, askedFrom)
+    return save(c.rev, asked, askedFrom, askedSend)
   }
 
   /** The stored values for the conflicting fields; the person's other changes stay in the form, unsaved. */

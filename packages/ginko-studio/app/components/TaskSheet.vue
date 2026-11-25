@@ -356,14 +356,23 @@ watch(startsOn, () => { startsOnError.value = '' })
 const dayOn = computed(() => (asksDay.value && startsOn.value ? startsOn.value : undefined))
 const shortDay = (day: string) => format.date(day, { weekday: 'short', day: 'numeric', month: 'short' })
 // Changes of the form's fields that wait for a later day (datedChanges.list): one notice each, so nobody plans over one
-// without knowing. Cancelling or moving one is done in Alles bearbeiten.
+// without knowing. "Bearbeiten" (E3) puts its day and values into the form; cancelling or moving one is done in Alles
+// bearbeiten.
 const datedArgs = () => (props.entry && !isCreate.value && props.entry.state !== 'draft' ? { site: props.site, entry: props.entry._id } : 'skip' as const)
 const { data: dated } = useConvexQuery(api.datedChanges.list, datedArgs, { server: false })
 const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopped).flatMap((c) => {
   const ours = c.fields.filter((k) => Object.hasOwn(fields.value, k))
   const changes = changesText(fields.value, ours, c.values as Data, props.main, { t, format, currency: props.schema.currency })
-  return ours.length ? [{ id: c.id, text: t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), changes }) }] : []
+  return ours.length ? [{ id: c.id, from: c.from, fields: ours, values: c.values as Data, text: t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), changes }) }] : []
 }))
+/** The waiting change "Bearbeiten" filled the form from: saved on its day, it is replaced (every field of it is sent). */
+const editing = ref<{ from: string; fields: string[] }>()
+function editChange(n: (typeof waitingNotices.value)[number]) {
+  startsOn.value = n.from
+  for (const key of n.fields) form.setField(key, n.values[key] ?? undefined)
+  editing.value = { from: n.from, fields: n.fields }
+  nextTick(() => document.getElementById('sheet-starts-on')?.focus())
+}
 
 /**
  * What a save does: `publish` goes online now (or waits for a yes), `draft` stays off the website (a new entry is a
@@ -387,7 +396,7 @@ async function save(step: Step = 'publish') {
       startsOnError.value = messageOf({ key: 'errors.dayNotAhead' })
       return document.getElementById('sheet-starts-on')?.focus()
     }
-    await finish(await form.save(undefined, undefined, from))
+    await finish(await form.save(undefined, undefined, from, editing.value?.from === from ? editing.value.fields : undefined))
     return
   }
   let publish: { at?: number } | true | undefined
@@ -531,7 +540,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             </div>
             <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
             <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
-            <p v-for="n in waitingNotices" :key="n.id" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning" role="status" data-test="dated-waiting">{{ n.text }}</p>
+            <div v-for="n in waitingNotices" :key="n.id" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md bg-warning/10 py-1 pr-1 pl-3">
+              <p class="py-1.5 font-semibold text-warning [overflow-wrap:anywhere]" role="status" data-test="dated-waiting">{{ n.text }}</p>
+              <Button v-if="asksDay && !foreign" type="button" variant="outline" size="sm" @click="editChange(n)">{{ t('dated.edit') }}</Button>
+            </div>
             <p v-if="oldWeek" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.oldWeek', { date: formatDay(oldWeek, format) }) }}</p>
             <!-- Like "Deinen Vorschlag wieder öffnen" above, it replaces the form's values: offered only before anything is typed. -->
             <Button v-if="isCreate && copyFrom && !copied && !dirty" type="button" variant="outline" class="justify-self-start" :disabled="copying" @click="copyThisWeek">{{ t('entry.copyThisWeek') }}</Button>
