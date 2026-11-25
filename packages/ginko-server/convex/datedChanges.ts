@@ -218,16 +218,16 @@ async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>,
  *   all its fields. `schemaRev` and `contentRev` rise.
  * Safe to run again: a site without these has nothing to do.
  */
-export const migratePlans = internalMutation({
+export const migrateOlderWays = internalMutation({
   args: stepArgs,
   handler: async (ctx, args): Promise<null> => {
     const page = await ctx.db.query('sites').paginate({ cursor: args.cursor, numItems: 1 })
-    for (const site of page.page) await migrateSitePlans(ctx, site)
+    for (const site of page.page) await migrateSite(ctx, site)
     return advance(ctx, args.run, page.isDone ? null : page.continueCursor)
   },
 })
 
-async function migrateSitePlans(ctx: MutationCtx, site: Doc<'sites'>) {
+async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
   const schema = site.schema as Schema
   const today = todayIn(schema.timeZone)
   const system: Actor = { user: { id: SYSTEM.actor }, site, role: 'admin', grants: [] }

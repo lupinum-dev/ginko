@@ -182,14 +182,14 @@ Rules for a new migration:
     code writes them.
   - `convex/entries.ts` `publishDue`: returns at once for an online entry, so an old run that fires before the
     migration changes nothing.
-  - `convex/datedChanges.ts` `migratePlans` reads `planned` from a stored schema (the core no longer knows the key;
+  - `convex/datedChanges.ts` `migrateOlderWays` reads `planned` from a stored schema (the core no longer knows the key;
     `checkSchema` refuses it with the way to move).
 - **Dependents:** every deployment with a time on unpublished changes, a request approved for a time, or a site whose
   stored schema has `planned` (the restaurant demo and sites made from the gastro preset).
 - **Steps:**
-  1. Deploy this code. The step runs one site per page: see `migratePlans` for the exact rules.
+  1. Deploy this code. The step runs one site per page: see `migrateOlderWays` for the exact rules.
   2. Check: `ops:status` shows it done. A site's next `ginko release` with the new gastro preset finds the stored
      schema as the config writes it (no `planned`, `timeline: { public: ['price'] }`); a config that still has
      `planned` is refused with the way to move.
   3. Contract step (next major, rule 6): remove `pendingChanges.publishAt`, `pendingChanges.publishJob` and
-     `proposals.job` from the schema, the online branch of `publishDue`, and `migratePlans` with its list entry.
+     `proposals.job` from the schema, the online branch of `publishDue`, and `migrateOlderWays` with its list entry.
