@@ -1,6 +1,6 @@
 // The restaurant jobs of UI.md 9, as the owner (Wirtin) and the cook (Koch) do them, at 390 and 1440 px.
 import { addDays, todayIn, weekInfo, workWeekOf } from '@lupinum/ginko/internal'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
 import { codeFor, openQuick, resetContent, serverDir } from './local'
 
@@ -19,6 +19,13 @@ async function confirmAllergens(page: Page) {
   await expect(ask).toBeVisible()
   await page.getByRole('button', { name: 'Ja, stimmt' }).click()
   await expect(ask).toHaveCount(0)
+}
+
+/** Taps the pill of a choice option: its radio or checkbox is in the pill but not drawn (21bbb3d3). */
+async function pick(scope: Locator, role: 'radio' | 'checkbox', name: string) {
+  const input = scope.getByRole(role, { name, exact: true })
+  await scope.locator('label').filter({ has: scope.page().getByRole(role, { name, exact: true }) }).click()
+  await expect(input).toBeChecked()
 }
 
 test.describe('Wirtin', () => {
@@ -84,13 +91,13 @@ test.describe('Wirtin', () => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Gericht hinzufügen' }).click()
     const sheet = page.getByRole('dialog')
-    await sheet.getByRole('radio', { name: 'Hauptspeisen' }).check()
+    await pick(sheet, 'radio', 'Hauptspeisen')
     await sheet.getByLabel('Name').fill('Ofengemüse')
     await sheet.getByLabel('Preis', { exact: true }).fill('13,50')
-    await sheet.getByRole('radio', { name: 'vegan' }).check()
+    await pick(sheet, 'radio', 'vegan')
     await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
     await expect(sheet.getByText('„Allergene“ fehlt.')).toBeVisible()
-    await sheet.getByRole('checkbox', { name: 'Keine', exact: true }).click()
+    await pick(sheet, 'checkbox', 'Keine')
     await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
     await expect(toast(page)).toContainText('Veröffentlicht')
   })
