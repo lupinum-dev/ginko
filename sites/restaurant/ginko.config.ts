@@ -52,7 +52,8 @@ export default defineSite({
         ...((dishes.tasks ?? []) as readonly TaskInput<typeof dishes.fields>[]),
         // A price for some days; the normal price comes back by itself after the last day.
         { id: 'offer', label: { de: 'Aktionspreis', en: 'Special price' }, fields: ['price'], when: { from: 'ask', until: 'ask' } },
-        // One press: the dish is off the website today and back tomorrow; the entry keeps "on the menu".
+        // One press: the dish is off the website today and back tomorrow; the entry keeps "on the menu". It goes in slice 6,
+        // when the preset's "Gericht heute aus" takes this form.
         { id: 'offToday', label: { de: 'Heute nicht auf der Karte', en: 'Not on the menu today' }, fields: [], when: { from: '@today', until: '@today' }, set: { onMenu: false } },
       ],
     }),
