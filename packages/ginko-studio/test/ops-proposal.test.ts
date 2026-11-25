@@ -61,7 +61,7 @@ test('a change for a later day sent for review names its day', async () => {
 // save emptied that day's change, so the person believed a change was planned.
 test.each([
   ['a change waits for that day', { entry: 'e', rev: 2, change: 'c1', dated: 'd1', from: '2026-12-05' }, ['Saved. On the website from Saturday 5 December.'], undefined],
-  ['the save emptied that day', { entry: 'e', rev: 2, change: 'c1', dated: null, from: '2026-12-05' }, ['Planned change cancelled. The website stays as it is.'], undefined],
+  ['the save emptied that day', { entry: 'e', rev: 2, change: 'c1', dated: null, from: '2026-12-05' }, ['Planned change cancelled.'], undefined],
   ['nothing was written', { entry: 'e', rev: 2, contentRev: 3, warnings: [] }, [], true],
 ] as const)('a save with a day: %s', async (_case, answer, toasts, unchanged) => {
   mocks.toasts.length = 0
