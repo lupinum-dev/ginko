@@ -698,6 +698,10 @@ describe('export and import', () => {
     const imported = await errorOf(s.t.mutation(internal.seed.importExport, { site: 'restaurant', files: [], entries: [{ id: 'c1', brick: 'contact', kind: 'single', order: 0, prints: {}, rev: 1, data: contact.data, changes: [{ from: '2026-12-01', until: '2026-12-03', set: { street: long } }] }] }))
     expect(imported.details).toMatchObject({ problems: [expect.objectContaining({ key: 'errors.importEntryTooLarge', params: expect.objectContaining({ id: 'c1' }) })] })
     expect(await errorOf(s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.contact!, baseRev: contact.rev, fields: { street: long }, from: '2026-10-20', until: '2026-10-22' }))).toMatchObject({ code: 'TOO_LARGE', key: 'errors.entryTooLarge' })
+    // Round N9d: a yearly row is measured on its days the same way, by import and by a save.
+    const importedYearly = await errorOf(s.t.mutation(internal.seed.importExport, { site: 'restaurant', files: [], entries: [{ id: 'c1', brick: 'contact', kind: 'single', order: 0, prints: {}, rev: 1, data: contact.data, changes: [{ from: '2026-12-01', until: '2026-12-03', yearly: true, set: { street: long } }] }] }))
+    expect(importedYearly.details).toMatchObject({ problems: [expect.objectContaining({ key: 'errors.importEntryTooLarge', params: expect.objectContaining({ id: 'c1' }) })] })
+    expect(await errorOf(s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.contact!, baseRev: contact.rev, fields: { street: long }, from: '2026-10-20', until: '2026-10-22', yearly: true }))).toMatchObject({ code: 'TOO_LARGE', key: 'errors.entryTooLarge' })
   })
 })
 

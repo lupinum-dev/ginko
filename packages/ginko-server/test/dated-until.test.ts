@@ -113,11 +113,13 @@ describe('a save with an end (state table: save, days valid)', () => {
     expect(await s.dated(s.saibling)).toEqual([])
   })
 
-  it('refuses a 21st row, both kinds counted', async () => {
+  // Round N9d: yearly rows count like the others (every second offer is yearly), and a yearly 21st is refused too.
+  it('refuses a 21st row, all kinds counted', async () => {
     const s = await untilSetup()
-    for (let i = 0; i < 10; i++) await s.offer(900 + i, `2026-11-${String(i + 1).padStart(2, '0')}`, '2026-11-30')
+    for (let i = 0; i < 10; i++) await s.offer(900 + i, `2026-11-${String(i + 1).padStart(2, '0')}`, '2026-11-30', i % 2 ? {} : { yearly: true })
     for (let i = 0; i < 10; i++) await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1400 + i } }, from: `2026-12-${String(i + 1).padStart(2, '0')}` })
     expect(await errorOf(s.offer(990, '2026-10-20', '2026-10-31'))).toMatchObject({ key: 'errors.tooManyDated' })
+    expect(await errorOf(s.offer(990, '2026-10-20', '2026-10-31', { yearly: true }))).toMatchObject({ key: 'errors.tooManyDated' })
   })
 })
 
@@ -443,14 +445,20 @@ describe('the entry around a holding offer (state table)', () => {
     expect(await errorOf(s.offer(990, '2026-10-20', '2026-12-31'))).toMatchObject({ key: 'errors.exceptionOnlyOnline', message: 'Nur ein Eintrag, der online ist, bekommt Werte für bestimmte Tage. Stelle ihn zuerst online.' })
   })
 
-  it('holds: offline the row stays and shows nothing; online again inside its days it shows again', async () => {
+  // Round N9b: the same for a yearly row, which after its end stays (waiting for next year) instead of going.
+  it.each<[string, Record<string, unknown>, number]>([
+    ['an offer', {}, 0],
+    ['a yearly row', { yearly: true }, 1],
+  ])('holds: offline the row stays and shows nothing; online again inside its days it shows again (%s)', async (_, extra, rowsAfterEnd) => {
     const s = await untilSetup()
-    await s.offer(990, TODAY, '2026-10-31')
+    await s.offer(990, TODAY, '2026-10-31', extra)
     await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: (await s.row(s.saibling))!.lifeRev })
     expect(await s.item(s.saibling)).toBeUndefined()
     expect(await s.dated(s.saibling)).toHaveLength(1)
     await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: (await s.row(s.saibling))!.lifeRev })
     expect(await s.shownPrice(s.saibling)).toBe(990)
+    await s.advanceTo(at('2026-11-01') + 1000)
+    expect([await s.shownPrice(s.saibling), (await s.dated(s.saibling)).length]).toEqual([1350, rowsAfterEnd])
   })
 
   // Row "normal value edited (now)". Wrong behaviour caught: a normal edit while an offer holds is refused, changes what
@@ -481,16 +489,20 @@ describe('the entry around a holding offer (state table)', () => {
 
   // Row "entry to the trash / restored". Wrong behaviour caught: a holding offer comes back with a restored entry
   // (D109: its dated changes go with it); round M3: the history calls the holding offer "geplant" (it was running).
+  // Round N9c: a waiting yearly row goes too and counts as planned; it does not come back next year after a restore.
   it('the trash takes a holding offer with the entry; a restore does not bring it back', async () => {
     const s = await untilSetup()
     await s.offer(990, TODAY, '2026-10-31')
     await s.offer(800, '2026-11-15', '2026-11-30')
+    await s.offer(700, '2026-12-01', '2026-12-31', { yearly: true })
     const lifeRev = (await s.row(s.saibling))!.lifeRev
     await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev })
     expect(await s.dated(s.saibling)).toEqual([])
     expect((await s.history(s.saibling)).filter((c) => c.kind === 'datedCancelled').map((c) => [c.msg!.key, c.msg!.params!.count]))
-      .toEqual([['history.datedCancelledWithEntry', 1], ['history.datedEndedWithEntry', 1]])
+      .toEqual([['history.datedCancelledWithEntry', 2], ['history.datedEndedWithEntry', 1]])
     await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: lifeRev + 1 })
+    expect(await s.shownPrice(s.saibling)).toBe(1350)
+    await s.advanceTo(at('2026-12-01') + 1000)
     expect(await s.shownPrice(s.saibling)).toBe(1350)
   })
 })

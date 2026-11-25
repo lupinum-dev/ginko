@@ -226,6 +226,24 @@ describe('the same start and overlaps (state table)', () => {
     expect(await s.dated(s.saibling)).toHaveLength(1)
   })
 
+  // Round N8 (suspected): "Bearbeiten" in a later year sends the listed days back; with nothing changed the press saves
+  // nothing. Wrong behaviour caught: the stored first-year `until` is compared with this year's, so it saves again.
+  // RED on the built code (it saves again: a new history line and a `dated` answer). Marked `fails` until the lead rules
+  // on the fix; remove `.fails` with the fix.
+  it.fails('a later year: "Bearbeiten" and a press with nothing changed saves nothing', async () => {
+    const s = await yearlySetup()
+    await s.season(990, '2027-11-01', '2027-11-30', { name: 'Herbst' })
+    const [row] = await s.dated(s.saibling)
+    await s.advanceTo(at('2027-11-01') + 1000)
+    await s.advanceTo(at('2027-12-01') + 1000)
+    await s.advanceTo(at('2028-10-15') + 1000)
+    await renewSession(s.t, 'owner')
+    const [listed] = await s.list()
+    const lines = (await s.history(s.saibling)).length
+    const answer = await s.season(990, listed!.from, listed!.until!, { name: 'Herbst', change: row!._id })
+    expect(['dated' in (answer as object), (await s.history(s.saibling)).length]).toEqual([false, lines])
+  })
+
   // Round N6: "Tage ändern" with only a new start keeps the end of the season's time of today, not its stored first end.
   // Wrong behaviour caught: in a later year the move is refused ("until before from": the first year's end) or ends on it.
   it('a later year: a move with only a new start keeps this time\'s end', async () => {
@@ -319,13 +337,21 @@ describe('the runs over the years (state table: end run, start run)', () => {
   })
 
   // Number 5 and row "start run a year later fails its checks". Wrong behaviour caught: a season that failed its checks
-  // shows anyway, fails silently, or tries again by itself the next year.
-  it('number 5: a stopped yearly row shows on 0 days, also the next year', async () => {
+  // shows anyway, fails silently, or tries again by itself the next year. Round N9a: the same when the start that fails
+  // comes after one full year that held (the row was used once, so a stop must not keep last year's state).
+  it.each<[string, string[], string[]]>([
+    ['the first start fails', [], ['2027-12-01', '2028-01-15', '2028-12-01', '2029-01-15']],
+    ['a start fails after one full year held', ['2027-12-01', '2028-02-01'], ['2028-12-01', '2029-01-15', '2029-12-01', '2030-01-15']],
+  ])('number 5: a stopped yearly row shows on 0 days, also the next year (%s)', async (_, held, after) => {
     const s = await yearlySetup()
     await s.season(990, '2027-12-01', '2028-01-31')
     const [row] = await s.dated(s.saibling)
+    for (const day of held) {
+      await s.advanceTo(at(day) + 1000)
+      expect([day, await s.shownPrice(s.saibling)]).toEqual([day, day.endsWith('12-01') ? 990 : 1350])
+    }
     await s.t.run((ctx) => ctx.db.patch(row!._id, { fields: { price: { amount: -5 } } }))
-    for (const day of ['2027-12-01', '2028-01-15', '2028-12-01', '2029-01-15']) {
+    for (const day of after) {
       await s.advanceTo(at(day) + 1000)
       expect([day, await s.shownPrice(s.saibling)]).toEqual([day, 1350])
     }
