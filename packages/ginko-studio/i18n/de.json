@@ -364,16 +364,16 @@
     "holdingPlain": "Bis {until} zeigt die Website: {changes}",
     "covered": "Die Website zeigt bis {until} {value}.",
     "coveredOther": "Die Website zeigt bis {until} einen anderen Wert.",
-    "overlap": "Vom {from} bis {until} gelten beide. Die Website zeigt die ab {from}.",
-    "afterEnd": "Gilt, sobald die Ausnahme endet",
-    "fromFixed": "Die Ausnahme gilt schon: Ändern lassen sich nur das Ende und die Werte.",
+    "overlap": "Von {from} bis {until} gelten beide. Die Website zeigt die Änderung ab {from}.",
+    "afterEnd": "Gilt, sobald die befristete Änderung endet",
+    "fromFixed": "Diese Änderung gilt schon: Nur ihr Ende und ihre Werte lassen sich ändern.",
     "todayOnlyValues": "Nur heute: {changes}",
     "todayOnly": "Ab morgen zeigt die Website wieder den normalen Stand.",
     "changeDays": "Tage ändern",
     "saveDays": "Tage speichern",
-    "movedUntil": "Die Ausnahme gilt jetzt von {day} bis {until}.",
+    "movedUntil": "Die Änderung gilt jetzt von {day} bis {until}.",
     "endNow": "Jetzt beenden",
-    "endQuestion": "Diese Ausnahme jetzt beenden? Die Website zeigt dann wieder den normalen Wert. Das lässt sich nicht rückgängig machen."
+    "endQuestion": "Diese Änderung jetzt beenden? Die Website zeigt dann wieder den normalen Wert. Das lässt sich nicht rückgängig machen."
   },
   "site": {
     "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",

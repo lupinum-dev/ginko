@@ -1418,8 +1418,8 @@ describe('"Gilt ab" and "Gilt bis" of a task with an end (slice 3)', () => {
     ]
     const wrapper = mountTask()
     await ready(wrapper)
-    expect(wrapper.get('[data-test="dated-overlap"]').text()).toBe(`Vom ${short(inDays(20))} bis ${short(inDays(40))} gelten beide. Die Website zeigt die ab ${short(inDays(20))}.`)
-    expect(wrapper.get('[data-test="dated-after-end"]').text()).toBe('Gilt, sobald die Ausnahme endet')
+    expect(wrapper.get('[data-test="dated-overlap"]').text()).toBe(`Von ${short(inDays(20))} bis ${short(inDays(40))} gelten beide. Die Website zeigt die Änderung ab ${short(inDays(20))}.`)
+    expect(wrapper.get('[data-test="dated-after-end"]').text()).toBe('Gilt, sobald die befristete Änderung endet')
     wrapper.unmount()
   })
 

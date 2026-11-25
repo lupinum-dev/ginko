@@ -169,7 +169,7 @@ describe('the notices of a change with an end', () => {
     rows.value = [offer('d1', '2099-12-01', '2099-12-20'), offer('d2', '2099-12-10', '2099-12-31'), change('d3', '2099-12-15')]
     const wrapper = mountNotices()
     expect([wrapper.get('[data-notice="d2"] [data-test="dated-overlap"]').text(), wrapper.get('[data-notice="d3"] [data-test="dated-after-end"]').text(), wrapper.find('[data-notice="d1"] [data-test^="dated-"]').exists()])
-      .toEqual([`Vom ${short('2099-12-10')} bis ${short('2099-12-20')} gelten beide. Die Website zeigt die ab ${short('2099-12-10')}.`, 'Gilt, sobald die Ausnahme endet', false])
+      .toEqual([`Von ${short('2099-12-10')} bis ${short('2099-12-20')} gelten beide. Die Website zeigt die Änderung ab ${short('2099-12-10')}.`, 'Gilt, sobald die befristete Änderung endet', false])
     wrapper.unmount()
   })
 

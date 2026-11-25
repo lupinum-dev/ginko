@@ -364,16 +364,16 @@
     "holdingPlain": "Hasta el {until} la web muestra: {changes}",
     "covered": "Hasta el {until} la web muestra {value}.",
     "coveredOther": "Hasta el {until} la web muestra otro valor.",
-    "overlap": "Del {from} al {until} valen las dos. La web muestra la del {from}.",
-    "afterEnd": "Vale en cuanto termine la excepción",
-    "fromFixed": "La excepción ya está en vigor: solo se pueden cambiar su fin y sus valores.",
+    "overlap": "Del {from} al {until} valen los dos. La web muestra el cambio del {from}.",
+    "afterEnd": "Vale en cuanto termine el cambio temporal",
+    "fromFixed": "Este cambio ya está en vigor: solo se pueden cambiar su fin y sus valores.",
     "todayOnlyValues": "Solo hoy: {changes}",
     "todayOnly": "A partir de mañana la web vuelve a mostrar lo normal.",
     "changeDays": "Cambiar días",
     "saveDays": "Guardar días",
-    "movedUntil": "La excepción vale ahora del {day} al {until}.",
+    "movedUntil": "El cambio vale ahora del {day} al {until}.",
     "endNow": "Terminar ahora",
-    "endQuestion": "¿Terminar esta excepción ahora? La web volverá a mostrar el valor normal. No se puede deshacer."
+    "endQuestion": "¿Terminar este cambio ahora? La web volverá a mostrar el valor normal. No se puede deshacer."
   },
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",

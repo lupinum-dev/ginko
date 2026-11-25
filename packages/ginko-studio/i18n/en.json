@@ -364,16 +364,16 @@
     "holdingPlain": "Until {until} the website shows: {changes}",
     "covered": "Until {until} the website shows {value}.",
     "coveredOther": "Until {until} the website shows another value.",
-    "overlap": "From {from} to {until} both apply. The website shows the one from {from}.",
-    "afterEnd": "Applies once the exception ends",
-    "fromFixed": "The exception already applies: only its end and its values can change.",
+    "overlap": "From {from} to {until} both apply. The website shows the change from {from}.",
+    "afterEnd": "Applies once the temporary change ends",
+    "fromFixed": "This change already applies: only its end and its values can change.",
     "todayOnlyValues": "Today only: {changes}",
     "todayOnly": "From tomorrow the website shows the normal state again.",
     "changeDays": "Change days",
     "saveDays": "Save days",
-    "movedUntil": "The exception now applies from {day} to {until}.",
+    "movedUntil": "The change now applies from {day} to {until}.",
     "endNow": "End now",
-    "endQuestion": "End this exception now? The website then shows the normal value again. This cannot be undone."
+    "endQuestion": "End this change now? The website then shows the normal value again. This cannot be undone."
   },
   "site": {
     "zoneNote": "All times are in the website's time zone ({zone}).",
