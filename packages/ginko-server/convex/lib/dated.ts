@@ -212,8 +212,10 @@ export async function writeDated(ctx: MutationCtx, actor: Actor, entry: Doc<'ent
     const row = { fields: plan.fields, prints: plan.prints, revs: { ...keptRevs, ...Object.fromEntries(plan.roots.filter((r) => Object.hasOwn(plan.fields, r)).map((r) => [r, revs[r] ?? entry.rev])) }, by: actor.user.id, at: now }
     if (plan.same) {
       id = plan.same._id
-      // Someone else saves into a waiting row: it now holds values of several people (H2); a patch keeps a set flag.
-      const shared = !plan.same.stopped && plan.same.by !== actor.user.id
+      // Someone else saves into a waiting row, or restarts a stopped one and keeps fields of it: it now holds values of
+      // several people (H2, I2); a patch keeps a set flag.
+      const keepsOld = Object.keys(plan.same.fields).some((root) => !plan.roots.includes(root) && Object.hasOwn(plan.fields, root))
+      const shared = plan.same.by !== actor.user.id && (!plan.same.stopped || keepsOld)
       await ctx.db.patch(id, { ...row, stopped: undefined, ...(shared ? { shared: true as const } : {}) })
       if (!plan.same.job) await ctx.db.patch(id, { job: await ctx.scheduler.runAt(dayStart(plan.from, schema.timeZone), internal.datedChanges.applyDue, { change: id, from: plan.from }) })
     } else {

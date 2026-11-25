@@ -592,6 +592,24 @@ describe('a dated change that needs a yes', () => {
     expect(await s.dated(s.saibling)).toEqual([])
   })
 
+  // Wrong behaviour caught (I2.6 a): a request approved into the owner's STOPPED change of that day restarted it with
+  // the owner's values kept, but not as shared, so the asker could cancel the owner's values without a yes.
+  it('a restart of someone else\'s stopped change that keeps its values is shared', async () => {
+    const s = await datedSetup({ needsApproval: true })
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      for (const task of schema.bricks.menu!.tasks ?? []) if (task.id === 'price') (task as { fields: string[] }).fields = ['price', 'veg']
+      await ctx.db.patch(s.site, { schema })
+    })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { veg: 'vegan' }, from: '2026-10-09' })
+    const [owners] = await s.dated(s.saibling)
+    await s.t.run((ctx) => ctx.db.patch(owners!._id, { stopped: { at: DAY1, reason: { code: 'failed' } }, job: undefined }))
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-09' }) as unknown as Proposed
+    await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })
+    const [row] = await s.dated(s.saibling)
+    expect([row!.by, row!.stopped, row!.shared, Object.keys(row!.fields).sort()]).toEqual([people.cook, undefined, true, ['price', 'veg']])
+  })
+
   // Wrong behaviour caught: a late yes publishes like a save with "publish now" and so throws away an unpublished
   // change of the same field, which the run on the day leaves waiting.
   it('a late yes writes what the run would: an unpublished change of the field keeps waiting', async () => {
