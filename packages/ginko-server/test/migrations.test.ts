@@ -181,10 +181,40 @@ describe('2026-11-25-dated-changes (D130)', () => {
     expect(menu.tasks.find((t: { id: string }) => t.id === 'price')).toEqual({ id: 'price', label: 'Preis ändern', kind: 'edit', pick: true, fields: ['price'], when: { from: 'ask' } })
     expect(menu.tasks.find((t: { id: string }) => t.id === 'edit').when).toBeUndefined()
     expect(checkSchema(after.site.schema as Schema, statusRules)).toEqual([])
-    expect([after.site.schemaRev, after.site.contentRev]).toEqual([before.schemaRev + 1, before.contentRev + 1])
+    // The model converts first; the risotto's change then touches a public field, so contentRev rises once more.
+    expect([after.site.schemaRev, after.site.contentRev]).toEqual([before.schemaRev + 1, before.contentRev + 2])
     // The coming price is on the website's bundle the way a new dated change is.
     const bundle = await (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json() as { bricks: { menu: { items: { id: string; upcoming?: unknown }[] } } }
     expect(bundle.bricks.menu.items.find((i) => i.id === schnitzel)?.upcoming).toEqual([{ from: '2026-10-18', data: { price: { amount: 2290, currency: 'EUR' } } }])
+  })
+
+  /** The menu's stored model as before D129: a `planned` price with its two plan fields. */
+  async function withPlanned(s: Awaited<ReturnType<typeof setup>>, site = s.site) {
+    await s.t.run(async (ctx) => {
+      const stored = structuredClone((await ctx.db.get(site))!.schema) as { bricks: Record<string, { fields: Record<string, unknown>; planned?: unknown; timeline?: unknown }> }
+      const menu = stored.bricks.menu!
+      menu.fields.nextPrice = { type: 'money', label: 'Geplanter Preis', optional: true, pos: 7 }
+      menu.fields.priceFrom = { type: 'date', label: 'Gilt ab', optional: true, pos: 8 }
+      menu.planned = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
+      delete menu.timeline
+      await ctx.db.patch(site, { schema: stored as never })
+    })
+  }
+  const timedRow = (s: Awaited<ReturnType<typeof setup>>, entry: Id<'entries'>, fields: Record<string, unknown>, publishAt: number) =>
+    s.t.run((ctx) => ctx.db.insert('pendingChanges', { site: s.site, entry, brick: 'menu', fields, prints: {}, revs: Object.fromEntries(Object.keys(fields).map((k) => [k, 1])), by: people.owner, since: 0, at: 0, publishAt }))
+  const datedRows = (s: Awaited<ReturnType<typeof setup>>) => s.t.run(async (ctx) => (await ctx.db.query('datedChanges').collect()).map((d) => [d.entry, d.from, d.fields]))
+
+  // Wrong behaviour caught: the timed changes were converted with the old model, so a plan field in them became a
+  // dated change of a field the converted model no longer has (it stops on its day, and no form shows it).
+  it('converts the planned rule first, then a timed change with the converted model', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const risotto = s.entries['menu-risotto']!
+    await withPlanned(s)
+    await timedRow(s, risotto, { price: { amount: 1500 }, nextPrice: { amount: 1600 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await runThisOne(s)
+    expect(await datedRows(s)).toEqual([[risotto, '2026-10-20', { price: { amount: 1500 } }]])
+    expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).toEqual([])
   })
 
   // Wrong behaviour caught: the migration cancels a job that already ran or failed, which rewrites its record in

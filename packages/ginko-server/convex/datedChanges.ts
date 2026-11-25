@@ -294,7 +294,19 @@ async function cancelWaiting(ctx: MutationCtx, job: Id<'_scheduled_functions'>) 
   if ((await ctx.db.system.get(job))?.state.kind === 'pending') await ctx.scheduler.cancel(job)
 }
 
+/**
+ * One site: first the `planned` rules (the model converts), then the timed unpublished changes, checked with the
+ * converted model, then the requests approved for a time.
+ */
 async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
+  await convertPlanned(ctx, site)
+  const converted = (await ctx.db.get(site._id))!
+  await convertTimed(ctx, converted)
+  await reopenTimedRequests(ctx, converted)
+}
+
+/** Unpublished changes with a time (`pendingChanges.publishAt`). */
+async function convertTimed(ctx: MutationCtx, site: Doc<'sites'>) {
   const schema = site.schema as Schema
   const today = todayIn(schema.timeZone)
   const system: Actor = { user: { id: SYSTEM.actor }, site, role: 'admin', grants: [] }
@@ -324,13 +336,21 @@ async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
       })
     }
   }
+}
 
+/** Single requests approved for a time: open again, so an approver decides them anew. Release members keep theirs. */
+async function reopenTimedRequests(ctx: MutationCtx, site: Doc<'sites'>) {
   for (const p of await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', site._id).eq('status', 'scheduled')).collect()) {
     if (p.release) continue
     if (p.job) await cancelWaiting(ctx, p.job)
     await ctx.db.patch(p._id, { status: 'open', at: undefined, job: undefined, decidedBy: undefined, decidedAt: undefined })
   }
+}
 
+/** The `planned` rules of the stored model and the plan fields of each entry. */
+async function convertPlanned(ctx: MutationCtx, site: Doc<'sites'>) {
+  const schema = site.schema as Schema
+  const today = todayIn(schema.timeZone)
   const planned = Object.entries(schema.bricks).flatMap(([key, brick]) => {
     const rule = (brick as { planned?: { field: string; next: string; from: string } }).planned
     return rule ? [{ key, rule }] : []
@@ -342,6 +362,9 @@ async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
   let trashBytes = 0
   for (const { key, rule } of planned) {
     for (const entry of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()) {
+      // An unpublished change of a plan field goes with the field, also on an entry without a plan.
+      const held = await pendingOf(ctx, entry._id)
+      if (held) await dropPendingRoots(ctx, schema, held, [rule.next, rule.from])
       const data = { ...(entry.data as Data) }
       if (!Object.hasOwn(data, rule.next) && !Object.hasOwn(data, rule.from)) continue
       const value = data[rule.next]
@@ -358,8 +381,6 @@ async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
       else bytes += size - entry.bytes
       await ctx.db.patch(entry._id, { data, prints, fieldRevs, rev: entry.rev + 1, bytes: size, contentAt: Date.now() })
       if (planned && day > today && !entry.deletedAt) await insertWaiting(ctx, schema, { ...entry, rev: entry.rev + 1 }, [{ from: day, set: { [rule.field]: value } }])
-      const held = await pendingOf(ctx, entry._id)
-      if (held) await dropPendingRoots(ctx, schema, held, [rule.next, rule.from])
     }
     const brick = next.bricks[key]! as Brick & { planned?: unknown }
     delete brick.planned
