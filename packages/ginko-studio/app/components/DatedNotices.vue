@@ -32,56 +32,68 @@ const open = ref<{ id: string; step: 'cancel' | 'day' }>()
 const day = ref('')
 const error = ref('')
 const busy = ref(false)
+const focus = (id: string) => nextTick(() => document.getElementById(id)?.focus())
+// Focus (E9): a step that opens takes it (the day field, or "Behalten", the answer that loses nothing); a step that
+// closes gives it back to the button that opened it, and after it succeeded to the notice's first button.
 function start(id: string, step: 'cancel' | 'day', from: string) {
   open.value = { id, step }
   day.value = from
   error.value = ''
-  if (step === 'day') nextTick(() => document.getElementById(`dated-day-${id}`)?.focus())
+  focus(step === 'day' ? `dated-day-${id}` : `dated-keep-${id}`)
 }
-async function run(work: () => Promise<void>) {
+function close() {
+  const was = open.value
+  open.value = undefined
+  if (was) focus(`dated-${was.step}-${was.id}-open`)
+}
+async function run(work: () => Promise<void>, gone = false) {
+  const id = open.value?.id
   busy.value = true
   error.value = ''
   try {
     await work()
     open.value = undefined
+    // A cancelled change's notice goes (`gone`): then the first button of another notice, when there is one.
+    nextTick(() => (gone ? document.querySelector<HTMLElement>(`[data-notice]:not([data-notice="${id}"]) button`) : document.getElementById(`dated-day-${id}-open`))?.focus())
   } catch (e) {
     error.value = (e as OpError).message
+    if (open.value?.step === 'day') focus(`dated-day-${open.value.id}`)
   } finally {
     busy.value = false
   }
 }
-const cancel = (id: string) => run(() => ops.cancelChange(id, props.task))
+const cancel = (id: string) => run(() => ops.cancelChange(id, props.task), true)
 function move(id: string) {
-  if (!day.value) return (error.value = t('dated.dayRequired'))
-  if (day.value <= todayIn(props.timeZone)) return (error.value = messageOf({ key: 'errors.dayNotAhead' }))
+  error.value = !day.value ? t('dated.dayRequired') : day.value <= todayIn(props.timeZone) ? messageOf({ key: 'errors.dayNotAhead' }) : ''
+  if (error.value) return focus(`dated-day-${id}`)
   return run(() => ops.moveChange(id, day.value, props.task))
 }
 </script>
 
 <template>
   <div v-if="notices.length" class="grid gap-2" data-test="dated-notices">
-    <div v-for="n in notices" :key="n.id" class="grid gap-2 rounded-md bg-warning/10 px-3 py-2.5" role="status">
+    <div v-for="n in notices" :key="n.id" class="grid gap-2 rounded-md bg-warning/10 px-3 py-2.5" role="status" :data-notice="n.id">
       <p class="font-semibold text-warning [overflow-wrap:anywhere]">{{ n.text }}</p>
       <p v-if="n.since" class="text-sm text-warning">{{ n.since }}</p>
       <template v-if="open?.id === n.id && open.step === 'cancel'">
         <p class="text-sm font-semibold" role="alert">{{ t('dated.cancelQuestion') }}</p>
         <div class="flex flex-wrap gap-2">
           <Button type="button" variant="destructive" size="sm" :disabled="busy" @click="cancel(n.id)">{{ t('dated.cancel') }}</Button>
-          <Button type="button" variant="outline" size="sm" @click="open = undefined">{{ t('dated.keep') }}</Button>
+          <Button :id="`dated-keep-${n.id}`" type="button" variant="outline" size="sm" @click="close">{{ t('dated.keep') }}</Button>
         </div>
       </template>
       <template v-else-if="open?.id === n.id && open.step === 'day'">
-        <StartsOnField :id="`dated-day-${n.id}`" v-model="day" class="max-w-80" :time-zone="timeZone" />
+        <StartsOnField :id="`dated-day-${n.id}`" v-model="day" class="max-w-80" :time-zone="timeZone" :error="error" />
         <div class="flex flex-wrap gap-2">
           <Button type="button" size="sm" :disabled="busy" @click="move(n.id)">{{ t('dated.saveDay') }}</Button>
-          <Button type="button" variant="ghost" size="sm" @click="open = undefined">{{ t('entry.cancel') }}</Button>
+          <Button type="button" variant="ghost" size="sm" @click="close">{{ t('entry.cancel') }}</Button>
         </div>
       </template>
       <div v-else class="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" @click="start(n.id, 'day', n.from)">{{ t('dated.changeDay') }}</Button>
-        <Button type="button" variant="outline" size="sm" @click="start(n.id, 'cancel', n.from)">{{ t('dated.cancel') }}</Button>
+        <Button :id="`dated-day-${n.id}-open`" type="button" variant="outline" size="sm" @click="start(n.id, 'day', n.from)">{{ t('dated.changeDay') }}</Button>
+        <Button :id="`dated-cancel-${n.id}-open`" type="button" variant="outline" size="sm" @click="start(n.id, 'cancel', n.from)">{{ t('dated.cancel') }}</Button>
       </div>
-      <p v-if="open?.id === n.id && error" class="text-sm font-medium text-destructive" role="alert">{{ error }}</p>
+      <p v-if="open?.id === n.id && open.step === 'cancel' && error" class="text-sm font-medium text-destructive" role="alert">{{ error }}</p>
     </div>
   </div>
 </template>

@@ -84,4 +84,38 @@ describe('the notices of changes for a later day', () => {
     expect(ops.moveChange).toHaveBeenCalledWith('d1', '2099-03-12', 'items.price')
     wrapper.unmount()
   })
+
+  // Wrong behaviour caught (E9): a keyboard or screen reader user lost their place: the cancel question opened without
+  // focus on its safe answer, closing a step dropped the focus to the page top, and a refused day was not tied to its
+  // field.
+  test('the steps move the focus and the day field carries its error', async () => {
+    rows.value = [change('d1', '2099-03-05'), change('d2', '2099-04-01')]
+    const wrapper = mountNotices()
+    const active = () => document.activeElement?.textContent?.trim() ?? document.activeElement?.id
+    await press(wrapper, 'Änderung aufheben')
+    expect(active()).toBe('Behalten')
+    await press(wrapper, 'Behalten')
+    expect(document.activeElement?.id).toBe('dated-cancel-d1-open')
+
+    await wrapper.get('#dated-day-d1-open').trigger('click')
+    await flushPromises()
+    expect(document.activeElement?.id).toBe('dated-day-d1')
+    await wrapper.get('#dated-day-d1').setValue('2020-01-01')
+    await press(wrapper, 'Tag speichern')
+    expect([wrapper.get('#dated-day-d1').attributes('aria-invalid'), document.activeElement?.id]).toEqual(['true', 'dated-day-d1'])
+    await press(wrapper, 'Abbrechen')
+    expect(document.activeElement?.id).toBe('dated-day-d1-open')
+
+    await wrapper.get('#dated-day-d1-open').trigger('click')
+    await flushPromises()
+    await wrapper.get('#dated-day-d1').setValue('2099-03-12')
+    await press(wrapper, 'Tag speichern')
+    expect(document.activeElement?.id).toBe('dated-day-d1-open')
+
+    await wrapper.get('#dated-cancel-d1-open').trigger('click')
+    await flushPromises()
+    await press(wrapper, 'Änderung aufheben')
+    expect(document.activeElement?.id).toBe('dated-day-d2-open')
+    wrapper.unmount()
+  })
 })
