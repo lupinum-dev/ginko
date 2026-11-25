@@ -295,7 +295,7 @@
     "staleChanged": "Quelqu’un a modifié cet élément entre-temps. Proposez la modification de nouveau.",
     "staleAlreadyLive": "Cette entrée est déjà en ligne.",
     "staleAlreadyDraft": "Cette entrée est déjà un brouillon.",
-    "staleTimeGone": "L’heure que cette demande voulait retirer n’existe plus.",
+    "staleTimeGone": "Cette demande voulait retirer une heure planifiée. Cette heure n’existe plus.",
     "staleApproverNotAllowed": "La personne qui approuve n’a plus le droit de l’approuver.",
     "staleNoLonger": "Ce n’est plus possible.",
     "staleRefused": "{why} Proposez la modification de nouveau.",

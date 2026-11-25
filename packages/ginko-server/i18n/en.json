@@ -295,7 +295,7 @@
     "staleChanged": "Someone has changed this in the meantime. Please propose the change again.",
     "staleAlreadyLive": "This entry is already online.",
     "staleAlreadyDraft": "This entry is already a draft.",
-    "staleTimeGone": "The time this request wanted to remove no longer exists.",
+    "staleTimeGone": "This request wanted to remove a planned time. That time no longer exists.",
     "staleApproverNotAllowed": "The approver is no longer allowed to approve this.",
     "staleNoLonger": "This is no longer possible.",
     "staleRefused": "{why} Please propose the change again.",
