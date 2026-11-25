@@ -5,9 +5,9 @@ import { changeRefusal, entryBytes, todayIn, validate, type Schema } from '@lupi
 import { ConvexError, v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
-import { actorFor, authorize, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor } from './lib/access'
+import { actorFor, authorize, byOf, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor } from './lib/access'
 import type { Data, Prints } from './lib/content'
-import { checkDay, datedOf, dayStart, dropDated, fieldNames, insertWaiting, planDated, refuseTaskWithoutDay, touchesPublic, writeDated, type Dated } from './lib/dated'
+import { checkDay, datedOf, dayStart, dropDated, fieldNames, insertWaiting, planDated, refuseTaskWithoutDay, syncDatedRefs, touchesPublic, writeDated, type Dated } from './lib/dated'
 import { msg, recorded } from './lib/history'
 import { entryLabel } from './lib/list'
 import { labeler } from './lib/names'
@@ -52,7 +52,7 @@ export const setDay = mutation({
       mayChange(actor, schema, args.task, entry, row)
       if (entry.deletedAt) fail('NOT_FOUND', 'errors.datedNotFound')
       checkDay(schema, args.from)
-      if (await needsProposal(ctx, actor, 'save', args.task, entry.brick, entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
+      if (await needsProposal(ctx, actor, 'save', args.task, taskBrickOf(schema, args.task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
       const result: Json = { change: row._id, from: args.from, contentRev: actor.site.contentRev }
       if (args.from === row.from && !row.stopped) return result
       const rows = (await datedOf(ctx, entry._id)).filter((r) => r._id !== row._id)
@@ -68,10 +68,12 @@ export const setDay = mutation({
       if (row.job) await ctx.scheduler.cancel(row.job)
       await ctx.db.patch(row._id, { from: args.from, fields: plan.fields, prints: plan.prints, stopped: undefined, job: undefined })
       await ctx.db.patch(row._id, { job: await ctx.scheduler.runAt(dayStart(args.from, schema.timeZone), internal.datedChanges.applyDue, { change: row._id, from: args.from }) })
+      // A field that holds its online value on the new day left the change, and with it the hold on its files.
+      await syncDatedRefs(ctx, schema, { _id: row._id, site: row.site, brick: row.brick, fields: plan.fields })
       const contentRev = touchesPublic(schema, entry.brick, Object.keys(row.fields)) ? actor.site.contentRev + 1 : actor.site.contentRev
       if (contentRev !== actor.site.contentRev) await ctx.db.patch(actor.site._id, { contentRev })
       await ctx.db.insert('changes', {
-        site: actor.site._id, entry: entry._id, brick: entry.brick, actor: actor.user.id, opId: args.opId, kind: 'dated', ...history,
+        site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'dated', ...history,
         entryRev: entry.rev, contentRev, at: Date.now(),
       })
       return { change: row._id, from: args.from, contentRev }
@@ -98,7 +100,7 @@ export const cancel = mutation({
       if (contentRev !== actor.site.contentRev) await ctx.db.patch(actor.site._id, { contentRev })
       const title = entryLabel(schema, entry.brick, entry.data as Data)
       const change = await ctx.db.insert('changes', {
-        site: actor.site._id, entry: entry._id, brick: entry.brick, actor: actor.user.id, opId: args.opId, kind: 'datedCancelled',
+        site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'datedCancelled',
         ...recorded(msg('history.datedCancelled', { title, day: dayStart(row.from, schema.timeZone), fields: fieldNames(schema, entry.brick, Object.keys(row.fields)) }), schema),
         entryRev: entry.rev, contentRev, at: Date.now(),
       })

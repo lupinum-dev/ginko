@@ -4,7 +4,7 @@ import { factComponent, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, people, setup } from './setup'
+import { errorOf, opId, people, setup, upload } from './setup'
 
 // Mail is the one thing mocked besides the clock: the outbox records it.
 const NOW = Date.parse('2026-10-08T10:00:00Z')
@@ -249,6 +249,25 @@ describe('moving and cancelling', () => {
     await s.advanceTo(DAY1 + 1000)
     expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
     expect(await s.dated(s.saibling)).toMatchObject([{ from: '2026-11-03' }])
+  })
+
+  // Wrong behaviour caught: a moved change drops a field that holds its online value on the new day but keeps holding
+  // the field's file, so the file is never swept once the entry lets go of it.
+  it('a moved change lets go of the file of a field it no longer sets', async () => {
+    const s = await datedSetup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      schema.bricks.menu!.fields.card = { type: 'file', label: 'Karte', accept: ['pdf'], maxBytes: 1024 * 1024, optional: true }
+      await ctx.db.patch(s.site, { schema })
+    })
+    const file = await upload(s)
+    await s.plan(1450, '2026-10-20', { fields: { price: { amount: 1450 }, card: { file } } })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { card: { file } }, publish: true })
+    const [change] = await s.dated(s.saibling)
+    await s.as.owner.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), change: change!._id, from: '2026-10-25' })
+    expect((await s.dated(s.saibling))[0]!.fields).toEqual({ price: { amount: 1450 } })
+    const held = await s.t.run((ctx) => ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', 'dated').eq('holderId', change!._id)).collect())
+    expect(held).toEqual([])
   })
 
   it('cancel removes the change and its run; the bundle no longer announces it', async () => {
