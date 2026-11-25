@@ -34,8 +34,10 @@ async function yearlySetup(opts: { needsApproval?: boolean } = {}) {
   const approval = opts.needsApproval ? { needsApproval: true } : {}
   await s.t.run(async (ctx) => {
     const schema = (await ctx.db.get(s.site))!.schema as Schema
-    const menu = schema.bricks.menu! as { timeline?: { public: string[] }; tasks: unknown[] }
+    const menu = schema.bricks.menu! as { timeline?: { public: string[] }; tasks: { id: string }[] }
     menu.timeline = { public: ['price'] }
+    // The demo's own tasks of these ids (its "Saisongericht" sets onMenu) give way to the ones of this table.
+    menu.tasks = menu.tasks.filter((task) => !['season', 'offer', 'offToday'].includes(task.id))
     menu.tasks.push(
       { id: 'season', label: 'Saisonpreis', kind: 'edit', pick: true, fields: ['price'], when: { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' }, ...approval },
       { id: 'offer', label: 'Aktionspreis', kind: 'edit', pick: true, fields: ['price'], when: { from: 'ask', until: 'ask' }, ...approval },
