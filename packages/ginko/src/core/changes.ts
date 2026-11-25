@@ -84,21 +84,25 @@ export function changeRefusal(schema: Pick<Schema, 'locales'>, brick: Brick, nam
   return undefined
 }
 
-/** An issue of one change: `change` is its index in the list that was checked. */
-export type ChangeIssue = Issue & { change: number }
+/**
+ * An issue of one change: `change` is its index in the list that was checked; `from` is the day whose values have the
+ * problem (absent for a change that is not well formed), so two runs over different lists can be compared.
+ */
+export type ChangeIssue = Issue & { change: number; from?: Day }
 
 /**
  * The check of an entry's changes (D119), for `ginko check`, the file reader and the platform: `changes` is a list;
  * each change has a day in `from` and at least one field in `set`, and no other key (`until`, `yearly` and `name` are
  * not built yet); each field is one a change may set (`changeRefusal`); an entry has at most one change per day; and
- * the whole entry is checked before and after each day's changes, in the entry's own mode (`release` for an entry that
- * is or goes online, `draft` for a draft without a time): every error that is new after the day is the
- * problem of that day's changes, also one on a field no change sets (a required field that a change shows through its
- * `showWhen`, a cross-field rule). A problem the entry already had is not the change's. A new problem goes to the change
- * of that day that sets its field, else to the day's last change. `data` is the entry's stored data; `options` are passed
- * to `validate` (references, files). Only errors.
+ * each day's changes are checked like a save of their fields on that day, plus what that day newly breaks elsewhere.
+ * With the days in order and S_k the entry after day k's changes (S_0 = `data`): the errors of a patch of S_k that
+ * changes the fields of day k (a rule across fields counts when the day sets one of its fields), and the errors of a
+ * strict check of S_k that S_(k-1) did not have (a required field that a change shows through its `showWhen`). A
+ * problem the entry already had elsewhere is not the change's. Each problem goes to the change of that day that sets
+ * its field, else to the day's last change, once per path and code. `data` is the entry's stored data; `options` are
+ * passed to `validate` (references, files). Only errors.
  */
-export async function changeIssues(schema: Schema, brickKey: string, data: Record<string, Json>, changes: unknown, options: Omit<ValidateOptions, 'mode' | 'changed'> & { mode?: 'release' | 'draft' } = {}): Promise<ChangeIssue[]> {
+export async function changeIssues(schema: Schema, brickKey: string, data: Record<string, Json>, changes: unknown, options: Omit<ValidateOptions, 'mode' | 'changed'> = {}): Promise<ChangeIssue[]> {
   const brick = Object.hasOwn(schema.bricks, brickKey) ? schema.bricks[brickKey] : undefined
   if (!brick) return []
   const main = schema.locales[0] ?? DEFAULT_LOCALE
@@ -146,20 +150,24 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
   })
   // The entry after each day, in the order of the days: a later day builds on the values an earlier one left, and the
   // changes of one day count together (one may show a field that the other fills).
-  const { mode = 'release', ...lookups } = options
-  const errorsOf = async (d: Record<string, Json>) => (await validate(schema, brickKey, d, { ...lookups, mode })).errors
+  const strict = async (d: Record<string, Json>) => (await validate(schema, brickKey, d, { ...options, mode: 'create' })).errors
   const keyOf = (issue: Issue) => `${issue.path}\u0000${issue.code}`
   let current = data
-  let known = new Set((await errorsOf(current)).map(keyOf))
+  let known = new Set((await strict(current)).map(keyOf))
   const days = [...new Set(good.map((g) => g.change.from))].sort()
   for (const day of days) {
     const ofDay = good.filter((g) => g.change.from === day)
     current = dataOn(current, ofDay.map((g) => g.change), day)
-    const errors = await errorsOf(current)
-    for (const problem of errors.filter((e) => !known.has(keyOf(e)))) {
+    const changed = new Set(ofDay.flatMap((g) => Object.keys(g.change.set)))
+    const saved = (await validate(schema, brickKey, current, { ...options, mode: 'patch', changed })).errors
+    const errors = await strict(current)
+    const taken = new Set<string>()
+    for (const problem of [...saved, ...errors.filter((e) => !known.has(keyOf(e)))]) {
+      if (taken.has(keyOf(problem))) continue
+      taken.add(keyOf(problem))
       const root = problem.path.split('.')[0]!
       const owner = ofDay.find((g) => Object.hasOwn(g.change.set, root)) ?? ofDay.at(-1)!
-      out.push({ path: problem.path, code: problem.code, change: owner.index, ...msg('issues.changeValue', { from: day, problem: bare(problem) }) })
+      out.push({ path: problem.path, code: problem.code, change: owner.index, from: day, ...msg('issues.changeValue', { from: day, problem: bare(problem) }) })
     }
     known = new Set(errors.map(keyOf))
   }

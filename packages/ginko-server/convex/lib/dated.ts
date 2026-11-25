@@ -155,9 +155,7 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   if (!keys.length) return plan
 
   const changes: Change[] = [...asChanges(others), { from, set: fields }]
-  // In the entry's own mode: a draft without a time may lack what it lacks (D115, D126).
-  const mode = entry.state === 'draft' && entry.publishAt === undefined ? 'draft' : 'release'
-  const issues = (await changeIssues(schema, entry.brick, live, changes, { ...await lookupsFor(ctx, site._id, brick.fields, after), mode })).filter((i) => i.change === changes.length - 1)
+  const issues = (await changeIssues(schema, entry.brick, live, changes, await lookupsFor(ctx, site._id, brick.fields, after))).filter((i) => i.change === changes.length - 1)
   if (issues.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: issues.map(({ change: _, ...issue }) => issue) as unknown as Json })
   await checkNewFiles(ctx, site._id, brick.fields, before, after)
   await checkNewLinks(ctx, site, [{ entry, fields: brick.fields, before, after }], dayStart(from, schema.timeZone))

@@ -364,7 +364,7 @@ export const importExport = internalMutation({
       // before the entry is stored, the others wait. A removed entry has none (removing it cancelled them).
       const exported = (row.changes ?? []).map((c) => ({ from: c.from, set: remapFileIds(def.fields, c.set as Data, uploads) }))
       const stored = remapFileIds(def.fields, row.data as Data, uploads)
-      const changeProblem = exported.length && row.deletedAt === undefined ? (await changeIssues(schema, row.brick, stored, exported, { mode: row.state === 'draft' && row.publishAt === undefined ? 'draft' : 'release' }))[0] : undefined
+      const changeProblem = exported.length && row.deletedAt === undefined ? (await changeIssues(schema, row.brick, stored, exported))[0] : undefined
       if (changeProblem) problems.push({ code: 'INVALID', key: 'errors.importEntryInvalid', params: { id: row.id, path: changeProblem.path, count: 1 } })
       const remapped = row.deletedAt === undefined ? dataOn(stored, exported, today) : stored
       const changes = row.deletedAt === undefined ? waitingChanges(exported, today) : []

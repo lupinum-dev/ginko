@@ -121,6 +121,43 @@ describe('changeIssues: the check of an entry\'s changes', () => {
     })
   })
 
+  // Round F, the table: a day's changes are checked like a save of their fields on that day, plus what that day newly
+  // breaks elsewhere. Wrong behaviour caught: rules across fields (times in order, a week start) are only warnings in a
+  // release check, so an end before its start passed; and a problem the entry already had hid a new one of the same
+  // field and code (a stored title too long, a change with another too long title).
+  describe('the table of a day\'s check', () => {
+    const notice = single({
+      label: 'Aushang',
+      fields: {
+        title: f.text('Titel', { max: 10, translate: false }),
+        price: f.money('Preis'),
+        showNote: f.boolean('Hinweis zeigen'),
+        note: f.text('Hinweis', { max: 40, translate: false, showWhen: { field: 'showNote', is: true } }),
+        start: f.time('Beginn'),
+        end: f.time('Ende', { after: 'start' }),
+        weekOf: f.date('Woche'),
+      },
+      tasks: [{ id: 'week', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: { weekOf: '@workWeek' } }],
+    })
+    const notices = schema({ bricks: { dishes, practice, notice } })
+    const base: Record<string, Json> = { title: 'Kurz', price: money(100), showNote: false, start: '10:00', end: '11:30', weekOf: '2026-10-05' }
+    const long = { ...base, title: 'Ein viel zu langer Titel' }
+    const day1 = '2026-11-01'
+    const day2 = '2026-12-01'
+    it.each([
+      ['1 a change that shows a required field left empty', base, [{ from: day1, set: { showNote: true } }], [[0, day1, 'note', 'REQUIRED']]],
+      ['2 an end before its start', base, [{ from: day1, set: { end: '09:00' } }], [[0, day1, 'end', 'TIME_ORDER']]],
+      ['3 a start after its end', base, [{ from: day1, set: { start: '12:00' } }], [[0, day1, 'end', 'TIME_ORDER']]],
+      ['4 another field of an entry with a stored problem', long, [{ from: day1, set: { price: money(200) } }], []],
+      ['5 the stored problem\'s field with another wrong value', long, [{ from: day1, set: { title: 'Noch ein zu langer Titel' } }], [[0, day1, 'title', 'TOO_LONG']]],
+      ['6 a required field filled, then cleared on a later day', { ...base, showNote: true }, [{ from: day1, set: { note: 'x' } }, { from: day2, set: { note: null } }], [[1, day2, 'note', 'REQUIRED']]],
+      ['7 one change that shows a field and fills it', base, [{ from: day1, set: { showNote: true, note: 'x' } }], []],
+      ['10 a week that does not start on the site\'s first day', base, [{ from: day1, set: { weekOf: '2026-10-07' } }], [[0, day1, 'weekOf', 'NOT_WEEK_START']]],
+    ])('%s', async (_, data, changes, expected) => {
+      expect((await changeIssues(notices, 'notice', data, changes)).map((i) => [i.change, i.from, i.path, i.code])).toEqual(expected)
+    })
+  })
+
   it('names the day of a change in the problem of its value', async () => {
     const [issue] = await check([{ from: '2026-11-01', set: { price: null } }])
     expect(issue?.message).toBe('Änderung ab 2026-11-01: „Preis“ fehlt.')
