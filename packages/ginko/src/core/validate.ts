@@ -272,13 +272,10 @@ function checkScalar(field: Field, value: unknown, path: string, locale: Locale 
       if (value.to === undefined) return fail('REQUIRED', 'dateRangeToMissing')
       return (value.from as string) <= (value.to as string) ? [] : fail('DATE_ORDER', 'dateRangeOrder')
     }
-    // A value of the wrong type is `TYPE` (refused in a draft too, H2); a string that is no option is `CHOICE`.
     case 'choice':
-      if (typeof value !== 'string') return fail('TYPE', 'badChoice')
-      return field.options.some((o) => o.value === value) ? [] : fail('CHOICE', 'badChoice')
+      return typeof value === 'string' && field.options.some((o) => o.value === value) ? [] : fail('CHOICE', 'badChoice')
     case 'choices': {
-      if (!Array.isArray(value) || value.some((v) => typeof v !== 'string')) return fail('TYPE', 'badChoices')
-      if (value.some((v) => !field.options.some((o) => o.value === v))) return fail('CHOICE', 'badChoices')
+      if (!Array.isArray(value) || value.some((v) => typeof v !== 'string' || !field.options.some((o) => o.value === v))) return fail('CHOICE', 'badChoices')
       if (new Set(value).size !== value.length) return fail('DUPLICATE', 'duplicateValues')
       if (field.max !== undefined && value.length > field.max) return fail('TOO_MANY', 'tooManyChosen', { max: field.max })
       return []
@@ -332,8 +329,6 @@ function checkScalar(field: Field, value: unknown, path: string, locale: Locale 
     case 'image':
       if (!isRecord(value) || typeof value.file !== 'string' || !isRecord(value.alt) || Object.keys(value).some((k) => k !== 'file' && k !== 'alt')) return fail('TYPE', 'notImage')
       for (const l of Object.keys(value.alt)) if (!ctx!.locales.includes(l as Locale)) return [issue(join(path, `alt.${l}`), 'UNKNOWN_LOCALE', 'unknownLocale', { locale: l })]
-      // An alt text that is not text is a broken image value, refused in a draft too (H2), not a text too long.
-      if (Object.values(value.alt).some((a) => typeof a !== 'string')) return fail('TYPE', 'notImage')
       if (effectiveAlt(value.alt, ctx!.fileAlt?.(value.file), ctx!.main) === '') return [issue(join(path, 'alt'), 'ALT_REQUIRED', 'altMissing', { label })]
       return Object.entries(value.alt).flatMap(([l, a]) => typeof a !== 'string' || a.length > ALT_MAX ? [issue(join(path, `alt.${l}`), 'TOO_LONG', 'altTooLong', { label })]
         : ALT_INVISIBLE.test(a) ? [issue(join(path, `alt.${l}`), 'FORMAT', 'controlChars', { label })] : [])
