@@ -4,24 +4,25 @@
      unpublish). "Tag ändern" moves it to another day (datedChanges.setDay; a change that stopped on its day starts
      again). Neither can be undone, so the message after it offers no Rückgängig. -->
 <script setup lang="ts">
-import type { Brick, Label as LabelText } from '@lupinum/ginko'
+import type { Brick, Currency, Label as LabelText } from '@lupinum/ginko'
 import { todayIn } from '@lupinum/ginko/internal'
 import { api } from '#convex/api'
 import { Button } from '@studio/components/ui/button'
 import { shownLabel } from '../utils/labels'
+import { changesText, type Data } from '../utils/content'
 import { messageOf } from '../utils/messageOf'
 import type { OpError } from '../composables/useOps'
 import StartsOnField from './StartsOnField.vue'
 
-const props = defineProps<{ site: string; entry: string; brick: Brick; main: string; timeZone: string; task?: string }>()
-const { t } = useI18n()
+const props = defineProps<{ site: string; entry: string; brick: Brick; main: string; timeZone: string; currency: Currency; task?: string }>()
+const { t, format } = useI18n()
 const ops = useOps(computed(() => props.site))
 const { data } = useConvexQuery(api.datedChanges.list, () => ({ site: props.site, entry: props.entry }), { server: false })
 const names = (keys: readonly string[]) => keys.map((k) => shownLabel((props.brick.fields[k]?.label ?? k) as LabelText, props.main)).join(', ')
 const notices = computed(() => (data.value ?? []).map((c) => ({
   id: c.id,
   from: c.from,
-  text: t(c.stopped ? 'dated.stopped' : 'dated.waiting', { day: ops.dayText(c.from), fields: names(c.fields) }),
+  text: t(c.stopped ? 'dated.stopped' : 'dated.waiting', { day: ops.dayText(c.from), changes: changesText(props.brick.fields, c.fields, c.values as Data, props.main, { t, format, currency: props.currency }) }),
   since: !c.stopped && c.changedSince.length ? t('dated.changedSince', { fields: names(c.changedSince) }) : '',
 })))
 

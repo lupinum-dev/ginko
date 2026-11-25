@@ -784,7 +784,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           @restore="restoreRemoved" @save-as-new="saveAsNew" @discard="discardRemoved"
         />
         <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
-        <DatedNotices v-if="entry && state === 'live' && !removed" :site="site.slug" :entry="entry._id" :brick="brick" :main="main" :time-zone="timeZone" :task="tasks?.save" />
+        <DatedNotices v-if="entry && state === 'live' && !removed" :site="site.slug" :entry="entry._id" :brick="brick" :main="main" :time-zone="timeZone" :currency="schema.currency" :task="tasks?.save" />
         <ConflictPanel
           v-if="conflict"
           :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="locale" :main="main"

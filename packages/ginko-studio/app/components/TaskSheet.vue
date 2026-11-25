@@ -26,7 +26,7 @@ import { XIcon } from '@lucide/vue'
 import { ConfigProvider, injectConfigProviderContext } from 'reka-ui'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
-import { formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
+import { changesText, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { planOwner } from '../utils/today'
 import { opErrorOf } from '../composables/useOps'
@@ -361,7 +361,8 @@ const datedArgs = () => (props.entry && !isCreate.value && props.entry.state !==
 const { data: dated } = useConvexQuery(api.datedChanges.list, datedArgs, { server: false })
 const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopped).flatMap((c) => {
   const ours = c.fields.filter((k) => Object.hasOwn(fields.value, k))
-  return ours.length ? [{ id: c.id, text: t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), fields: ours.map((k) => shown(fields.value[k]!.label)).join(', ') }) }] : []
+  const changes = changesText(fields.value, ours, c.values as Data, props.main, { t, format, currency: props.schema.currency })
+  return ours.length ? [{ id: c.id, text: t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), changes }) }] : []
 }))
 
 /**

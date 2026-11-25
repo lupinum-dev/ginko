@@ -710,7 +710,7 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     datedRows.value = [{ id: 'd1', from: '2099-03-05', fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
     const wrapper = mountAsk()
     await ready(wrapper)
-    expect(wrapper.get('[data-test="dated-waiting"]').text()).toBe('Ab Donnerstag, 5. März gilt eine geplante Änderung: Titel.')
+    expect(wrapper.get('[data-test="dated-waiting"]').text()).toBe('Ab Donnerstag, 5. März: Titel.')
     wrapper.unmount()
   })
 })
