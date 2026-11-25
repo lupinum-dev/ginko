@@ -303,7 +303,11 @@ export function sortEntries(brick: CollectionBrick, entries: StoredEntry[], lang
     if (v === undefined || v === null) return []
     if (typeof v === 'number') return [v]
     if (typeof v === 'object' && !Array.isArray(v) && 'amount' in v) return [Number((v as { amount: unknown }).amount)]
-    if (typeof v === 'object' && !Array.isArray(v) && 'from' in v) return [String((v as { from: unknown }).from), String((v as { to?: unknown }).to)]
+    // A draft may hold half a period: the missing side counts as empty.
+    if (typeof v === 'object' && !Array.isArray(v) && ('from' in v || 'to' in v)) {
+      const { from, to } = v as { from?: unknown; to?: unknown }
+      return [String(from ?? ''), String(to ?? '')]
+    }
     return [typeof v === 'object' ? stableJson(v as Json) : String(v)]
   }
   const compare = (a: (number | string)[], b: (number | string)[]): number => {

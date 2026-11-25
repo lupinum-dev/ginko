@@ -203,15 +203,14 @@ describe('shownOn: dates are inclusive in the site time zone (SPEC 2.1)', () => 
 })
 
 describe('sortEntries: when asc (SPEC 2.1)', () => {
-  it('sorts by from, then to, then id', () => {
-    const entry = (id: string, from: string, to: string): StoredEntry => ({ id, data: { when: { from, to } } })
-    const sorted = sortEntries(collectionOf(base(), 'events'), [
-      entry('k2', '2026-10-10', '2026-10-12'),
-      entry('k9', '2026-10-10', '2026-10-11'),
-      entry('k1', '2026-10-10', '2026-10-12'),
-      entry('k5', '2026-10-09', '2026-10-30'),
-    ])
-    expect(sorted.map((e) => e.id)).toEqual(['k5', 'k9', 'k1', 'k2'])
+  // Wrong behaviour caught (H2.18): a draft's half period (one side missing) sorted by its JSON text or as "undefined",
+  // so it landed after every full period instead of where its missing side counts as empty.
+  it.each([
+    ['full periods', [['k2', '2026-10-10', '2026-10-12'], ['k9', '2026-10-10', '2026-10-11'], ['k1', '2026-10-10', '2026-10-12'], ['k5', '2026-10-09', '2026-10-30']], ['k5', 'k9', 'k1', 'k2']],
+    ['a period with { to } alone or { from } alone', [['k2', '2026-10-10', '2026-10-12'], ['to', undefined, '2026-10-30'], ['from', '2026-10-10', undefined]], ['to', 'from', 'k2']],
+  ] as const)('sorts by from, then to, then id: %s', (_, rows, expected) => {
+    const entry = ([id, from, to]: readonly [string, string | undefined, string | undefined]): StoredEntry => ({ id, data: { when: { ...(from ? { from } : {}), ...(to ? { to } : {}) } } })
+    expect(sortEntries(collectionOf(base(), 'events'), rows.map(entry)).map((e) => e.id)).toEqual(expected)
   })
 
   // Wrong behaviour caught: an order without `dir` sorts descending, the opposite of the query order's default.
