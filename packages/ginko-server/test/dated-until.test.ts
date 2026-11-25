@@ -210,6 +210,23 @@ describe('the runs (start and end)', () => {
     expect((await s.t.run((ctx) => ctx.db.query('outbox').collect())).map((m) => m.to)).toEqual(['wirtin@example.com'])
   })
 
+  // Round L5: the start run checks what its day newly breaks, as the paper says, not only its own fields. Wrong behaviour
+  // caught: a release since the save added a required field that the offer's value shows (`showWhen`), and the offer
+  // holds anyway, so the website shows an entry with a required field empty.
+  it('a start run whose day newly breaks the entry stops the row', async () => {
+    const s = await untilSetup()
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { onMenu: false }, from: '2026-10-09', until: '2026-10-10' })
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.menu!.fields as Record<string, unknown>).backOn = { type: 'text', label: 'Wieder da am', max: 40, translate: false, showWhen: { field: 'onMenu', is: false } }
+      await ctx.db.patch(s.site, { schema })
+    })
+    await s.advanceTo(at('2026-10-09') + 1000)
+    const [row] = await s.dated(s.saibling)
+    expect([row!.holds, row!.stopped?.reason]).toEqual([undefined, { code: 'invalid', fields: ['backOn'] }])
+    expect((await s.item(s.saibling))?.data.onMenu).not.toBe(false)
+  })
+
   // Ruling (3) after step 1. Wrong behaviour caught: an offer whose start comes while the entry is offline holds anyway,
   // so it shows the moment someone puts the entry online again, without a check or a word.
   it('a start run on an entry that is not online stops the row with a reason and a mail', async () => {

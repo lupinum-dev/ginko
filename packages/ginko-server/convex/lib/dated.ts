@@ -223,7 +223,7 @@ export interface DatedPlan {
  * what the new change breaks on any day, also on the day of another change (a field it clears that a later change
  * shows). A problem a waiting change already has by itself is not the new change's.
  */
-async function newIssues(schema: Schema, brick: string, live: Data, others: Change[], changes: Change[], lookups: Omit<ValidateOptions, 'mode' | 'changed'>) {
+export async function newIssues(schema: Schema, brick: string, live: Data, others: Change[], changes: Change[], lookups: Omit<ValidateOptions, 'mode' | 'changed'>) {
   const keyOf = (i: ChangeIssue) => `${i.from}\u0000${i.path}\u0000${i.code}`
   const had = new Set((await changeIssues(schema, brick, live, others, lookups)).map(keyOf))
   return (await changeIssues(schema, brick, live, changes, lookups)).filter((i) => !had.has(keyOf(i)))

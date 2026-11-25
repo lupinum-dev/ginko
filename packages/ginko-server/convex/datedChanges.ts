@@ -7,7 +7,7 @@ import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, byOf, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor } from './lib/access'
 import type { Data, Prints } from './lib/content'
-import { asChanges, checkDay, checkUntil, datedOf, dayStart, dropDated, endOf, fieldNames, insertWaiting, isHolding, planDated, refuseTaskWithoutDay, scheduleRun, syncDatedRefs, taskOf, taskSet, touchesPublic, writeDated, type Dated } from './lib/dated'
+import { asChanges, checkDay, checkUntil, datedOf, dayStart, dropDated, endOf, fieldNames, insertWaiting, isHolding, newIssues, planDated, refuseTaskWithoutDay, scheduleRun, syncDatedRefs, taskOf, taskSet, touchesPublic, writeDated, type Dated } from './lib/dated'
 import { msg, recorded } from './lib/history'
 import { entryLabel } from './lib/list'
 import { labeler } from './lib/names'
@@ -256,12 +256,22 @@ async function startException(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'
   const today = todayIn(schema.timeZone)
   // Its days passed before it could start (the run came late): it ends without ever holding.
   if (until < today) return await endException(ctx, site, entry, row, until)
-  const others = (await datedOf(ctx, entry._id)).filter((r) => r._id !== row._id && isHolding(r))
+  const rows = await datedOf(ctx, entry._id)
+  const others = rows.filter((r) => r._id !== row._id && isHolding(r))
   // An entry that is not online gets no exception (as a save refuses one, `datedOnlyOnline`): it would show unchecked the
   // moment the entry goes online again (ruling 3 after step 1).
   let reason: StopReason | undefined = entry.state === 'draft' ? { code: 'invalid', fields: Object.keys(row.fields), cause: { key: 'errors.exceptionNotOnline' } } : undefined
   if (!reason) try {
-    reason = await dueRefusal(ctx, site, { ...entry, data: dataOn(entry.data as Data, asChanges(others), today) }, row)
+    const shown = { ...entry, data: dataOn(entry.data as Data, asChanges(others), today) }
+    reason = await dueRefusal(ctx, site, shown, row)
+    // What its days newly break across the entry (a release since the save may have added a rule its values break, such
+    // as a required field they show), as the save checked it (`newIssues`, round L5).
+    if (!reason) {
+      const waiting = rows.filter((r) => !r.stopped && r._id !== row._id)
+      const brick = schema.bricks[entry.brick]!
+      const issues = await newIssues(schema, entry.brick, entry.data as Data, asChanges(waiting), asChanges([...waiting, row]), await lookupsFor(ctx, site._id, brick.fields, shown.data))
+      if (issues.length) reason = { code: 'invalid', fields: [...new Set(issues.map((i) => i.path.split('.')[0]!))] }
+    }
   } catch (error) {
     reason = { code: 'failed' }
     console.error(`Dated change ${row._id} failed (${errorKind(error)}).`)
