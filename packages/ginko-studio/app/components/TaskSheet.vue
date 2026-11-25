@@ -388,9 +388,11 @@ function editChange(n: (typeof waitingNotices.value)[number]) {
   editing.value = { from: n.from, fields: n.fields }
   nextTick(() => document.getElementById('sheet-starts-on')?.focus())
 }
+/** The change being edited, while it still waits: cancelled, gone online or stopped meanwhile, it counts no more (I2). */
+const edited = computed(() => (editing.value && waitingNotices.value.some((n) => n.from === editing.value!.from) ? editing.value : undefined))
 /** After "Bearbeiten", another day in the field plans a second change; the one being edited stays (H1). */
 const secondChange = computed(() => {
-  const was = editing.value?.from
+  const was = edited.value?.from
   return was && startsOn.value && !startsOnBad.value && startsOn.value !== was ? t('dated.secondChange', { day: format.date(was, { weekday: 'long', day: 'numeric', month: 'long' }) }) : ''
 })
 
@@ -423,7 +425,7 @@ async function save(step: Step = 'publish') {
     merged.value = false
     datedSaving.value = true
     try {
-      ok = await form.save(undefined, undefined, from, editing.value?.from === from ? editing.value.fields : undefined)
+      ok = await form.save(undefined, undefined, from, edited.value?.from === from ? edited.value.fields : undefined)
     } finally {
       datedSaving.value = false
     }

@@ -864,6 +864,28 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
+  // Wrong behaviour caught (I2.4): the edited change was cancelled (or went online) while the sheet was open, yet the
+  // sheet still spoke of it as staying and sent its fields as if replacing it, so a value equal to the stored one was
+  // planned as a change.
+  test('"Bearbeiten" counts only while its change still waits', async () => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    datedRows.value = []
+    await wrapper.get('#sheet-starts-on').setValue(inDays(21))
+    expect(wrapper.find('#sheet-starts-on-status').exists()).toBe(false)
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    await wrapper.get('input[name="title"]').setValue('Alt')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(ops.saveEntry.mock.calls.flatMap((c) => Object.keys((c as unknown as [{ fields: object }])[0].fields))).toEqual([])
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught (E4): the sheet of a draft (an entry taken offline) said nothing of its planned changes.
   test('the sheet of a draft announces its planned changes', async () => {
     datedRows.value = [{ id: 'd1', from: '2099-03-05', fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
