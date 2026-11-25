@@ -179,6 +179,8 @@
       "keepMine": "Meine Eingaben speichern",
       "takeTheirs": "Neuen Stand übernehmen",
       "keepBoth": "Beides behalten",
+      "keepInput": "Meine Eingaben behalten",
+      "inForm": "Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.",
       "someone": "Jemand",
       "row": {
         "youAdded": "Du hast „{row}“ hinzugefügt",

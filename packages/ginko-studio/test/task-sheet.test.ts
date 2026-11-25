@@ -907,71 +907,75 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
-  // Wrong behaviour caught (E10): "Meine Eingaben speichern" after a conflict sent the input again without its day, so
-  // the value went online now.
-  test('the conflict answer saves again with the day', async () => {
-    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data: { title: 'Fremd' }, rev: 5, conflicts: ['title'] } } })
-    const wrapper = mountAsk()
-    await ready(wrapper)
-    const day = inDays(10)
-    await wrapper.get('#sheet-starts-on').setValue(day)
-    await press(wrapper, footer(wrapper)[0]!)
-    await flushPromises()
-    await wrapper.findAll('button').find((b) => b.text() === 'Meine Eingaben speichern')!.trigger('click')
-    await flushPromises()
-    const [, again] = ops.saveEntry.mock.calls as unknown as [unknown, [{ from?: string; publish?: true; baseRev: number; fields: unknown }]]
-    expect([again[0].from, again[0].publish, again[0].baseRev, again[0].fields]).toEqual([day, undefined, 5, { title: 'Neu' }])
-    wrapper.unmount()
-  })
-
-  // H1: a conflict answer saves through the sheet's own step, which reads the day field at that moment, never the day of
-  // the first try.
+  // I1: a conflict answer in the sheet only merges. While the conflict was open the entry may have gone online and the
+  // day may have changed, so the person presses the button that says what it does now.
   const clash = (data: Record<string, unknown> = { title: 'Fremd' }, conflicts = ['title']) =>
     ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data, rev: 5, conflicts } } })
-  const keepMine = (wrapper: ReturnType<typeof mountAsk>) => wrapper.findAll('button').find((b) => b.text() === 'Meine Eingaben speichern')!.trigger('click')
+  const answerWith = (wrapper: ReturnType<typeof mountAsk>, label: string) => wrapper.findAll('button').find((b) => b.text() === label)!.trigger('click')
+  const keepMine = (wrapper: ReturnType<typeof mountAsk>) => answerWith(wrapper, 'Meine Eingaben behalten')
   type Sent = { from?: string; publish?: true; baseRev: number }
   const sent = (): Sent[] => ops.saveEntry.mock.calls.map((c) => (c as unknown as [Sent])[0])
+  /** The answer sent nothing: `calls` saves so far, a status line says the input is not saved, the focus is on the primary button. */
+  const onlyMerged = (wrapper: ReturnType<typeof mountAsk>, calls: number) => {
+    const line = wrapper.get('[data-test="merged-input"]')
+    expect([ops.saveEntry.mock.calls.length, line.text(), line.attributes('role'), document.activeElement?.id])
+      .toEqual([calls, 'Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.', 'status', 'sheet-primary'])
+  }
 
-  // Wrong behaviour caught (H1 a, b): "Meine Eingaben speichern" repeated the first try, so a day typed after the conflict
-  // was dropped and the value went online now while the field showed the day; or a day cleared after it was still sent.
+  // Wrong behaviour caught (I1 a, b; E10): the answer saved again with the step or the day of the first try, so a day set
+  // after the conflict was dropped (online now), a day cleared after it was still sent, or a kept day was lost.
   test.each([
-    ['a day set after the conflict is sent', '', 10],
-    ['a day cleared after the conflict is not sent', 10, ''],
-  ] as const)('the conflict answer reads the day field: %s', async (_case, first, then) => {
+    ['a day kept', 10, 10],
+    ['a day set after the conflict', '', 10],
+    ['a day cleared after the conflict', 10, ''],
+  ] as const)('the answer saves nothing; the primary button then sends what it says (%s)', async (_case, first, then) => {
     clash()
     const wrapper = mountAsk()
     await ready(wrapper)
     if (first !== '') await wrapper.get('#sheet-starts-on').setValue(inDays(first))
     await press(wrapper, footer(wrapper)[0]!)
     await flushPromises()
-    await wrapper.get('#sheet-starts-on').setValue(then === '' ? '' : inDays(then))
+    if (then !== first) await wrapper.get('#sheet-starts-on').setValue(then === '' ? '' : inDays(then))
     await keepMine(wrapper)
+    await flushPromises()
+    onlyMerged(wrapper, 1)
+    const [primary] = footer(wrapper)
+    if (then === '') expect(primary).toBe('Veröffentlichen')
+    await press(wrapper, primary!)
     await flushPromises()
     const again = sent()[1]!
     expect([again.from, again.publish, again.baseRev]).toEqual(then === '' ? [undefined, true, 5] : [inDays(then), undefined, 5])
+    expect(wrapper.find('[data-test="merged-input"]').exists()).toBe(false)
     wrapper.unmount()
   })
 
-  // Wrong behaviour caught (H1 c): the conflict answer saved past a day typed and not finished, as "no day".
-  test('the conflict answer refuses a day typed and not finished', async () => {
+  // Wrong behaviour caught (I1 c): the person saved into a draft; meanwhile someone published the entry, and the answer
+  // repeated the step of the first press, which is "publish" on the now online entry: the input went online unasked.
+  test('a draft published during the conflict: the answer saves nothing, Speichern keeps the input off the website', async () => {
     clash()
-    const wrapper = mountAsk()
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: { ...stored, state: 'draft' } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
     await ready(wrapper)
-    await press(wrapper, 'Veröffentlichen')
+    await wrapper.get('form').trigger('submit')
     await flushPromises()
-    const day = wrapper.get('#sheet-starts-on')
-    Object.defineProperty(day.element, 'validity', { value: { badInput: true } })
-    await day.trigger('keyup')
+    await wrapper.setProps({ entry: { ...stored, rev: 5, fieldRevs: { title: 5 }, data: { title: 'Fremd' } } as never })
     await keepMine(wrapper)
     await flushPromises()
-    expect(ops.saveEntry).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('Das ist kein Datum. Bitte wähle einen Tag oder leere das Feld.')
+    onlyMerged(wrapper, 1)
+    expect(footer(wrapper)).toEqual(['Veröffentlichen', 'Speichern', 'Abbrechen'])
+    await press(wrapper, 'Speichern')
+    await flushPromises()
+    const again = sent()[1]!
+    expect([again.from, again.publish, again.baseRev]).toEqual([undefined, undefined, 5])
     wrapper.unmount()
   })
 
-  // Wrong behaviour caught (H1 d): a restored local copy whose field someone saved meanwhile opens the conflict, and the
-  // answer saved the copy's values without its day (online now).
-  test('the conflict answer after restoring a local copy keeps its day', async () => {
+  // Wrong behaviour caught (I1 d): a restored local copy whose field someone saved meanwhile opens the conflict, and the
+  // answer saved the copy at once (with a step nobody chose), or lost its day.
+  test('after restoring a local copy the answer saves nothing and the day stays', async () => {
     localStorage.clear()
     const day = inDays(10)
     const first = mountAsk()
@@ -986,17 +990,18 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     })
     answer({ data: {} })
     await flushPromises()
-    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await answerWith(second, 'Wiederherstellen')
     await flushPromises()
     await keepMine(second)
     await flushPromises()
-    expect(sent().map((s) => [s.from, s.publish, s.baseRev])).toEqual([[day, undefined, 5]])
+    onlyMerged(second, 0)
+    expect((second.get('#sheet-starts-on').element as HTMLInputElement).value).toBe(day)
     second.unmount()
     localStorage.clear()
   })
 
-  // Wrong behaviour caught (H1 e): "Beides behalten" repeated the first try, as "Meine Eingaben speichern" did (a).
-  test('"Beides behalten" reads the day field too', async () => {
+  // Wrong behaviour caught (I1 e): "Beides behalten" saved at once with the step of the first try, as the other answer did.
+  test('"Beides behalten" saves nothing; the primary button then sends the day', async () => {
     const listed = serializeSchema(defineSite({
       site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
       pages: { home: { de: '/' } },
@@ -1023,10 +1028,28 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await press(wrapper, 'Veröffentlichen')
     await flushPromises()
     await wrapper.get('#sheet-starts-on').setValue(inDays(10))
-    await wrapper.findAll('button').find((b) => b.text() === 'Beides behalten')!.trigger('click')
+    await answerWith(wrapper, 'Beides behalten')
+    await flushPromises()
+    onlyMerged(wrapper, 1)
+    await press(wrapper, footer(wrapper)[0]!)
     await flushPromises()
     const again = sent()[1]!
     expect([again.from, again.publish, again.baseRev]).toEqual([inDays(10), undefined, 5])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I1): an answer pressed while a save is on its way merged onto a base that save is changing.
+  test('the conflict answers wait while a save is on its way', async () => {
+    clash()
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    ops.saveEntry.mockImplementationOnce(() => new Promise(() => {}))
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    const answers = ['Meine Eingaben behalten', 'Neuen Stand übernehmen'].map((label) => wrapper.findAll('button').find((b) => b.text() === label)!)
+    expect(answers.map((b) => b.attributes('disabled'))).toEqual(['', ''])
     wrapper.unmount()
   })
 

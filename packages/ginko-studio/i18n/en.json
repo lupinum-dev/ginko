@@ -179,6 +179,8 @@
       "keepMine": "Save my changes",
       "takeTheirs": "Use the new version",
       "keepBoth": "Keep both",
+      "keepInput": "Keep my input",
+      "inForm": "Your input is in the form. It is not saved yet.",
       "someone": "Someone",
       "row": {
         "youAdded": "You added “{row}”",

@@ -394,16 +394,10 @@ const secondChange = computed(() => {
  * draft, a change waits unpublished), `later` plans a new entry.
  */
 type Step = 'publish' | 'draft' | 'later'
-/**
- * The step of the last save: a conflict answer saves with it again (H1). Never a day: every save reads the day field at
- * that moment. Before any save (a restored local copy that clashes) the input stays off the website, as Speichern does.
- */
-let lastStep: Step = 'draft'
-/** Every save goes through here: the buttons, Enter, Ctrl+S and the conflict answers. */
+/** Every save goes through here: the buttons, Enter and Ctrl+S. A conflict answer never saves (I1). */
 async function save(step: Step = 'publish') {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || !ready.value || removedHere.value) return
-  lastStep = step
   laterProblem.value = ''
   // A day typed and not finished is not "today": nothing is saved until it is a day or the field is empty (E1).
   if (asksDay.value && startsOnBad.value) {
@@ -421,6 +415,7 @@ async function save(step: Step = 'publish') {
       return nextTick(() => document.getElementById('sheet-starts-on')?.focus())
     }
     let ok: boolean
+    merged.value = false
     datedSaving.value = true
     try {
       ok = await form.save(undefined, undefined, from, editing.value?.from === from ? editing.value.fields : undefined)
@@ -451,6 +446,7 @@ async function save(step: Step = 'publish') {
     await switchLanguage(props.main)
     nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
   }
+  merged.value = false
   await finish(await form.save(undefined, publish))
 }
 /** Cmd/Ctrl+S anywhere in the sheet's form saves like the button, never the browser's "Save page as". */
@@ -462,14 +458,17 @@ function onFormKey(event: KeyboardEvent) {
   // On the publish step the key keeps the entry off the website: nobody publishes by pressing Ctrl+S.
   save(publishStep.value ? 'draft' : 'publish')
 }
-// A conflict answer merges, then saves like a press of the button: with a day in the field, a change of that day (a day
-// is always the primary button's step); without one, the last step.
-async function keepMine() {
-  if (form.keepMine()) await save(dayOn.value ? 'publish' : lastStep)
+// A conflict answer only merges (I1): while the conflict was open, the entry may have gone online or offline and the
+// day may have changed, so a remembered step or day could put the input online unasked. The person then presses the
+// button that says what it does now. The line "not saved yet" stays until the next save.
+const merged = ref(false)
+function afterMerge(ok: boolean) {
+  if (!ok) return
+  merged.value = true
+  nextTick(() => document.getElementById('sheet-primary')?.focus())
 }
-async function keepBoth() {
-  if (form.mergeLists()) await save(dayOn.value ? 'publish' : lastStep)
-}
+const keepMine = () => afterMerge(form.keepMine())
+const keepBoth = () => afterMerge(form.mergeLists())
 // Someone removed the entry (N1): bring it back and save the input, or drop it.
 const removedHere = computed(() => !isCreate.value && !!props.removed && !!props.entry)
 async function restoreRemoved(lifeRev: number) {
@@ -564,9 +563,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             <ConflictPanel
               v-if="conflict"
               :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="main" :main="main"
-              :can-keep-both="!!form.listMerge.value"
+              :can-keep-both="!!form.listMerge.value" merge-only :busy="busy"
               @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
             />
+            <p v-else-if="merged" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning" role="status" data-test="merged-input">{{ t('entry.conflict.inForm') }}</p>
             <div v-if="mine?.status === 'open'" class="flex flex-wrap items-center justify-between gap-x-3 rounded-md bg-warning/10 py-1 pr-1 pl-3" role="status" data-test="own-proposal">
               <p class="py-1.5 font-semibold text-warning">{{ pendingText }}</p>
               <ProposalWithdraw :proposal="mine.proposal" />

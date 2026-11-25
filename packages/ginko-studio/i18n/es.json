@@ -179,6 +179,8 @@
       "keepMine": "Guardar mis cambios",
       "takeTheirs": "Usar la versión nueva",
       "keepBoth": "Conservar ambos",
+      "keepInput": "Conservar mis datos",
+      "inForm": "Tus datos están en el formulario. Aún no están guardados.",
       "someone": "Alguien",
       "row": {
         "youAdded": "Has añadido “{row}”",
