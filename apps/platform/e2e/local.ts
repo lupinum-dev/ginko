@@ -42,6 +42,17 @@ export function onlinePrice(dish: string): number | undefined {
   return entries.find((e) => e.brick === 'menu' && !e.deletedAt && e.data.name?.de === dish)?.data.price?.amount
 }
 
+/**
+ * A dish as the website gets it now: the German bundle item from the local backend, with a change that holds for a time
+ * laid over its stored values (slice 3). `onlinePrice` reads the stored entry, which such a change never writes.
+ */
+export function shownDish(dish: string): { data: { price?: { amount: number }; onMenu?: boolean }; holding?: { from: string; until: string; data: Record<string, unknown> }[] } | undefined {
+  assertLocal()
+  const out = execFileSync('npx', ['convex', 'run', 'bundle:build', JSON.stringify({ slug: 'restaurant', locale: 'de' })], { cwd: serverDir, encoding: 'utf8' })
+  const bundle = JSON.parse(out.slice(out.indexOf('{'))) as { bricks: Record<string, { items?: { data: { name?: string; price?: { amount: number }; onMenu?: boolean } }[] }> }
+  return bundle.bricks.menu?.items?.find((item) => item.data.name === dish) as ReturnType<typeof shownDish>
+}
+
 /** Resets the content only; members stay signed in and keep their rights. `many` adds copies (seed-local `--many`). */
 export function resetContent(many?: { brick: string; count: number }) {
   assertLocal()

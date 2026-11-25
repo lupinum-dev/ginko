@@ -142,3 +142,57 @@ describe('the notices of changes for a later day', () => {
     wrapper.unmount()
   })
 })
+
+// Slice 3: the notices of a change with an end in Alles bearbeiten.
+describe('the notices of a change with an end', () => {
+  const fmt = (day: string) => new Intl.DateTimeFormat('de', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  const offer = (id: string, from: string, until: string, over: Record<string, unknown> = {}) => change(id, from, { until, values: { price: { amount: 990 } }, normal: { price: { amount: 1290 } }, ...over })
+
+  // Rows "save" (waits, holds) and "Änderung aufheben / Jetzt beenden". Wrong behaviour caught: an offer is shown as a
+  // change for good; a holding offer offers "aufheben" (as if it had not started) or does not say what comes back.
+  test('a waiting offer names both days; a holding one says what the website shows and what comes back', () => {
+    rows.value = [offer('d1', '2099-12-06', '2099-12-31'), offer('d2', '2026-11-01', '2099-12-31', { holds: true })]
+    const wrapper = mountNotices()
+    expect(wrapper.findAll('[data-notice]').map((n) => [n.find('p').text(), n.findAll('button').map((b) => b.text())])).toEqual([
+      [`Von ${fmt('2099-12-06')} bis ${fmt('2099-12-31')}: Preis 9,90 €`, ['Tage ändern', 'Änderung aufheben']],
+      [`Bis ${fmt('2099-12-31')} zeigt die Website: Preis 9,90 € (sonst 12,90 €)`, ['Tage ändern', 'Jetzt beenden']],
+    ])
+    wrapper.unmount()
+  })
+
+  // Row "Tage ändern". Wrong behaviour caught: a move of a waiting offer loses its end; a holding offer's start can be
+  // moved (decision 4).
+  test('"Tage ändern" moves both days of a waiting offer and only the end of a holding one', async () => {
+    rows.value = [offer('d1', '2099-12-06', '2099-12-31'), offer('d2', '2026-11-01', '2099-12-31', { holds: true })]
+    const wrapper = mountNotices()
+    await wrapper.get('#dated-day-d1-open').trigger('click')
+    await flushPromises()
+    expect([(wrapper.get('#dated-day-d1').element as HTMLInputElement).value, (wrapper.get('#dated-until-d1').element as HTMLInputElement).value]).toEqual(['2099-12-06', '2099-12-31'])
+    await wrapper.get('#dated-until-d1').setValue('2100-01-06')
+    await press(wrapper, 'Tage speichern')
+    expect(ops.moveChange).toHaveBeenLastCalledWith('d1', '2099-12-06', 'items.price', '2100-01-06')
+
+    await wrapper.get('#dated-day-d2-open').trigger('click')
+    await flushPromises()
+    expect([wrapper.find('#dated-day-d2').exists(), (wrapper.get('#dated-until-d2').element as HTMLInputElement).value]).toEqual([false, '2099-12-31'])
+    await wrapper.get('#dated-until-d2').setValue('2100-01-10')
+    await press(wrapper, 'Tage speichern')
+    expect(ops.moveChange).toHaveBeenLastCalledWith('d2', '2026-11-01', 'items.price', '2100-01-10')
+    wrapper.unmount()
+  })
+
+  // Row "Jetzt beenden". Wrong behaviour caught: one press ends the offer without asking (it cannot be undone), or the
+  // entry goes offline.
+  test('"Jetzt beenden" asks first and then ends only the offer', async () => {
+    ops.cancelChange.mockClear()
+    rows.value = [offer('d2', '2026-11-01', '2099-12-31', { holds: true })]
+    const wrapper = mountNotices()
+    await press(wrapper, 'Jetzt beenden')
+    expect(ops.cancelChange).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    await press(wrapper, 'Jetzt beenden')
+    expect(ops.cancelChange).toHaveBeenCalledWith('d2', 'items.price')
+    expect(ops.unpublishEntry).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+})
