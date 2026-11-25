@@ -42,9 +42,9 @@ async function typeOffer(page: Page, price: string, from: string, until: string)
 
 // Wrong behaviour caught: an offer for later days went online at once, was saved without its end (so the price would
 // change for good), or the button and the notice do not name both days.
-test('an offer for later days waits: the button names both days, the website keeps the normal price', async ({ page }) => {
+test('an offer from tomorrow waits: the button names both days, the website keeps the normal price', async ({ page }) => {
   const normal = onlinePrice(DISH)!
-  const [from, until] = [addDays(today(), 2), addDays(today(), 30)]
+  const [from, until] = [addDays(today(), 1), addDays(today(), 30)]
   const sheet = await typeOffer(page, '9,90', from, until)
   await sheet.getByRole('button', { name: `Für ${short(from)} bis ${short(until)} veröffentlichen` }).click()
   await expect(toast(page)).toBeVisible()
