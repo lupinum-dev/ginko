@@ -66,7 +66,21 @@ export type DataOf<F extends Fields> = {
  */
 export interface UpcomingOf<F extends Fields> {
   from: string
+  /** The last day of an exception: its values hold from `from` to `until`, then the normal values come back. */
+  until?: string
   data: { [K in keyof DataOf<F>]?: DataOf<F>[K] | null }
+}
+
+/**
+ * An exception that holds today (`holding`): its days, its values of the brick's `timeline.public` fields (already in
+ * `data`) and the normal values they cover, so a page can write "9,90 € bis 31. Dez. (sonst 12,90 €)". Typed like
+ * `UpcomingOf`.
+ */
+export interface HoldingOf<F extends Fields> {
+  from: string
+  until: string
+  data: { [K in keyof DataOf<F>]?: DataOf<F>[K] | null }
+  normal: { [K in keyof DataOf<F>]?: DataOf<F>[K] | null }
 }
 
 export type ItemOf<F extends Fields, Routed extends boolean = boolean> = {
@@ -75,6 +89,8 @@ export type ItemOf<F extends Fields, Routed extends boolean = boolean> = {
   fallback: string[]
   /** The waiting changes of the fields in the brick's `timeline.public`, in the order of their days. Absent when none waits. */
   upcoming?: UpcomingOf<F>[]
+  /** The exceptions of the fields in the brick's `timeline.public` that hold today. Absent when none holds. */
+  holding?: HoldingOf<F>[]
   /** The address in every language the entry exists in (language switcher, hreflang). Routed bricks only. */
   urls?: Partial<Record<string, string>>
   /** When the entry last changed (ISO 8601, UTC). Absent when unknown. */
@@ -85,6 +101,6 @@ export type ItemOf<F extends Fields, Routed extends boolean = boolean> = {
 } : unknown)
 
 export type BrickValue<B> =
-  B extends SingleBrick<infer F> ? { data: DataOf<F>; fallback: string[]; upcoming?: UpcomingOf<F>[] }
+  B extends SingleBrick<infer F> ? { data: DataOf<F>; fallback: string[]; upcoming?: UpcomingOf<F>[]; holding?: HoldingOf<F>[] }
   : B extends CollectionBrick<infer F, infer R> ? { items: ItemOf<F, undefined extends R ? false : true>[] }
   : never

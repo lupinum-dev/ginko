@@ -3,8 +3,8 @@ import { addDays, type SiteWeek } from './time.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { resolveRouteLinks } from './links.ts'
 import { resolveFileRefs } from './file-refs.ts'
-import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type MarkdownTrees, type Upcoming } from './bundle.ts'
-import { waitingChanges, type Change } from './changes.ts'
+import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type MarkdownTrees, type Holding, type Upcoming } from './bundle.ts'
+import { dataOn, holdingOn, isException, waitingChanges, type Change } from './changes.ts'
 import type { MarkdownTree } from './markdown.ts'
 import type { Brick, CollectionBrick, Field, Fields, Json, Locale, Schema } from './types.ts'
 
@@ -24,9 +24,11 @@ export interface StoredEntry {
   /** Old paths of a file entry (`$redirectFrom`); the bundle forwards them to the entry's page in every language (`oldUrls`). */
   redirectFrom?: string[]
   /**
-   * The entry's waiting dated changes (a file's `$changes`, the platform's rows that are not stopped). `data` already
-   * holds the values of today (D120): the bundle reads only the fields of `timeline.public` from the changes still
-   * ahead, for `upcoming`; nothing else of them leaves the server.
+   * The entry's dated changes (a file's `$changes`, the platform's rows that are not stopped). `data` already holds the
+   * normal values of today (D120): changes without an end whose day has come are written into it. The bundle lays the
+   * exceptions that hold today over it (`dataOn`), so a holding exception is here (on the platform only once its start
+   * run passed), and reads only the fields of `timeline.public` from the changes still ahead (`upcoming`) and from the
+   * holding exceptions with the normal values they cover (`holding`); nothing else of them leaves the server.
    */
   changes?: Change[]
 }
@@ -360,13 +362,13 @@ export function buildBundle(input: BuildBundleInput): Bundle {
   const locale = known ? (input.requestedLocale as Locale) : main
   const bricks: Record<string, BundleBrick> = {}
   for (const [key, brick] of Object.entries(schema.bricks)) {
-    const stored = input.entries[key] ?? []
+    // What visitors see today: the exceptions that hold laid over the normal values (the one rule, `dataOn`).
+    const stored = (input.entries[key] ?? []).map((entry) => showing(entry, input.today))
     const ctx: ResolveContext = { locale, markAllFallback: !known, files: input.files }
     if (brick.kind === 'single') {
       const entry = stored[0] ?? { id: `default:${key}`, data: defaultsFor(brick.fields, schema.week) }
       const r = resolveEntry(schema, key, entry, ctx)
-      const upcoming = upcomingOf(schema, key, entry, ctx, input.today)
-      bricks[key] = { kind: 'single', data: r.data, fallback: r.fallback, ...(upcoming ? { upcoming } : {}) }
+      bricks[key] = { kind: 'single', data: r.data, fallback: r.fallback, ...aheadOf(schema, key, entry, ctx, input.today) }
       continue
     }
     const items: BundleItem[] = []
@@ -383,8 +385,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
       const source = entry.sources?.[locale] ?? entry.sources?.[main]
       if (source !== undefined) item.source = source
       if (brick.route && !ended) item.urls = urlsFor(schema, key, brick, entry)
-      const upcoming = upcomingOf(schema, key, entry, ctx, input.today)
-      if (upcoming) item.upcoming = upcoming
+      Object.assign(item, aheadOf(schema, key, entry, ctx, input.today))
       items.push(item)
     }
     bricks[key] = { kind: 'collection', items }
@@ -420,12 +421,52 @@ export function upcomingOf(schema: Schema, key: string, entry: StoredEntry, ctx:
     if (last !== undefined && change.from > last) continue
     const names = Object.keys(change.set).filter((name) => shown.includes(name))
     if (!names.length) continue
-    // Only the public values go into the resolver: nothing else of the change can reach the result.
-    const values = Object.fromEntries(names.map((name) => [name, change.set[name]!]))
-    const { data } = resolveEntry(schema, key, { id: entry.id, data: values }, ctx)
-    out.push({ from: change.from, data: Object.fromEntries(names.map((name) => [name, Object.hasOwn(data, name) ? data[name] : null])) })
+    out.push({ from: change.from, ...(change.until ? { until: change.until } : {}), data: publicValues(schema, key, entry.id, change.set, names, ctx) })
   }
   return out.length ? out : undefined
+}
+
+/**
+ * The exceptions that hold today and set a field of the brick's `timeline.public` (slice 3): their days, their public
+ * values and the normal values they cover (`normal`, read from the entry's normal values of today), resolved like the
+ * entry's own values. Undefined when there is none.
+ */
+export function holdingOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): Holding[] | undefined {
+  const shown = schema.bricks[key]!.timeline?.public
+  if (!shown?.length || !entry.changes?.length) return undefined
+  const normal = (entry as Showing).normal ?? entry.data
+  const out: Holding[] = []
+  for (const change of holdingOn(entry.changes, today)) {
+    const names = Object.keys(change.set).filter((name) => shown.includes(name))
+    if (!names.length) continue
+    out.push({ from: change.from, until: change.until, data: publicValues(schema, key, entry.id, change.set, names, ctx), normal: publicValues(schema, key, entry.id, normal, names, ctx) })
+  }
+  return out.length ? out : undefined
+}
+
+/** An entry as visitors see it today, with its normal values kept for `holding`. */
+type Showing = StoredEntry & { normal?: Record<string, Json> }
+
+/** The entry with the exceptions that hold on `today` laid over its normal values (`dataOn`, exceptions only). */
+function showing(entry: StoredEntry, today: string): Showing {
+  const exceptions = entry.changes?.filter(isException)
+  if (!exceptions?.length) return entry
+  const data = dataOn(entry.data, exceptions, today)
+  return data === entry.data ? entry : { ...entry, data, normal: entry.data }
+}
+
+/** `upcoming` and `holding` of an entry, each only when it has one. */
+function aheadOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): { upcoming?: Upcoming[]; holding?: Holding[] } {
+  const upcoming = upcomingOf(schema, key, entry, ctx, today)
+  const holding = holdingOf(schema, key, entry, ctx, today)
+  return { ...(upcoming ? { upcoming } : {}), ...(holding ? { holding } : {}) }
+}
+
+/** Only the public values go into the resolver: nothing else of the change or the entry can reach the result. */
+function publicValues(schema: Schema, key: string, id: string, from: Record<string, Json>, names: string[], ctx: ResolveContext): Record<string, unknown> {
+  const values = Object.fromEntries(names.filter((name) => Object.hasOwn(from, name) && from[name] !== null).map((name) => [name, from[name]!]))
+  const { data } = resolveEntry(schema, key, { id, data: values }, ctx)
+  return Object.fromEntries(names.map((name) => [name, Object.hasOwn(data, name) ? data[name] : null]))
 }
 
 /**
