@@ -383,6 +383,11 @@ function editChange(n: (typeof waitingNotices.value)[number]) {
   editing.value = { from: n.from, fields: n.fields }
   nextTick(() => document.getElementById('sheet-starts-on')?.focus())
 }
+/** After "Bearbeiten", another day in the field plans a second change; the one being edited stays (H1). */
+const secondChange = computed(() => {
+  const was = editing.value?.from
+  return was && startsOn.value && !startsOnBad.value && startsOn.value !== was ? t('dated.secondChange', { day: format.date(was, { weekday: 'long', day: 'numeric', month: 'long' }) }) : ''
+})
 
 /**
  * What a save does: `publish` goes online now (or waits for a yes), `draft` stays off the website (a new entry is a
@@ -592,7 +597,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
                 <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
               </template>
             </div>
-            <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :time-zone="schema.timeZone" :error="startsOnError || (unchangedDay ? t('dated.nothingChanged') : '')" />
+            <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :time-zone="schema.timeZone" :error="startsOnError || (unchangedDay ? t('dated.nothingChanged') : '')" :status="secondChange" />
           </template>
         </div>
 

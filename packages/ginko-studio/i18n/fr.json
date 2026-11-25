@@ -333,6 +333,7 @@
     "dayRequired": "Choisissez un jour.",
     "notADate": "Ce n’est pas une date. Choisissez un jour ou videz le champ.",
     "nothingChanged": "Rien n’est encore modifié. Modifiez d’abord une valeur.",
+    "secondChange": "Le changement planifié à partir du {day} reste en place. Ceci sera un deuxième changement.",
     "cancelled": "Changement prévu annulé.",
     "moved": "Le changement commence désormais le {day}."
   },

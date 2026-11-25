@@ -756,6 +756,28 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
+  // Wrong behaviour caught (H1.4): after "Bearbeiten" another day silently planned a second change, and the person
+  // believed the edited one was moved.
+  test('after "Bearbeiten" another day says the edited change stays', async () => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    const status = () => wrapper.find('#sheet-starts-on-status')
+    expect(status().exists()).toBe(false)
+    await wrapper.get('#sheet-starts-on').setValue(inDays(21))
+    const long = new Intl.DateTimeFormat('de', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+    expect([status().text(), status().attributes('role'), wrapper.get('#sheet-starts-on').attributes('aria-invalid')]).toEqual([`Die geplante Änderung ab ${long} bleibt bestehen. Das hier wird eine zweite Änderung.`, 'status', 'false'])
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    expect(status().exists()).toBe(false)
+    await wrapper.get('#sheet-starts-on').setValue('')
+    expect(status().exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught (E4): the sheet of a draft (an entry taken offline) said nothing of its planned changes.
   test('the sheet of a draft announces its planned changes', async () => {
     datedRows.value = [{ id: 'd1', from: '2099-03-05', fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
