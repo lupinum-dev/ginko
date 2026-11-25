@@ -1848,11 +1848,15 @@ export const stoppedPlans = query({
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     const schema = actor.site.schema as Schema
-    // Absent `stopped` sorts before numbers, so the lower bound keeps every other entry out.
-    const rows = await ctx.db.query('entries').withIndex('by_site_stopped', (q) => q.eq('site', actor.site._id).gt('stopped.at', 0)).order('desc').take(50)
+    // Absent `stopped` sorts before numbers, so the lower bound keeps every other entry out. Removed rows and, for staff,
+    // the plans of others are left out before the 50 are taken, so newer ones of others never hide a person's own.
+    const staff = actor.role === 'staff'
+    const rows = await ctx.db.query('entries').withIndex('by_site_stopped', (q) => q.eq('site', actor.site._id).gt('stopped.at', 0))
+      .filter((q) => q.and(q.eq(q.field('deletedAt'), undefined), staff ? q.eq(q.field('stopped.by'), actor.user.id) : true))
+      .order('desc').take(50)
     return rows.flatMap((row) => {
       const stopped = row.stopped
-      if (!stopped || row.deletedAt || (actor.role === 'staff' && stopped.by !== actor.user.id)) return []
+      if (!stopped) return []
       const { title, cause } = stoppedLines(schema, { brick: row.brick, stopped, title: labelOf(schema, row.brick, row.data as Data) })
       return [{ entry: row._id, brick: row.brick, at: stopped.at, title, titleText: historyText(title, DEFAULT_LOCALE, schema), cause, causeText: historyText(cause, DEFAULT_LOCALE, schema) }]
     })

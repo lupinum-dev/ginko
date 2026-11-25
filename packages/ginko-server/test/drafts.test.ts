@@ -383,6 +383,17 @@ describe('people are told when a plan stops (D104)', () => {
     await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: s.draft.entry, lifeRev: (await s.row(s.draft.entry))!.lifeRev })
     expect(await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })).toEqual([])
   })
+
+  // Wrong behaviour caught: a staff member's own plans were filtered after the 50 newest rows were read, so 50 newer
+  // stopped plans of others hid theirs.
+  it('newer stopped plans of others never hide a staff member\'s own', async () => {
+    const s = await stoppedBy(people.cook, false)
+    await s.t.run(async (ctx) => {
+      const { _id: _, _creationTime: __, ...row } = (await ctx.db.get(s.draft.entry as Id<'entries'>))!
+      for (let i = 1; i <= 50; i++) await ctx.db.insert('entries', { ...row, stopped: { at: s.at + i, by: people.owner, reason: { code: 'late' } } })
+    })
+    expect((await s.as.cook.query(api.entries.stoppedPlans, { site: 'restaurant' })).map((r) => r.entry)).toEqual([s.draft.entry])
+  })
 })
 
 describe('a plan takes the entry as the person saw it (D105)', () => {
