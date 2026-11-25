@@ -748,4 +748,24 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     expect(wrapper.get('[data-test="dated-waiting"]').text()).toBe('Ab Donnerstag, 5. März: Titel.')
     wrapper.unmount()
   })
+
+  // Wrong behaviour caught (E5): under approval the button said "Zur Prüfung senden" without the day, so staff could
+  // not tell the request was for a later day, or the day was dropped from the call.
+  test('under approval the button names the day and the request carries it', async () => {
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: stored as never, approval: true },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    await ready(wrapper)
+    const day = inDays(10)
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    const [primary] = footer(wrapper)
+    expect(primary).toMatch(/^Ab .+ zur Prüfung senden$/)
+    await press(wrapper, primary!)
+    await flushPromises()
+    const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ from?: string; publish?: true }]
+    expect([sent.from, sent.publish]).toEqual([day, undefined])
+    wrapper.unmount()
+  })
 })

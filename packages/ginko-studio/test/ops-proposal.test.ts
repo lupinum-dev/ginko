@@ -48,6 +48,15 @@ const paths: [string, string, unknown, () => Promise<unknown>, number][] = [
   ['revertEntry', 'entries.revert', { entry: 'e', change: 'c3' }, () => ops.revertEntry('e', 'c1'), 1],
 ]
 
+// Wrong behaviour caught (E5): a change for a later day sent for review said only "Sent for approval", so the person
+// could not tell that it is planned for a day and not meant to go online at once.
+test('a change for a later day sent for review names its day', async () => {
+  mocks.toasts.length = 0
+  mocks.results.set('entries.save', proposal)
+  await ops.saveEntry({ entry: 'e', baseRev: 1, fields: { price: { amount: 2290 } }, op: 'o', main: 'de', from: '2026-12-05' })
+  expect(mocks.toasts.map((m) => m.text)).toEqual(['Sent for review. Planned from Saturday 5 December.'])
+})
+
 describe('writes that become proposals', () => {
   test.each(paths)('%s: proposal says "Sent for approval", no Undo, no throw', async (_name, mutation, _normal, run) => {
     mocks.toasts.length = 0

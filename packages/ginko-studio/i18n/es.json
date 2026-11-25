@@ -318,6 +318,8 @@
     "startsOn": "Válido desde",
     "startsOnHint": "Vacío: desde ahora",
     "publishFrom": "Publicar desde el {day}",
+    "reviewFrom": "Enviar a revisión, desde el {day}",
+    "sentFrom": "Enviado a revisión. Planificado desde el {day}.",
     "waiting": "Desde el {day}: {changes}.",
     "stopped": "El cambio planificado para el {day} no se aplicó: {changes}.",
     "changedSince": "Cambiado desde que se planificó: {fields}. Desde el día planificado se aplica igualmente el valor planificado.",

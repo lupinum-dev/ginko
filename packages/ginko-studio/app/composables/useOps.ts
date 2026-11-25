@@ -120,7 +120,6 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   if (!lasting) throw new Error('provideLastingOps() is missing in app.vue')
   const { remove, restore, undo, publish, unpublish, discard, move, place: moveInTree, setHeading: headingInTree } = lasting
   /** Nothing was written: say so and offer no Undo. The server does not name the approver, so neither does the message. */
-  const sentForApproval = () => show(t('review.sent'))
 
   const opId = () => crypto.randomUUID()
 
@@ -128,6 +127,8 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   const noteOf = (notes: Parameters<typeof translationNote>[0], main: string) => translationNote(notes, t, language.value, main)
   /** "Samstag, 17. Oktober": the day a dated change or a week planned ahead starts on. */
   const dayText = (day: string) => dayWords(day, format)
+  /** A write that became a request (SPEC 17); `from`: it is a change for that day, which the message names (E5). */
+  const sentForApproval = (from?: string) => show(from === undefined ? t('review.sent') : t('dated.sentFrom', { day: dayText(from) }))
   /**
    * When a write shows on the website: "in about a minute", or the day the server names, so nobody takes it for live
    * now: `liveFrom` for a week planned ahead, `from` for a dated change (D125).
@@ -200,7 +201,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
    */
   async function publishChanges(entry: string, lifeRev: number, rev: number, opts: { from?: string; task?: string; main: string }) {
     const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, rev, ...(opts.from === undefined ? {} : { from: opts.from }) })
-    if (isProposal(result)) { sentForApproval(); return result }
+    if (isProposal(result)) { sentForApproval(opts.from); return result }
     show(opts.from === undefined
       ? [t('ops.changesPublished'), t('ops.liveHint'), noteOf(result.translation, opts.main)].filter(Boolean).join(' ')
       : t('ops.changesScheduled', { time: dayText(opts.from) }))
@@ -336,7 +337,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
         const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm, publish: args.publish, ...(args.from === undefined ? {} : { from: args.from }) })
         // A change that needs a yes writes nothing yet (SPEC 17): say so instead of "Saved".
         if (isProposal(result)) {
-          sentForApproval()
+          sentForApproval(args.from)
           return { proposal: result.proposal }
         }
         const change = 'change' in result ? result.change : undefined

@@ -318,6 +318,8 @@
     "startsOn": "Gilt ab",
     "startsOnHint": "Leer: ab sofort",
     "publishFrom": "Ab {day} veröffentlichen",
+    "reviewFrom": "Ab {day} zur Prüfung senden",
+    "sentFrom": "Zur Prüfung gesendet. Geplant ab {day}.",
     "waiting": "Ab {day}: {changes}.",
     "stopped": "Die geplante Änderung für {day} wurde nicht übernommen: {changes}.",
     "changedSince": "Seit der Planung geändert: {fields}. Ab dem geplanten Tag gilt trotzdem der geplante Wert.",
