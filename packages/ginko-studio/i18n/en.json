@@ -181,6 +181,8 @@
       "keepBoth": "Keep both",
       "keepInput": "Keep my input",
       "inForm": "Your input is in the form. It is not saved yet.",
+      "nowOnline": "The entry is online now.",
+      "nowOffline": "The entry is offline now.",
       "someone": "Someone",
       "row": {
         "youAdded": "You added “{row}”",

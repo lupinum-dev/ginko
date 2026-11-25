@@ -988,11 +988,16 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
   const keepMine = (wrapper: ReturnType<typeof mountAsk>) => answerWith(wrapper, 'Meine Eingaben behalten')
   type Sent = { from?: string; publish?: true; baseRev: number }
   const sent = (): Sent[] => ops.saveEntry.mock.calls.map((c) => (c as unknown as [Sent])[0])
-  /** The answer sent nothing: `calls` saves so far, a status line says the input is not saved, the focus is on the primary button. */
-  const onlyMerged = (wrapper: ReturnType<typeof mountAsk>, calls: number) => {
+  /** Calls of every op of the ops mock (saves, creates, whatever is added later). */
+  const opCalls = () => Object.values(ops).reduce((n, op) => n + (vi.isMockFunction(op) ? op.mock.calls.length : 0), 0)
+  /**
+   * The answer sent nothing: `calls` op calls so far (all before the answer), a status line says the input is not saved
+   * (with `extra` when the entry went online or offline meanwhile), and the focus is on that line, not on a button (J1).
+   */
+  const onlyMerged = (wrapper: ReturnType<typeof mountAsk>, calls: number, extra = '') => {
     const line = wrapper.get('[data-test="merged-input"]')
-    expect([ops.saveEntry.mock.calls.length, line.text(), line.attributes('role'), document.activeElement?.id])
-      .toEqual([calls, 'Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.', 'status', 'sheet-primary'])
+    expect([opCalls(), line.text(), line.attributes('role'), document.activeElement === line.element, document.activeElement?.tagName])
+      .toEqual([calls, `Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.${extra ? ` ${extra}` : ''}`, 'status', true, 'P'])
   }
 
   // Wrong behaviour caught (I1 a, b; E10): the answer saved again with the step or the day of the first try, so a day set
@@ -1022,9 +1027,13 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
-  // Wrong behaviour caught (I1 c): the person saved into a draft; meanwhile someone published the entry, and the answer
-  // repeated the step of the first press, which is "publish" on the now online entry: the input went online unasked.
-  test('a draft published during the conflict: the answer saves nothing, Speichern keeps the input off the website', async () => {
+  // Wrong behaviour caught (I1 c, J1): the person saved into a draft; meanwhile someone published the entry, and the
+  // answer repeated the step of the first press, which is "publish" on the now online entry: the input went online
+  // unasked. Or the focus sat on Veröffentlichen, so the next Enter published, and nothing said the entry was online now.
+  test.each([
+    ['Speichern keeps the input off the website', 'Speichern', undefined],
+    ['Veröffentlichen publishes it', 'Veröffentlichen', true],
+  ] as const)('a draft published during the conflict: the answer saves nothing; %s', async (_case, button, publish) => {
     clash()
     const wrapper = mount(TaskSheet, {
       props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: { ...stored, state: 'draft' } as never },
@@ -1037,12 +1046,12 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await wrapper.setProps({ entry: { ...stored, rev: 5, fieldRevs: { title: 5 }, data: { title: 'Fremd' } } as never })
     await keepMine(wrapper)
     await flushPromises()
-    onlyMerged(wrapper, 1)
+    onlyMerged(wrapper, 1, 'Der Eintrag ist inzwischen online.')
     expect(footer(wrapper)).toEqual(['Veröffentlichen', 'Speichern', 'Abbrechen'])
-    await press(wrapper, 'Speichern')
+    await press(wrapper, button)
     await flushPromises()
     const again = sent()[1]!
-    expect([again.from, again.publish, again.baseRev]).toEqual([undefined, undefined, 5])
+    expect([sent().length, again.from, again.publish, again.baseRev]).toEqual([2, undefined, publish, 5])
     wrapper.unmount()
   })
 

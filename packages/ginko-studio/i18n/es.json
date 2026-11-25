@@ -181,6 +181,8 @@
       "keepBoth": "Conservar ambos",
       "keepInput": "Conservar mis datos",
       "inForm": "Tus datos están en el formulario. Aún no están guardados.",
+      "nowOnline": "La entrada ya está en línea.",
+      "nowOffline": "La entrada ya no está en línea.",
       "someone": "Alguien",
       "row": {
         "youAdded": "Has añadido “{row}”",

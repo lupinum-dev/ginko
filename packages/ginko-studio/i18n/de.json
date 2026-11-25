@@ -181,6 +181,8 @@
       "keepBoth": "Beides behalten",
       "keepInput": "Meine Eingaben behalten",
       "inForm": "Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.",
+      "nowOnline": "Der Eintrag ist inzwischen online.",
+      "nowOffline": "Der Eintrag ist inzwischen offline.",
       "someone": "Jemand",
       "row": {
         "youAdded": "Du hast „{row}“ hinzugefügt",

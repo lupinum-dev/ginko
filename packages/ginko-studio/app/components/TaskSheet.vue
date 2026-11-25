@@ -422,7 +422,7 @@ async function save(step: Step = 'publish') {
       return nextTick(() => document.getElementById('sheet-starts-on')?.focus())
     }
     let ok: boolean
-    merged.value = false
+    beforeSend()
     datedSaving.value = true
     try {
       ok = await form.save(undefined, undefined, from, edited.value?.from === from ? edited.value.fields : undefined)
@@ -453,7 +453,7 @@ async function save(step: Step = 'publish') {
     await switchLanguage(props.main)
     nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
   }
-  merged.value = false
+  beforeSend()
   await finish(await form.save(undefined, publish))
 }
 /** Cmd/Ctrl+S anywhere in the sheet's form saves like the button, never the browser's "Save page as". */
@@ -467,12 +467,21 @@ function onFormKey(event: KeyboardEvent) {
 }
 // A conflict answer only merges (I1): while the conflict was open, the entry may have gone online or offline and the
 // day may have changed, so a remembered step or day could put the input online unasked. The person then presses the
-// button that says what it does now. The line "not saved yet" stays until the next save.
+// button that says what it does now. The line "not saved yet" stays until the next save, and takes the focus: on the
+// primary button the next Enter could publish a draft someone published meanwhile (J1).
 const merged = ref(false)
+/** Whether the entry was online (`publishStep`) when the last save was sent: the line says when that changed since. */
+let onlineAtSave: boolean | undefined
+const movedSince = ref('')
+function beforeSend() {
+  merged.value = false
+  onlineAtSave = publishStep.value
+}
 function afterMerge(ok: boolean) {
   if (!ok) return
   merged.value = true
-  nextTick(() => document.getElementById('sheet-primary')?.focus())
+  movedSince.value = onlineAtSave === undefined || onlineAtSave === publishStep.value ? '' : t(publishStep.value ? 'entry.conflict.nowOnline' : 'entry.conflict.nowOffline')
+  nextTick(() => document.getElementById('sheet-merged')?.focus())
 }
 const keepMine = () => afterMerge(form.keepMine())
 const keepBoth = () => afterMerge(form.mergeLists())
@@ -573,7 +582,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
               :can-keep-both="!!form.listMerge.value" merge-only :busy="busy"
               @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
             />
-            <p v-else-if="merged" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning" role="status" data-test="merged-input">{{ t('entry.conflict.inForm') }}</p>
+            <p v-else-if="merged" id="sheet-merged" tabindex="-1" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning outline-none" role="status" data-test="merged-input">{{ movedSince ? `${t('entry.conflict.inForm')} ${movedSince}` : t('entry.conflict.inForm') }}</p>
             <div v-if="mine?.status === 'open'" class="flex flex-wrap items-center justify-between gap-x-3 rounded-md bg-warning/10 py-1 pr-1 pl-3" role="status" data-test="own-proposal">
               <p class="py-1.5 font-semibold text-warning">{{ pendingText }}</p>
               <ProposalWithdraw :proposal="mine.proposal" />
