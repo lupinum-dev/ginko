@@ -27,6 +27,15 @@ describe('statusOf', () => {
     ['a planned draft from an import has no person', events, { data: {}, state: 'draft', publishAt: AT }, { now: 'draft', waiting: [{ kind: 'planned', at: AT }] }],
     ['a stopped draft', events, { data: {}, state: 'draft', stopped: { at: AT, by: 'u1', reason: { code: 'link', href: '/x' } } },
       { now: 'draft', waiting: [{ kind: 'stopped', at: AT, by: 'u1', reason: { code: 'link', href: '/x' } }] }],
+    // Wrong behaviour caught (D124): a dated change is hidden on a draft or an ended entry, out of the order of its days,
+    // or a change that stopped on its day reads like a waiting one.
+    ['online with dated changes, a stopped one among them, in the order of their days', events,
+      { data: event('2026-12-31'), state: 'live', unpublished: { since: AT }, changes: [{ from: '2026-12-01', fields: ['price'], by: 'u1' }, { from: '2026-11-01', fields: ['name'], stopped: { at: AT, reason: { code: 'invalid', fields: ['name'] } } }] },
+      { now: 'online', waiting: [{ kind: 'unpublished', since: AT }, { kind: 'stopped', at: AT, reason: { code: 'invalid', fields: ['name'] }, change: { from: '2026-11-01', fields: ['name'] } }, { kind: 'change', from: '2026-12-01', fields: ['price'], by: 'u1' }, { kind: 'ends', on: '2026-12-31' }] }],
+    ['an ended entry lists its dated change', events, { data: event('2026-10-01'), state: 'live', changes: [{ from: '2026-11-01', fields: ['price'] }] },
+      { now: 'ended', waiting: [{ kind: 'change', from: '2026-11-01', fields: ['price'] }] }],
+    ['a planned draft lists its dated change after its plan', events, { data: {}, state: 'draft', publishAt: AT, changes: [{ from: '2026-11-01', fields: ['price'], by: 'u2' }] },
+      { now: 'draft', waiting: [{ kind: 'planned', at: AT }, { kind: 'change', from: '2026-11-01', fields: ['price'], by: 'u2' }] }],
   ])('%s', (_, brick, entry, expected) => {
     expect(statusOf(brick, entry, TODAY)).toEqual(expected)
   })
