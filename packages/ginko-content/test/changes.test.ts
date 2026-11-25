@@ -26,6 +26,7 @@ const schema = serializeSchema(defineSite({
       timeline: { public: ['price', 'photo'] },
     }),
     practice: single({ label: 'Praxis', source: 'files', fields: { price: f.money('Preis'), room: f.text('Raum', { max: 20 }) }, timeline: { public: ['price'] } }),
+    guide: single({ label: 'Anleitung', source: 'files', fields: { steps: f.list('Schritte', { itemLabel: 'Schritt', fields: { text: f.markdown('Text', { profile: 'inline' }) }, max: 5, optional: true }) } }),
   },
 }))
 
@@ -105,6 +106,13 @@ describe('$changes in a file', () => {
     const r = await read({ 'content/menu/suppe.yml': `name: Suppe\nprice: 9\n$changes:\n  - from: 2026-11-01\n    ${change}\n` })
     expect(r.errors).toEqual([{ file: 'menu/suppe.yml', path, message }])
     expect(r.entries.menu).toEqual([])
+  })
+
+  // Wrong behaviour caught: a Markdown text in the rows of a list slips through, so it is stored beside the entry's trees
+  // and no export rewrites the images it shows.
+  it('refuses a list that holds a Markdown text in a change', async () => {
+    const r = await read({ 'content/guide.yml': '$changes:\n  - from: 2026-11-01\n    set: { steps: [{ text: Neu mit **Kräutern** }] }\n' })
+    expect(r.errors).toEqual([{ file: 'guide.yml', path: '$changes.0.set.steps', message: '“steps” holds a Markdown text, and a Markdown text cannot be in a change in a file. Change the text in the file on its day.' }])
   })
 
   it('refuses $changes in a CSV row', async () => {
