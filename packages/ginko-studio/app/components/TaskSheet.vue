@@ -352,14 +352,17 @@ function toggleLater() {
 // "Gilt ab" (D131): a task that asks for the day, on an online entry. Empty is today: the save goes online as without
 // it. A day sends the changed fields as a change that starts on that day; the entry stays as it is until then. Only in
 // the main language's view: a change holds whole values, written in the main language (D119).
-const asksDay = computed(() => props.task.kind === 'edit' && props.task.when?.from === 'ask' && publishStep.value && !isCreate.value && !removedHere.value)
+const taskAsksDay = computed(() => props.task.kind === 'edit' && props.task.when?.from === 'ask' && !isCreate.value && !removedHere.value)
+// The field shows on an online entry, and stays while it holds a day (also half typed) when the entry goes offline
+// meanwhile: the day is still sent, and the server's refusal for a draft says why nothing was saved (I2).
+const asksDay = computed(() => taskAsksDay.value && (publishStep.value || !!startsOn.value || startsOnBad.value))
 const startsOnError = ref('')
 watch(startsOn, () => { startsOnError.value = '' })
 // "Es ist noch nichts geändert" (E6) under the day field until the day or a value changes.
 const { unchangedDay } = form
 // By content: a save puts an equal copy into the draft, which is no change.
 watch(() => `${startsOn.value}\u0000${stableJson(draft.value)}`, () => { unchangedDay.value = false })
-const dayOn = computed(() => (asksDay.value && startsOn.value ? startsOn.value : undefined))
+const dayOn = computed(() => (taskAsksDay.value && startsOn.value ? startsOn.value : undefined))
 /**
  * A save with a day is on its way (E8): the form goes back to the entry when it lands, so input typed meanwhile would
  * be lost. The fields and the day are inert until then. Set by that save itself, so nothing typed meanwhile ends it (H1).

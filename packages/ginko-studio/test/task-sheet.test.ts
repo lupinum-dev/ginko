@@ -685,6 +685,23 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
+  // Wrong behaviour caught (I2.3): someone took the entry offline while the sheet was open; the day field went, and the
+  // save wrote the value into the draft without a word, though the person had set a later day.
+  test('an entry taken offline with a day typed: the save sends the day and shows the refusal', async () => {
+    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'INVALID', message: 'Nur ein Eintrag, der online ist, bekommt eine Änderung ab einem Tag.' } })
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = inDays(10)
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    await wrapper.setProps({ entry: { ...stored, state: 'draft' } as never })
+    expect((wrapper.get('#sheet-starts-on').element as HTMLInputElement).value).toBe(day)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    const calls = ops.saveEntry.mock.calls.map((c) => (c as unknown as [{ from?: string; publish?: true }])[0])
+    expect([calls.map((c) => [c.from, c.publish]), wrapper.get('[role="alert"]').text(), wrapper.emitted('close')]).toEqual([[[day, undefined]], 'Nur ein Eintrag, der online ist, bekommt eine Änderung ab einem Tag.', undefined])
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught (E1): a day typed by keyboard and not finished leaves the input empty, which read as "no day",
   // so the button, Enter or Ctrl+S put the value online now, although it was meant for a later day.
   test.each([['the button'], ['Enter'], ['Ctrl+S']] as const)('a day typed and not finished is refused (%s)', async (how) => {
