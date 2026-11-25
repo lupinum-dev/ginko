@@ -22,7 +22,7 @@ import { errorKind, mailStopped, stoppedChangeLines, stoppedLines } from './lib/
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
-import { asChanges, baseRows, checkDay, checkLabels, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, isRowOf, planDated, refuseTaskWithoutDay, rowLabels, savedTime, startsOn, taskHasEnd, taskSet, timeOf, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
+import { asChanges, baseRows, checkDay, checkLabels, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, isRowOf, planDated, hasDays, refuseTaskWithoutDay, rowLabels, savedTime, startsOn, taskHasEnd, taskSet, timeOf, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
 import { advance, stepArgs } from './lib/migrations'
 import { editorEntry, editorEntryWithTranslation, entryLabel as labelOf, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
@@ -386,7 +386,7 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
   const plan = await planDated(ctx, actor.site, entry, from, set, rows, { ...(until !== undefined ? { until } : {}), ...(edited ? { same: edited } : {}), ...(yearly ? { yearly } : {}), ...(rowName !== undefined ? { name: rowName } : {}) })
   // A stopped change of that day starts again with the same values: only a waiting one is left as it is.
   const sameLabels = plan.same?.yearly === plan.yearly && plan.same?.name === plan.name
-  if (plan.same && !plan.same.stopped ? same(plan.fields, plan.same.fields) && plan.same.until === until && sameLabels : !plan.same && !Object.keys(plan.fields).length) {
+  if (plan.same && !plan.same.stopped ? same(plan.fields, plan.same.fields) && hasDays(plan.same, from, until, todayIn(schema.timeZone)) && sameLabels : !plan.same && !Object.keys(plan.fields).length) {
     const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
     return unchanged
   }

@@ -228,9 +228,7 @@ describe('the same start and overlaps (state table)', () => {
 
   // Round N8 (suspected): "Bearbeiten" in a later year sends the listed days back; with nothing changed the press saves
   // nothing. Wrong behaviour caught: the stored first-year `until` is compared with this year's, so it saves again.
-  // RED on the built code (it saves again: a new history line and a `dated` answer). Marked `fails` until the lead rules
-  // on the fix; remove `.fails` with the fix.
-  it.fails('a later year: "Bearbeiten" and a press with nothing changed saves nothing', async () => {
+  it('a later year: "Bearbeiten" and a press with nothing changed saves nothing', async () => {
     const s = await yearlySetup()
     await s.season(990, '2027-11-01', '2027-11-30', { name: 'Herbst' })
     const [row] = await s.dated(s.saibling)
@@ -242,6 +240,18 @@ describe('the same start and overlaps (state table)', () => {
     const lines = (await s.history(s.saibling)).length
     const answer = await s.season(990, listed!.from, listed!.until!, { name: 'Herbst', change: row!._id })
     expect(['dated' in (answer as object), (await s.history(s.saibling)).length]).toEqual([false, lines])
+  })
+
+  // Round N8 (lead's question): the no-change check and the start. Wrong behaviour caught: "Bearbeiten" on a waiting offer
+  // with only a new start (same end, same values) answers "nothing changed" and the new start is lost.
+  it('"Bearbeiten" on a waiting offer with only a new start is no "nothing changed"', async () => {
+    const s = await yearlySetup()
+    await s.offer(800, '2027-11-01', '2027-11-30')
+    const [row] = await s.dated(s.saibling)
+    const answer = await s.offer(800, '2027-11-05', '2027-11-30', { change: row!._id })
+    // The named row is not the edited one (its start differs), so the new days make their own row; whether the old row
+    // should stay is not decided here.
+    expect(['dated' in (answer as object), (await s.dated(s.saibling)).some((r) => r.from === '2027-11-05')]).toEqual([true, true])
   })
 
   // Round N6: "Tage ändern" with only a new start keeps the end of the season's time of today, not its stored first end.

@@ -71,6 +71,13 @@ export const isRowOf = (r: Dated, from: string, until: string | undefined) => (u
   ? r.until === until && r.from === from
   : timeOf(r, from)?.from === from && timeOf(r, from)?.until === until)
 
+/**
+ * Whether `from`–`until` are the days of `r`: its stored ones, or for a yearly row the days of its time of `today`, which
+ * the list names in a later year (round N8). Only for comparing: a save keeps checking the days that were sent.
+ */
+export const hasDays = (r: Dated, from: string, until: string | undefined, today: string) => (r.from === from && r.until === until)
+  || (r.yearly === true && until !== undefined && timeOf(r, today)?.from === from && timeOf(r, today)?.until === until)
+
 /** An exception that holds: its start run passed and it has not been stopped. */
 export const isHolding = (r: Dated) => r.until !== undefined && r.holds !== undefined && !r.stopped
 
