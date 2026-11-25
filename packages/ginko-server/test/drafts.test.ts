@@ -278,6 +278,35 @@ describe('a draft may be incomplete (D115)', () => {
     expect((await s.row(draft.entry))!.data).not.toHaveProperty('description')
   })
 
+  // The assumptions about a complete draft (inventory-platform D) that an incomplete one could break.
+  // Wrong behaviour caught (1-4): a draft without a title crashes the name, takes no address, or shows an empty label in
+  // the history and in the search.
+  it('a draft without a title is named and addressed by the brick key, and the history and search call it by the brick', async () => {
+    const s = await draftSetup()
+    const bare = { when: { from: '2026-11-20', to: '2026-11-20' }, description: { de: 'Zauberwort' } }
+    const create = () => s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: bare })
+    const ids = [(await create()).entry, (await create()).entry]
+    expect(await Promise.all(ids.map(async (id) => (await s.row(id))!.name))).toEqual(['events', 'events-2'])
+    const slugs = await s.t.run(async (ctx) => (await ctx.db.query('slugs').collect()).filter((r) => r.entry === ids[0]).map((r) => [r.locale, r.slug]))
+    expect(slugs.sort()).toEqual([['de', 'events'], ['en', 'events']])
+    const change = await s.t.run(async (ctx) => (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', ids[0] as Id<'entries'>)).collect())[0]!)
+    expect(change.msg).toMatchObject({ key: 'history.draftCreated', params: { title: 'Veranstaltungen' } })
+    const found = await s.as.owner.query(api.search.studio, { site: 'restaurant', query: 'zauberwort' })
+    expect(found.entries.map((e) => [e.entry, e.label, e.state])).toEqual(expect.arrayContaining(ids.map((id) => [id, 'Veranstaltungen', 'draft'])))
+    expect(found.entries).toHaveLength(2)
+  })
+
+  // Wrong behaviour caught (11): a draft without its week skips the one-plan-per-week rule for good, so a later save
+  // puts a second plan on a week that has one.
+  it('a week plan draft without its week saves; giving it a planned week is refused', async () => {
+    const s = await draftSetup()
+    const planned = await s.t.run(async (ctx) => (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'lunchPlans')).first())!)
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'lunchPlans', data: {} })
+    expect(draft).toMatchObject({ state: 'draft' })
+    const error = await errorOf(s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 1, fields: { weekOf: (planned.data as { weekOf: string }).weekOf } }))
+    expect(error).toMatchObject({ code: 'INVALID', details: { errors: [{ path: 'weekOf', key: 'errors.weekAlreadyPlanned' }] } })
+  })
+
   // Wrong behaviour caught: one half-filled draft blocks every release that rechecks its brick, or a release lets an
   // incomplete online or planned entry through.
   it('a release checks a draft without a time for its shape only; online and planned entries stay strict', async () => {
