@@ -205,6 +205,16 @@ Rules for a new migration:
      the site leaves `migrations.skipped`; when it fails again, it stays, and the error names the kind.
   4. Contract step (next major, rule 6): remove `pendingChanges.publishAt`, `pendingChanges.publishJob` and
      `proposals.job` from the schema, the online branch of `publishDue`, and `migrateOlderWays` with its list entry.
+- **One site, one transaction (R4 review), and its bound.** Convex's limits per mutation
+  (docs.convex.dev/production/state/limits, read 26 November 2026; nested `runMutation` is not on that page, so the
+  nested site and row mutations count as part of the step): 32,000 documents scanned, 16 MiB read, 16,000 documents
+  written, 16 MiB written, 4,096 index ranges (`db.get` and `db.query` calls), 1,000 scheduled functions, 1 s of user
+  code. A site has at most 2,000 entries and 4 MiB of text plus 4 MiB in the trash (core `SITE_BUDGET`), so reading
+  all of it stays far below the document and byte limits. The tight limits are per planned value or timed change:
+  each takes about five index ranges and, for a later day, one scheduled run. A brick holds at most 500 entries, so one
+  planned brick at its maximum stays inside (about 2,500 ranges, 500 runs); the gastro menu has at most 150 dishes. A
+  site above the limits (several full planned bricks, or more than 1,000 later changes) fails as a whole, is left as
+  it was and listed in `migrations.skipped`; it then needs a paged follow-up migration, not a rerun.
 - **Conditions (R3 review), each with a test in `test/migrations.test.ts`:** it works on a stored model in the older
   format, which the new `checkSchema` refuses; a site without these things is left as it is (same schema, `schemaRev`,
   `contentRev`, no history row); a site it cannot convert is reported by its slug, nothing of it is half written, and
