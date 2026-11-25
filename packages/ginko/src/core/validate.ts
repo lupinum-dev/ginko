@@ -263,9 +263,15 @@ function checkScalar(field: Field, value: unknown, path: string, locale: Locale 
       return isDate(value) ? [] : fail('DATE', 'badDate')
     case 'time':
       return typeof value === 'string' && timePattern.test(value) ? [] : fail('TIME', 'badTime')
-    case 'daterange':
-      if (!isRecord(value) || !isDate(value.from) || !isDate(value.to) || Object.keys(value).length !== 2) return fail('DATE', 'badDateRange')
+    case 'daterange': {
+      // A side that is there must be a date; a side that is not there is missing (a draft keeps a half-filled period).
+      if (!isRecord(value) || Object.keys(value).some((k) => k !== 'from' && k !== 'to')) return fail('DATE', 'badDateRange')
+      if ([value.from, value.to].some((side) => side !== undefined && !isDate(side))) return fail('DATE', 'badDateRange')
+      if (value.from === undefined && value.to === undefined) return fail('REQUIRED', 'fieldMissing')
+      if (value.from === undefined) return fail('REQUIRED', 'dateRangeFromMissing')
+      if (value.to === undefined) return fail('REQUIRED', 'dateRangeToMissing')
       return (value.from as string) <= (value.to as string) ? [] : fail('DATE_ORDER', 'dateRangeOrder')
+    }
     case 'choice':
       return typeof value === 'string' && field.options.some((o) => o.value === value) ? [] : fail('CHOICE', 'badChoice')
     case 'choices': {

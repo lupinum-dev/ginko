@@ -244,7 +244,12 @@ export function displayValue(field: Field, value: unknown, locale: Locale, words
     case 'money': return formatMoney({ amount: (value as { amount: number }).amount, currency: field.currency ?? words.currency }, locale)
     case 'boolean': return value ? t('ops.value.yes') : t('ops.value.no')
     case 'date': return formatDay(String(value), format)
-    case 'daterange': { const r = value as { from: string; to: string }; return r.from === r.to ? formatDay(r.from, format) : `${formatDay(r.from, format)} – ${formatDay(r.to, format)}` }
+    case 'daterange': {
+      // A draft may lack a side: it shows as "…".
+      const r = value as { from?: string; to?: string }
+      const day = (d: string | undefined) => (d ? formatDay(d, format) : '…')
+      return r.from === r.to ? day(r.from) : `${day(r.from)} – ${day(r.to)}`
+    }
     case 'choice': { const o = field.options.find((x) => x.value === value); return o ? shownLabel(o.label, locale) : String(value) }
     case 'choices': { const v = value as string[]; return v.length ? field.options.filter((o) => v.includes(o.value)).map((o) => shownLabel(o.label, locale)).join(', ') : t('ops.value.none') }
     case 'list': return t('ops.value.items', { count: (value as unknown[]).length })

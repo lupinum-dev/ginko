@@ -24,6 +24,8 @@
     "badTime": "“{label}” non è un orario valido.",
     "badDateRange": "“{label}” non è un periodo valido.",
     "dateRangeOrder": "“{label}”: “dal” viene dopo “al”.",
+    "dateRangeFromMissing": "“{label}”: manca il giorno “dal”.",
+    "dateRangeToMissing": "“{label}”: manca il giorno “al”.",
     "timeOrder": "“{end}” deve essere dopo “{start}”.",
     "notWeekStart": "“{label}” deve essere il primo giorno di una settimana.",
     "badChoice": "“{label}” ha un valore non valido.",

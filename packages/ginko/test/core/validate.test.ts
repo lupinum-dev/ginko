@@ -547,6 +547,7 @@ describe('the draft check (D115): well formed to be stored, not complete', () =>
     ['DATE: a number', 'refuses', 'kit', { ...base, day: 42 }, ['day', 'DATE']],
     ['DATE: a phrase', 'refuses', 'kit', { ...base, day: 'next friday' }, ['day', 'DATE']],
     ['DATE: a range of phrases', 'refuses', 'kit', { ...base, span: { from: 'heute', to: 'morgen' } }, ['span', 'DATE']],
+    ['DATE: a period with one side that is no date', 'refuses', 'kit', { ...base, span: { from: '2026-10-09', to: '' } }, ['span', 'DATE']],
     ['TIME: 25:99', 'refuses', 'kit', { ...base, at: '25:99' }, ['at', 'TIME']],
     ['ROW_ID: a row without a proper id', 'refuses', 'kit', { ...base, rows: [row('kurz', 'A')] }, ['rows.0', 'ROW_ID']],
     ['ROW_ID: two rows with one id', 'refuses', 'kit', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('aaaaaaaaaa', 'B')] }, ['rows.aaaaaaaaaa', 'ROW_ID']],
@@ -563,6 +564,8 @@ describe('the draft check (D115): well formed to be stored, not complete', () =>
     ['STEP', 'warns', 'kit', { ...base, count: 1.5 }, ['count', 'STEP']],
     ['CHOICE', 'warns', 'kit', { ...base, kind: 'c' }, ['kind', 'CHOICE']],
     ['DATE_ORDER', 'warns', 'kit', { ...base, span: { from: '2026-10-09', to: '2026-10-08' } }, ['span', 'DATE_ORDER']],
+    ['REQUIRED: a period without its end', 'warns', 'kit', { ...base, span: { from: '2026-10-09' } }, ['span', 'REQUIRED']],
+    ['REQUIRED: a period without its start', 'warns', 'kit', { ...base, span: { to: '2026-10-09' } }, ['span', 'REQUIRED']],
     ['REF_MISSING', 'warns', 'kit', { ...base, friends: ['gone'] }, ['friends', 'REF_MISSING']],
     ['FILE_REF_MISSING', 'warns', 'kit', { ...base, body: { de: '![Karte]($file.lost1)' } }, ['body.de', 'FILE_REF_MISSING']],
     ['ALT_REQUIRED: a web picture without description', 'warns', 'kit', { ...base, body: { de: '![](https://bilder.example/a.jpg)' } }, ['body.de', 'ALT_REQUIRED']],
@@ -574,5 +577,11 @@ describe('the draft check (D115): well formed to be stored, not complete', () =>
     const { errors, warnings } = await draft(data as Record<string, unknown>, brick)
     if (verdict === 'refuses') expect(pairs(errors)).toContainEqual(issue)
     else expect([pairs(errors), pairs(warnings)]).toEqual([[], expect.arrayContaining([issue])])
+  })
+
+  // Wrong behaviour caught: a half-filled period goes online, and the site shows an end without a start (F13).
+  it('refuses a period with one side missing when it goes online', async () => {
+    const { errors } = await validate(kit, 'kit', { ...base, span: { from: '2026-10-09' } }, check('create'))
+    expect(errors).toEqual([expect.objectContaining({ path: 'span', code: 'REQUIRED', key: 'issues.dateRangeToMissing' })])
   })
 })
