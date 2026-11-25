@@ -441,6 +441,9 @@ describe('slugify and uniqueSlug (SPEC 2.2)', () => {
     ['Über uns & Team', 'ueber-uns-team'],
     ['Café', 'cafe'],
     ['***', ''],
+    // Wrong behaviour caught: the hyphens at the ends stay, also where the cut at 80 ends on one (K2, no regex there).
+    ['  -Hallo, Welt!- ', 'hallo-welt'],
+    [`${'a'.repeat(79)} bc`, 'a'.repeat(79)],
   ])('slugify(%j) is %j', (input, expected) => {
     expect(slugify(input)).toBe(expected)
   })

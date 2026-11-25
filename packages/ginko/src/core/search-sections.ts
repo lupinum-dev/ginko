@@ -32,7 +32,13 @@ const excerptOf = (text: string) => {
   return flat.length <= EXCERPT ? flat : `${flat.slice(0, flat.lastIndexOf(' ', EXCERPT) + 1 || EXCERPT).trimEnd()}…`
 }
 
-const collapse = (text: string) => text.replace(/[ \t]*\n[ \t\n]*/g, '\n').replace(/[ \t]+/g, ' ').trim()
+/**
+ * Spaces and tabs in a row become one space; a line break with the spaces, tabs and empty lines around it becomes one
+ * line break. Line by line, not with one regex for "spaces, a line break, more whitespace": that regex backtracks on a
+ * long run of spaces without a line break (polynomial time on a page someone else wrote).
+ */
+const squeeze = (line: string) => line.split(/[ \t]/).filter(Boolean).join(' ')
+export const collapse = (text: string) => text.split('\n').map(squeeze).filter((line, i) => i === 0 || line !== '').join('\n').trim()
 
 /**
  * The search records of one locale's bundle: for every collection item with a URL in that locale, one record
