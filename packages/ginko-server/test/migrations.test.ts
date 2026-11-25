@@ -338,6 +338,22 @@ describe('2026-11-25-dated-changes (D130)', () => {
     expect(after.line).toMatchObject({ kind: 'unschedule', msg: { key: 'history.changesUnscheduled' } })
   })
 
+  // H3.22. Wrong behaviour caught: a passed plan wrote the price during the migration, and a timed price for a later
+  // day, saved before that, became a dated change on top of it without the check "Publish" with a day makes.
+  it('keeps a timed change for a later day unpublished when its field changed online since the save', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = await plannedSchnitzel(s, 1200, '2026-10-01')
+    const rev = await s.t.run(async (ctx) => ((await ctx.db.get(schnitzel))!.fieldRevs as Record<string, number>).price ?? 0)
+    await s.t.run((ctx) => ctx.db.insert('pendingChanges', { site: s.site, entry: schnitzel, brick: 'menu', fields: { price: { amount: 1100 } }, prints: {}, revs: { price: rev }, by: people.owner, since: 0, at: 0, publishAt: Date.parse('2026-10-20T08:00:00Z') }))
+    await runThisOne(s)
+    expect([((await s.t.run((ctx) => ctx.db.get(schnitzel)))!.data as { price: unknown }).price, await datedRows(s)]).toEqual([{ amount: 1200 }, []])
+    const after = await kept(s, schnitzel)
+    expect(after.pending).toEqual([[{ price: { amount: 1100 } }, null]])
+    expect(after.line).toMatchObject({ kind: 'unschedule', msg: { key: 'history.changesUnscheduled' } })
+  })
+
   // Wrong behaviour caught: the migration cancels a job that already ran or failed, which rewrites its record in
   // `_scheduled_functions` (the only place a failed run is remembered) as cancelled.
   it('cancels only a job that still waits', async () => {

@@ -404,6 +404,9 @@ async function convertTimedRow(ctx: MutationCtx, id: Id<'pendingChanges'>, publi
   }
   const roots = Object.keys(held.fields)
   if (roots.some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
+  // A field changed online since the save (also by a passed plan of this migration): refused, as "Publish" with a day
+  // refuses it (`publishPendingDated`).
+  if (roots.some((root) => (entry.fieldRevs[root] ?? 0) > (held.revs[root] ?? 0))) throw new ConvexError({ code: 'CHANGED_SINCE' })
   const rows = await datedOf(ctx, entry._id)
   // The row of that day already sets one of these fields (a planned value converted above, or a dated change saved
   // since the deploy): neither value may silently win, so the change stays unpublished without a time.
