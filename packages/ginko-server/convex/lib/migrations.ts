@@ -125,7 +125,7 @@ export async function migrationStatus(ctx: QueryCtx) {
     pending: MIGRATIONS.filter((m) => !done.has(m.name)).map((m) => m.name),
     running: now && !now.stopped ? page(now.row) : null,
     stopped: now?.stopped ? { ...page(now.row), error: now.stopped.error, at: now.stopped.at } : null,
-    skipped: (await allRuns(ctx)).flatMap((r) => (r.skipped ?? []).map((site) => ({ migration: r.name, site }))),
+    skipped: (await allRuns(ctx)).flatMap((r) => (r.skipped ?? []).map((s) => ({ migration: r.name, site: s.slug, id: s.site, kind: s.kind }))),
   }
 }
 
@@ -137,8 +137,8 @@ export function notConverted(error: unknown): ConvexError<{ code: 'NOT_CONVERTED
 
 /**
  * Runs `convert` for one site of a step, a nested mutation (a transaction of its own): a site it cannot convert leaves
- * nothing half written, is logged and recorded on the run by its slug (`ops:status`), and the step goes on with the
- * other sites. An error loses its class on the way out of a nested mutation, so the step throws `notConverted(error)`.
+ * nothing half written, is logged and recorded on the run with its id, slug and error kind (`ops:status`), and the
+ * step goes on with the other sites. The site step, run again by hand, calls `clearSkipped` when it succeeds. An error loses its class on the way out of a nested mutation, so the step throws `notConverted(error)`.
  */
 export async function eachSite(ctx: MutationCtx, run: Id<'serverMigrations'>, site: Doc<'sites'>, convert: () => Promise<unknown>) {
   try {
@@ -148,6 +148,14 @@ export async function eachSite(ctx: MutationCtx, run: Id<'serverMigrations'>, si
     const kind = error instanceof ConvexError ? String((error.data as { kind?: unknown } | null)?.kind) : 'unknown'
     // The class or code only: an error's message can hold a title or an address.
     console.error(`Migration ${row.name}: site ${site.slug} not converted (${kind}); the other sites go on.`)
-    await ctx.db.patch(run, { skipped: [...new Set([...(row.skipped ?? []), site.slug])] })
+    await ctx.db.patch(run, { skipped: [...(row.skipped ?? []).filter((s) => s.site !== site._id), { site: site._id, slug: site.slug, kind }] })
+  }
+}
+
+/** Takes `site` off the skipped list of migration `name`: its site step ran again and succeeded. */
+export async function clearSkipped(ctx: MutationCtx, name: string, site: Id<'sites'>) {
+  for (const row of await allRuns(ctx)) {
+    if (row.name !== name || !row.skipped?.some((s) => s.site === site)) continue
+    await ctx.db.patch(row._id, { skipped: row.skipped.filter((s) => s.site !== site) })
   }
 }

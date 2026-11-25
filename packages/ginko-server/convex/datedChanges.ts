@@ -17,7 +17,7 @@ import { errorKind, mailStoppedChange, stoppedBecause } from './lib/stopped'
 import { brokenNewLinks, commitEntry, lookupsFor } from './lib/write'
 import type { StopReason } from './schema'
 import { internal } from './_generated/api'
-import { advance, eachSite, notConverted, stepArgs } from './lib/migrations'
+import { advance, clearSkipped, eachSite, notConverted, stepArgs } from './lib/migrations'
 import { followName, publishHeldNow, rootsWith, writeFollowedName } from './entries'
 
 /** A dated change of the actor's site, and its entry; anything else is NOT_FOUND. */
@@ -276,7 +276,12 @@ export const migrateOlderWays = internalMutation({
   },
 })
 
-/** One site of `migrateOlderWays`, as a transaction of its own (`eachSite`). */
+const MIGRATION = '2026-11-25-dated-changes'
+
+/**
+ * One site of `migrateOlderWays`, as a transaction of its own (`eachSite`). Also the rerun of a skipped site, by hand
+ * (internals/migrations.md): when it succeeds, the site leaves `migrations.skipped`.
+ */
 export const migrateOneSite = internalMutation({
   args: { site: v.id('sites') },
   handler: async (ctx, args): Promise<null> => {
@@ -286,6 +291,7 @@ export const migrateOneSite = internalMutation({
     } catch (error) {
       throw notConverted(error)
     }
+    await clearSkipped(ctx, MIGRATION, args.site)
     return null
   },
 })
@@ -324,7 +330,7 @@ async function convertTimed(ctx: MutationCtx, site: Doc<'sites'>) {
       await ctx.runMutation(internal.datedChanges.migrateTimedRow, { held: held._id, publishAt })
     } catch (error) {
       const data = error instanceof ConvexError ? error.data as { code?: string; kind?: string } : undefined
-      if (data?.code === 'NOT_CONVERTED') console.error(`Migration 2026-11-25-dated-changes: unpublished changes ${held._id} stay without a time (${data.kind}).`)
+      if (data?.code === 'NOT_CONVERTED') console.error(`Migration ${MIGRATION}: unpublished changes ${held._id} stay without a time (${data.kind}).`)
       const current = (await ctx.db.get(site._id))!
       await ctx.db.insert('changes', {
         site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: migrateOpId(held._id), kind: 'unschedule',

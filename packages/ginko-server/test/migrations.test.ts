@@ -396,6 +396,7 @@ describe('2026-11-25-dated-changes (D130)', () => {
   it('reports a site it cannot convert by name and converts the others', async () => {
     vi.useFakeTimers()
     const s = await setup()
+    const menuFields = structuredClone(((await s.t.run((ctx) => ctx.db.get(s.site)))!.schema as Schema).bricks.menu!.fields)
     const second = await s.t.run(async (ctx) => {
       const { _id, _creationTime, ...site } = (await ctx.db.get(s.site))!
       const stored = structuredClone(site.schema) as { bricks: Record<string, { fields: Record<string, unknown>; planned?: unknown; timeline?: unknown }> }
@@ -417,11 +418,24 @@ describe('2026-11-25-dated-changes (D130)', () => {
     await runThisOne(s)
     expect(log.mock.calls).toEqual([['Migration 2026-11-25-dated-changes: site restaurant not converted (TypeError); the other sites go on.']])
     log.mockRestore()
-    expect((await s.t.query(internal.ops.status, {}))!.migrations.skipped).toEqual([{ migration: '2026-11-25-dated-changes', site: 'restaurant' }])
+    expect((await s.t.query(internal.ops.status, {}))!.migrations.skipped).toEqual([{ migration: '2026-11-25-dated-changes', site: 'restaurant', id: s.site, kind: 'TypeError' }])
     const after = await s.t.run(async (ctx) => ({ restaurant: (await ctx.db.query('pendingChanges').collect())[0]!, second: (await ctx.db.get(second))! }))
     // Nothing of the restaurant is half written: its change keeps its time.
     expect(after.restaurant.publishAt).toBe(Date.parse('2026-10-20T08:00:00Z'))
     expect((after.second.schema as { bricks: Record<string, { planned?: unknown; timeline?: unknown }> }).bricks.menu).toMatchObject({ timeline: { public: ['price'] } })
     expect((after.second.schema as { bricks: Record<string, { planned?: unknown }> }).bricks.menu!.planned).toBeUndefined()
+
+    // G2. Wrong behaviour caught: the run is done, so nothing ever converts the skipped site, and the list never empties.
+    // Its stored fields are fixed by hand, then the one command of internals/migrations.md runs it again.
+    await s.t.run(async (ctx) => {
+      const stored = (await ctx.db.get(s.site))!.schema as { bricks: Record<string, { fields: unknown }> }
+      stored.bricks.menu!.fields = { ...menuFields, nextPrice: { type: 'money', label: 'Geplanter Preis', optional: true, pos: 7 }, priceFrom: { type: 'date', label: 'Gilt ab', optional: true, pos: 8 } }
+      await ctx.db.patch(s.site, { schema: stored as never })
+    })
+    await s.t.mutation(internal.datedChanges.migrateOneSite, { site: s.site })
+    expect((await s.t.query(internal.ops.status, {}))!.migrations.skipped).toEqual([])
+    const fixed = (await s.t.run((ctx) => ctx.db.get(s.site)))!.schema as { bricks: Record<string, { planned?: unknown; timeline?: unknown }> }
+    expect([fixed.bricks.menu!.planned, fixed.bricks.menu!.timeline]).toEqual([undefined, { public: ['price'] }])
+    expect(await datedRows(s)).toEqual([[s.entries['menu-risotto']!, '2026-10-20', { price: { amount: 1500 } }]])
   })
 })

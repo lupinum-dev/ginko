@@ -47,12 +47,15 @@ Rules for a new migration:
    entry that points at it.
 6. It stays in the list, with its step, until the next major version: self-hosted platforms can skip versions, so
    "it ran on every deployment" can never be known. The major's release notes say "update to the last version before
-   it first and wait until `ops:status` shows no pending migration"; contract steps ship with that major.
+   it first and wait until `ops:status` shows no pending migration and `migrations.skipped` is empty"; contract steps
+   ship with that major, and their gate is the same: no pending migration and no skipped site.
 7. An entry in this file, and a test that runs it through `migrations:runPending`.
 8. A step that changes sites reads the stored model as it is (raw shapes, never through the new `checkSchema`), leaves
    a site without the old things as it is, and converts each site in its own transaction (`eachSite`, a nested
    mutation that throws `notConverted`): a site it cannot convert is logged and listed by slug in `ops:status`
-   (`migrations.skipped`), and the other sites go on. A test for each of the three.
+   (`migrations.skipped`, with the site's id and the error's class or code), and the other sites go on. The site step
+   is an internal mutation that takes `{ site }`, so a fixed site can be run again by hand; when it succeeds, the site
+   leaves `migrations.skipped` (`clearSkipped`). A test for each of the three, and one for the rerun.
 
 ## Entry storage: trees in `entryTrees`, text-only budget, separate trash (`2026-10-14-entry-storage`)
 
@@ -195,8 +198,11 @@ Rules for a new migration:
   2. Check: `ops:status` shows it done. A site's next `ginko release` with the new gastro preset finds the stored
      schema as the config writes it (no `planned`, `timeline: { public: ['price'] }`); a config that still has
      `planned` is refused with the way to move.
-  3. If `ops:status` lists a site under `migrations.skipped`, read the log line of that site (the error's class or
-     code), fix its stored rows by hand or with a follow-up migration, and run it again.
+  3. If `ops:status` lists a site under `migrations.skipped`, read its `kind` (the error's class or code) and the log
+     line of that site, fix its stored rows by hand or with a follow-up migration, and run that site again with its
+     `id` from `ops:status`:
+     `npx convex run datedChanges:migrateOneSite '{"site":"<id>"}'` (add `--prod` for production). When it succeeds,
+     the site leaves `migrations.skipped`; when it fails again, it stays, and the error names the kind.
   4. Contract step (next major, rule 6): remove `pendingChanges.publishAt`, `pendingChanges.publishJob` and
      `proposals.job` from the schema, the online branch of `publishDue`, and `migrateOlderWays` with its list entry.
 - **Conditions (R3 review), each with a test in `test/migrations.test.ts`:** it works on a stored model in the older
