@@ -104,7 +104,8 @@ test('"Heute nicht auf der Karte" takes the dish off today with one labelled pre
   await expect(sheet).toHaveCount(0)
   await expect.poll(() => shownDish(DISH)?.data.onMenu).toBe(false)
   expect(shownDish(DISH)?.holding).toBeUndefined()
-  expect(storedDish(DISH)?.onMenu).toBe(true)
+  // The stored entry stays on the menu: the seed leaves `onMenu` out, which means true (the preset's default).
+  expect(storedDish(DISH)?.onMenu ?? true).toBe(true)
 })
 
 // Wrong behaviour caught (number 5): the answer to a conflict saved the offer, or saved it without a day; after the
