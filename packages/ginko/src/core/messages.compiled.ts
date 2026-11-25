@@ -481,7 +481,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "“ in einer Änderung ist noch nicht gebaut."
+    "“ gibt es für eine Änderung noch nicht."
    ],
    "changeTwice": [
     "Zwei Änderungen ab ",
@@ -510,7 +510,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "label"
     ],
-    "“ hat Text pro Sprache. Eine Änderung ab einem Tag ist für ein solches Feld noch nicht gebaut."
+    "“ hat Text pro Sprache. Für ein solches Feld ist eine Änderung ab einem Tag noch nicht möglich."
    ],
    "changeValue": [
     "Änderung ab ",
@@ -1959,7 +1959,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "” in a change is not built yet."
+    "” is not available for a change yet."
    ],
    "changeTwice": [
     "Two changes from ",
@@ -1988,7 +1988,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "label"
     ],
-    "” has text per language. A change from a day is not built yet for such a field."
+    "” has text per language. A change from a day is not possible for such a field yet."
    ],
    "changeValue": [
     "Change from ",
@@ -3437,7 +3437,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "» en un cambio todavía no está hecho."
+    "» todavía no está disponible para un cambio."
    ],
    "changeTwice": [
     "Dos cambios desde el ",
@@ -3466,7 +3466,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "label"
     ],
-    "» tiene texto por idioma. Un cambio desde un día todavía no está hecho para un campo así."
+    "» tiene texto por idioma. Un cambio desde un día todavía no es posible para un campo así."
    ],
    "changeValue": [
     "Cambio desde el ",
@@ -4917,7 +4917,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    " » dans une modification n’est pas encore prévu."
+    " » n’est pas encore disponible pour une modification."
    ],
    "changeTwice": [
     "Deux modifications à partir du ",
@@ -4946,7 +4946,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "label"
     ],
-    " » a un texte par langue. Une modification à partir d’un jour n’est pas encore prévue pour un tel champ."
+    " » a un texte par langue. Une modification à partir d’un jour n’est pas encore possible pour un tel champ."
    ],
    "changeValue": [
     "Modification à partir du ",

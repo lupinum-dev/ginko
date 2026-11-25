@@ -60,7 +60,9 @@ export type DataOf<F extends Fields> = {
 
 /**
  * A change that starts later (`upcoming`): its day and the values of the brick's `timeline.public` fields it sets. A
- * field it clears is `null`.
+ * field it clears is `null`. Typed over every field of the brick: `single` and `collection` keep the names of
+ * `timeline.public` as plain strings (`BrickTimeline`), not as literals, so the type cannot narrow to them; at runtime
+ * only those fields are in `data`.
  */
 export interface UpcomingOf<F extends Fields> {
   from: string

@@ -50,6 +50,11 @@ export const twiceOnClock = (ms: number, timeZone: string) => zonedTimes(msToZon
 /** Then the zone's short name says which one ("02:30 MEZ"). */
 const zoneIfTwice = (ms: number, timeZone: string) => (twiceOnClock(ms, timeZone) ? { timeZoneName: 'short' } as const : {})
 
+/** "Samstag, 17. Oktober": a day ('2026-10-17', no zone) in the Studio's language, such as the day a dated change starts on. */
+export function dayWords(day: string, format: Words['format']): string {
+  return format.date(day, { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
 /** "14. Okt., 09:00" in the site's time zone and the Studio's language: short, for toasts, status and lists. */
 export function whenText(ms: number, timeZone: string, format: Words['format']): string {
   return format.date(ms, { timeZone, day: 'numeric', month: 'short', ...CLOCK, ...zoneIfTwice(ms, timeZone) })

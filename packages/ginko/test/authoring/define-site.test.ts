@@ -75,6 +75,17 @@ describe('defineSite writes the stored form', () => {
     expect(() => defineSite({ ...base, locales: ['de'], bricks: { add } })).toThrow('add.tasks.add: when is only for an edit task.')
   })
 
+  // Wrong: a `timeline` of the wrong shape crashes with a TypeError, or loses its unknown keys and passes, instead of
+  // the schema check naming what is wrong.
+  it.each([
+    ['without public', {}, "news.timeline.public must list field names, such as `['price']`."],
+    ['public as one name', { public: 'price' }, "news.timeline.public must list field names, such as `['price']`."],
+    ['an unknown key', { public: ['price'], until: ['price'] }, 'news.timeline: unknown property “until”.'],
+  ])('names a timeline %s', (_, timeline, message) => {
+    const news = collection({ listing: { title: 'title' }, label: 'News', max: 5, order: 'manual', fields: { title: f.text('Titel'), price: f.money('Preis') }, timeline: timeline as never })
+    expect(checkSite(defineSite({ ...base, locales: ['de'], bricks: { news } }), statusRules).filter((p) => p.includes('timeline'))).toEqual([message])
+  })
+
   // Wrong (D129): a site file that still has `planned` fails with "unknown key" or passes, and its author does not learn
   // that a price for a day is a dated change now.
   it('tells a brick with planned how to move to dated changes', () => {

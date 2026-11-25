@@ -98,6 +98,28 @@ describe('changeIssues: the check of an entry\'s changes', () => {
     expect(await codes(changes)).toEqual(expected)
   })
 
+  // Wrong behaviour caught: the check looked only at the change's own fields, so a change that shows a required field
+  // (showWhen) or two changes of one day that only work together were judged wrong.
+  describe('the whole entry before and after each day', () => {
+    const offer = collection({
+      label: 'Angebote', listing: { title: 'name' }, max: 20, order: 'manual',
+      fields: {
+        name: f.text('Name', { max: 40, translate: false }),
+        pricing: f.choice('Preisart', { options: [{ value: 'fixed', label: 'Fest' }, { value: 'onRequest', label: 'Auf Anfrage' }] }),
+        amount: f.money('Betrag', { showWhen: { field: 'pricing', is: 'fixed' } }),
+      },
+    })
+    const offers = schema({ bricks: { dishes, practice, offer } })
+    const onRequest: Record<string, Json> = { name: 'Kurs', pricing: 'onRequest' }
+    it.each([
+      ['a change that shows a required field left empty', [{ from: '2026-11-01', set: { pricing: 'fixed' } }], [[0, 'amount', 'REQUIRED']]],
+      ['two changes of one day that fill what the other shows', [{ from: '2026-11-01', set: { pricing: 'fixed' } }, { from: '2026-11-01', set: { amount: money(2500) } }], []],
+      ['the field filled only on a later day', [{ from: '2026-11-01', set: { pricing: 'fixed' } }, { from: '2026-12-01', set: { amount: money(2500) } }], [[0, 'amount', 'REQUIRED']]],
+    ])('%s', async (_, changes, expected) => {
+      expect((await changeIssues(offers, 'offer', onRequest, changes)).map((i) => [i.change, i.path, i.code])).toEqual(expected)
+    })
+  })
+
   it('names the day of a change in the problem of its value', async () => {
     const [issue] = await check([{ from: '2026-11-01', set: { price: null } }])
     expect(issue?.message).toBe('Änderung ab 2026-11-01: „Preis“ fehlt.')
@@ -159,7 +181,7 @@ describe('when on a task (D123)', () => {
   it('refuses a text field on a site with several languages', () => {
     const s = schema({ locales: ['de', 'en'], bricks: { dishes: { ...dishes, untranslated: 'fallback', route: { de: '/karte/[slug]', en: '/menu/[slug]' } }, practice } })
     ;(s.bricks.dishes as { tasks?: unknown }).tasks = [edit(['price', 'note'], { from: 'ask' })]
-    expect(checkSchema(s, statusRules).filter((p) => p.includes('when'))).toEqual(['dishes.price.when: “note” has text per language, and a translated value in a change is not built yet.'])
+    expect(checkSchema(s, statusRules).filter((p) => p.includes('when'))).toEqual(['dishes.price.when: “note” has text per language. A change from a day is not possible for such a field yet.'])
   })
 })
 
@@ -194,6 +216,14 @@ describe('upcoming in the bundle', () => {
   it('never carries a waiting value of a field outside timeline.public', () => {
     const text = JSON.stringify(buildBundle(input()))
     for (const secret of ['geheim', 'nur intern', '"B"']) expect(text).not.toContain(secret)
+  })
+
+  // Wrong behaviour caught: a page announces a new price for a day after the dish is taken off the menu.
+  it('leaves out a change whose day comes after the entry\'s last shown day', () => {
+    const ending = { ...input(), entries: { dishes: [{ id: 'd1', data: { ...dish, servedUntil: '2026-11-20' }, changes }] } }
+    const bundle = buildBundle(ending)
+    const [item] = bundle.bricks.dishes!.kind === 'collection' ? bundle.bricks.dishes!.items : []
+    expect(item?.upcoming?.map((u) => u.from)).toEqual(['2026-11-15'])
   })
 
   it('carries nothing ahead for a brick without timeline', () => {

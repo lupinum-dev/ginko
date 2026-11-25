@@ -7,7 +7,7 @@ import { isConvexCallError, normalizeConvexError } from '@lupinum/better-convex-
 import type { InjectionKey } from 'vue'
 import type { Json } from '@lupinum/ginko'
 import type { Place } from '@lupinum/ginko/internal'
-import { whenText } from '../utils/when'
+import { dayWords, whenText } from '../utils/when'
 import { translationNote } from '../utils/content'
 import { UploadError } from './useUpload'
 import { messageOf, type Described } from '../utils/messageOf'
@@ -127,7 +127,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   /** What the other languages show after a save, create or publish (the server's `translation`); `main` is the site's main locale. */
   const noteOf = (notes: Parameters<typeof translationNote>[0], main: string) => translationNote(notes, t, language.value, main)
   /** "Samstag, 17. Oktober": the day a dated change or a week planned ahead starts on. */
-  const dayText = (day: string) => format.date(day, { weekday: 'long', day: 'numeric', month: 'long' })
+  const dayText = (day: string) => dayWords(day, format)
   /**
    * When a write shows on the website: "in about a minute", or the day the server names, so nobody takes it for live
    * now: `liveFrom` for a week planned ahead, `from` for a dated change (D125).

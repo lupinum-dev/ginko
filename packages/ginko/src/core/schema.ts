@@ -679,7 +679,7 @@ function whenProblems(path: string, task: Task, when: unknown, brick: Brick, sch
   for (const name of task.fields) {
     const refusal = changeRefusal(schema, brick, name)
     if (refusal === 'changeFixed') out.push(`${path}.when: “${name}” decides when or where an entry shows, so it cannot start on a day. Leave it out of the task or drop when.`)
-    else if (refusal === 'changeTranslated') out.push(`${path}.when: “${name}” has text per language, and a translated value in a change is not built yet.`)
+    else if (refusal === 'changeTranslated') out.push(`${path}.when: “${name}” has text per language. A change from a day is not possible for such a field yet.`)
   }
   return out
 }
@@ -795,7 +795,7 @@ function timelineProblems(key: string, brick: Brick, schema: Pick<Schema, 'local
     const refusal = changeRefusal(schema, brick, name)
     if (refusal === 'unknownField') problems.push(`${key}.timeline.public: “${name}” is not a field of the brick.`)
     else if (refusal === 'changeFixed') problems.push(`${key}.timeline.public: “${name}” decides when or where an entry shows, so it cannot change on a day.`)
-    else if (refusal === 'changeTranslated') problems.push(`${key}.timeline.public: “${name}” has text per language; a dated change of such a field is not built yet on a site with several languages.`)
+    else if (refusal === 'changeTranslated') problems.push(`${key}.timeline.public: “${name}” has text per language. On a site with several languages, a change from a day is not possible for such a field yet.`)
   }
   return problems
 }
