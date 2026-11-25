@@ -179,6 +179,25 @@ describe('on the day', () => {
     await s.advanceTo(DAY1 + 24 * 3600_000 + 1000)
     expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
   })
+  // Wrong behaviour caught: saving the same values into a stopped change is taken as "nothing changed", so it stays
+  // stopped although the person planned it again. Reached when the site's today moves back (a new time zone).
+  it('saving the same values into a stopped change starts it again', async () => {
+    const s = await datedSetup()
+    await s.plan(1450)
+    const [change] = await s.dated(s.saibling)
+    await s.t.run((ctx) => ctx.db.patch(change!._id, { fields: { price: { amount: -5 } } }))
+    await s.advanceTo(DAY1 + 1000)
+    await s.t.run(async (ctx) => {
+      await ctx.db.patch(change!._id, { fields: { price: { amount: 1450 } } })
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      await ctx.db.patch(s.site, { schema: { ...schema, timeZone: 'Pacific/Honolulu' } })
+    })
+    await s.plan(1450)
+    const [again] = await s.dated(s.saibling)
+    expect([again!._id, again!.stopped, !!again!.job]).toEqual([change!._id, undefined, true])
+    await s.advanceTo(DAY1 + 24 * 3600_000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
+  })
 })
 
 describe('moving and cancelling', () => {

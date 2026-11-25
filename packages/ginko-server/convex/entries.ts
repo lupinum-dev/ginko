@@ -310,7 +310,8 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
   const set: Record<string, Json> = {}
   for (const [key, value] of Object.entries(args.fields)) set[key] = value === null ? null : (mergeField(brick.fields[key]!, before[key], value as Json, args.locale as Locale | undefined) ?? null)
   const plan = await planDated(ctx, actor.site, entry, from, set, rows)
-  if (plan.same ? same(plan.fields, plan.same.fields) : !Object.keys(plan.fields).length) {
+  // A stopped change of that day starts again with the same values: only a waiting one is left as it is.
+  if (plan.same && !plan.same.stopped ? same(plan.fields, plan.same.fields) : !plan.same && !Object.keys(plan.fields).length) {
     const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
     return unchanged
   }
