@@ -30,7 +30,7 @@ const press = async (wrapper: ReturnType<typeof mountNotices>, label: string) =>
   await wrapper.findAll('button').find((b) => b.text() === label)!.trigger('click')
   await flushPromises()
 }
-const change = (id: string, from: string, over: Record<string, unknown> = {}) => ({ id, from, fields: ['price'], values: { price: { amount: 1290 } }, by: null, at: 0, changedSince: [], ...over })
+const change = (id: string, from: string, over: Record<string, unknown> = {}) => ({ id, from, fields: ['price'], values: { price: { amount: 1290 } }, by: null, at: 0, changedSince: [], mayCancel: true, mayMove: true, ...over })
 
 describe('the notices of changes for a later day', () => {
   // Wrong behaviour caught: a waiting change is not shown, the notice hides that the field changed since and will be
@@ -116,6 +116,15 @@ describe('the notices of changes for a later day', () => {
     await flushPromises()
     await press(wrapper, 'Änderung aufheben')
     expect(document.activeElement?.id).toBe('dated-day-d2-open')
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (G7): a step the server refuses this person (staff whose change needs a yes, someone else's
+  // change) was offered and failed only after the click.
+  test('only the steps the person may take are offered', () => {
+    rows.value = [change('d1', '2099-03-05', { mayMove: false }), change('d2', '2099-04-01', { mayMove: false, mayCancel: false })]
+    const wrapper = mountNotices()
+    expect(wrapper.findAll('[data-notice]').map((n) => n.findAll('button').map((b) => b.text()))).toEqual([['Änderung aufheben'], []])
     wrapper.unmount()
   })
 })

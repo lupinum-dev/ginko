@@ -489,6 +489,17 @@ describe('a dated change that needs a yes', () => {
     expect(await s.dated(s.saibling)).toMatchObject([{ _id: other!._id }])
   })
 
+  // Wrong behaviour caught (G7): the editor offered "Tag ändern" and "Änderung aufheben" where the steps refuse them.
+  it('the list says per change what the person may do, by the rule of the steps', async () => {
+    const s = await proposed()
+    await s.as.owner.mutation(api.proposals.approve, { proposal: s.sent.proposal })
+    await s.plan(1490, '2026-12-01')
+    const steps = async (who: 'owner' | 'cook') => (await s.as[who].query(api.datedChanges.list, { site: 'restaurant', entry: s.saibling, task: 'menu.price' }))
+      .map((c) => [c.from, c.mayCancel, c.mayMove])
+    expect(await steps('cook')).toEqual([['2026-10-09', true, false], ['2026-12-01', false, false]])
+    expect(await steps('owner')).toEqual([['2026-10-09', true, true], ['2026-12-01', true, true]])
+  })
+
   // Wrong behaviour caught: a late yes publishes like a save with "publish now" and so throws away an unpublished
   // change of the same field, which the run on the day leaves waiting.
   it('a late yes writes what the run would: an unpublished change of the field keeps waiting', async () => {

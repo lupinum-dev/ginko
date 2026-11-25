@@ -39,6 +39,23 @@ function mayChange(actor: Actor, schema: Schema, task: string | undefined, entry
 }
 
 /**
+ * Why `actor` may not take `step` on `row` through `task`, as the error the step throws; undefined when it may. One rule
+ * for `cancel`, `setDay` and the list the editor reads (G7): the task's rights over the change's fields; and a person
+ * whose change needs a yes moves none and cancels only their own (taking away someone else's planned values needs one).
+ */
+async function datedRefusal(ctx: QueryCtx, actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated, step: 'cancel' | 'move'): Promise<ConvexError<Json> | undefined> {
+  try {
+    mayChange(actor, schema, task, entry, row)
+    if (step === 'move' && entry.deletedAt) fail('NOT_FOUND', 'errors.datedNotFound')
+    if ((step === 'move' || row.by !== actor.user.id) && await needsProposal(ctx, actor, 'save', task, taskBrickOf(schema, task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
+    return undefined
+  } catch (error) {
+    if (error instanceof ConvexError) return error as ConvexError<Json>
+    throw error
+  }
+}
+
+/**
  * Moves a dated change to another day, checked at that day as a new one (a value may fit one day and not another); a
  * change that stopped starts again. A change already waiting on that day takes the moved fields (they replace its
  * values). A person whose change needs a yes cancels and makes it again instead, so the yes is not passed by.
@@ -50,10 +67,9 @@ export const setDay = mutation({
     return idempotent(ctx, actor, args, async () => {
       const { row, entry } = await datedRow(ctx, actor, args.change)
       const schema = actor.site.schema as Schema
-      mayChange(actor, schema, args.task, entry, row)
-      if (entry.deletedAt) fail('NOT_FOUND', 'errors.datedNotFound')
+      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, 'move')
+      if (refused) throw refused
       checkDay(schema, args.from)
-      if (await needsProposal(ctx, actor, 'save', args.task, taskBrickOf(schema, args.task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
       const result: Json = { change: row._id, from: args.from, contentRev: actor.site.contentRev }
       if (args.from === row.from && !row.stopped) return result
       const rows = (await datedOf(ctx, entry._id)).filter((r) => r._id !== row._id)
@@ -93,8 +109,8 @@ export const cancel = mutation({
     return idempotent(ctx, actor, args, async () => {
       const { row, entry } = await datedRow(ctx, actor, args.change)
       const schema = actor.site.schema as Schema
-      mayChange(actor, schema, args.task, entry, row)
-      if (row.by !== actor.user.id && await needsProposal(ctx, actor, 'save', args.task, taskBrickOf(schema, args.task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
+      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, 'cancel')
+      if (refused) throw refused
       await dropDated(ctx, row)
       // A stopped change was no longer served as coming.
       const contentRev = !row.stopped && touchesPublic(schema, entry.brick, Object.keys(row.fields)) ? actor.site.contentRev + 1 : actor.site.contentRev
@@ -113,19 +129,23 @@ export const cancel = mutation({
 
 /**
  * An entry's dated changes for the editor, in the order of their days: the values in storage format, who saved into it
- * last and when, a stop, and `changedSince`: the fields whose normal value was written after the change was made (the
+ * last and when, whether the person may cancel and move it through `task`, a stop, and `changedSince`: the fields whose normal value was written after the change was made (the
  * change still wins on its day, D126).
  */
 export const list = query({
-  args: { site: v.string(), entry: v.string() },
+  args: { site: v.string(), entry: v.string(), task: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     const entry = await entryOf(ctx, actor, args.entry)
+    const schema = actor.site.schema as Schema
     const names = await labeler(ctx, actor)
     const out = []
     for (const row of await datedOf(ctx, entry._id)) {
       out.push({
         id: row._id, from: row.from, fields: Object.keys(row.fields), values: row.fields, by: row.by ? await names.who(row.by) : null, at: row.at,
+        // What `task` lets this person do with it (G7): the editor offers only these steps.
+        mayCancel: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, 'cancel')),
+        mayMove: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, 'move')),
         ...(row.stopped ? { stopped: row.stopped } : {}),
         changedSince: Object.keys(row.fields).filter((root) => (entry.fieldRevs[root] ?? 0) > (row.revs[root] ?? 0)),
       })

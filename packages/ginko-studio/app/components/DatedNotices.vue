@@ -18,11 +18,13 @@ import StartsOnField from './StartsOnField.vue'
 const props = defineProps<{ site: string; entry: string; brick: Brick; main: string; timeZone: string; currency: Currency; task?: string }>()
 const { t, format } = useI18n()
 const ops = useOps(computed(() => props.site))
-const { data } = useConvexQuery(api.datedChanges.list, () => ({ site: props.site, entry: props.entry }), { server: false })
+const { data } = useConvexQuery(api.datedChanges.list, () => ({ site: props.site, entry: props.entry, ...(props.task ? { task: props.task } : {}) }), { server: false })
 const names = (keys: readonly string[]) => keys.map((k) => shownLabel((props.brick.fields[k]?.label ?? k) as LabelText, props.main)).join(', ')
 const notices = computed(() => (data.value ?? []).map((c) => ({
   id: c.id,
   from: c.from,
+  mayCancel: c.mayCancel,
+  mayMove: c.mayMove,
   text: t(c.stopped ? 'dated.stopped' : 'dated.waiting', { day: ops.dayText(c.from), changes: changesText(props.brick.fields, c.fields, c.values as Data, props.main, { t, format, currency: props.currency }) }),
   since: !c.stopped && c.changedSince.length ? t('dated.changedSince', { fields: names(c.changedSince) }) : '',
 })))
@@ -89,9 +91,10 @@ function move(id: string) {
           <Button type="button" variant="ghost" size="sm" @click="close">{{ t('entry.cancel') }}</Button>
         </div>
       </template>
-      <div v-else class="flex flex-wrap gap-2">
-        <Button :id="`dated-day-${n.id}-open`" type="button" variant="outline" size="sm" @click="start(n.id, 'day', n.from)">{{ t('dated.changeDay') }}</Button>
-        <Button :id="`dated-cancel-${n.id}-open`" type="button" variant="outline" size="sm" @click="start(n.id, 'cancel', n.from)">{{ t('dated.cancel') }}</Button>
+      <!-- Only the steps the server allows this person (G7). -->
+      <div v-else-if="n.mayMove || n.mayCancel" class="flex flex-wrap gap-2">
+        <Button v-if="n.mayMove" :id="`dated-day-${n.id}-open`" type="button" variant="outline" size="sm" @click="start(n.id, 'day', n.from)">{{ t('dated.changeDay') }}</Button>
+        <Button v-if="n.mayCancel" :id="`dated-cancel-${n.id}-open`" type="button" variant="outline" size="sm" @click="start(n.id, 'cancel', n.from)">{{ t('dated.cancel') }}</Button>
       </div>
       <p v-if="open?.id === n.id && open.step === 'cancel' && error" class="text-sm font-medium text-destructive" role="alert">{{ error }}</p>
     </div>
