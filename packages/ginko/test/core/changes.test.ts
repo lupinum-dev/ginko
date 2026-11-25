@@ -416,13 +416,15 @@ describe('upcoming in the bundle', () => {
 
     // Round M2, the number: every upcoming item is true on its day. A change for good with two public fields, an offer
     // over its price, a second offer chained after the first, and a second change for good inside the cover (so the first
-    // one's price never shows). Wrong behaviour caught: an item names a value the page will not show on that day.
+    // one's price never shows). Round N9e: a yearly season over the story of the change for good, so its story shows only
+    // after the season. Wrong behaviour caught: an item names a value the page will not show on that day.
     it('number: every field of every upcoming item equals what the page shows on its day (violations 0)', async () => {
       const changes: Change[] = [
         { from: '2026-12-06', set: { price: money(2290), story: de('Neu') } },
         { from: '2026-11-20', until: '2026-12-31', set: { price: money(990) } },
         { from: '2027-01-01', until: '2027-01-10', set: { price: money(890) } },
         { from: '2027-01-05', set: { price: money(2390) } },
+        { from: '2026-12-01', until: '2026-12-15', yearly: true, name: 'Advent', set: { story: de('Advent') } },
       ]
       const bundleOn = (data: typeof dish, today: string, kept: Change[]) => servedBundle({ ...input(), today, entries: { dishes: [{ id: 'd1', data, changes: kept }] } })
       const item = first(await bundleOn(dish, TODAY, changes))!
@@ -434,7 +436,7 @@ describe('upcoming in the bundle', () => {
       }
       expect(violations).toEqual([])
       expect(item.upcoming?.map((u) => [u.from, Object.keys(u.data)])).toEqual([
-        ['2026-11-20', ['price']], ['2026-12-06', ['story']], ['2027-01-01', ['price']], ['2027-01-11', ['price']],
+        ['2026-11-20', ['price']], ['2026-12-01', ['story']], ['2026-12-16', ['story']], ['2027-01-01', ['price']], ['2027-01-11', ['price']],
       ])
     })
   })
@@ -505,6 +507,20 @@ describe('a change that comes back every year (slice 4)', () => {
   // Number 1, the core's own reading of the table both homes are tested against.
   it.each(bothHomesYearly.days)('number 1: the table of both homes on %s', (day, amount, onMenu) => {
     expect(dataOn(bothHomesYearly.stored, bothHomesYearly.changes, day)).toEqual({ price: money(amount), onMenu })
+  })
+
+  // Round N9f: number 1 on every day of the three years, against the table's changes read by hand (month and day as text),
+  // so a wrong day between the listed ones is caught too.
+  it('number 1: every day from the day of the save to the end of 2030, read by hand', () => {
+    const byHand = (day: string) => {
+      const winter = day >= '2027-12-01' && (md(day) >= '12-01' || md(day) <= '01-31')
+      const price = day >= '2027-12-24' && day <= '2027-12-26' ? 790 : winter ? 990 : day >= '2028-01-10' ? 1390 : 1290
+      const off = day >= '2028-02-20' && md(day) >= '02-20' && md(day) <= '02-29'
+      return { price: money(price), onMenu: !off }
+    }
+    const wrong = everyDay(bothHomesYearly.savedOn, '2030-12-31')
+      .filter((day) => JSON.stringify(dataOn(bothHomesYearly.stored, bothHomesYearly.changes, day)) !== JSON.stringify(byHand(day)))
+    expect(wrong.slice(0, 5)).toEqual([])
   })
 
   // Wrong behaviour caught: the start of the current time is not what decides an overlap (a summer that started in
