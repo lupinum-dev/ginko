@@ -265,6 +265,7 @@ describe('the planner of a draft (D102)', () => {
 })
 
 describe('a stopped plan (D103)', () => {
+  afterEach(() => vi.unstubAllEnvs())
   // Wrong behaviour caught: an entry is planned and stopped at once, or a stopped plan outlives the write that ends it.
   it('planned and stopped are never both set, and a new plan, a publish, cancel and remove clear stopped', async () => {
     const s = await draftSetup()
@@ -339,7 +340,6 @@ describe('a stopped plan (D103)', () => {
     })
     expect(await shape(ids[0]![1])).toEqual({ state: 'draft', planned: true, stopped: false })
     expect(await both()).toEqual([])
-    vi.unstubAllEnvs()
   })
 
   it('a plain draft still has nothing to cancel', async () => {
