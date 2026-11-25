@@ -215,11 +215,15 @@ Rules for a new migration:
   nested site and row mutations count as part of the step): 32,000 documents scanned, 16 MiB read, 16,000 documents
   written, 16 MiB written, 4,096 index ranges (`db.get` and `db.query` calls), 1,000 scheduled functions, 1 s of user
   code. A site has at most 2,000 entries and 4 MiB of text plus 4 MiB in the trash (core `SITE_BUDGET`), so reading
-  all of it stays far below the document and byte limits. The tight limits are per planned value or timed change:
-  each takes about five index ranges and, for a later day, one scheduled run. A brick holds at most 500 entries, so one
-  planned brick at its maximum stays inside (about 2,500 ranges, 500 runs); the gastro menu has at most 150 dishes. A
-  site above the limits (several full planned bricks, or more than 1,000 later changes) fails as a whole, is left as
-  it was and listed in `migrations.skipped`; it then needs a paged follow-up migration, not a rerun.
+  all of it stays far below the document and byte limits. The tight limits are per planned value or timed change. A
+  planned value takes a few index ranges and, for a later day, one scheduled run. A timed change costs far more than
+  that: it goes through the full write path (the dated plan, the links and file references, the address), so it
+  takes many index ranges, and its number is not measured. So the bound per site is not known; the rehearsal on a
+  restored copy of production at checkpoint 6 measures it. A brick holds at most 500 entries; the gastro menu has at
+  most 150 dishes. A site above the limits fails as a whole, is left as it was and listed in `migrations.skipped`; it
+  then needs a paged follow-up migration, not a rerun.
+- **A passed time whose old job failed (accepted).** A time that passed long ago, whose old job failed then, is
+  published now through the normal checks, as any passed time is.
 - **Conditions (R3 review), each with a test in `test/migrations.test.ts`:** it works on a stored model in the older
   format, which the new `checkSchema` refuses; a site without these things is left as it is (same schema, `schemaRev`,
   `contentRev`, no history row); a site it cannot convert is reported by its slug, nothing of it is half written, and
