@@ -108,6 +108,21 @@ describe('a save with a day', () => {
     expect((await s.history(s.saibling)).at(-1)).toMatchObject({ msg: { key: 'history.datedSaved', params: { fields: { de: 'Preis' } } } })
   })
 
+  // Wrong behaviour caught (G8): a save that takes a field out of the day's change (gives it its online value) leaves no
+  // trace of that, names the field as planned ("Vegan from 9 Oct"), or, emptying the change, is logged as a save.
+  it.each([
+    ['takes one field out', { price: { amount: 1450 }, veg: 'none' }, [['dated', 'history.datedSaved', 'Preis'], ['datedCancelled', 'history.datedCancelled', 'Vegetarisch']]],
+    ['gives only the field it takes out', { veg: 'none' }, [['datedCancelled', 'history.datedCancelled', 'Vegetarisch']]],
+    ['empties the change', { price: { amount: 1350 }, veg: 'none' }, [['datedCancelled', 'history.datedCancelled', 'Preis, Vegetarisch']]],
+  ])('a save that %s names what it takes out as cancelled', async (_, fields, lines) => {
+    const s = await datedSetup()
+    await s.plan(1450, '2026-10-09', { fields: { price: { amount: 1450 }, veg: 'vegan' } })
+    const count = (await s.history(s.saibling)).length
+    await s.plan(0, '2026-10-09', { fields })
+    const written = (await s.history(s.saibling)).slice(count)
+    expect(written.map((c) => [c.kind, c.msg!.key, (c.msg!.params!.fields as { de: string }).de])).toEqual(lines)
+  })
+
   it('refuses a task that does not ask a day, and a draft', async () => {
     const s = await datedSetup()
     expect(await errorOf(s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-09' })))

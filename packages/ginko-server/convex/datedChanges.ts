@@ -79,7 +79,7 @@ export const setDay = mutation({
       if (plan.same || !Object.keys(plan.fields).length) {
         // Into the change of that day, or nothing left that differs on that day: the moved row goes.
         await dropDated(ctx, row)
-        const written = await writeDated(ctx, actor, entry, plan, row.revs, history, args.opId)
+        const written = await writeDated(ctx, actor, entry, plan, row.revs, [{ kind: 'dated', history }], args.opId)
         return { change: written.dated ?? null, from: args.from, contentRev: written.contentRev }
       }
       if (row.job) await ctx.scheduler.cancel(row.job)
@@ -408,7 +408,7 @@ async function convertTimedRow(ctx: MutationCtx, id: Id<'pendingChanges'>, publi
   if (Object.keys(held.fields).some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
   const words = { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, Object.keys(held.fields)), day: dayStart(day, schema.timeZone) }
   const plan = await planDated(ctx, site, entry, day, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
-  const written = await writeDated(ctx, actor, entry, plan, held.revs, recorded(msg('history.datedFromPending', words), schema), migrateOpId(held._id))
+  const written = await writeDated(ctx, actor, entry, plan, held.revs, [{ kind: 'dated', history: recorded(msg('history.datedFromPending', words), schema) }], migrateOpId(held._id))
   if (written.dated) await ctx.db.patch(written.dated, { by: held.by })
   await dropPending(ctx, held)
 }

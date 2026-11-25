@@ -188,13 +188,16 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   return plan
 }
 
+/** A history row of `writeDated`: the save of a change (`dated`) or fields taken out of one (`datedCancelled`). */
+export type DatedLine = { kind: 'dated' | 'datedCancelled'; history: Recorded }
+
 /**
  * Writes a checked plan: the row of its day (merged: `by` becomes this person, a stop is cleared and its run planned
- * again), its run at the first minute of the day, its file references, the history row (`kind: 'dated'`) and, when it
- * touches a field of `timeline.public`, a new `contentRev`. An empty plan drops the row of that day. The entry is not
- * touched. `revs`: the entry rev each given root was saved at.
+ * again), its run at the first minute of the day, its file references, its history rows (`lines`, in order; `change` is
+ * the first) and, when it touches a field of `timeline.public`, a new `contentRev`. An empty plan drops the row of that
+ * day. The entry is not touched. `revs`: the entry rev each given root was saved at.
  */
-export async function writeDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, plan: DatedPlan, revs: Record<string, number>, history: Recorded, opId: string) {
+export async function writeDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, plan: DatedPlan, revs: Record<string, number>, lines: DatedLine[], opId: string) {
   const site = actor.site
   const schema = site.schema as Schema
   const now = Date.now()
@@ -217,9 +220,12 @@ export async function writeDated(ctx: MutationCtx, actor: Actor, entry: Doc<'ent
   }
   const contentRev = touchesPublic(schema, entry.brick, touched) ? site.contentRev + 1 : site.contentRev
   if (contentRev !== site.contentRev) await ctx.db.patch(site._id, { contentRev })
-  const change = await ctx.db.insert('changes', {
-    site: site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId, kind: 'dated', ...history,
-    entryRev: entry.rev, contentRev, at: now,
-  })
-  return { dated: id, change, contentRev }
+  const changes: Id<'changes'>[] = []
+  for (const { kind, history } of lines) {
+    changes.push(await ctx.db.insert('changes', {
+      site: site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId, kind, ...history,
+      entryRev: entry.rev, contentRev, at: now,
+    }))
+  }
+  return { dated: id, change: changes[0]!, contentRev }
 }

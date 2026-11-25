@@ -22,7 +22,7 @@ import { errorKind, mailStopped, stoppedChangeLines, stoppedLines } from './lib/
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
-import { asChanges, checkDay, datedByBrick, datedOf, dayStart, fieldNames, planDated, refuseTaskWithoutDay, writeDated, type DatedPlan } from './lib/dated'
+import { asChanges, checkDay, datedByBrick, datedOf, dayStart, fieldNames, planDated, refuseTaskWithoutDay, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
 import { advance, stepArgs } from './lib/migrations'
 import { editorEntry, editorEntryWithTranslation, entryLabel as labelOf, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
@@ -334,9 +334,16 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
       before: plan.before as Json, after: plan.after as Json, ...recorded(msg('history.datedProposal', words), schema),
     })
   }
-  // A save that leaves nothing for that day takes the change of that day away.
-  const line = Object.keys(plan.fields).length ? msg('history.datedSaved', words) : msg('history.datedCancelled', { ...words, fields: fieldNames(schema, entry.brick, Object.keys(plan.same?.fields ?? {})) })
-  const written = await writeDated(ctx, actor, entry, plan, {}, recorded(line, schema), args.opId)
+  // The history names the fields the save keeps in the change and, as a cancel, those it takes out (given their value of
+  // the day before); a save that leaves nothing takes the change of that day away (G8).
+  const kept = plan.roots.filter((r) => Object.hasOwn(plan.fields, r))
+  const removed = Object.keys(plan.same?.fields ?? {}).filter((r) => !Object.hasOwn(plan.fields, r))
+  const lines: DatedLine[] = []
+  if (kept.length) lines.push({ kind: 'dated', history: recorded(msg('history.datedSaved', { ...words, fields: fieldNames(schema, entry.brick, kept) }), schema) })
+  if (removed.length) lines.push({ kind: 'datedCancelled', history: recorded(msg('history.datedCancelled', { ...words, fields: fieldNames(schema, entry.brick, removed) }), schema) })
+  // A stopped change started again by a save that gives none of its fields: its fields, as a save of them.
+  if (!lines.length) lines.push({ kind: 'dated', history: recorded(msg('history.datedSaved', { ...words, fields: fieldNames(schema, entry.brick, Object.keys(plan.fields)) }), schema) })
+  const written = await writeDated(ctx, actor, entry, plan, {}, lines, args.opId)
   return { entry: entry._id, rev: entry.rev, contentRev: written.contentRev, change: written.change, warnings: [], dated: written.dated ?? null, from }
 }
 
@@ -616,7 +623,7 @@ async function publishPendingDated(ctx: MutationCtx, actor: Actor, entry: Doc<'e
       before: plan.before as Json, after: plan.after as Json, ...recorded(msg('history.datedFromPendingProposal', words), schema),
     })
   }
-  const written = await writeDated(ctx, actor, entry, plan, held.revs, recorded(msg('history.datedFromPending', words), schema), args.opId)
+  const written = await writeDated(ctx, actor, entry, plan, held.revs, [{ kind: 'dated', history: recorded(msg('history.datedFromPending', words), schema) }], args.opId)
   await dropPending(ctx, held)
   return { entry: entry._id, lifeRev: entry.lifeRev, rev: entry.rev, contentRev: written.contentRev, change: written.change, state: 'live', from, translation: [] }
 }
