@@ -163,10 +163,10 @@ describe('drafts', () => {
     expect(r.entries.notes!.map((e) => [e.id, e.data.draft])).toEqual([['notes/a', true]])
   })
 
-  // Wrong behaviour caught: a misspelt or future `$` key ($changes) is dropped in silence, or read as a field.
+  // Wrong behaviour caught: a misspelt or future `$` key ($until) is dropped in silence, or read as a field.
   it('refuses a $ key Ginko does not know', async () => {
-    const r = await read({ 'content/angebote/a.yml': 'title: A\n$changes: ja' })
-    expect(r.errors).toEqual([{ file: 'angebote/a.yml', path: '$changes', message: '“$changes” is not a key Ginko knows. Keys that start with $ are $draft, $publishAt, $redirectFrom; every other key is a field of the brick.' }])
+    const r = await read({ 'content/angebote/a.yml': 'title: A\n$until: ja' })
+    expect(r.errors).toEqual([{ file: 'angebote/a.yml', path: '$until', message: '“$until” is not a key Ginko knows. Keys that start with $ are $draft, $publishAt, $redirectFrom, $changes; every other key is a field of the brick.' }])
   })
 
   // Wrong behaviour caught: `$draft: false` or `$draft: yes` is taken as a second written form, or a translation

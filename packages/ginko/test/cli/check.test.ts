@@ -155,6 +155,21 @@ describe('ginko check and links in content files', () => {
     expect(result.ok).toBe(true)
   })
 
+  // Wrong behaviour caught: a change whose day has come stays in the file and silently hides every later edit of its
+  // field, or the author does not learn that a change ahead needs a build on its day.
+  it('warns for a dated change whose day has come and notes one still ahead, and exits 0', async () => {
+    const menu = collection({ listing: { title: 'title' }, label: 'Karte', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), price: f.money('Preis') } })
+    const path = siteWith('Text.', { ...config, bricks: { ...config.bricks, menu } })
+    mkdirSync(join(dirname(path), 'content/menu'))
+    writeFileSync(join(dirname(path), 'content/menu/suppe.yml'), 'title: Suppe\nprice: 9\n$changes:\n  - from: 2020-01-01\n    set: { price: 9.5 }\n  - from: 2099-01-01\n    set: { price: 12 }\n')
+    const { code, lines } = await runCheck(path)
+    expect(lines.filter((l) => /^(Warning|Note): content\/menu/.test(l))).toEqual([
+      'Warning: content/menu/suppe.yml ($changes.0.set.price): The day of this change (2020-01-01) has come: write 9.5 into “price” and remove the change. While it stays, it wins over the field.',
+      'Note: content/menu/suppe.yml ($changes.1): A change from 2099-01-01 is still to come: a dated change in a file starts with the first build on or after its day. Build the site on that day, for example with a daily build.',
+    ])
+    expect(code).toBe(0)
+  })
+
   // Bug caught: the content package knows the line of a CSV row, but `ginko check` printed only the file and field.
   it('prints the line of a data file error', async () => {
     const menu = collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Karte', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), price: f.number('Preis', { min: 0, max: 100, step: 0.1 }) } })

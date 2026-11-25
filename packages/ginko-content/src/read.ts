@@ -5,7 +5,7 @@ import type {
   Brick, Field, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, ENTRY_NAME_RULE, imageInfo, imageSizeProps, isEntryName, isTranslatable, printOf, sha256, slugKeyOf, routeUrls, wallClockIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
+  changeIssues, coreMessage, dataOn, effectiveProfile, ENTRY_NAME_RULE, waitingChanges, type Change, imageInfo, imageSizeProps, isEntryName, isTranslatable, printOf, sha256, slugKeyOf, routeUrls, wallClockIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -54,6 +54,8 @@ export interface ReadResult {
   /** Images placed next to Markdown files: served URL (`/_ginko/img/<hash>.<ext>`) to absolute path. */
   images: Map<string, string>
   errors: ContentError[]
+  /** Problems that do not stop a build but should be fixed, such as a dated change whose day has come (D122). */
+  warnings: ContentError[]
   /** Things worth a look that do not stop a build, such as a `publishedOn` date that does not fit the entry's `$publishAt`. */
   notes: ContentError[]
 }
@@ -105,7 +107,7 @@ function fail(cx: FileCx, path: string, message: string) {
  * The keys of a content file that are no fields: they start with `$`, and a field name never does (V2 5.6). A key
  * that starts with `$` and is not one of these is a problem.
  */
-const DOLLAR_KEYS = ['$draft', '$publishAt', '$redirectFrom'] as const
+const DOLLAR_KEYS = ['$draft', '$publishAt', '$redirectFrom', '$changes'] as const
 /** Keys that were reserved before the `$` keys, with the key that replaced each. */
 const RENAMED: Record<string, string> = {
   draft: '`$draft: true`',
@@ -426,8 +428,12 @@ export async function readContent(contentDir: string, publicDir: string, schema:
   // `$publishAt` is compared with the site's wall clock, so a time in Vienna means Vienna whatever the build machine.
   const now = wallClockIn(schema.timeZone, options.now)
   const errors: ContentError[] = []
+  const warnings: ContentError[] = []
   const notes: ContentError[] = []
   const entries: Record<string, StoredEntry[]> = {}
+  // The build's day: a dated change in a file starts with the first build on or after its day (D120).
+  const today = now.slice(0, 10)
+  let notedAhead = false
   const files: Record<string, FileInfo> = {}
   const images = new Map<string, string>()
   const components = Object.entries(schema.components ?? {})
@@ -591,6 +597,21 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         continue
       }
 
+      // `$changes` (D117, D119): converted like the fields, then checked with the entry's values.
+      let changes: Change[] | undefined
+      if (mainView.changes !== undefined) {
+        const changeErrors: ContentError[] = []
+        const cx: FileCx = { file: mainRel, isMain: true, prefix: '', publicDir, files, errors: changeErrors, line: group.main.csv?.row.line, where: [] }
+        const stored = storedChanges(mainView.changes, cx, id)
+        const issues = changeErrors.length ? [] : await changeIssues(schema, key, data as Record<string, Json>, stored, { refs })
+        for (const issue of issues) {
+          const path = issue.path.startsWith('$changes') ? issue.path : `$changes.${issue.change}.set.${issue.path}`
+          changeErrors.push({ file: mainRel, path, message: coreMessage('en', issue.key, issue.params), ...(cx.line !== undefined ? { line: cx.line } : {}) })
+        }
+        if (changeErrors.length) { errors.push(...changeErrors); continue }
+        changes = stored as Change[]
+      }
+
       // The text is valid: the tree takes its place (the bundle carries trees, CONTENT.md Phase 14), unless the caller
       // wants the text the platform stores.
       const markdownKey = markdownKeyOf(brick)
@@ -616,8 +637,15 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         continue
       }
 
-      // Values are validated above; they come from JSON-like YAML and parsed Markdown.
-      const entry: StoredEntry = { id, data: data as Record<string, Json> }
+      // Values are validated above; they come from JSON-like YAML and parsed Markdown. The bundle is the bundle of the
+      // build's day (D120): a change whose day has come is in the values, the others wait (only `timeline.public`
+      // fields of them reach a page, as `upcoming`).
+      const entry: StoredEntry = { id, data: dataOn(data as Record<string, Json>, changes, today) }
+      if (changes) {
+        const ahead = waitingChanges(changes, today)
+        if (ahead.length) entry.changes = ahead
+        reportChanges(mainView.changes as Record<string, unknown>[], changes, mainRel, group.main.csv?.row.line)
+      }
       // Old paths of the entry (main-language file only), beside the fields: the bundle forwards them (`oldUrls`).
       if (mainView.redirectFrom?.length) entry.redirectFrom = mainView.redirectFrom
 
@@ -641,6 +669,46 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     }
 
     /**
+     * `$changes` as written → stored changes: each `set` read exactly as the fields are (money in units, an image as
+     * `{ src, alt }`, a text per file), `null` kept to clear a field. Anything not in that shape, and unknown fields,
+     * go to the core check unchanged, which names them.
+     */
+    function storedChanges(raw: unknown, cx: FileCx, id: string): unknown {
+      if (!Array.isArray(raw)) return raw
+      return raw.map((item: unknown, i) => {
+        if (!isRecord(item) || !isRecord(item.set)) return item
+        const prefix = `$changes.${i}.set.`
+        const set = item.set
+        const live = (name: string) => Object.hasOwn(brick.fields, name) && !brick.fields[name]!.retired
+        const written = Object.fromEntries(Object.entries(set).filter(([name, value]) => value !== null && live(name)))
+        const view = convertFields(brick.fields, written, { ...cx, prefix })
+        const subset = Object.fromEntries(Object.keys(view).map((name) => [name, brick.fields[name]!]))
+        const merged = merge(subset, { [main]: view }, { main, locales: schema.locales, entryId: id, prefix, prints: {}, rels: { [main]: cx.file }, errors: cx.errors, where: [] })
+        const rest = Object.fromEntries(Object.entries(set).filter(([name, value]) => value === null || !live(name)))
+        return { ...item, set: { ...rest, ...merged } }
+      })
+    }
+
+    /**
+     * The warning for each field of a change whose day has come (it would hide every later edit of the field), and the
+     * note, once per site, that a change still ahead waits for a build (D122).
+     */
+    function reportChanges(written: Record<string, unknown>[], changes: Change[], file: string, line: number | undefined) {
+      const at = line !== undefined ? { line } : {}
+      changes.forEach((change, i) => {
+        if (change.from > today) {
+          if (!notedAhead) notes.push({ file, path: `$changes.${i}`, message: `A change from ${change.from} is still to come: a dated change in a file starts with the first build on or after its day. Build the site on that day, for example with a daily build.`, ...at })
+          notedAhead = true
+          return
+        }
+        const set = isRecord(written[i]?.set) ? written[i]!.set as Record<string, unknown> : {}
+        for (const field of Object.keys(change.set)) {
+          warnings.push({ file, path: `$changes.${i}.set.${field}`, message: `The day of this change (${change.from}) has come: write ${JSON.stringify(set[field] ?? null)} into “${field}” and remove the change. While it stays, it wins over the field.`, ...at })
+        }
+      })
+    }
+
+    /**
      * The two notes on the `publishedOn` date of a main file: it is before the day of `$publishAt` (the entry shows a
      * day before it goes online), or it is after today and nothing holds the entry back (it is online now; before
      * `$publishAt`, a date in the future hid it).
@@ -660,7 +728,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
      * the parsed body; YAML, JSON and CSV: the whole file or row is data and there is no body).
      * `'draft'` when the entry is marked `$draft: true` and drafts are off.
      */
-    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; planned?: true } | 'draft' | undefined> {
+    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; planned?: true; changes?: unknown } | 'draft' | undefined> {
       const { rel } = src
       const ext = extOf(rel)
       const markdownKey = markdownKeyOf(brick)
@@ -708,6 +776,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         }
       }
       const { fields, dollar } = splitKeys(cx, brick.fields, data)
+      // A CSV cell holds one value; a list of changes needs a file of its own.
+      if (src.csv && dollar.$changes !== undefined) fail(cx, '$changes', '“$changes” is a list of changes, which a CSV cell cannot hold. Write the entry as a YAML, JSON or Markdown file.')
       const redirects = dollar.$redirectFrom === undefined ? undefined : redirectPaths(cx, dollar.$redirectFrom)
       if (dollar.$draft !== undefined && dollar.$draft !== true) fail(cx, '$draft', '“$draft” takes only true. Leave it out for an entry that is online.')
       const draft = dollar.$draft === true
@@ -732,7 +802,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       if (isMain && fileErrors.length === 0 && publishAt !== undefined && publishAt > now) {
         notes.push({ file: src.rel, path: '$publishAt', message: `“$publishAt” is ${publishAt}, still to come: the entry goes online at the first build after that time. Build the site on that day, for example with a daily build.`, ...(src.csv ? { line: src.csv.row.line } : {}) })
       }
-      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, planned: planned ? true : undefined }
+      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, planned: planned ? true : undefined, ...(dollar.$changes !== undefined ? { changes: dollar.$changes } : {}) }
     }
   }
 
@@ -751,7 +821,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     }
   }
 
-  return { entries, files, images, errors, notes }
+  return { entries, files, images, errors, warnings, notes }
 }
 
 /** A field's label in every language: a plain label is its own only text. */
