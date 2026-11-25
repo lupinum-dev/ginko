@@ -245,6 +245,7 @@
     "dayNotAhead": "Le jour doit être après aujourd’hui.",
     "dayTooFarAhead": "Le jour peut être au plus dans un an.",
     "taskCannotDate": "Cette tâche change les valeurs tout de suite, pas à partir d’un jour.",
+    "taskCannotEnd": "Cette tâche change les valeurs à partir d’un jour, pas pour certains jours.",
     "taskNeedsDays": "Cette tâche vaut seulement pour certains jours. Indiquez le premier et le dernier jour.",
     "fieldsCannotDate": "Ces champs ne peuvent pas commencer à un jour : {fields}. Publiez les modifications maintenant ou abandonnez ces champs.",
     "tooManyDated": "Une entrée peut avoir au plus {max} changements planifiés.",

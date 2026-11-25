@@ -151,7 +151,8 @@ export function refuseTaskWithoutDay(schema: Schema, ref: string | undefined, da
   if (task?.kind !== 'edit' || !taskDates(task)) fail('FORBIDDEN', 'errors.taskCannotDate')
   if (!days) return
   if (taskEnds(task) && (days.from === undefined || days.until === undefined)) fail('FORBIDDEN', 'errors.taskNeedsDays')
-  if ((days.until !== undefined) !== taskEnds(task)) fail('FORBIDDEN', 'errors.taskCannotDate')
+  // A task with an end and no `until` was refused just above, so only an end through a task without one is left.
+  if (days.until !== undefined && !taskEnds(task)) fail('FORBIDDEN', 'errors.taskCannotEnd')
   const asks = taskAsks(task)
   if (days.yearly && !asks.yearly) fail('FORBIDDEN', 'errors.taskCannotYearly')
   if (days.name !== undefined && !asks.name) fail('FORBIDDEN', 'errors.taskCannotName')

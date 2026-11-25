@@ -339,7 +339,7 @@ describe('moving and ending (state table: Tage ändern, Änderung aufheben, Jetz
     const move = (who: 'cook' | 'owner', task: string | undefined, change: Id<'datedChanges'>, from: string, until: string) =>
       s.as[who].mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), ...(task ? { task } : {}), change, from, until })
     expect(await errorOf(move('cook', 'menu.offToday', today!._id, TODAY, '2026-10-15'))).toMatchObject({ key: 'errors.todayOnly' })
-    expect(await errorOf(move('cook', 'menu.price', offer!._id, '2026-10-20', '2026-10-28'))).toMatchObject({ key: 'errors.taskCannotDate' })
+    expect(await errorOf(move('cook', 'menu.price', offer!._id, '2026-10-20', '2026-10-28'))).toMatchObject({ key: 'errors.taskCannotEnd' })
     const listed = await s.as.cook.query(api.datedChanges.list, { site: 'restaurant', entry: s.saibling, task: 'menu.offToday' })
     expect(listed.find((r) => r.id === today!._id)).toMatchObject({ mayMove: false, mayCancel: true })
     await move('owner', undefined, today!._id, TODAY, '2026-10-15')
@@ -468,7 +468,8 @@ describe('task keys on the server', () => {
   // Wrong behaviour caught: a task that asks one day lets staff save an end; a today-only task saves another day; a task
   // with an end called without its days (round L1) saves its values into the entry for good (number 2).
   it.each([
-    ['an end through a task that asks one day', 'menu.price', { fields: { price: { amount: 990 } }, from: '2026-10-20', until: '2026-12-31' }, 'errors.taskCannotDate'],
+    // Round M4: the sentence says the task changes values from a day, not "from now on" (taskCannotDate).
+    ['an end through a task that asks one day', 'menu.price', { fields: { price: { amount: 990 } }, from: '2026-10-20', until: '2026-12-31' }, 'errors.taskCannotEnd'],
     ['another day through a today-only task', 'menu.offToday', { fields: {}, from: '2026-10-09', until: '2026-10-09' }, 'errors.todayOnly'],
     ['a today-only task without its days', 'menu.offToday', { fields: {} }, 'errors.taskNeedsDays'],
     ['an offer without its days', 'menu.offer', { fields: { price: { amount: 990 } } }, 'errors.taskNeedsDays'],

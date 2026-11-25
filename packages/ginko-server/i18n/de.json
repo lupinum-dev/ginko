@@ -245,6 +245,7 @@
     "dayNotAhead": "Der Tag muss nach heute liegen.",
     "dayTooFarAhead": "Der Tag darf höchstens ein Jahr voraus liegen.",
     "taskCannotDate": "Diese Aufgabe ändert Werte ab sofort, nicht ab einem Tag.",
+    "taskCannotEnd": "Diese Aufgabe ändert Werte ab einem Tag, nicht für bestimmte Tage.",
     "taskNeedsDays": "Diese Aufgabe gilt nur für bestimmte Tage. Gib den ersten und den letzten Tag an.",
     "fieldsCannotDate": "Diese Felder können nicht ab einem Tag gelten: {fields}. Veröffentliche die Änderungen jetzt oder verwirf diese Felder.",
     "tooManyDated": "Ein Eintrag kann höchstens {max} geplante Änderungen haben.",
