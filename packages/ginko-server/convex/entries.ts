@@ -228,13 +228,14 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
     return unchanged
   }
 
-  // A draft's empty `publishedOn` field is filled when it goes online, so it counts as filled (D108).
-  const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data) : data
+  // A draft's empty `publishedOn` field is filled when it goes online, so it counts as filled (D108): with the day of
+  // its plan, else today.
+  const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data, planDay(schema, entry.publishAt)) : data
   const { errors, warnings } = await validate(schema, entry.brick, checked, { mode: 'patch', changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
   if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
   // A planned draft goes online at its time without a person: a save that leaves it failing the full check is refused
   // now, not stopped then (D101). The person fills the field or cancels the plan first.
-  if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }, todayIn(schema.timeZone)))
+  if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }, planDay(schema, entry.publishAt)))
   await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed })
   await checkNewFiles(ctx, actor.site._id, brick.fields, before, data)
   // A draft and unpublished changes are not online yet: their links are checked when they go live.
@@ -611,11 +612,11 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     Object.assign(prints, (change.printsBefore ?? {}) as Prints)
 
     const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, entry.data as Data, data)
-    const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data) : data
+    const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data, planDay(schema, entry.publishAt)) : data
     const { errors } = await validate(schema, entry.brick, checked, { mode: 'patch', changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('NOT_UNDOABLE', 'errors.oldVersionNoLongerFitsSchema', undefined, { errors: errors as unknown as Json })
     // An undo of a planned draft is held to the full check, as a save is (D101).
-    if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }, todayIn(schema.timeZone)))
+    if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }, planDay(schema, entry.publishAt)))
     // Moving a plan back to a week that was planned again since would hide one of the two.
     await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed: roots, whole: true })
     await checkNewFiles(ctx, actor.site._id, brick.fields, entry.data as Data, data)
@@ -983,7 +984,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const data = draft ? slugged.data : withPublishedOn(schema, args.brick, slugged.data)
     // Translations sent with a new entry are fresh: every foreign leaf gets the print of its main value.
     const prints = nextPrints({ fields: brick.fields, roots: Object.keys(brick.fields), before: {}, after: data, prints: {}, main: schema.locales[0]!, confirm: undefined })
-    const { errors } = await validate(schema, args.brick, withPublishedOn(schema, args.brick, data), { mode: 'create', ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+    const { errors } = await validate(schema, args.brick, withPublishedOn(schema, args.brick, data, planDay(schema, at)), { mode: 'create', ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
     await refuseSecondPlan(ctx, actor, args.brick, brick, data)
 
@@ -1301,6 +1302,11 @@ function withPublishedOn(schema: Schema, brickKey: string, data: Data, day = tod
   return { ...data, [field]: day }
 }
 
+/** The day an empty `publishedOn` field gets: the day of the plan's time `at` in the site's zone, or today without one. */
+function planDay(schema: Schema, at: number | undefined): string {
+  return todayIn(schema.timeZone, at === undefined ? undefined : new Date(at))
+}
+
 /** Refuses a write with the field errors of `onlineErrors`, as the form shows them. */
 function refuseOnlineErrors(errors: Issue[]) {
   if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
@@ -1388,7 +1394,7 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     if (at !== undefined && args.rev !== undefined && actor.approvedBy === undefined) await refuseChangedSince(ctx, actor, entry, args.rev)
     // Everything the draft holds goes live: the full check first, then every link in it counts as new. A plan is
     // checked now and again by the job at its time (D101).
-    refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, entry, todayIn(schema.timeZone)))
+    refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, entry, planDay(schema, at)))
     // A plan may link to an entry planned for its time or earlier (D106).
     await checkNewLinks(ctx, actor.site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }], at)
 
