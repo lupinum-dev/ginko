@@ -45,14 +45,16 @@ describe('fileStatusInput', () => {
   const now = new Date('2026-10-08T10:00:00Z') // 12:00 in Vienna
   // Wrong behaviour caught: a file entry gets another status than the same entry on the platform, or a `$publishAt`
   // is read in the build machine's zone instead of the site's.
-  it.each<[string, { $draft?: boolean; $publishAt?: string }, Pick<StatusInput, 'state' | 'publishAt'>]>([
+  it.each<[string, { $draft?: boolean; $publishAt?: string }, Pick<StatusInput, 'state' | 'publishAt'>, string?]>([
     ['no dollar key is online', {}, { state: 'live' }],
     ['$draft is a draft', { $draft: true }, { state: 'draft' }],
     ['$draft with a $publishAt to come is a draft, and nothing is planned', { $draft: true, $publishAt: '2026-10-08T12:30' }, { state: 'draft' }],
     ['a $publishAt that passed is online', { $publishAt: '2026-10-08T11:59' }, { state: 'live' }],
     ['a $publishAt to come is planned, at the site\'s wall clock', { $publishAt: '2026-10-08T12:30' }, { state: 'draft', publishAt: Date.parse('2026-10-08T10:30:00Z') }],
     ['a day alone means its start', { $publishAt: '2026-10-09' }, { state: 'draft', publishAt: Date.parse('2026-10-08T22:00:00Z') }],
-  ])('%s', (_, dollar, expected) => {
-    expect(fileStatusInput(dollar, {}, 'Europe/Vienna', now)).toEqual({ data: {}, ...expected })
+    // Havana jumps from 23:59 to 01:00 when summer time starts: the day starts at 01:00, not at 23:00 the day before.
+    ['a day alone where the clock jumps at midnight starts after the jump', { $publishAt: '2027-03-14' }, { state: 'draft', publishAt: Date.parse('2027-03-14T05:00:00Z') }, 'America/Havana'],
+  ])('%s', (_, dollar, expected, zone = 'Europe/Vienna') => {
+    expect(fileStatusInput(dollar, {}, zone, now)).toEqual({ data: {}, ...expected })
   })
 })

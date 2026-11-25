@@ -1,6 +1,6 @@
 // Dated changes on the platform (D125–D128): `entries.save` and `entries.publish` with `from`, the run on the day
 // (`datedChanges.applyDue`), a change that stops, moving and cancelling, removal, the bundle's `upcoming` and the export.
-import { factComponent, type Schema } from '@lupinum/ginko/internal'
+import { factComponent, SITE_BUDGET as BUDGET, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
@@ -106,6 +106,21 @@ describe('a save with a day', () => {
     await s.plan(1450, '2026-10-09', { fields: { price: { amount: 1450 }, veg: 'none' } })
     expect(await s.dated(s.saibling)).toMatchObject([{ fields: { price: { amount: 1450 } } }])
     expect((await s.history(s.saibling)).at(-1)).toMatchObject({ msg: { key: 'history.datedSaved', params: { fields: { de: 'Preis' } } } })
+  })
+
+  // Wrong behaviour caught (G8): a save that takes a field out of the day's change (gives it its online value) leaves no
+  // trace of that, names the field as planned ("Vegan from 9 Oct"), or, emptying the change, is logged as a save.
+  it.each([
+    ['takes one field out', { price: { amount: 1450 }, veg: 'none' }, [['dated', 'history.datedSaved', 'Preis'], ['datedCancelled', 'history.datedCancelled', 'Vegetarisch']]],
+    ['gives only the field it takes out', { veg: 'none' }, [['datedCancelled', 'history.datedCancelled', 'Vegetarisch']]],
+    ['empties the change', { price: { amount: 1350 }, veg: 'none' }, [['datedCancelled', 'history.datedCancelled', 'Preis, Vegetarisch']]],
+  ])('a save that %s names what it takes out as cancelled', async (_, fields, lines) => {
+    const s = await datedSetup()
+    await s.plan(1450, '2026-10-09', { fields: { price: { amount: 1450 }, veg: 'vegan' } })
+    const count = (await s.history(s.saibling)).length
+    await s.plan(0, '2026-10-09', { fields })
+    const written = (await s.history(s.saibling)).slice(count)
+    expect(written.map((c) => [c.kind, c.msg!.key, (c.msg!.params!.fields as { de: string }).de])).toEqual(lines)
   })
 
   it('refuses a task that does not ask a day, and a draft', async () => {
@@ -226,6 +241,23 @@ describe('on the day', () => {
 
   // Wrong behaviour caught: an error that is not a refusal (here a stored choice field without its options) makes the
   // run fail silently; the change then neither starts nor says that it stopped.
+  // Wrong behaviour caught (G5): a refusal while writing (the site reached its storage budget since the change was planned)
+  // is taken as an error of the run ("failed", "tell us"), or as fields that no longer pass, though the cause is the budget.
+  it('a refusal while writing stops the change as invalid with the refusal as its cause', async () => {
+    const s = await datedSetup()
+    await s.plan(14500)
+    await s.t.run(async (ctx) => { await ctx.db.patch(s.site, { bytes: BUDGET.siteBytes }) })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await s.advanceTo(DAY1 + 1000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+    const [stopped] = await s.dated(s.saibling)
+    expect(stopped!.stopped!.reason).toEqual({ code: 'invalid', fields: ['price'], cause: { key: 'errors.siteStorageLimitReached', params: { used: '4.1 MB', limit: '4 MB', over: '1 KB' } } })
+    expect(log).not.toHaveBeenCalled()
+    const today = await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })
+    expect(today[0]!.causeText).toBe('Die Werte ließen sich nicht speichern: Der Textspeicher der Seite ist voll (4.1 MB von 4 MB). Kürze oder entferne Einträge. Änderungen, die nichts vergrößern, lassen sich immer speichern.')
+    log.mockRestore()
+  })
+
   it('an error of the run stops the change with "failed" and logs only the class', async () => {
     const s = await datedSetup()
     await s.plan(1450)
@@ -349,6 +381,17 @@ describe('every field sent is meant', () => {
     await act(s)
     expect((await s.dated(s.saibling)).map((r) => [r.from, r.fields]).sort()).toEqual([['2026-10-09', { price: { amount: 1450 } }], ['2026-11-01', { price: { amount: 1450 } }]])
   })
+
+  // Wrong behaviour caught (G4): an earlier change that stopped still counted as setting the field, so a later save of
+  // the online value was stored as a change that changes nothing.
+  it('a stopped earlier change gives nothing: the online value is no change', async () => {
+    const s = await datedSetup()
+    await s.plan(1450, '2026-11-01')
+    const [first] = await s.dated(s.saibling)
+    await s.t.run((ctx) => ctx.db.patch(first!._id, { stopped: { at: DAY1, reason: { code: 'invalid', fields: ['price'] } }, job: undefined }))
+    const result = await s.plan(1350, '2026-12-01')
+    expect(['dated' in (result as object), (await s.dated(s.saibling)).map((r) => r.from)]).toEqual([false, ['2026-11-01']])
+  })
 })
 
 describe('a new change against the changes that wait (round F)', () => {
@@ -449,6 +492,21 @@ describe('a dated change that needs a yes', () => {
     expect((await s.history(s.saibling)).at(-1)).toMatchObject({ msg: { key: 'history.datedAppliedLate' } })
   })
 
+  // Wrong behaviour caught (G3): a field that a change may no longer set since the request (here it became the field
+  // that says until when the dish shows) was written by a late yes, although the run on the day would have stopped it.
+  it('a late yes refuses a field a change may no longer set, as the run would', async () => {
+    const s = await proposed()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.menu as { showUntil?: { field: string } }).showUntil = { field: 'price' }
+      await ctx.db.patch(s.site, { schema })
+    })
+    await s.advanceTo(DAY1 + 3600_000)
+    const answer = await s.as.owner.mutation(api.proposals.approve, { proposal: s.sent.proposal })
+    expect(answer).toMatchObject({ status: 'stale' })
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+  })
+
   // Wrong behaviour caught: staff whose change needs a yes take away someone else's planned price without one, or move
   // a change to another day past the yes; their own approved change they may still cancel.
   it('staff who need a yes cancel only their own change and move none', async () => {
@@ -461,6 +519,17 @@ describe('a dated change that needs a yes', () => {
     expect(await errorOf(s.as.cook.mutation(api.datedChanges.setDay, { ...as, opId: opId(), change: own!._id, from: '2026-10-20' }))).toMatchObject({ code: 'FORBIDDEN', key: 'errors.needsApprovalProposeAgain' })
     await s.as.cook.mutation(api.datedChanges.cancel, { ...as, opId: opId(), change: own!._id })
     expect(await s.dated(s.saibling)).toMatchObject([{ _id: other!._id }])
+  })
+
+  // Wrong behaviour caught (G7): the editor offered "Tag ändern" and "Änderung aufheben" where the steps refuse them.
+  it('the list says per change what the person may do, by the rule of the steps', async () => {
+    const s = await proposed()
+    await s.as.owner.mutation(api.proposals.approve, { proposal: s.sent.proposal })
+    await s.plan(1490, '2026-12-01')
+    const steps = async (who: 'owner' | 'cook') => (await s.as[who].query(api.datedChanges.list, { site: 'restaurant', entry: s.saibling, task: 'menu.price' }))
+      .map((c) => [c.from, c.mayCancel, c.mayMove])
+    expect(await steps('cook')).toEqual([['2026-10-09', true, false], ['2026-12-01', false, false]])
+    expect(await steps('owner')).toEqual([['2026-10-09', true, true], ['2026-12-01', true, true]])
   })
 
   // Wrong behaviour caught: a late yes publishes like a save with "publish now" and so throws away an unpublished
@@ -557,5 +626,27 @@ describe('a price fact changed for a later day', () => {
     const history = await s.as.owner.query(api.changes.list, { site: 'restaurant', entry: contact, paginationOpts: { numItems: 5, cursor: null } })
     expect(history.page[0]).toMatchObject({ actor: 'system', msg: { key: 'history.datedApplied' }, planner: expect.objectContaining({ email: 'koch@example.com' }) })
     expect((await s.history(contact)).at(-1)).toMatchObject({ plannedBy: people.cook })
+  })
+
+  // R4 C10. Wrong behaviour caught: a stopped change, which will never come, is still quoted as the fact's next value.
+  it('a stopped change is not the fact\'s next value', async () => {
+    const s = await datedSetup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      const brick = schema.bricks.contact! as Schema['bricks'][string] & { timeline?: { public: string[] } }
+      brick.fields.price = { type: 'money', label: { de: 'Einzelstunde', en: 'Single session' }, optional: true } as never
+      brick.timeline = { public: ['price'] }
+      schema.components = { ...schema.components, fact: factComponent(['contact.price'], schema.bricks) }
+      await ctx.db.patch(s.site, { schema })
+      const row = (await ctx.db.get(s.entries.contact!))!
+      await ctx.db.patch(s.entries.contact!, { data: { ...row.data, price: { amount: 9000 } } })
+    })
+    const contact = s.entries.contact!
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: contact, baseRev: (await s.row(contact))!.rev, fields: { price: { amount: 9500 } }, from: '2026-10-09' })
+    const fact = async () => (await s.as.owner.query(api.facts.values, { site: 'restaurant' })).find((f) => f.name === 'contact.price')!
+    expect((await fact()).next).toMatchObject({ from: '2026-10-09' })
+    const [change] = await s.dated(contact)
+    await s.t.run((ctx) => ctx.db.patch(change!._id, { stopped: { at: DAY1, reason: { code: 'invalid', fields: ['price'] } }, job: undefined }))
+    expect((await fact()).next).toBeUndefined()
   })
 })

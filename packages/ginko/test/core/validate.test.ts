@@ -513,12 +513,14 @@ describe('the draft check (D115): well formed to be stored, not complete', () =>
           slug: f.slug('Adresse', { from: 'name' }),
           day: f.date('Tag', { optional: true }),
           at: f.time('Uhrzeit', { optional: true }),
+          until: f.time('Bis', { optional: true, after: 'at' }),
           span: f.daterange('Zeitraum', { optional: true }),
           count: f.number('Anzahl', { min: 0, max: 10, step: 1, optional: true }),
           kind: f.choice('Art', { options: ['a', 'b'], optional: true }),
           tags: f.choices('Tags', { options: ['a', 'b'], optional: true }),
           friends: f.refs('Freunde', { to: 'kit', optional: true }),
           rows: f.list('Zeilen', { itemLabel: 'Zeile', max: 2, unique: 'label', optional: true, fields: { label: f.text('Bezeichnung', { translate: false }) } }),
+          few: f.list('Wenige', { itemLabel: 'Zeile', min: 2, max: 3, optional: true, fields: { label: f.text('Bezeichnung', { translate: false }) } }),
           body: f.markdown('Text', { profile: 'page', optional: true }),
         },
       }),
@@ -529,52 +531,57 @@ describe('the draft check (D115): well formed to be stored, not complete', () =>
     validate(kit, brick, data, { mode: 'draft', refs: (_b, id) => id === 'there', uploads: (id) => (id === 'pdf1' ? 'file' : id === 'img1' ? 'image' : undefined), fileAlt: () => ({ de: 'Bild' }) })
   const row = (id: string, label: string) => ({ _id: id, label })
 
-  // Wrong behaviour caught: a draft stores a value the site and the Studio cannot read as what it claims to be (a date
-  // that is a number or a phrase, a time 25:99, two rows with one `_id`), so `statusOf`, the date texts and the editor's
-  // row keys break on it.
+  // One row per code the validator gives. Wrong behaviour caught: (refused) a draft stores a value the site and the
+  // Studio cannot read as what it claims to be (a date that is a number or a phrase, a time 25:99, two rows with one
+  // `_id`), so `statusOf`, the date texts and the editor's row keys break on it; (warns) a half-filled draft is refused
+  // for what it lacks or for content not yet good enough, so the person loses the input. A code that is not listed as a
+  // warning is refused (the check fails closed).
   it.each([
-    ['TYPE: a number that is text', { ...base, count: 'drei' }, ['count', 'TYPE']],
-    ['NOT_OBJECT: an entry that is no object', 'Kiste', ['', 'NOT_OBJECT']],
-    ['NOT_LOCALIZED: a translatable text as a plain string', { ...base, name: 'Kiste' }, ['name', 'NOT_LOCALIZED']],
-    ['UNKNOWN_FIELD', { ...base, nope: 1 }, ['nope', 'UNKNOWN_FIELD']],
-    ['UNKNOWN_LOCALE', { ...base, name: { de: 'Kiste', xx: 'Kist' } }, ['name.xx', 'UNKNOWN_LOCALE']],
-    ['DATE: a number', { ...base, day: 42 }, ['day', 'DATE']],
-    ['DATE: a phrase', { ...base, day: 'next friday' }, ['day', 'DATE']],
-    ['DATE: a range of phrases', { ...base, span: { from: 'heute', to: 'morgen' } }, ['span', 'DATE']],
-    ['TIME: 25:99', { ...base, at: '25:99' }, ['at', 'TIME']],
-    ['ROW_ID: a row without a proper id', { ...base, rows: [row('kurz', 'A')] }, ['rows.0', 'ROW_ID']],
-    ['ROW_ID: two rows with one id', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('aaaaaaaaaa', 'B')] }, ['rows.aaaaaaaaaa', 'ROW_ID']],
-    ['SLUG: an address that is no address', { ...base, slug: { de: 'Kiste mit Leerzeichen', en: 'box' } }, ['slug.de', 'SLUG']],
-    ['FILE_REF_NOT_IMAGE: a PDF as a picture', { ...base, body: { de: '![Karte]($file.pdf1)' } }, ['body.de', 'FILE_REF_NOT_IMAGE']],
-    ['DUPLICATE: one option twice', { ...base, tags: ['a', 'a'] }, ['tags', 'DUPLICATE']],
-    ['DUPLICATE: one entry twice', { ...base, friends: ['there', 'there'] }, ['friends', 'DUPLICATE']],
-  ] as const)('refuses %s', async (_name, data, issue) => {
-    const { errors } = await draft(data as Record<string, unknown>)
-    expect(pairs(errors)).toContainEqual(issue)
+    ['TYPE: a number that is text', 'refuses', 'kit', { ...base, count: 'drei' }, ['count', 'TYPE']],
+    ['NOT_OBJECT: an entry that is no object', 'refuses', 'kit', 'Kiste', ['', 'NOT_OBJECT']],
+    ['NOT_LOCALIZED: a translatable text as a plain string', 'refuses', 'kit', { ...base, name: 'Kiste' }, ['name', 'NOT_LOCALIZED']],
+    ['UNKNOWN_FIELD', 'refuses', 'kit', { ...base, nope: 1 }, ['nope', 'UNKNOWN_FIELD']],
+    ['UNKNOWN_LOCALE', 'refuses', 'kit', { ...base, name: { de: 'Kiste', xx: 'Kist' } }, ['name.xx', 'UNKNOWN_LOCALE']],
+    ['UNKNOWN_BRICK', 'refuses', 'nope', base, ['', 'UNKNOWN_BRICK']],
+    ['UNKNOWN_ROW', 'refuses', 'hours', hours({ week: { ...week(), xx: { closed: true } } }), ['week.xx', 'UNKNOWN_ROW']],
+    ['DATE: a number', 'refuses', 'kit', { ...base, day: 42 }, ['day', 'DATE']],
+    ['DATE: a phrase', 'refuses', 'kit', { ...base, day: 'next friday' }, ['day', 'DATE']],
+    ['DATE: a range of phrases', 'refuses', 'kit', { ...base, span: { from: 'heute', to: 'morgen' } }, ['span', 'DATE']],
+    ['DATE: a period with one side that is no date', 'refuses', 'kit', { ...base, span: { from: '2026-10-09', to: '' } }, ['span', 'DATE']],
+    ['TIME: 25:99', 'refuses', 'kit', { ...base, at: '25:99' }, ['at', 'TIME']],
+    ['ROW_ID: a row without a proper id', 'refuses', 'kit', { ...base, rows: [row('kurz', 'A')] }, ['rows.0', 'ROW_ID']],
+    ['ROW_ID: two rows with one id', 'refuses', 'kit', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('aaaaaaaaaa', 'B')] }, ['rows.aaaaaaaaaa', 'ROW_ID']],
+    ['SLUG: an address that is no address', 'refuses', 'kit', { ...base, slug: { de: 'Kiste mit Leerzeichen', en: 'box' } }, ['slug.de', 'SLUG']],
+    ['FILE_REF_NOT_IMAGE: a PDF as a picture', 'refuses', 'kit', { ...base, body: { de: '![Karte]($file.pdf1)' } }, ['body.de', 'FILE_REF_NOT_IMAGE']],
+    ['DUPLICATE: one option twice', 'refuses', 'kit', { ...base, tags: ['a', 'a'] }, ['tags', 'DUPLICATE']],
+    ['DUPLICATE: one entry twice', 'refuses', 'kit', { ...base, friends: ['there', 'there'] }, ['friends', 'DUPLICATE']],
+    ['REQUIRED', 'warns', 'kit', { slug: base.slug }, ['name', 'REQUIRED']],
+    ['TOO_LONG', 'warns', 'kit', { ...base, name: { de: 'K'.repeat(21), en: 'Box' } }, ['name.de', 'TOO_LONG']],
+    ['FORMAT: a control character', 'warns', 'kit', { ...base, name: { de: 'Ki\u0000ste', en: 'Box' } }, ['name.de', 'FORMAT']],
+    ['TOO_MANY', 'warns', 'kit', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('bbbbbbbbbb', 'B'), row('cccccccccc', 'C')] }, ['rows', 'TOO_MANY']],
+    ['TOO_FEW', 'warns', 'kit', { ...base, few: [row('aaaaaaaaaa', 'A')] }, ['few', 'TOO_FEW']],
+    ['RANGE', 'warns', 'kit', { ...base, count: 11 }, ['count', 'RANGE']],
+    ['STEP', 'warns', 'kit', { ...base, count: 1.5 }, ['count', 'STEP']],
+    ['CHOICE', 'warns', 'kit', { ...base, kind: 'c' }, ['kind', 'CHOICE']],
+    ['DATE_ORDER', 'warns', 'kit', { ...base, span: { from: '2026-10-09', to: '2026-10-08' } }, ['span', 'DATE_ORDER']],
+    ['REQUIRED: a period without its end', 'warns', 'kit', { ...base, span: { from: '2026-10-09' } }, ['span', 'REQUIRED']],
+    ['REQUIRED: a period without its start', 'warns', 'kit', { ...base, span: { to: '2026-10-09' } }, ['span', 'REQUIRED']],
+    ['REF_MISSING', 'warns', 'kit', { ...base, friends: ['gone'] }, ['friends', 'REF_MISSING']],
+    ['FILE_REF_MISSING', 'warns', 'kit', { ...base, body: { de: '![Karte]($file.lost1)' } }, ['body.de', 'FILE_REF_MISSING']],
+    ['ALT_REQUIRED: a web picture without description', 'warns', 'kit', { ...base, body: { de: '![](https://bilder.example/a.jpg)' } }, ['body.de', 'ALT_REQUIRED']],
+    ['MARKDOWN', 'warns', 'kit', { ...base, body: { de: '::nope' } }, ['body.de', 'MARKDOWN']],
+    ['DUPLICATE: a doubled value in a unique column', 'warns', 'kit', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('bbbbbbbbbb', 'A')] }, ['rows', 'DUPLICATE']],
+    ['TIME_ORDER (a rule across fields)', 'warns', 'kit', { ...base, at: '14:00', until: '11:30' }, ['until', 'TIME_ORDER']],
+    ['NOT_WEEK_START (a rule across fields)', 'warns', 'lunch', lunch({ weekOf: '2026-10-15' }), ['weekOf', 'NOT_WEEK_START']],
+  ] as const)('%s: %s', async (_name, verdict, brick, data, issue) => {
+    const { errors, warnings } = await draft(data as Record<string, unknown>, brick)
+    if (verdict === 'refuses') expect(pairs(errors)).toContainEqual(issue)
+    else expect([pairs(errors), pairs(warnings)]).toEqual([[], expect.arrayContaining([issue])])
   })
 
-  it('refuses UNKNOWN_BRICK and UNKNOWN_ROW', async () => {
-    expect(pairs((await draft(base, 'nope')).errors)).toEqual([['', 'UNKNOWN_BRICK']])
-    expect(pairs((await validate(kit, 'hours', hours({ week: { ...week(), xx: { closed: true } } }), { mode: 'draft' })).errors)).toEqual([['week.xx', 'UNKNOWN_ROW']])
-  })
-
-  // Wrong behaviour caught: a half-filled draft is refused for what it lacks or for content not yet good enough, so the
-  // person loses the input.
-  it.each([
-    ['REQUIRED', { slug: base.slug }, ['name', 'REQUIRED']],
-    ['TOO_LONG', { ...base, name: { de: 'K'.repeat(21), en: 'Box' } }, ['name.de', 'TOO_LONG']],
-    ['TOO_MANY', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('bbbbbbbbbb', 'B'), row('cccccccccc', 'C')] }, ['rows', 'TOO_MANY']],
-    ['RANGE', { ...base, count: 11 }, ['count', 'RANGE']],
-    ['STEP', { ...base, count: 1.5 }, ['count', 'STEP']],
-    ['CHOICE', { ...base, kind: 'c' }, ['kind', 'CHOICE']],
-    ['DATE_ORDER', { ...base, span: { from: '2026-10-09', to: '2026-10-08' } }, ['span', 'DATE_ORDER']],
-    ['REF_MISSING', { ...base, friends: ['gone'] }, ['friends', 'REF_MISSING']],
-    ['FILE_REF_MISSING', { ...base, body: { de: '![Karte]($file.lost1)' } }, ['body.de', 'FILE_REF_MISSING']],
-    ['MARKDOWN', { ...base, body: { de: '::nope' } }, ['body.de', 'MARKDOWN']],
-    ['DUPLICATE: a doubled value in a unique column', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('bbbbbbbbbb', 'A')] }, ['rows', 'DUPLICATE']],
-  ] as const)('only warns about %s', async (_name, data, issue) => {
-    const { errors, warnings } = await draft(data as Record<string, unknown>)
-    expect(pairs(errors)).toEqual([])
-    expect(pairs(warnings)).toContainEqual(issue)
+  // Wrong behaviour caught: a half-filled period goes online, and the site shows an end without a start (F13).
+  it('refuses a period with one side missing when it goes online', async () => {
+    const { errors } = await validate(kit, 'kit', { ...base, span: { from: '2026-10-09' } }, check('create'))
+    expect(errors).toEqual([expect.objectContaining({ path: 'span', code: 'REQUIRED', key: 'issues.dateRangeToMissing' })])
   })
 })

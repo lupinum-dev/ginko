@@ -47,12 +47,15 @@ Rules for a new migration:
    entry that points at it.
 6. It stays in the list, with its step, until the next major version: self-hosted platforms can skip versions, so
    "it ran on every deployment" can never be known. The major's release notes say "update to the last version before
-   it first and wait until `ops:status` shows no pending migration"; contract steps ship with that major.
+   it first and wait until `ops:status` shows no pending migration and `migrations.skipped` is empty"; contract steps
+   ship with that major, and their gate is the same: no pending migration and no skipped site.
 7. An entry in this file, and a test that runs it through `migrations:runPending`.
 8. A step that changes sites reads the stored model as it is (raw shapes, never through the new `checkSchema`), leaves
    a site without the old things as it is, and converts each site in its own transaction (`eachSite`, a nested
    mutation that throws `notConverted`): a site it cannot convert is logged and listed by slug in `ops:status`
-   (`migrations.skipped`), and the other sites go on. A test for each of the three.
+   (`migrations.skipped`, with the site's id and the error's class or code), and the other sites go on. The site step
+   is an internal mutation that takes `{ site }`, so a fixed site can be run again by hand; when it succeeds, the site
+   leaves `migrations.skipped` (`clearSkipped`). A test for each of the three, and one for the rerun.
 
 ## Entry storage: trees in `entryTrees`, text-only budget, separate trash (`2026-10-14-entry-storage`)
 
@@ -188,6 +191,9 @@ Rules for a new migration:
     migration changes nothing.
   - `convex/datedChanges.ts` `migrateOlderWays` reads `planned` from a stored schema (the core no longer knows the key;
     `checkSchema` refuses it with the way to move).
+  - `convex/proposals.ts` `timeGone`: an open request from before D130 to take a planned time off (`op: 'unpublish'`,
+    `after.state === 'live'`) is stale (`history.staleTimeGone`) in `applyNow` and `staleReason`; a yes would take the
+    entry offline. Such requests are open until someone decides them, so the rule stays until the contract step.
 - **Dependents:** every deployment with a time on unpublished changes, a request approved for a time, or a site whose
   stored schema has `planned` (the restaurant demo and sites made from the gastro preset).
 - **Steps:**
@@ -195,10 +201,25 @@ Rules for a new migration:
   2. Check: `ops:status` shows it done. A site's next `ginko release` with the new gastro preset finds the stored
      schema as the config writes it (no `planned`, `timeline: { public: ['price'] }`); a config that still has
      `planned` is refused with the way to move.
-  3. If `ops:status` lists a site under `migrations.skipped`, read the log line of that site (the error's class or
-     code), fix its stored rows by hand or with a follow-up migration, and run it again.
+  3. If `ops:status` lists a site under `migrations.skipped`, read its `kind` (the error's class or code) and the log
+     line of that site, fix its stored rows by hand or with a follow-up migration, and run that site again with its
+     `id` from `ops:status`:
+     `npx convex run datedChanges:migrateOneSite '{"site":"<id>"}'` (add `--prod` for production). When it succeeds,
+     the site leaves `migrations.skipped`; when it fails again, it stays, and the error names the kind.
   4. Contract step (next major, rule 6): remove `pendingChanges.publishAt`, `pendingChanges.publishJob` and
-     `proposals.job` from the schema, the online branch of `publishDue`, and `migrateOlderWays` with its list entry.
+     `proposals.job` from the schema, the online branch of `publishDue`, `migrateOlderWays` with its list entry, and
+     `timeGone` with its key `history.staleTimeGone` (first mark every open request it finds as stale, in the same
+     major's migration).
+- **One site, one transaction (R4 review), and its bound.** Convex's limits per mutation
+  (docs.convex.dev/production/state/limits, read 26 November 2026; nested `runMutation` is not on that page, so the
+  nested site and row mutations count as part of the step): 32,000 documents scanned, 16 MiB read, 16,000 documents
+  written, 16 MiB written, 4,096 index ranges (`db.get` and `db.query` calls), 1,000 scheduled functions, 1 s of user
+  code. A site has at most 2,000 entries and 4 MiB of text plus 4 MiB in the trash (core `SITE_BUDGET`), so reading
+  all of it stays far below the document and byte limits. The tight limits are per planned value or timed change:
+  each takes about five index ranges and, for a later day, one scheduled run. A brick holds at most 500 entries, so one
+  planned brick at its maximum stays inside (about 2,500 ranges, 500 runs); the gastro menu has at most 150 dishes. A
+  site above the limits (several full planned bricks, or more than 1,000 later changes) fails as a whole, is left as
+  it was and listed in `migrations.skipped`; it then needs a paged follow-up migration, not a rerun.
 - **Conditions (R3 review), each with a test in `test/migrations.test.ts`:** it works on a stored model in the older
   format, which the new `checkSchema` refuses; a site without these things is left as it is (same schema, `schemaRev`,
   `contentRev`, no history row); a site it cannot convert is reported by its slug, nothing of it is half written, and

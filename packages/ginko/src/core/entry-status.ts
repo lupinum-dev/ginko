@@ -2,7 +2,7 @@
 // lists and editor, the Studio, later Changes, the agent door and `ginko diff`) asks this function, so they cannot
 // disagree. It returns data; the reader words it in its own language.
 import { shownOn, shownUntil } from './resolve.ts'
-import { wallClockIn, zonedDateTime } from './time.ts'
+import { dayStartIn, wallClockIn, zonedDateTime } from './time.ts'
 import type { Brick, Json } from './types.ts'
 
 /** A moment in ms since the epoch. */
@@ -11,7 +11,7 @@ export type Time = number
 export type Day = string
 
 /** Why a plan did not go online: a link that leads nowhere, fields that fail the full check, an import after its time, or an error of the run. */
-export type StopReason = { code: 'link'; href: string } | { code: 'invalid'; fields: string[] } | { code: 'late' } | { code: 'failed' }
+export type StopReason = { code: 'link'; href: string } | { code: 'invalid'; fields: string[]; cause?: { key: string; params?: Record<string, string | number> } } | { code: 'late' } | { code: 'failed' }
 
 /** One thing that waits. `by` is a user id; a file entry and an imported plan have no person. */
 export type Waiting =
@@ -84,7 +84,8 @@ export function fileStatusInput(dollar: { $draft?: boolean; $publishAt?: string 
   if (dollar.$draft === true) return { data, state: 'draft' }
   const at = dollar.$publishAt
   if (at === undefined) return { data, state: 'live' }
-  const [day, time = '00:00'] = at.split('T') as [string, string?]
-  if (`${day}T${time}` <= wallClockIn(timeZone, now)) return { data, state: 'live' }
-  return { data, state: 'draft', publishAt: Date.parse(zonedDateTime(day, time, timeZone)) }
+  const [day, time] = at.split('T') as [string, string?]
+  if (`${day}T${time ?? '00:00'}` <= wallClockIn(timeZone, now)) return { data, state: 'live' }
+  // A day alone is its first instant, which is not 00:00 where the clock jumps at midnight (Havana, G6).
+  return { data, state: 'draft', publishAt: time === undefined ? dayStartIn(day, timeZone) : Date.parse(zonedDateTime(day, time, timeZone)) }
 }

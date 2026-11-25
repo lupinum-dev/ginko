@@ -32,9 +32,17 @@ function quotedFields(schema: Schema, brickKey: string, paths: string[]): { fiel
  */
 function causeOf(schema: Schema, brickKey: string, reason: StopReason, form: 'cause' | 'because', of: 'plan' | 'change'): HistoryMsg {
   if (reason.code === 'link') return msg(`stopped.${form}.link`, { href: reason.href })
+  if (reason.code === 'invalid' && reason.cause) return msg(`stopped.${form}.refused`, { why: reason.cause })
   if (reason.code === 'invalid') return msg(`stopped.${form}.invalid`, quotedFields(schema, brickKey, reason.fields))
   if (reason.code === 'failed') return msg(`stopped.${form}.${of === 'plan' ? 'failed' : 'changeFailed'}`)
   return msg(`stopped.${form}.late`)
+}
+
+/** The message of a refusal (`fail`) to keep as a stop's cause: its catalog key and params; none for another error. */
+export function refusalOf(error: { data: unknown }): { key: string; params?: Record<string, string | number> } | undefined {
+  const { key, params } = (error.data ?? {}) as { key?: unknown; params?: Record<string, string | number> }
+  if (typeof key !== 'string') return undefined
+  return params === undefined ? { key } : { key, params }
 }
 
 /** What a log line may say of an error: its code or its class only, since its message can hold an address or a title. */

@@ -8,6 +8,7 @@ import FieldFrame from '../app/components/fields/FieldFrame.vue'
 import GinkoField from '../app/components/fields/GinkoField.vue'
 import GinkoFieldChoices from '../app/components/fields/GinkoFieldChoices.vue'
 import GinkoFieldDate from '../app/components/fields/GinkoFieldDate.vue'
+import GinkoFieldDaterange from '../app/components/fields/GinkoFieldDaterange.vue'
 import EntryFields from '../app/components/EntryFields.vue'
 import GinkoFieldList from '../app/components/fields/GinkoFieldList.vue'
 import GinkoFieldRows from '../app/components/fields/GinkoFieldRows.vue'
@@ -431,6 +432,25 @@ describe('week fields', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('a period field', () => {
+  // Wrong behaviour caught: a period with only its end typed was sent as { from: '', to } and refused as "no valid
+  // period", so a draft could not keep it (F13).
+  test('an empty side is left out, not sent as an empty text', async () => {
+    const value = shallowRef<Json | undefined>(undefined)
+    const wrapper = mount(defineComponent({
+      setup: () => () => h(GinkoFieldDaterange, { id: 'f-span', modelValue: value.value, invalid: false, 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+    }))
+    await wrapper.get('#f-span-to').setValue('2026-10-20')
+    expect(value.value).toEqual({ to: '2026-10-20' })
+    await wrapper.get('#f-span-from').setValue('2026-10-09')
+    expect(value.value).toEqual({ from: '2026-10-09', to: '2026-10-20' })
+    await wrapper.get('#f-span-to').setValue('')
+    expect(value.value).toEqual({ from: '2026-10-09' })
+    await wrapper.get('#f-span-from').setValue('')
+    expect(value.value).toBeUndefined()
   })
 })
 

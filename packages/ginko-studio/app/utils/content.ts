@@ -244,7 +244,13 @@ export function displayValue(field: Field, value: unknown, locale: Locale, words
     case 'money': return formatMoney({ amount: (value as { amount: number }).amount, currency: field.currency ?? words.currency }, locale)
     case 'boolean': return value ? t('ops.value.yes') : t('ops.value.no')
     case 'date': return formatDay(String(value), format)
-    case 'daterange': { const r = value as { from: string; to: string }; return r.from === r.to ? formatDay(r.from, format) : `${formatDay(r.from, format)} – ${formatDay(r.to, format)}` }
+    case 'time': return String(value)
+    case 'daterange': {
+      // A draft may lack a side: it shows as "…".
+      const r = value as { from?: string; to?: string }
+      const day = (d: string | undefined) => (d ? formatDay(d, format) : '…')
+      return r.from === r.to ? day(r.from) : `${day(r.from)} – ${day(r.to)}`
+    }
     case 'choice': { const o = field.options.find((x) => x.value === value); return o ? shownLabel(o.label, locale) : String(value) }
     case 'choices': { const v = value as string[]; return v.length ? field.options.filter((o) => v.includes(o.value)).map((o) => shownLabel(o.label, locale)).join(', ') : t('ops.value.none') }
     case 'list': return t('ops.value.items', { count: (value as unknown[]).length })
@@ -252,6 +258,22 @@ export function displayValue(field: Field, value: unknown, locale: Locale, words
     case 'number': return `${format.number(Number(value), { useGrouping: false, maximumFractionDigits: 20 })}${field.unit ? ` ${field.unit}` : ''}`
     default: return t('ops.value.changed')
   }
+}
+
+/** The fields whose value a notice names in a few characters; any other field is named by its label alone. */
+const SHORT_VALUES: ReadonlySet<Field['type']> = new Set(['money', 'number', 'date', 'time', 'choice', 'boolean'])
+
+/**
+ * What a planned change sets, for its notice (E2): "Preis 22,90 €, Beschreibung". A field with a short value (money,
+ * number, date, time, choice, switch) shows its label and the value as a list shows it; any other field its label.
+ */
+export function changesText(fields: Fields, keys: readonly string[], values: Data, main: Locale, words: ValueWords): string {
+  return keys.map((key) => {
+    const field = Object.hasOwn(fields, key) ? fields[key] : undefined
+    if (!field) return key
+    const name = shownLabel(field.label, main)
+    return SHORT_VALUES.has(field.type) ? `${name} ${displayValue(field, values[key], main, words)}` : name
+  }).join(', ')
 }
 
 /** 2026-10-08 → 8.10.2026 in German, 10/8/2026 in English: a calendar date, so no time zone shifts it. */

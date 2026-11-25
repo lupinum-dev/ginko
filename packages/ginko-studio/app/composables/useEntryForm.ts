@@ -54,6 +54,8 @@ export interface EntryFormOptions {
   removed?: () => boolean
   /** Switches the form to the language of a local copy before it is restored; false when it cannot now. Without it, copies in other languages are not offered. */
   otherLocale?: (locale: Locale) => Promise<boolean>
+  /** "Gilt ab" of the form (a task sheet): the local copy keeps the day with the input and brings it back with it. */
+  day?: Ref<string>
 }
 
 export function useEntryForm(o: EntryFormOptions) {
@@ -80,6 +82,11 @@ export function useEntryForm(o: EntryFormOptions) {
   const busy = ref(false)
   /** The last save went to approval (SPEC 17): the input stays, nothing changed on the website, so no new rev. Cleared by the next edit. */
   const waiting = ref(false)
+  /**
+   * The last save with a day changed nothing for that day (E6): no field differed from the stored one, or the server
+   * answered that the day already holds these values. The form keeps its input and says so.
+   */
+  const unchangedDay = ref(false)
   // A save does not fail while the connection is down: Convex sends it once it is back. Until then the button says so.
   // Both signals count: Convex notices a lost network only when its socket closes, which can take up to a minute (its
   // inactivity check); the browser's own signal comes at once. A slow save on a working connection is not offline.
@@ -183,17 +190,21 @@ export function useEntryForm(o: EntryFormOptions) {
   /** What the last save asked for: the conflict answers (keepMine, mergeLists) repeat it, so Veröffentlichen stays one. */
   let asked: { at?: number } | true | undefined
   let askedFrom: string | undefined
+  let askedSend: readonly string[] | undefined
   /**
    * Saves; resolves true when done (nothing to save counts as done). `publish` when creating: `{}` online now, `{ at }` scheduled; absent a draft. On a live entry `true` puts the
    * saved fields online at once; absent, they wait as unpublished changes. `from` (a day after today, an online entry):
    * the changed fields become a dated change of that day (D125); the entry stays as it is, so the form goes back to it.
+   * `send`: fields sent even when they equal the stored value, so a change of that day the form was filled from is
+   * replaced, a field put back to its stored value included (the task sheet's "Bearbeiten", E3).
    */
-  function save(rev = baseRev.value, publish?: { at?: number } | true, from?: string): Promise<boolean> {
+  function save(rev = baseRev.value, publish?: { at?: number } | true, from?: string, send?: readonly string[]): Promise<boolean> {
     // A removed entry cannot take a save: the person restores it or saves the input as a new entry.
     if (o.removed?.()) return Promise.resolve(false)
     asked = publish
     askedFrom = from
-    return write(rev, publish, undefined, from)
+    askedSend = send
+    return write(rev, publish, undefined, from, send)
   }
 
   /** The input of a removed entry as a new entry (EntryGoneBanner); the server makes new addresses. */
@@ -218,7 +229,7 @@ export function useEntryForm(o: EntryFormOptions) {
     await Promise.all([...flushers].map((run) => run()))
   }
 
-  async function write(rev: number, publishAs?: { at?: number } | true, asNew?: { task?: string }, from?: string): Promise<boolean> {
+  async function write(rev: number, publishAs?: { at?: number } | true, asNew?: { task?: string }, from?: string, send: readonly string[] = []): Promise<boolean> {
     if (busy.value) return false
     await flush()
     if (blockers.size) {
@@ -226,6 +237,7 @@ export function useEntryForm(o: EntryFormOptions) {
       return false
     }
     busy.value = true
+    unchangedDay.value = false
     // Read now: a sheet closed while the save waits for the connection is gone when it lands.
     const key = localKey.value
     try {
@@ -249,8 +261,13 @@ export function useEntryForm(o: EntryFormOptions) {
       } else {
         // Published at once, the form's fields that wait unpublished go too: the form showed them, so they are the input.
         const held = publishAs === true ? (o.entry()!.pending?.fields ?? []) : []
-        const roots = [...new Set([...changedRoots(baseline.value, submitted), ...held])].filter((k) => keys().includes(k))
-        if (!roots.length && !confirm.value.length) return true
+        const roots = [...new Set([...changedRoots(baseline.value, submitted), ...held, ...send])].filter((k) => keys().includes(k))
+        if (!roots.length && !confirm.value.length) {
+          // Nothing for that day: not done, so the sheet does not close as if a change were planned.
+          if (from === undefined) return true
+          unchangedDay.value = true
+          return false
+        }
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
         // The server checks the task against the changed fields and the confirmed ones (entries.ts saveNow).
         const task = o.task?.([...new Set([...roots, ...confirm.value.map((leaf) => leaf.split('.')[0]!)])])
@@ -262,6 +279,9 @@ export function useEntryForm(o: EntryFormOptions) {
         if (result.rev === undefined) {
           // Nothing was written: the stored state, base and rev stay; only the input counts as handed in.
           waiting.value = true
+        } else if (from !== undefined && 'unchanged' in result) {
+          unchangedDay.value = true
+          return false
         } else if (from !== undefined) {
           // The input went into a change for that day: the entry is as it was, and so is the form.
           baseRev.value = result.rev
@@ -336,7 +356,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy({ ...theirs, ...mine } as Data)
     baseRev.value = c.rev
     conflict.value = null
-    return save(c.rev, asked, askedFrom)
+    return save(c.rev, asked, askedFrom, askedSend)
   }
   /**
    * Both people's rows, when every conflicting field is a list or a rows field and no row was changed by both or
@@ -372,7 +392,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy({ ...theirs, ...mine, ...merged } as Data)
     baseRev.value = c.rev
     conflict.value = null
-    return save(c.rev, asked, askedFrom)
+    return save(c.rev, asked, askedFrom, askedSend)
   }
 
   /** The stored values for the conflicting fields; the person's other changes stay in the form, unsaved. */
@@ -451,10 +471,11 @@ export function useEntryForm(o: EntryFormOptions) {
     // Area and title name the input on Heute; a single is named by its area.
     const brick = o.brick()
     const title = brick.kind === 'collection' ? typedTitle(brick, draft.value, o.main()) : undefined
-    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}) })
+    const from = o.day?.value
+    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}), ...(from ? { from } : {}) })
   }
   // Typed back to what was there: the next write removes the copy (a save removes it at once, in write()).
-  const localWriter = useLocalDraftWriter(() => draft.value, keepLocal)
+  const localWriter = useLocalDraftWriter(() => [draft.value, o.day?.value], keepLocal)
 
   function forgetLocal() {
     localWriter.cancel()
@@ -486,6 +507,7 @@ export function useEntryForm(o: EntryFormOptions) {
       else next[k] = copy(value)
     }
     draft.value = next
+    if (o.day) o.day.value = record.from ?? ''
     waiting.value = false
     if (!entry) return
     const clash = own.filter((k) => (entry.fieldRevs[k] ?? 0) > copyBase && !same(entry.data[k], next[k]))
@@ -506,5 +528,5 @@ export function useEntryForm(o: EntryFormOptions) {
     localOffer.value = null
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, notes, fieldIssues, showFieldErrors, problem, conflict, busy, offline, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
+  return { draft, baseline, initial, baseRev, ready, issues, notes, fieldIssues, showFieldErrors, problem, conflict, busy, offline, waiting, unchangedDay, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
 }

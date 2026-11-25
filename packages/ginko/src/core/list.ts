@@ -54,7 +54,7 @@ function sortKey(field: Brick['fields'][string], value: unknown, main: string): 
   switch (field.type) {
     case 'number': return Number(value)
     case 'money': return (value as { amount: number }).amount
-    case 'daterange': return (value as { from: string }).from
+    case 'daterange': return (value as { from?: string }).from ?? '' // a draft may lack a side
     case 'date': return String(value)
     default: return searchable(textIn(value, main))
   }

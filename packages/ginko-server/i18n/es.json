@@ -295,6 +295,7 @@
     "staleChanged": "Alguien ha cambiado esto mientras tanto. Propón el cambio de nuevo.",
     "staleAlreadyLive": "Esta entrada ya está en línea.",
     "staleAlreadyDraft": "Esta entrada ya es un borrador.",
+    "staleTimeGone": "La hora que esta solicitud quería quitar ya no existe.",
     "staleApproverNotAllowed": "Quien aprueba ya no tiene permiso para aprobar esto.",
     "staleNoLonger": "Esto ya no es posible.",
     "staleRefused": "{why} Propón el cambio de nuevo.",
@@ -314,6 +315,7 @@
     "publishedChangesLate": "Cambios en “{title}” publicados de inmediato (la hora programada ya había pasado al aprobarlo): {fields}",
     "changesScheduled": "Cambios en “{title}”: en línea desde {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "changesUnscheduled": "Cambios en “{title}”: programación cancelada",
+    "requestReopened": "Solicitud para “{title}” abierta de nuevo: estaba aprobada para el {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}. Quien puede aprobar la decide de nuevo.",
     "changesDiscarded": "Cambios sin publicar en “{title}” descartados",
     "changesPublishStopped": "Los cambios en “{title}” no se publicaron: {why}",
     "datedSaved": "“{title}”: {fields} a partir del {day, date, ::MMMMd}",
@@ -389,14 +391,16 @@
       "invalid": "{count, plural, one {Falta {fields} o no es válido.} other {Faltan {fields} o no son válidos.}}",
       "late": "Su hora ya había pasado cuando se importó el contenido.",
       "failed": "Se produjo un error al publicarla. Vuelve a planificarla. Si vuelve a pasar, avísanos.",
-      "changeFailed": "Se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos."
+      "changeFailed": "Se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos.",
+      "refused": "No se pudieron guardar los valores: {why}"
     },
     "because": {
       "link": "enlaza a una página que no existe: {href}",
       "invalid": "{count, plural, one {falta {fields} o no es válido.} other {faltan {fields} o no son válidos.}}",
       "late": "su hora ya había pasado cuando se importó el contenido.",
       "failed": "se produjo un error al publicarla. Vuelve a planificarla. Si vuelve a pasar, avísanos.",
-      "changeFailed": "se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos."
+      "changeFailed": "se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos.",
+      "refused": "no se pudieron guardar los valores: {why}"
     },
     "changeTitle": "“{title}”: el cambio a partir del {day, date, ::MMMMd} no se aplicó"
   },

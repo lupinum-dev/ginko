@@ -22,7 +22,7 @@ import { errorKind, mailStopped, stoppedChangeLines, stoppedLines } from './lib/
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
-import { asChanges, checkDay, datedByBrick, datedOf, dayStart, fieldNames, planDated, refuseTaskWithoutDay, writeDated, type DatedPlan } from './lib/dated'
+import { asChanges, checkDay, datedByBrick, datedOf, dayStart, fieldNames, planDated, refuseTaskWithoutDay, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
 import { advance, stepArgs } from './lib/migrations'
 import { editorEntry, editorEntryWithTranslation, entryLabel as labelOf, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
@@ -33,6 +33,12 @@ function liveField(brick: Schema['bricks'][string], key: string): Field {
   const field = Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
   if (!field || field.retired) fail('INVALID', 'errors.fieldNoLongerExists', { key }, { field: key })
   return field
+}
+
+/** Refuses `roots` when one may not be in a dated change (`changeRefusal`), naming those fields in the brick's order. */
+function refuseUndatable(schema: Schema, entry: Doc<'entries'>, brick: Schema['bricks'][string], roots: readonly string[]) {
+  const refused = roots.filter((r) => changeRefusal(schema, brick, r) !== undefined).sort((a, b) => fieldOrder(brick, a) - fieldOrder(brick, b))
+  if (refused.length) fail('INVALID', 'errors.fieldsCannotDate', { fields: labelIn(fieldNames(schema, entry.brick, refused), schema.locales[0]!, schema.locales[0]!) }, { fields: refused })
 }
 
 function brickOf(schema: Schema, entry: Doc<'entries'>) {
@@ -186,6 +192,9 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   for (const key of Object.keys(args.fields)) {
     if (liveField(brick, key).type === 'slug') fail('INVALID', 'errors.addressFixed', undefined, { field: key })
   }
+  // A late yes writes what the run would, so it refuses what the run would stop (G3): a field a change may no longer
+  // set (it became fixed, or got text per language) since the request.
+  if (lateDay !== undefined) refuseUndatable(schema, entry, brick, Object.keys(args.fields))
   for (const leaf of confirm) liveField(brick, rootOf(leaf))
   // Confirmed leaves count like a change of their root field: rights and conflicts (SPEC 3).
   const roots = [...new Set([...Object.keys(args.fields), ...confirm.map(rootOf)])]
@@ -325,9 +334,16 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
       before: plan.before as Json, after: plan.after as Json, ...recorded(msg('history.datedProposal', words), schema),
     })
   }
-  // A save that leaves nothing for that day takes the change of that day away.
-  const line = Object.keys(plan.fields).length ? msg('history.datedSaved', words) : msg('history.datedCancelled', { ...words, fields: fieldNames(schema, entry.brick, Object.keys(plan.same?.fields ?? {})) })
-  const written = await writeDated(ctx, actor, entry, plan, {}, recorded(line, schema), args.opId)
+  // The history names the fields the save keeps in the change and, as a cancel, those it takes out (given their value of
+  // the day before); a save that leaves nothing takes the change of that day away (G8).
+  const kept = plan.roots.filter((r) => Object.hasOwn(plan.fields, r))
+  const removed = Object.keys(plan.same?.fields ?? {}).filter((r) => !Object.hasOwn(plan.fields, r))
+  const lines: DatedLine[] = []
+  if (kept.length) lines.push({ kind: 'dated', history: recorded(msg('history.datedSaved', { ...words, fields: fieldNames(schema, entry.brick, kept) }), schema) })
+  if (removed.length) lines.push({ kind: 'datedCancelled', history: recorded(msg('history.datedCancelled', { ...words, fields: fieldNames(schema, entry.brick, removed) }), schema) })
+  // A stopped change started again by a save that gives none of its fields: its fields, as a save of them.
+  if (!lines.length) lines.push({ kind: 'dated', history: recorded(msg('history.datedSaved', { ...words, fields: fieldNames(schema, entry.brick, Object.keys(plan.fields)) }), schema) })
+  const written = await writeDated(ctx, actor, entry, plan, {}, lines, args.opId)
   return { entry: entry._id, rev: entry.rev, contentRev: written.contentRev, change: written.change, warnings: [], dated: written.dated ?? null, from }
 }
 
@@ -541,6 +557,17 @@ function fieldsLabel(schema: Schema, brick: Brick, roots: string[]): Label {
 }
 
 /**
+ * Puts an entry's unpublished changes online now, as "Publish" does (the same check and write), for a caller that
+ * already decided (the dated-changes migration of a time that has come). Refusals throw as for a person.
+ */
+export async function publishHeldNow(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, held: Pending, opId: string) {
+  const schema = actor.site.schema as Schema
+  const plan = await pendingPlan(ctx, actor, entry, held)
+  const history = recorded(msg('history.publishedChanges', { title: labelOf(schema, entry.brick, entry.data as Data), fields: fieldsLabel(schema, plan.brick, plan.roots) }), schema)
+  return await applyPending(ctx, actor, entry, held, plan, history, opId)
+}
+
+/**
  * `publish` of a live entry: its unpublished changes, now or, with `from`, as a dated change of that day (D125). A time
  * (`at`) is for a draft only (D130); an approved request whose day has passed publishes at once. `rev` (optional) is
  * the version the person saw.
@@ -556,6 +583,8 @@ async function publishPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entrie
   const lateDay = args.from !== undefined && actor.approvedBy !== undefined && args.from <= todayIn(schema.timeZone)
   if (args.from !== undefined && !lateDay) return await publishPendingDated(ctx, actor, entry, held, args, args.from)
   const late = lateDay
+  // As a late yes of a save (G3): the run would stop a field a change may no longer set.
+  if (late) refuseUndatable(schema, entry, brickOf(schema, entry), Object.keys(held.fields))
   const plan = await pendingPlan(ctx, actor, entry, held)
   const title = labelOf(schema, entry.brick, entry.data as Data)
   const fields = fieldsLabel(schema, plan.brick, plan.roots)
@@ -583,8 +612,7 @@ async function publishPendingDated(ctx: MutationCtx, actor: Actor, entry: Doc<'e
   checkDay(schema, from)
   refuseTaskWithoutDay(schema, args.task)
   const roots = Object.keys(held.fields).sort((a, b) => fieldOrder(brick, a) - fieldOrder(brick, b))
-  const refused = roots.filter((r) => changeRefusal(schema, brick, r) !== undefined)
-  if (refused.length) fail('INVALID', 'errors.fieldsCannotDate', { fields: labelIn(fieldNames(schema, entry.brick, refused), schema.locales[0]!, schema.locales[0]!) }, { fields: refused })
+  refuseUndatable(schema, entry, brick, roots)
   const moved = roots.filter((r) => (entry.fieldRevs[r] ?? 0) > (held.revs[r] ?? 0))
   if (moved.length) fail('CHANGED_SINCE', 'errors.liveChangedMeanwhile', undefined, { ...(current(entry) as object), conflicts: moved })
   const plan = await planDated(ctx, actor.site, entry, from, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
@@ -595,7 +623,7 @@ async function publishPendingDated(ctx: MutationCtx, actor: Actor, entry: Doc<'e
       before: plan.before as Json, after: plan.after as Json, ...recorded(msg('history.datedFromPendingProposal', words), schema),
     })
   }
-  const written = await writeDated(ctx, actor, entry, plan, held.revs, recorded(msg('history.datedFromPending', words), schema), args.opId)
+  const written = await writeDated(ctx, actor, entry, plan, held.revs, [{ kind: 'dated', history: recorded(msg('history.datedFromPending', words), schema) }], args.opId)
   await dropPending(ctx, held)
   return { entry: entry._id, lifeRev: entry.lifeRev, rev: entry.rev, contentRev: written.contentRev, change: written.change, state: 'live', from, translation: [] }
 }

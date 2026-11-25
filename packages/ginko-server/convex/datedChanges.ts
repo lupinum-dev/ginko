@@ -3,7 +3,7 @@
 import type { Brick, Json } from '@lupinum/ginko'
 import { changeRefusal, entryBytes, todayIn, validate, type Schema } from '@lupinum/ginko/internal'
 import { ConvexError, v } from 'convex/values'
-import type { Doc } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, byOf, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor } from './lib/access'
 import type { Data, Prints } from './lib/content'
@@ -13,12 +13,12 @@ import { entryLabel } from './lib/list'
 import { labeler } from './lib/names'
 import { dropPending, dropPendingRoots, overlay, pendingOf, underRoot } from './lib/pending'
 import { needsProposal } from './lib/policy'
-import { errorKind, mailStoppedChange, stoppedBecause } from './lib/stopped'
+import { errorKind, mailStoppedChange, refusalOf, stoppedBecause } from './lib/stopped'
 import { brokenNewLinks, commitEntry, lookupsFor } from './lib/write'
 import type { StopReason } from './schema'
 import { internal } from './_generated/api'
-import { advance, eachSite, notConverted, stepArgs } from './lib/migrations'
-import { followName, rootsWith, writeFollowedName } from './entries'
+import { advance, clearSkipped, eachSite, notConverted, stepArgs } from './lib/migrations'
+import { followName, publishHeldNow, rootsWith, writeFollowedName } from './entries'
 
 /** A dated change of the actor's site, and its entry; anything else is NOT_FOUND. */
 async function datedRow(ctx: QueryCtx, actor: Actor, id: string): Promise<{ row: Dated; entry: Doc<'entries'> }> {
@@ -39,6 +39,23 @@ function mayChange(actor: Actor, schema: Schema, task: string | undefined, entry
 }
 
 /**
+ * Why `actor` may not take `step` on `row` through `task`, as the error the step throws; undefined when it may. One rule
+ * for `cancel`, `setDay` and the list the editor reads (G7): the task's rights over the change's fields; and a person
+ * whose change needs a yes moves none and cancels only their own (taking away someone else's planned values needs one).
+ */
+async function datedRefusal(ctx: QueryCtx, actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated, step: 'cancel' | 'move'): Promise<ConvexError<Json> | undefined> {
+  try {
+    mayChange(actor, schema, task, entry, row)
+    if (step === 'move' && entry.deletedAt) fail('NOT_FOUND', 'errors.datedNotFound')
+    if ((step === 'move' || row.by !== actor.user.id) && await needsProposal(ctx, actor, 'save', task, taskBrickOf(schema, task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
+    return undefined
+  } catch (error) {
+    if (error instanceof ConvexError) return error as ConvexError<Json>
+    throw error
+  }
+}
+
+/**
  * Moves a dated change to another day, checked at that day as a new one (a value may fit one day and not another); a
  * change that stopped starts again. A change already waiting on that day takes the moved fields (they replace its
  * values). A person whose change needs a yes cancels and makes it again instead, so the yes is not passed by.
@@ -50,10 +67,9 @@ export const setDay = mutation({
     return idempotent(ctx, actor, args, async () => {
       const { row, entry } = await datedRow(ctx, actor, args.change)
       const schema = actor.site.schema as Schema
-      mayChange(actor, schema, args.task, entry, row)
-      if (entry.deletedAt) fail('NOT_FOUND', 'errors.datedNotFound')
+      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, 'move')
+      if (refused) throw refused
       checkDay(schema, args.from)
-      if (await needsProposal(ctx, actor, 'save', args.task, taskBrickOf(schema, args.task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
       const result: Json = { change: row._id, from: args.from, contentRev: actor.site.contentRev }
       if (args.from === row.from && !row.stopped) return result
       const rows = (await datedOf(ctx, entry._id)).filter((r) => r._id !== row._id)
@@ -63,7 +79,7 @@ export const setDay = mutation({
       if (plan.same || !Object.keys(plan.fields).length) {
         // Into the change of that day, or nothing left that differs on that day: the moved row goes.
         await dropDated(ctx, row)
-        const written = await writeDated(ctx, actor, entry, plan, row.revs, history, args.opId)
+        const written = await writeDated(ctx, actor, entry, plan, row.revs, [{ kind: 'dated', history }], args.opId)
         return { change: written.dated ?? null, from: args.from, contentRev: written.contentRev }
       }
       if (row.job) await ctx.scheduler.cancel(row.job)
@@ -93,8 +109,8 @@ export const cancel = mutation({
     return idempotent(ctx, actor, args, async () => {
       const { row, entry } = await datedRow(ctx, actor, args.change)
       const schema = actor.site.schema as Schema
-      mayChange(actor, schema, args.task, entry, row)
-      if (row.by !== actor.user.id && await needsProposal(ctx, actor, 'save', args.task, taskBrickOf(schema, args.task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
+      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, 'cancel')
+      if (refused) throw refused
       await dropDated(ctx, row)
       // A stopped change was no longer served as coming.
       const contentRev = !row.stopped && touchesPublic(schema, entry.brick, Object.keys(row.fields)) ? actor.site.contentRev + 1 : actor.site.contentRev
@@ -113,19 +129,23 @@ export const cancel = mutation({
 
 /**
  * An entry's dated changes for the editor, in the order of their days: the values in storage format, who saved into it
- * last and when, a stop, and `changedSince`: the fields whose normal value was written after the change was made (the
+ * last and when, whether the person may cancel and move it through `task`, a stop, and `changedSince`: the fields whose normal value was written after the change was made (the
  * change still wins on its day, D126).
  */
 export const list = query({
-  args: { site: v.string(), entry: v.string() },
+  args: { site: v.string(), entry: v.string(), task: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     const entry = await entryOf(ctx, actor, args.entry)
+    const schema = actor.site.schema as Schema
     const names = await labeler(ctx, actor)
     const out = []
     for (const row of await datedOf(ctx, entry._id)) {
       out.push({
         id: row._id, from: row.from, fields: Object.keys(row.fields), values: row.fields, by: row.by ? await names.who(row.by) : null, at: row.at,
+        // What `task` lets this person do with it (G7): the editor offers only these steps.
+        mayCancel: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, 'cancel')),
+        mayMove: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, 'move')),
         ...(row.stopped ? { stopped: row.stopped } : {}),
         changedSince: Object.keys(row.fields).filter((root) => (entry.fieldRevs[root] ?? 0) > (row.revs[root] ?? 0)),
       })
@@ -164,11 +184,13 @@ export const applyDue = internalMutation({
       writing = true
       if (!reason) await ctx.runMutation(internal.datedChanges.writeDue, { change: row._id })
     } catch (error) {
-      // A refusal of the write: over a budget the site reached since, the values do not fit, as a value that no longer
-      // passes. Any other error of the run stops the change with `failed`; `writeDue` is a transaction of its own, so
-      // nothing of it stays written.
-      if (writing && error instanceof ConvexError) reason = { code: 'invalid', fields: Object.keys(row.fields) }
-      else {
+      // A refusal of the write (a budget the site reached since) stops it as `invalid` with that refusal as its cause; the
+      // class survives `runMutation`. Any other error of the run stops the change with `failed`; `writeDue` is a
+      // transaction of its own, so nothing of it stays written.
+      if (writing && error instanceof ConvexError) {
+        const cause = refusalOf(error)
+        reason = { code: 'invalid', fields: Object.keys(row.fields), ...(cause ? { cause } : {}) }
+      } else {
         console.error(`Dated change ${row._id} failed (${errorKind(error)}).`)
         reason = { code: 'failed' }
       }
@@ -253,8 +275,9 @@ async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>,
  * The migration `2026-11-25-dated-changes` (D130), one site per page. What planned values for a later time with the
  * older ways becomes after this release:
  * - Unpublished changes with a time (`pendingChanges.publishAt`): its run is cancelled. A day after today becomes a
- *   dated change of that day (checked like "Publish on a day", planner = who saved them); otherwise, or when the check
- *   refuses it, the changes stay unpublished without a time, with a history line.
+ *   dated change of that day (checked like "Publish on a day", planner = who saved them); today or a past day goes
+ *   online now (like "Publish", planner on the history row). When the check refuses it, or anything else fails for
+ *   that row, the changes stay unpublished without a time, with a history line.
  * - A single request approved for a time (status `scheduled`, no release): its run is cancelled and it is open again,
  *   so an approver decides it anew. Release members keep their schedule.
  * - A brick with `planned` in the stored schema: per entry, a planned value whose day is after today becomes a dated
@@ -275,7 +298,12 @@ export const migrateOlderWays = internalMutation({
   },
 })
 
-/** One site of `migrateOlderWays`, as a transaction of its own (`eachSite`). */
+const MIGRATION = '2026-11-25-dated-changes'
+
+/**
+ * One site of `migrateOlderWays`, as a transaction of its own (`eachSite`). Also the rerun of a skipped site, by hand
+ * (internals/migrations.md): when it succeeds, the site leaves `migrations.skipped`.
+ */
 export const migrateOneSite = internalMutation({
   args: { site: v.id('sites') },
   handler: async (ctx, args): Promise<null> => {
@@ -285,47 +313,129 @@ export const migrateOneSite = internalMutation({
     } catch (error) {
       throw notConverted(error)
     }
+    await clearSkipped(ctx, MIGRATION, args.site)
     return null
   },
 })
 
-async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
-  const schema = site.schema as Schema
-  const today = todayIn(schema.timeZone)
-  const system: Actor = { user: { id: SYSTEM.actor }, site, role: 'admin', grants: [] }
-  const opId = (id: string) => `migrate:dated-changes:${id}`
+/** Cancels a job only while it still waits: one that ran, failed or was cancelled keeps its state in `_scheduled_functions`. */
+async function cancelWaiting(ctx: MutationCtx, job: Id<'_scheduled_functions'>) {
+  if ((await ctx.db.system.get(job))?.state.kind === 'pending') await ctx.scheduler.cancel(job)
+}
 
+/**
+ * One site: first the `planned` rules (the model converts), then the timed unpublished changes, checked with the
+ * converted model, then the requests approved for a time.
+ */
+async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
+  await convertPlanned(ctx, site)
+  const converted = (await ctx.db.get(site._id))!
+  await convertTimed(ctx, converted)
+  await reopenTimedRequests(ctx, (await ctx.db.get(site._id))!)
+}
+
+/**
+ * Unpublished changes with a time (`pendingChanges.publishAt`): the time goes, then each row is converted on its own
+ * (`migrateTimedRow`). A row that cannot be converted, for any reason, stays unpublished without a time, with a history
+ * line; the site goes on.
+ */
+async function convertTimed(ctx: MutationCtx, site: Doc<'sites'>) {
+  const schema = site.schema as Schema
   for (const held of await ctx.db.query('pendingChanges').withIndex('by_site', (q) => q.eq('site', site._id)).collect()) {
     if (held.publishAt === undefined) continue
-    if (held.publishJob) await ctx.scheduler.cancel(held.publishJob)
+    if (held.publishJob) await cancelWaiting(ctx, held.publishJob)
+    const publishAt = held.publishAt
     await ctx.db.patch(held._id, { publishAt: undefined, publishJob: undefined })
     const entry = await ctx.db.get(held.entry)
     if (!entry || entry.deletedAt) continue
-    const day = todayIn(schema.timeZone, new Date(held.publishAt))
-    const title = entryLabel(schema, entry.brick, entry.data as Data)
-    const words = { title, fields: fieldNames(schema, entry.brick, Object.keys(held.fields)), day: dayStart(day, schema.timeZone) }
-    const actor = { ...system, site: (await ctx.db.get(site._id))! }
     try {
-      if (day <= today || Object.keys(held.fields).some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
-      const plan = await planDated(ctx, actor.site, entry, day, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
-      const written = await writeDated(ctx, actor, entry, plan, held.revs, recorded(msg('history.datedFromPending', words), schema), opId(held._id))
-      if (written.dated) await ctx.db.patch(written.dated, { by: held.by })
-      await dropPending(ctx, held)
+      await ctx.runMutation(internal.datedChanges.migrateTimedRow, { held: held._id, publishAt })
     } catch (error) {
-      if (!(error instanceof ConvexError)) throw error
+      const data = error instanceof ConvexError ? error.data as { code?: string; kind?: string } : undefined
+      if (data?.code === 'NOT_CONVERTED') console.error(`Migration ${MIGRATION}: unpublished changes ${held._id} stay without a time (${data.kind}).`)
+      const current = (await ctx.db.get(site._id))!
       await ctx.db.insert('changes', {
-        site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: opId(held._id), kind: 'unschedule',
-        ...recorded(msg('history.changesUnscheduled', { title }), schema), entryRev: entry.rev, contentRev: actor.site.contentRev, at: Date.now(),
+        site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: migrateOpId(held._id), kind: 'unschedule',
+        ...recorded(msg('history.changesUnscheduled', { title: titleOr(schema, entry) }), schema), entryRev: entry.rev, contentRev: current.contentRev, at: Date.now(),
       })
     }
   }
+}
 
+const migrateOpId = (id: string) => `migrate:dated-changes:${id}`
+
+/** The entry's title, or its brick's key where the stored model cannot give one (an old model). */
+function titleOr(schema: Schema, entry: Doc<'entries'>): string {
+  try {
+    return entryLabel(schema, entry.brick, entry.data as Data)
+  } catch {
+    return entry.brick
+  }
+}
+
+/**
+ * One timed unpublished change of the migration, as a transaction of its own, so a row that fails leaves nothing half
+ * written. Its time's day in the site's zone decides (a time of day becomes the start of that day): a later day becomes
+ * a dated change of that day, planned by who saved the changes; today or a past day goes online now as "Publish" does,
+ * with the planner on the history row. A check that refuses throws, and the caller keeps the changes unpublished.
+ */
+export const migrateTimedRow = internalMutation({
+  args: { held: v.id('pendingChanges'), publishAt: v.number() },
+  handler: async (ctx, args): Promise<null> => {
+    try {
+      await convertTimedRow(ctx, args.held, args.publishAt)
+    } catch (error) {
+      // A refusal (ConvexError) keeps its code; any other error loses its class on the way out, so it goes as data.
+      throw error instanceof ConvexError ? error : notConverted(error)
+    }
+    return null
+  },
+})
+
+async function convertTimedRow(ctx: MutationCtx, id: Id<'pendingChanges'>, publishAt: number) {
+  const held = (await ctx.db.get(id))!
+  const site = (await ctx.db.get(held.site))!
+  const entry = (await ctx.db.get(held.entry))!
+  const schema = site.schema as Schema
+  const day = todayIn(schema.timeZone, new Date(publishAt))
+  const actor: Actor = { user: { id: SYSTEM.actor }, site, role: 'admin', grants: [] }
+  // Its day has come (also between the deploy and this step): online now, as "Publish" does, in the planner's name.
+  if (day <= todayIn(schema.timeZone)) {
+    const written = await publishHeldNow(ctx, actor, entry, held, migrateOpId(held._id))
+    await ctx.db.patch(written.change, { plannedBy: held.by })
+    return
+  }
+  if (Object.keys(held.fields).some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
+  const words = { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, Object.keys(held.fields)), day: dayStart(day, schema.timeZone) }
+  const plan = await planDated(ctx, site, entry, day, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
+  const written = await writeDated(ctx, actor, entry, plan, held.revs, [{ kind: 'dated', history: recorded(msg('history.datedFromPending', words), schema) }], migrateOpId(held._id))
+  if (written.dated) await ctx.db.patch(written.dated, { by: held.by })
+  await dropPending(ctx, held)
+}
+
+/**
+ * Single requests approved for a time: open again, so an approver decides them anew, with one history line on the
+ * entry that names the time. Release members keep theirs.
+ */
+async function reopenTimedRequests(ctx: MutationCtx, site: Doc<'sites'>) {
+  const schema = site.schema as Schema
   for (const p of await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', site._id).eq('status', 'scheduled')).collect()) {
     if (p.release) continue
-    if (p.job) await ctx.scheduler.cancel(p.job)
+    if (p.job) await cancelWaiting(ctx, p.job)
     await ctx.db.patch(p._id, { status: 'open', at: undefined, job: undefined, decidedBy: undefined, decidedAt: undefined })
+    const entry = p.entry ? await ctx.db.get(p.entry) : null
+    if (!entry || p.at === undefined) continue
+    await ctx.db.insert('changes', {
+      site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: migrateOpId(p._id), kind: 'requestReopened',
+      ...recorded(msg('history.requestReopened', { title: titleOr(schema, entry), at: p.at }), schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
+    })
   }
+}
 
+/** The `planned` rules of the stored model and the plan fields of each entry. */
+async function convertPlanned(ctx: MutationCtx, site: Doc<'sites'>) {
+  const schema = site.schema as Schema
+  const today = todayIn(schema.timeZone)
   const planned = Object.entries(schema.bricks).flatMap(([key, brick]) => {
     const rule = (brick as { planned?: { field: string; next: string; from: string } }).planned
     return rule ? [{ key, rule }] : []
@@ -337,6 +447,9 @@ async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
   let trashBytes = 0
   for (const { key, rule } of planned) {
     for (const entry of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()) {
+      // An unpublished change of a plan field goes with the field, also on an entry without a plan.
+      const held = await pendingOf(ctx, entry._id)
+      if (held) await dropPendingRoots(ctx, schema, held, [rule.next, rule.from])
       const data = { ...(entry.data as Data) }
       if (!Object.hasOwn(data, rule.next) && !Object.hasOwn(data, rule.from)) continue
       const value = data[rule.next]
@@ -353,8 +466,6 @@ async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
       else bytes += size - entry.bytes
       await ctx.db.patch(entry._id, { data, prints, fieldRevs, rev: entry.rev + 1, bytes: size, contentAt: Date.now() })
       if (planned && day > today && !entry.deletedAt) await insertWaiting(ctx, schema, { ...entry, rev: entry.rev + 1 }, [{ from: day, set: { [rule.field]: value } }])
-      const held = await pendingOf(ctx, entry._id)
-      if (held) await dropPendingRoots(ctx, schema, held, [rule.next, rule.from])
     }
     const brick = next.bricks[key]! as Brick & { planned?: unknown }
     delete brick.planned

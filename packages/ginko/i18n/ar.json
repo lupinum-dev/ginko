@@ -24,6 +24,8 @@
     "badTime": "«{label}» ليس وقتًا صالحًا.",
     "badDateRange": "«{label}» ليس فترة صالحة.",
     "dateRangeOrder": "«{label}»: تاريخ «من» بعد تاريخ «إلى».",
+    "dateRangeFromMissing": "«{label}»: تاريخ «من» مفقود.",
+    "dateRangeToMissing": "«{label}»: تاريخ «إلى» مفقود.",
     "timeOrder": "يجب أن يكون «{end}» بعد «{start}».",
     "notWeekStart": "يجب أن يكون «{label}» اليوم الأول من أسبوع.",
     "badChoice": "قيمة «{label}» غير صالحة.",

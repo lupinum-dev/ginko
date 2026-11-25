@@ -23,24 +23,29 @@ vi.stubGlobal('useOps', () => ops)
 const schema = serializeSchema(defineSite({
   site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
-  bricks: { items: collection({ label: 'Karte', max: 50, order: 'manual', listing: { title: 'name' }, fields: { name: f.text('Name', { translate: false }), price: f.money('Preis') } }) },
+  bricks: { items: collection({ label: 'Karte', max: 50, order: 'manual', listing: { title: 'name' }, fields: { name: f.text('Name', { translate: false }), price: f.money('Preis'), opens: f.time('Öffnet', { optional: true }), vegan: f.boolean('Vegan', { default: false }) } }) },
 }))
-const mountNotices = () => mount(DatedNotices, { props: { site: 'cafe', entry: 'i1', brick: schema.bricks.items!, main: 'de', timeZone: 'Europe/Vienna', task: 'items.price' }, attachTo: document.body })
+const mountNotices = () => mount(DatedNotices, { props: { site: 'cafe', entry: 'i1', brick: schema.bricks.items!, main: 'de', timeZone: 'Europe/Vienna', currency: 'EUR', task: 'items.price' }, attachTo: document.body })
 const press = async (wrapper: ReturnType<typeof mountNotices>, label: string) => {
   await wrapper.findAll('button').find((b) => b.text() === label)!.trigger('click')
   await flushPromises()
 }
-const change = (id: string, from: string, over: Record<string, unknown> = {}) => ({ id, from, fields: ['price'], values: { price: { amount: 1290 } }, by: null, at: 0, changedSince: [], ...over })
+const change = (id: string, from: string, over: Record<string, unknown> = {}) => ({ id, from, fields: ['price'], values: { price: { amount: 1290 } }, by: null, at: 0, changedSince: [], mayCancel: true, mayMove: true, ...over })
 
 describe('the notices of changes for a later day', () => {
-  // Wrong behaviour caught: a waiting change is not shown, or the notice hides that the field changed since and will
-  // be overwritten on the day.
-  test('one notice per change, with what changed since', () => {
-    rows.value = [change('d1', '2099-03-05', { changedSince: ['price'] }), change('d2', '2099-04-01', { fields: ['name', 'price'] })]
+  // Wrong behaviour caught: a waiting change is not shown, the notice hides that the field changed since and will be
+  // overwritten on the day, or it names only the fields, so nobody sees which price or time is planned (E2).
+  test('one notice per change, with its values and what changed since', () => {
+    rows.value = [
+      change('d1', '2099-03-05', { changedSince: ['price'] }),
+      change('d2', '2099-04-01', { fields: ['name', 'price', 'opens', 'vegan'], values: { name: 'Gulasch', price: { amount: 2290 }, opens: '11:30', vegan: true } }),
+      change('d3', '2099-02-01', { stopped: { code: 'invalid', fields: ['price'] } }),
+    ]
     const wrapper = mountNotices()
-    expect(wrapper.findAll('[role="status"]').map((n) => n.find('p').text())).toEqual([
-      'Ab [2099-03-05] gilt eine geplante Änderung: Preis.',
-      'Ab [2099-04-01] gilt eine geplante Änderung: Name, Preis.',
+    expect(wrapper.findAll('[role="status"]').map((n) => n.find('p').text().replace(/\s/g, ' '))).toEqual([
+      'Ab [2099-03-05]: Preis 12,90 €.',
+      'Ab [2099-04-01]: Name, Preis 22,90 €, Öffnet 11:30, Vegan Ja.',
+      'Die geplante Änderung für [2099-02-01] wurde nicht übernommen: Preis 12,90 €.',
     ])
     expect(wrapper.text()).toContain('Seit der Planung geändert: Preis.')
     wrapper.unmount()
@@ -77,6 +82,49 @@ describe('the notices of changes for a later day', () => {
     await field.setValue('2099-03-12')
     await press(wrapper, 'Tag speichern')
     expect(ops.moveChange).toHaveBeenCalledWith('d1', '2099-03-12', 'items.price')
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E9): a keyboard or screen reader user lost their place: the cancel question opened without
+  // focus on its safe answer, closing a step dropped the focus to the page top, and a refused day was not tied to its
+  // field.
+  test('the steps move the focus and the day field carries its error', async () => {
+    rows.value = [change('d1', '2099-03-05'), change('d2', '2099-04-01')]
+    const wrapper = mountNotices()
+    const active = () => document.activeElement?.textContent?.trim() ?? document.activeElement?.id
+    await press(wrapper, 'Änderung aufheben')
+    expect(active()).toBe('Behalten')
+    await press(wrapper, 'Behalten')
+    expect(document.activeElement?.id).toBe('dated-cancel-d1-open')
+
+    await wrapper.get('#dated-day-d1-open').trigger('click')
+    await flushPromises()
+    expect(document.activeElement?.id).toBe('dated-day-d1')
+    await wrapper.get('#dated-day-d1').setValue('2020-01-01')
+    await press(wrapper, 'Tag speichern')
+    expect([wrapper.get('#dated-day-d1').attributes('aria-invalid'), document.activeElement?.id]).toEqual(['true', 'dated-day-d1'])
+    await press(wrapper, 'Abbrechen')
+    expect(document.activeElement?.id).toBe('dated-day-d1-open')
+
+    await wrapper.get('#dated-day-d1-open').trigger('click')
+    await flushPromises()
+    await wrapper.get('#dated-day-d1').setValue('2099-03-12')
+    await press(wrapper, 'Tag speichern')
+    expect(document.activeElement?.id).toBe('dated-day-d1-open')
+
+    await wrapper.get('#dated-cancel-d1-open').trigger('click')
+    await flushPromises()
+    await press(wrapper, 'Änderung aufheben')
+    expect(document.activeElement?.id).toBe('dated-day-d2-open')
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (G7): a step the server refuses this person (staff whose change needs a yes, someone else's
+  // change) was offered and failed only after the click.
+  test('only the steps the person may take are offered', () => {
+    rows.value = [change('d1', '2099-03-05', { mayMove: false }), change('d2', '2099-04-01', { mayMove: false, mayCancel: false })]
+    const wrapper = mountNotices()
+    expect(wrapper.findAll('[data-notice]').map((n) => n.findAll('button').map((b) => b.text()))).toEqual([['Änderung aufheben'], []])
     wrapper.unmount()
   })
 })

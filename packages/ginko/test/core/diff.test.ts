@@ -164,6 +164,14 @@ const rejected: RejectedRow[] = [
     kind: 'requiredWithoutDefault',
   },
   { name: 'a field removed without retired', mutate: (s) => { delete fieldsOf(s, 'menu').name }, kind: 'fieldRemoved' },
+  // Wrong behaviour caught: a release drops `planned` from a stored model the platform has not converted yet (D130), so
+  // the planned prices in its entries are never converted. The platform's migration removes it, never a release.
+  {
+    name: 'a stored planned removed by a release',
+    prod: (s) => { (s.bricks.menu as { planned?: unknown }).planned = { field: 'price', next: 'nextPrice', from: 'priceFrom' } },
+    mutate: (s) => { delete (s.bricks.menu as { planned?: unknown }).planned },
+    kind: 'unknownChange',
+  },
   { name: 'a brick removed without retired', mutate: (s) => { delete s.bricks.legal }, kind: 'brickRemoved' },
   { name: 'a field type changed', mutate: (s) => { field(s, 'seo.title').type = 'longtext' }, kind: 'typeChanged' },
   { name: 'an optional field made required', mutate: (s) => { delete field(s, 'seo.image').optional }, kind: 'madeRequired' },

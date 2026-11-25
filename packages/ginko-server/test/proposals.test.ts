@@ -290,6 +290,22 @@ describe('approving', () => {
   })
 })
 
+describe('an open request from before D130', () => {
+  // R4 B. Wrong behaviour caught: a request to take the time off a planned entry ("unpublish", its after is online,
+  // asked before times went away) takes the entry offline when an approver says yes now.
+  it('to take a time off is stale and leaves the entry online', async () => {
+    const s = await approvalSetup()
+    const entry = (await s.row(s.saibling))!
+    const old = await s.t.run((ctx) => ctx.db.insert('proposals', {
+      site: s.site, op: 'unpublish', brick: 'menu', entry: s.saibling, args: { site: 'restaurant', opId: 'old-request', task: 'menu.edit', entry: s.saibling, lifeRev: entry.lifeRev },
+      base: { lifeRev: entry.lifeRev }, before: { state: 'scheduled' }, after: { state: 'live' }, sentence: 'Zeitplan von „Gebeizter Saibling“ aufheben',
+      author: people.cook, via: 'ui', status: 'open', createdAt: Date.now(),
+    }))
+    expect(await s.as.owner.mutation(api.proposals.approve, { proposal: old })).toMatchObject({ status: 'stale', reasonMsg: { key: 'history.staleTimeGone' } })
+    expect((await s.row(s.saibling))!.state ?? 'live').toBe('live')
+  })
+})
+
 describe('rejecting and withdrawing', () => {
   it('a rejection needs a reason of one to 300 characters; staff cannot reject', async () => {
     const s = await approvalSetup()

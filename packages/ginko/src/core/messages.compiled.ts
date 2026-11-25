@@ -215,6 +215,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“: „von“ liegt nach „bis“."
    ],
+   "dateRangeFromMissing": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Der Tag „von“ fehlt."
+   ],
+   "dateRangeToMissing": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Der Tag „bis“ fehlt."
+   ],
    "timeOrder": [
     "„",
     [
@@ -1688,6 +1704,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: “from” is after “to”."
    ],
+   "dateRangeFromMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: the “from” day is missing."
+   ],
+   "dateRangeToMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: the “to” day is missing."
+   ],
    "timeOrder": [
     "“",
     [
@@ -3160,6 +3192,22 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "”: “desde” es posterior a “hasta”."
+   ],
+   "dateRangeFromMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: falta el día “desde”."
+   ],
+   "dateRangeToMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: falta el día “hasta”."
    ],
    "timeOrder": [
     "“",
@@ -4636,6 +4684,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " » : « du » est après « au »."
    ],
+   "dateRangeFromMissing": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : le jour « du » manque."
+   ],
+   "dateRangeToMissing": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : le jour « au » manque."
+   ],
    "timeOrder": [
     "« ",
     [
@@ -6109,6 +6173,22 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "”: “dal” viene dopo “al”."
+   ],
+   "dateRangeFromMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: manca il giorno “dal”."
+   ],
+   "dateRangeToMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: manca il giorno “al”."
    ],
    "timeOrder": [
     "“",
@@ -7618,6 +7698,22 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "»: تاريخ «من» بعد تاريخ «إلى»."
+   ],
+   "dateRangeFromMissing": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: تاريخ «من» مفقود."
+   ],
+   "dateRangeToMissing": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: تاريخ «إلى» مفقود."
    ],
    "timeOrder": [
     "يجب أن يكون «",

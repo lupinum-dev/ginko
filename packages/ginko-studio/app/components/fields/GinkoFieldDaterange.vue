@@ -11,10 +11,11 @@ const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 const { t } = useI18n()
 const range = computed(() => (props.modelValue && typeof props.modelValue === 'object' && !Array.isArray(props.modelValue) ? (props.modelValue as { from?: string; to?: string }) : {}))
 
+// An empty side is left out, never sent as '': the check reads a missing side as missing, not as a bad date (F13).
 function set(part: 'from' | 'to', v: string) {
-  const next = { from: range.value.from ?? '', to: range.value.to ?? '', [part]: v }
+  const next = { ...range.value, [part]: v }
   if (part === 'from' && v && (!next.to || next.to < v)) next.to = v
-  emit('update:modelValue', next.from || next.to ? next : undefined)
+  emit('update:modelValue', next.from || next.to ? { ...(next.from ? { from: next.from } : {}), ...(next.to ? { to: next.to } : {}) } : undefined)
 }
 </script>
 

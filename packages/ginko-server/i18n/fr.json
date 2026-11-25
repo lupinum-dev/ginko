@@ -295,6 +295,7 @@
     "staleChanged": "Quelqu’un a modifié cet élément entre-temps. Proposez la modification de nouveau.",
     "staleAlreadyLive": "Cette entrée est déjà en ligne.",
     "staleAlreadyDraft": "Cette entrée est déjà un brouillon.",
+    "staleTimeGone": "L’heure que cette demande voulait retirer n’existe plus.",
     "staleApproverNotAllowed": "La personne qui approuve n’a plus le droit de l’approuver.",
     "staleNoLonger": "Ce n’est plus possible.",
     "staleRefused": "{why} Proposez la modification de nouveau.",
@@ -314,6 +315,7 @@
     "publishedChangesLate": "Modifications de « {title} » publiées tout de suite (l’heure prévue était déjà passée au moment de l’approbation) : {fields}",
     "changesScheduled": "Modifications de « {title} » : en ligne à partir du {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "changesUnscheduled": "Modifications de « {title} » : programmation annulée",
+    "requestReopened": "Demande pour « {title} » de nouveau ouverte : elle était approuvée pour le {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}. Une personne qui peut approuver la décide à nouveau.",
     "changesDiscarded": "Modifications non publiées de « {title} » abandonnées",
     "changesPublishStopped": "Les modifications de « {title} » ne sont pas passées en ligne : {why}",
     "datedSaved": "« {title} » : {fields} à partir du {day, date, ::MMMMd}",
@@ -389,14 +391,16 @@
       "invalid": "{count, plural, one {{fields} manque ou n’est pas valide.} other {{fields} manquent ou ne sont pas valides.}}",
       "late": "Son heure était déjà passée lors de l’import du contenu.",
       "failed": "Une erreur s’est produite pendant la mise en ligne. Planifiez-la à nouveau. Si cela se reproduit, prévenez-nous.",
-      "changeFailed": "Une erreur s’est produite pendant son application. Donnez au changement un nouveau jour. Si cela se reproduit, prévenez-nous."
+      "changeFailed": "Une erreur s’est produite pendant son application. Donnez au changement un nouveau jour. Si cela se reproduit, prévenez-nous.",
+      "refused": "Les valeurs n’ont pas pu être enregistrées : {why}"
     },
     "because": {
       "link": "il renvoie vers une page qui n’existe pas : {href}",
       "invalid": "{count, plural, one {{fields} manque ou n’est pas valide.} other {{fields} manquent ou ne sont pas valides.}}",
       "late": "son heure était déjà passée lors de l’import du contenu.",
       "failed": "une erreur s’est produite pendant la mise en ligne. Planifiez-la à nouveau. Si cela se reproduit, prévenez-nous.",
-      "changeFailed": "une erreur s’est produite pendant son application. Donnez au changement un nouveau jour. Si cela se reproduit, prévenez-nous."
+      "changeFailed": "une erreur s’est produite pendant son application. Donnez au changement un nouveau jour. Si cela se reproduit, prévenez-nous.",
+      "refused": "les valeurs n’ont pas pu être enregistrées : {why}"
     },
     "changeTitle": "« {title} » : le changement à partir du {day, date, ::MMMMd} n’a pas été appliqué"
   },

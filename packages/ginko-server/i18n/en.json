@@ -295,6 +295,7 @@
     "staleChanged": "Someone has changed this in the meantime. Please propose the change again.",
     "staleAlreadyLive": "This entry is already online.",
     "staleAlreadyDraft": "This entry is already a draft.",
+    "staleTimeGone": "The time this request wanted to remove no longer exists.",
     "staleApproverNotAllowed": "The approver is no longer allowed to approve this.",
     "staleNoLonger": "This is no longer possible.",
     "staleRefused": "{why} Please propose the change again.",
@@ -314,6 +315,7 @@
     "publishedChangesLate": "Changes to “{title}” published at once (the planned time had already passed at approval): {fields}",
     "changesScheduled": "Changes to “{title}”: online from {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "changesUnscheduled": "Changes to “{title}”: schedule cancelled",
+    "requestReopened": "Request for “{title}” open again: it was approved for {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}. Someone who may approve decides it again.",
     "changesDiscarded": "Unpublished changes to “{title}” discarded",
     "changesPublishStopped": "Changes to “{title}” did not go online: {why}",
     "datedSaved": "“{title}”: {fields} from {day, date, ::MMMMd}",
@@ -389,14 +391,16 @@
       "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
       "late": "Its time had passed when the content was imported.",
       "failed": "An error happened while it went online. Plan it again. If it happens again, please tell us.",
-      "changeFailed": "An error happened while it was written. Give the change a new day. If it happens again, please tell us."
+      "changeFailed": "An error happened while it was written. Give the change a new day. If it happens again, please tell us.",
+      "refused": "The values could not be saved: {why}"
     },
     "because": {
       "link": "it links to a page that does not exist: {href}",
       "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
       "late": "its time had passed when the content was imported.",
       "failed": "an error happened while it went online. Plan it again. If it happens again, please tell us.",
-      "changeFailed": "an error happened while it was written. Give the change a new day. If it happens again, please tell us."
+      "changeFailed": "an error happened while it was written. Give the change a new day. If it happens again, please tell us.",
+      "refused": "the values could not be saved: {why}"
     },
     "changeTitle": "“{title}”: the change from {day, date, ::MMMMd} did not take effect"
   },

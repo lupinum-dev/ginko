@@ -11,23 +11,34 @@ import FieldFrame from './fields/FieldFrame.vue'
 
 const props = defineProps<{ id: string; timeZone: string; error?: string; label?: string; hint?: string; optional?: boolean }>()
 const day = defineModel<string>({ required: true })
+/**
+ * A day typed by keyboard and not finished, or no date at all: the input's value is then empty, the same as no day, and
+ * only its `validity` tells them apart. The form refuses a save while it is set, so a lost day never means "today".
+ */
+const bad = defineModel<boolean>('bad', { default: false })
+const check = (event: Event) => { bad.value = (event.target as HTMLInputElement).validity?.badInput === true }
+const errors = computed(() => (bad.value ? [t('dated.notADate')] : props.error ? [props.error] : []))
+function pick(value: string) {
+  bad.value = false
+  day.value = value
+}
 const { t } = useI18n()
 const today = useToday(computed(() => props.timeZone))
 const tomorrow = computed(() => addDays(today.value, 1))
 const max = computed(() => `${Number(today.value.slice(0, 4)) + 1}${today.value.slice(4)}`)
 function clear() {
-  day.value = ''
+  pick('')
   nextTick(() => document.getElementById(props.id)?.focus())
 }
 </script>
 
 <template>
-  <FieldFrame :id="id" :label="label ?? t('dated.startsOn')" :hint="hint ?? (optional ? t('dated.startsOnHint') : undefined)" :optional="optional" :errors="error ? [error] : []">
+  <FieldFrame :id="id" :label="label ?? t('dated.startsOn')" :hint="hint ?? (optional ? t('dated.startsOnHint') : undefined)" :optional="optional" :errors="errors">
     <template #default="{ describedBy, invalid }">
       <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
-        <Input :id="id" v-model="day" type="date" class="min-w-0 max-w-56 flex-1 basis-40" :min="tomorrow" :max="max" :aria-invalid="invalid" :aria-describedby="describedBy" />
+        <Input :id="id" v-model="day" type="date" class="min-w-0 max-w-56 flex-1 basis-40" :min="tomorrow" :max="max" :aria-invalid="invalid" :aria-describedby="describedBy" @input="check" @change="check" @keyup="check" @blur="check" />
         <div class="flex min-w-0 flex-wrap gap-1.5">
-          <Button type="button" variant="secondary" size="sm" class="px-2.5 aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:ring-1 aria-pressed:ring-ring" :aria-pressed="day === tomorrow" @click="day = tomorrow">{{ t('fields.date.tomorrow') }}</Button>
+          <Button type="button" variant="secondary" size="sm" class="px-2.5 aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:ring-1 aria-pressed:ring-ring" :aria-pressed="day === tomorrow" @click="pick(tomorrow)">{{ t('fields.date.tomorrow') }}</Button>
           <Button v-if="optional && day" type="button" variant="ghost" size="sm" @click="clear">{{ t('fields.clear') }}</Button>
         </div>
       </div>
