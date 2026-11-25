@@ -284,7 +284,7 @@ export function useEntryForm(o: EntryFormOptions) {
         // The server checks the task against the changed fields and the confirmed ones (entries.ts saveNow).
         const task = o.task?.([...new Set([...roots, ...confirm.value.map((leaf) => leaf.split('.')[0]!)])])
         const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}), ...(publishAs === true ? { publish: true as const } : {}), ...(from === undefined ? {} : { from }), ...(from !== undefined && extra.until !== undefined ? { until: extra.until } : {}), ...(from !== undefined && extra.change !== undefined ? { change: extra.change } : {}) }
-        const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main() })
+        const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main(), timeZone: o.timeZone?.() })
         // A draft saved as a draft: what it lacks shows as notes. A live entry's warnings are about fields it did not
         // change, which its form does not show.
         notes.value = o.draft?.() && publishAs !== true ? result.warnings ?? [] : []
