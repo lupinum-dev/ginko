@@ -227,6 +227,15 @@ describe('collection composables', () => {
     expect(next?.id).toBe('martinigans')
   })
 
+  // Wrong behaviour caught: a page from a cache, read after weinabend's day, still links to it as the previous entry.
+  test('useGinkoNeighbors leaves out an entry that ended by the reader\'s day', () => {
+    today('2026-10-08')
+    const around = useGinkoNeighbors('events' as never, 'martinigans')
+    expect((around.value as { prev?: { id: string } }).prev?.id).toBe('weinabend')
+    today('2026-10-17')
+    expect(around.value).toEqual({ prev: undefined, next: undefined })
+  })
+
   test('useGinkoNeighbors takes the order as { order }', () => {
     today('2026-10-08')
     const { prev, next } = useGinkoNeighbors('events' as never, 'weinabend', { order: 'price desc' }).value as { prev?: { id: string }; next?: unknown }

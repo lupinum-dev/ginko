@@ -39,6 +39,7 @@ describe('fileStatusInput', () => {
   it.each<[string, { $draft?: boolean; $publishAt?: string }, Pick<StatusInput, 'state' | 'publishAt'>]>([
     ['no dollar key is online', {}, { state: 'live' }],
     ['$draft is a draft', { $draft: true }, { state: 'draft' }],
+    ['$draft with a $publishAt to come is a draft, and nothing is planned', { $draft: true, $publishAt: '2026-10-08T12:30' }, { state: 'draft' }],
     ['a $publishAt that passed is online', { $publishAt: '2026-10-08T11:59' }, { state: 'live' }],
     ['a $publishAt to come is planned, at the site\'s wall clock', { $publishAt: '2026-10-08T12:30' }, { state: 'draft', publishAt: Date.parse('2026-10-08T10:30:00Z') }],
     ['a day alone means its start', { $publishAt: '2026-10-09' }, { state: 'draft', publishAt: Date.parse('2026-10-08T22:00:00Z') }],
