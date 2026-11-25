@@ -58,13 +58,16 @@ export async function mailStopped(ctx: MutationCtx, site: Doc<'sites'>, entry: S
   const schema = site.schema as Schema
   const members = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
   const path = `${origin}/s/${site.slug}/all/${entry.brick}/${entry._id}`
+  // Every read and every text first, then the queue: a read that throws queues no mail at all, never some of them.
+  const mails: { to: string; subject: string; text: string }[] = []
   for (const member of members) {
     if (!member.email || (member.role !== 'owner' && member.user !== entry.stopped.by)) continue
     const locale = await localeOfUser(ctx, member.user)
-    await queueMail(ctx, 'stopped', {
+    mails.push({
       to: member.email,
       subject: historyText(msg('mail.stopped.subject', { title: entry.title }), locale, schema),
       text: historyText(msg('mail.stopped.text', { at: entry.stopped.at, because: causeOf(schema, entry.brick, entry.stopped.reason, 'because'), path }), locale, schema),
     })
   }
+  for (const mail of mails) await queueMail(ctx, 'stopped', mail)
 }
