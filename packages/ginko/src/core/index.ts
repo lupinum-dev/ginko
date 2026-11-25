@@ -10,7 +10,7 @@ export { validate, isDate, fileProblem, SHAPE_CODES, type ValidateOptions, type 
 export { diffSchema, type SchemaChange, type SchemaDiff } from './diff.ts'
 export { rowDiffs, keyedRowDiffs, mergeRows, mergeKeyedRows, type RowDiff } from './rows.ts'
 export { releaseData, recheckAll, withPublishedOn, planDay } from './release.ts'
-export { resolveEntry, upcomingOf, holdingOf, buildBundle, servedBundle, applyDefaults, defaultsFor, shownOn, shownUntil, shownBundle, deletesEnded, sortEntries, untranslatedMode, routeUrls, urlsFor, urlClashes, blockedSlugs, type UrlClash, printOf, type StoredEntry, type FileInfo, type ResolveContext, type BuildBundleInput } from './resolve.ts'
+export { resolveEntry, upcomingOf, holdingOf, withHolding, buildBundle, servedBundle, applyDefaults, defaultsFor, shownOn, shownUntil, shownBundle, deletesEnded, sortEntries, untranslatedMode, routeUrls, urlsFor, urlClashes, blockedSlugs, type UrlClash, printOf, type StoredEntry, type FileInfo, type ResolveContext, type BuildBundleInput } from './resolve.ts'
 export { BUNDLE_FORMAT, isBundle, bundleFits, knownBricks, withFileBricks, markdownTrees, type MarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type Upcoming, type Holding } from './bundle.ts'
 export { dataOn, holdingOn, isException, keptChanges, waitingChanges, changeIssues, MAX_DATED, changeRefusal, fixedFields, hasTranslatablePart, type Change, type ChangeIssue } from './changes.ts'
 export { withMarkdownRefs, fileMarkdownRef, platformMarkdownRef, type MarkdownRefOf } from './markdown-refs.ts'

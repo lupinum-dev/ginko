@@ -1,6 +1,6 @@
 // Facts on the platform: what the Studio shows for each fact, which texts quote it, and a release that would leave a
 // quote without its fact.
-import type { Schema } from '@lupinum/ginko/internal'
+import { addDays, todayIn, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import { errorOf, setup, withFacts } from './setup'
@@ -27,6 +27,16 @@ describe('facts', () => {
       { name: 'contact.phone', brick: 'contact', field: 'phone', text: '+43 662 000 000', copies: ['+43 662 000 000'], brickLabel: expect.anything(), entry: s.entries.contact },
       { name: 'contact.email', brick: 'contact', field: 'email', text: 'office@gasthaus-linde.example', copies: ['office@gasthaus-linde.example'], brickLabel: expect.anything(), entry: s.entries.contact },
     ])
+  })
+
+  // Round L4. Wrong behaviour caught: the fact chip and the assistant's facts show the normal value while the website
+  // shows a temporary change of that field, and the copy warning looks for the wrong text.
+  it('a fact reads what the website shows today: a holding change of its field', async () => {
+    const s = await setup()
+    await withFacts(s)
+    const today = todayIn('Europe/Vienna')
+    await s.t.run((ctx) => ctx.db.insert('datedChanges', { site: s.site, entry: s.entries.contact!, brick: 'contact', from: today, until: addDays(today, 3), fields: { phone: '+43 662 999 999' }, prints: {}, revs: { phone: 1 }, at: Date.now(), holds: Date.now() }))
+    expect((await s.as.cook.query(api.facts.values, SITE)).find((f) => f.name === 'contact.phone')).toMatchObject({ text: '+43 662 999 999', copies: ['+43 662 999 999'] })
   })
 
   // Wrong behaviour caught: an editor changed the phone number without knowing which pages show it.

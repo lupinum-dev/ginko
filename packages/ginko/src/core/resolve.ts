@@ -363,7 +363,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
   const bricks: Record<string, BundleBrick> = {}
   for (const [key, brick] of Object.entries(schema.bricks)) {
     // What visitors see today: the exceptions that hold laid over the normal values (the one rule, `dataOn`).
-    const stored = (input.entries[key] ?? []).map((entry) => showing(entry, input.today))
+    const stored = (input.entries[key] ?? []).map((entry) => withHolding(entry, input.today))
     const ctx: ResolveContext = { locale, markAllFallback: !known, files: input.files }
     if (brick.kind === 'single') {
       const entry = stored[0] ?? { id: `default:${key}`, data: defaultsFor(brick.fields, schema.week) }
@@ -447,8 +447,11 @@ export function holdingOf(schema: Schema, key: string, entry: StoredEntry, ctx: 
 /** An entry as visitors see it today, with its normal values kept for `holding`. */
 type Showing = StoredEntry & { normal?: Record<string, Json> }
 
-/** The entry with the exceptions that hold on `today` laid over its normal values (`dataOn`, exceptions only). */
-function showing(entry: StoredEntry, today: string): Showing {
+/**
+ * The entry with the exceptions that hold on `today` laid over its normal values (`dataOn`, exceptions only): what the
+ * bundle reads, and what the platform's facts read (one rule for what a page shows today).
+ */
+export function withHolding(entry: StoredEntry, today: string): Showing {
   const exceptions = entry.changes?.filter(isException)
   if (!exceptions?.length) return entry
   const data = dataOn(entry.data, exceptions, today)
