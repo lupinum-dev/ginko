@@ -65,11 +65,18 @@ describe('textOf', () => {
 describe('useTextOf', () => {
   // Wrong behaviour caught (D114): while the site's model loads, a stored time showed in Vienna's zone or in UTC
   // instead of the site's, and changed when the model came.
-  it('gives no text while the site zone is unknown, and the text in the site zone once it is known', () => {
+  it('gives no text with a time while the site zone is unknown, and the text in the site zone once it is known', () => {
     let timeZone: string | undefined
     const text = useTextOf(() => ({ timeZone, main: 'de' }))
     expect(text(revert, 'Zurück zur Version vom 08.10.2026 12:00')).toBe('')
     timeZone = 'America/New_York'
     expect(text(revert, '')).toContain('06:00')
+  })
+
+  // Wrong behaviour caught: the wait for the zone blanks every site text, also one without a time in it.
+  it('gives a text without a time at once, while the site zone is unknown', () => {
+    const text = useTextOf(() => ({ timeZone: undefined, main: 'de' }))
+    expect(text({ key: 'errors.siteNotFound' }, '')).not.toBe('')
+    expect(text(null, 'Gespeichert.')).toBe('Gespeichert.')
   })
 })

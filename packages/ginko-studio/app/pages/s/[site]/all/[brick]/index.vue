@@ -83,14 +83,15 @@ function rowStatus(row: Row): EntryStatus | undefined {
  * saved changes; "" for an online entry. A row is grey when it is not online.
  */
 function status(row: Row): string {
+  const site = s.schema.value
   const b = brick.value
   const st = rowStatus(row)
-  // No time text while the model loads (D114): the site's zone comes with it.
-  const zone = s.schema.value?.timeZone
-  if (!b || !st || !zone) return ''
+  // The brick comes with the site's model, and the model with the site's zone, so "Online from" is never in another
+  // zone (D114).
+  if (!site || !b || !st) return ''
   if (st.now === 'draft') {
     const planned = st.waiting.find((w) => w.kind === 'planned')
-    return planned ? t('site.status.onlineFrom', { when: whenText(planned.at, zone, format) }) : t('site.status.draft')
+    return planned ? t('site.status.onlineFrom', { when: whenText(planned.at, site.timeZone, format) }) : t('site.status.draft')
   }
   if (st.now === 'ended') {
     const until = shownUntil(b, row.dates)
