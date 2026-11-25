@@ -1026,18 +1026,19 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
 
   // Wrong behaviour caught (E10): in the English view the day field is not shown, and a press there put the German
   // input online now instead of on its day.
-  test('the second language view keeps the day', async () => {
-    const both = serializeSchema(defineSite({
-      site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
-      pages: { home: { de: '/', en: '/en' } },
-      bricks: {
-        items: collection({
-          label: 'Karte', max: 50, order: 'manual', listing: { title: 'name' },
-          fields: { name: f.text('Name'), price: f.money('Preis') },
-          tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', fields: ['name', 'price'], pick: true, when: { from: 'ask' } }],
-        }),
-      },
-    }))
+  const both = serializeSchema(defineSite({
+    site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    pages: { home: { de: '/', en: '/en' } },
+    bricks: {
+      items: collection({
+        label: 'Karte', max: 50, order: 'manual', listing: { title: 'name' },
+        fields: { name: f.text('Name'), price: f.money('Preis') },
+        tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', fields: ['name', 'price'], pick: true, when: { from: 'ask' } }],
+      }),
+    },
+  }))
+  /** A sheet in German and English, the price typed (or not) and the day set in German, then the English view. */
+  const inEnglish = async (price: string | undefined, day: string) => {
     const items = both.bricks.items!
     const wrapper = mount(TaskSheet, {
       props: { site: 'cafe', brickKey: 'items', brick: items, task: items.tasks![0]!, main: 'de', locales: ['de', 'en'], schema: both, entry: { ...stored, data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } } as never },
@@ -1046,11 +1047,16 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     })
     answer({ data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } })
     await flushPromises()
-    await wrapper.get('input[name="price"]').setValue('990')
-    const day = inDays(10)
+    if (price !== undefined) await wrapper.get('input[name="price"]').setValue(price)
     await wrapper.get('#sheet-starts-on').setValue(day)
     await wrapper.findAll('[role="group"] button, [role="radio"]').find((b) => b.text().startsWith('Englisch'))!.trigger('click')
     await flushPromises()
+    return wrapper
+  }
+
+  test('the second language view keeps the day', async () => {
+    const day = inDays(10)
+    const wrapper = await inEnglish('990', day)
     expect(wrapper.find('#sheet-starts-on').exists()).toBe(false)
     const [primary] = footer(wrapper)
     expect(primary).toMatch(/^Ab .+ veröffentlichen$/)
@@ -1058,6 +1064,20 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await flushPromises()
     const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ from?: string; publish?: true }]
     expect([sent.from, sent.publish]).toEqual([day, undefined])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1.7): in the English view a refused day said nothing, because the day field with its message
+  // shows only in German and the focus went nowhere.
+  test.each([
+    ['today', '990', 0, 'Der Tag muss nach heute liegen.'],
+    ['nothing changed', undefined, 10, 'Es ist noch nichts geändert. Ändere zuerst einen Wert.'],
+  ] as const)('a refused day in the English view goes back to German: %s', async (_case, price, days, message) => {
+    const wrapper = await inEnglish(price, inDays(days))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(ops.saveEntry).not.toHaveBeenCalled()
+    expect([wrapper.text().includes(message), document.activeElement?.id]).toEqual([true, 'sheet-starts-on'])
     wrapper.unmount()
   })
 

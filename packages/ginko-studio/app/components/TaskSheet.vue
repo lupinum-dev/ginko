@@ -414,12 +414,17 @@ async function save(step: Step = 'publish') {
   if (from !== undefined) {
     // Enter in a field and Ctrl+S never publish (below), and a change for a later day is a publish: the button does it.
     if (step === 'draft') return document.getElementById('sheet-primary')?.focus()
+    // The day field shows only in the main language's view: switch there before the focus (H1).
     if (from <= todayIn(props.schema.timeZone)) {
       startsOnError.value = messageOf({ key: 'errors.dayNotAhead' })
-      return document.getElementById('sheet-starts-on')?.focus()
+      await switchLanguage(props.main)
+      return nextTick(() => document.getElementById('sheet-starts-on')?.focus())
     }
     const ok = await form.save(undefined, undefined, from, editing.value?.from === from ? editing.value.fields : undefined)
-    if (!ok && unchangedDay.value) nextTick(() => document.getElementById('sheet-starts-on')?.focus())
+    if (!ok && unchangedDay.value) {
+      await switchLanguage(props.main)
+      nextTick(() => document.getElementById('sheet-starts-on')?.focus())
+    }
     await finish(ok)
     return
   }
