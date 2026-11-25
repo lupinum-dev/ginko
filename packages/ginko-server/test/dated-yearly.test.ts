@@ -492,6 +492,19 @@ describe('a request that holds yearly and a name (state table: the person needs 
     expect(await s.dated(s.saibling)).toMatchObject([{ yearly: true, name: 'Kürbiswochen', by: people.cook }])
     expect((await s.item(s.saibling))?.upcoming).toMatchObject([{ from: '2028-10-01', until: '2028-10-08', yearly: true, name: 'Kürbiswochen' }])
   })
+
+  // Round N5: "a year back" is checked when the request is sent, not at the yes. Wrong behaviour caught: a request that
+  // starts exactly a year back (allowed when sent) is refused at a yes two days later, and nobody can fix its day.
+  it('a request from exactly a year back: the yes two days later saves it', async () => {
+    const s = await yearlySetup({ needsApproval: true })
+    const yearBack = `${Number(TODAY.slice(0, 4)) - 1}${TODAY.slice(4)}`
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.season', entry: s.saibling, baseRev: 1, fields: { price: { amount: 990 } }, from: yearBack, until: '2026-10-31', yearly: true }) as unknown as Proposed
+    await s.advanceTo(NOW + 2 * 86_400_000)
+    await renewSession(s.t, 'owner')
+    await renewSession(s.t, 'cook')
+    expect(await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })).not.toMatchObject({ status: 'stale' })
+    expect(await s.dated(s.saibling)).toMatchObject([{ from: yearBack, until: '2026-10-31', yearly: true, by: people.cook }])
+  })
 })
 
 describe('the bundle and export (state table: export, import, file form)', () => {

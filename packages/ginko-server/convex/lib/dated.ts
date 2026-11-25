@@ -93,13 +93,14 @@ const yearBack = (today: string) => `${Number(today.slice(0, 4)) - 1}${today.sli
 /**
  * A day for a new or moved change: a real day, at most a year ahead (the same date next year). A change without an end
  * starts after the site's today; an exception (`exception`) may start today, never before (slice 3); a yearly one
- * (`yearly`) up to a year back, so a season typed inside its days holds at once (slice 4, decision 3).
+ * (`yearly`) up to a year back, so a season typed inside its days holds at once (slice 4, decision 3). That year back is
+ * checked when the save is sent, not at the yes to its request (`approved`), which may come days later (round N5).
  */
-export function checkDay(schema: Schema, from: unknown, opts: { exception?: boolean; yearly?: boolean } = {}): asserts from is string {
+export function checkDay(schema: Schema, from: unknown, opts: { exception?: boolean; yearly?: boolean; approved?: boolean } = {}): asserts from is string {
   if (!isDate(from)) fail('INVALID', 'errors.dayInvalid')
   const today = todayIn(schema.timeZone)
   if (opts.yearly) {
-    if (from < yearBack(today)) fail('INVALID', 'errors.dayTooFarBack')
+    if (!opts.approved && from < yearBack(today)) fail('INVALID', 'errors.dayTooFarBack')
   } else if (opts.exception ? from < today : from <= today) fail('INVALID', opts.exception ? 'errors.dayBeforeToday' : 'errors.dayNotAhead')
   if (from > yearAhead(today)) fail('INVALID', 'errors.dayTooFarAhead')
 }

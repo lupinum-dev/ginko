@@ -375,7 +375,7 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
   // The row this save writes, however it was found: its rights and its name are decided on it (round N1).
   const joined = edited ?? rows.find((r) => isRowOf(r, from, until))
   const rowName = rowLabels(schema, args.task, joined, yearly, name)
-  if (!editsHolding) checkDay(schema, from, { exception: until !== undefined, yearly })
+  if (!editsHolding) checkDay(schema, from, { exception: until !== undefined, yearly, approved: actor.approvedBy !== undefined })
   if (until !== undefined) checkUntil(schema, from, until, { yearly, holding: editsHolding })
   refuseTaskWithoutDay(schema, args.task, { from, until, yearly, name })
   // A value is given as for a save of the entry; its other parts are those it has on that day.
