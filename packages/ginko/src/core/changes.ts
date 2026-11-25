@@ -91,6 +91,22 @@ function lastNamed(changes: readonly Change[]): Day {
 const horizonOf = (changes: readonly Change[]): Day => addDays(lastNamed(changes), 366)
 
 /**
+ * The first day on which a time of `change` starts together with a time of one of the exceptions `others` and both set
+ * one field (which would win?): that day, the field and the other exception. Checked at each start of `change` up to
+ * `horizon`, by default a year after the last day any of them names. The file check and the platform's save use it.
+ */
+export function startTie<C extends Change>(change: Change & { until: Day }, others: readonly C[], horizon: Day = horizonOf([change, ...others])): { day: Day; field: string; other: C } | undefined {
+  for (const start of startsUpTo(change, horizon)) {
+    for (const other of others) {
+      if (!isException(other) || occurrence(other, start)?.from !== start) continue
+      const field = Object.keys(change.set).find((name) => Object.hasOwn(other.set, name))
+      if (field) return { day: start, field, other }
+    }
+  }
+  return undefined
+}
+
+/**
  * The exceptions that hold on `day`, each with the days of the time that holds, in the order of those times' starts
  * (the last one wins where they overlap).
  */
@@ -230,16 +246,6 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
   // Two exceptions whose times start on one day may not set one field (which wins?): checked against the exceptions
   // before, at each start of this one up to a year after the last day any change names.
   const horizon = horizonOf(changes.filter((c): c is Change => isRecord(c) && isDate(c.from) && (c.until === undefined || isDate(c.until))))
-  const sameStart = (change: Change & { until: Day }) => {
-    for (const start of startsUpTo(change, horizon)) {
-      for (const other of good) {
-        if (!isException(other.change) || occurrence(other.change, start)?.from !== start) continue
-        const twice = Object.keys(change.set).find((name) => Object.hasOwn(other.change.set, name))
-        if (twice) return { day: start, field: twice }
-      }
-    }
-    return undefined
-  }
   changes.forEach((raw: unknown, index) => {
     const at = `$changes.${index}`
     if (!isRecord(raw)) return add(index, at, 'CHANGE', 'issues.changeShape')
@@ -274,7 +280,7 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
       ok = false
       add(index, `${at}.from`, 'CHANGE', 'issues.changeDay', { value: String(raw.from ?? '') })
     } else if (ends) {
-      const tie = ok && isRecord(set) ? sameStart({ from: raw.from, until: raw.until as Day, ...(raw.yearly === true ? { yearly: true } : {}), set }) : undefined
+      const tie = ok && isRecord(set) ? startTie({ from: raw.from, until: raw.until as Day, ...(raw.yearly === true ? { yearly: true } : {}), set }, good.map((g) => g.change), horizon) : undefined
       if (tie) {
         ok = false
         const field = Object.hasOwn(brick.fields, tie.field) ? brick.fields[tie.field]! : undefined
