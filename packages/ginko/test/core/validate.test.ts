@@ -317,7 +317,7 @@ describe('choice and choices (SPEC 2.2, 2.3)', () => {
   it.each([
     ['menu', menuEntry({ veg: 'sometimes' }), [['veg', 'CHOICE']]],
     ['menu', menuEntry({ allergens: ['Z'] }), [['allergens', 'CHOICE']]],
-    ['menu', menuEntry({ allergens: 'A' }), [['allergens', 'CHOICE']]],
+    ['menu', menuEntry({ allergens: 'A' }), [['allergens', 'TYPE']]],
     ['menu', menuEntry({ allergens: ['A', 'A'] }), [['allergens', 'DUPLICATE']]],
   ] as const)('%s with a bad choice', async (brick, data, expected) => {
     expect(pairs((await validate(schema, brick, data, check('create'))).errors)).toEqual(expected)
@@ -522,6 +522,7 @@ describe('the draft check (D115): well formed to be stored, not complete', () =>
           rows: f.list('Zeilen', { itemLabel: 'Zeile', max: 2, unique: 'label', optional: true, fields: { label: f.text('Bezeichnung', { translate: false }) } }),
           few: f.list('Wenige', { itemLabel: 'Zeile', min: 2, max: 3, optional: true, fields: { label: f.text('Bezeichnung', { translate: false }) } }),
           body: f.markdown('Text', { profile: 'page', optional: true }),
+          pic: f.image('Bild', { optional: true }),
         },
       }),
     },
@@ -538,6 +539,10 @@ describe('the draft check (D115): well formed to be stored, not complete', () =>
   // warning is refused (the check fails closed).
   it.each([
     ['TYPE: a number that is text', 'refuses', 'kit', { ...base, count: 'drei' }, ['count', 'TYPE']],
+    ['TYPE: a choice that is no text', 'refuses', 'kit', { ...base, kind: 1 }, ['kind', 'TYPE']],
+    ['TYPE: a multiple choice that is no list', 'refuses', 'kit', { ...base, tags: 'a' }, ['tags', 'TYPE']],
+    ['TYPE: a multiple choice with an entry that is no text', 'refuses', 'kit', { ...base, tags: ['a', 2] }, ['tags', 'TYPE']],
+    ['TYPE: an image description that is no text', 'refuses', 'kit', { ...base, pic: { file: 'img1', alt: { de: 5 } } }, ['pic', 'TYPE']],
     ['NOT_OBJECT: an entry that is no object', 'refuses', 'kit', 'Kiste', ['', 'NOT_OBJECT']],
     ['NOT_LOCALIZED: a translatable text as a plain string', 'refuses', 'kit', { ...base, name: 'Kiste' }, ['name', 'NOT_LOCALIZED']],
     ['UNKNOWN_FIELD', 'refuses', 'kit', { ...base, nope: 1 }, ['nope', 'UNKNOWN_FIELD']],
