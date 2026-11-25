@@ -5,7 +5,7 @@ import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { By } from './access'
 import type { Data } from './content'
-import { dropDated } from './dated'
+import { dropDated, isHolding } from './dated'
 import { msg, recorded, type Recorded } from './history'
 import { entryLabel } from './list'
 import { dropPending } from './pending'
@@ -78,11 +78,14 @@ export async function softRemove(ctx: MutationCtx, c: Counters, entry: Doc<'entr
     site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'remove', ...history,
     entryRev: entry.rev + 1, contentRev: c.contentRev, at,
   })
-  if (dated.length) {
+  // One line for the planned changes and one for those that held (round M3: a running one is no planned one).
+  const holding = dated.filter(isHolding).length
+  for (const [key, count] of [['history.datedCancelledWithEntry', dated.length - holding], ['history.datedEndedWithEntry', holding]] as const) {
+    if (!count) continue
     const schema = (await ctx.db.get(entry.site))!.schema as Schema
     await ctx.db.insert('changes', {
       site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'datedCancelled',
-      ...recorded(msg('history.datedCancelledWithEntry', { title: entryLabel(schema, entry.brick, entry.data as Data), count: dated.length }), schema),
+      ...recorded(msg(key, { title: entryLabel(schema, entry.brick, entry.data as Data), count }), schema),
       entryRev: entry.rev + 1, contentRev: c.contentRev, at,
     })
   }

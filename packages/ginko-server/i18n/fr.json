@@ -344,6 +344,7 @@
     "datedMoved": "« {title} » : changement planifié ({fields}) déplacé du {was, date, ::MMMMd} au {day, date, ::MMMMd}",
     "datedCancelled": "« {title} » : changement planifié à partir du {day, date, ::MMMMd} annulé ({fields})",
     "datedCancelledWithEntry": "« {title} » : {count, plural, one {son changement planifié a été annulé} other {ses # changements planifiés ont été annulés}} avec l’entrée",
+    "datedEndedWithEntry": "« {title} » : {count, plural, one {sa modification temporaire a été annulée} other {ses # modifications temporaires ont été annulées}} avec l’entrée ; le site ne {count, plural, one {l’affiche} other {les affiche}} plus",
     "datedApplied": "« {title} » : {fields} modifié, comme prévu à partir du {day, date, ::MMMMd}",
     "datedAppliedLate": "« {title} » : {fields} modifié tout de suite (le jour prévu, {day, date, ::MMMMd}, était déjà arrivé au moment de l’approbation)",
     "datedSavedUntil": "« {title} » : {fields} du {day, date, ::MMMMd} au {until, date, ::MMMMd}",

@@ -344,6 +344,7 @@
     "datedMoved": "“{title}”: planned change ({fields}) moved from {was, date, ::MMMMd} to {day, date, ::MMMMd}",
     "datedCancelled": "“{title}”: planned change from {day, date, ::MMMMd} cancelled ({fields})",
     "datedCancelledWithEntry": "“{title}”: {count, plural, one {its planned change was} other {its # planned changes were}} cancelled with the entry",
+    "datedEndedWithEntry": "“{title}”: {count, plural, one {its temporary change was} other {its # temporary changes were}} cancelled with the entry; the website no longer shows {count, plural, one {it} other {them}}",
     "datedApplied": "“{title}”: {fields} changed, as planned from {day, date, ::MMMMd}",
     "datedAppliedLate": "“{title}”: {fields} changed at once (the planned day, {day, date, ::MMMMd}, had come at approval)",
     "datedSavedUntil": "“{title}”: {fields} from {day, date, ::MMMMd} until {until, date, ::MMMMd}",

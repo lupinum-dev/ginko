@@ -480,13 +480,16 @@ describe('the entry around a holding offer (state table)', () => {
   })
 
   // Row "entry to the trash / restored". Wrong behaviour caught: a holding offer comes back with a restored entry
-  // (D109: its dated changes go with it).
+  // (D109: its dated changes go with it); round M3: the history calls the holding offer "geplant" (it was running).
   it('the trash takes a holding offer with the entry; a restore does not bring it back', async () => {
     const s = await untilSetup()
     await s.offer(990, TODAY, '2026-10-31')
+    await s.offer(800, '2026-11-15', '2026-11-30')
     const lifeRev = (await s.row(s.saibling))!.lifeRev
     await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev })
     expect(await s.dated(s.saibling)).toEqual([])
+    expect((await s.history(s.saibling)).filter((c) => c.kind === 'datedCancelled').map((c) => [c.msg!.key, c.msg!.params!.count]))
+      .toEqual([['history.datedCancelledWithEntry', 1], ['history.datedEndedWithEntry', 1]])
     await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: lifeRev + 1 })
     expect(await s.shownPrice(s.saibling)).toBe(1350)
   })

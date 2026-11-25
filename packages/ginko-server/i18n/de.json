@@ -344,6 +344,7 @@
     "datedMoved": "„{title}“: geplante Änderung ({fields}) vom {was, date, ::MMMMd} auf den {day, date, ::MMMMd} verschoben",
     "datedCancelled": "„{title}“: geplante Änderung ab {day, date, ::MMMMd} gestrichen ({fields})",
     "datedCancelledWithEntry": "„{title}“: {count, plural, one {die geplante Änderung ist} other {# geplante Änderungen sind}} mit dem Eintrag entfallen",
+    "datedEndedWithEntry": "„{title}“: {count, plural, one {die befristete Änderung ist} other {# befristete Änderungen sind}} mit dem Eintrag entfallen; die Website zeigt sie nicht mehr",
     "datedApplied": "„{title}“: {fields} geändert, wie ab {day, date, ::MMMMd} geplant",
     "datedAppliedLate": "„{title}“: {fields} sofort geändert (der geplante Tag, {day, date, ::MMMMd}, war bei der Freigabe schon da)",
     "datedSavedUntil": "„{title}“: {fields} vom {day, date, ::MMMMd} bis {until, date, ::MMMMd}",
