@@ -232,19 +232,22 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
 
   // A root counts as changed when its value or one of its prints changed.
   const changed = roots.filter((r) => !same(data[r], before[r]) || !same(printsOf(prints, r), printsOf(base.prints, r)))
-  if (!changed.length) {
-    // Published as it is online: what waited for these fields is no longer wanted.
-    if (held && !toPending) await dropPendingRoots(ctx, schema, held, roots)
-    const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
-    return unchanged
-  }
-
   // A draft's empty `publishedOn` field is filled when it goes online, so it counts as filled (D108): with the day of
   // its plan, else today.
   const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data, planDay(schema, entry.publishAt)) : data
   // A draft without a time may be incomplete, not badly formed (D115, mode `draft`); a revert saves through here too.
   const mode = stateOf(entry) === 'draft' && entry.publishAt === undefined ? 'draft' : 'patch'
-  const { errors, warnings } = await validate(schema, entry.brick, checked, { mode, changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+  const check = async () => await validate(schema, entry.brick, checked, { mode, changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+  if (!changed.length) {
+    // Published as it is online: what waited for these fields is no longer wanted.
+    if (held && !toPending) await dropPendingRoots(ctx, schema, held, roots)
+    // A draft saved unchanged still lacks what it lacked: its warnings come back, so the form keeps its notes (D116).
+    const warnings = stateOf(entry) === 'draft' ? (await check()).warnings as unknown as Json[] : []
+    const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings }
+    return unchanged
+  }
+
+  const { errors, warnings } = await check()
   if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
   // A planned draft goes online at its time without a person: a save that leaves it failing the full check is refused
   // now, not stopped then (D101). The person fills the field or cancels the plan first.

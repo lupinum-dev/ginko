@@ -265,13 +265,17 @@ describe('a draft may be incomplete (D115)', () => {
     expect([badDay.code, codes((badDay.details as { errors: unknown }).errors)]).toEqual(['INVALID', [['when', 'DATE']]])
   })
 
-  // Wrong behaviour caught: clearing a required field of a draft, copying the draft or undoing a save of it is refused.
+  // Wrong behaviour caught: clearing a required field of a draft, copying the draft or undoing a save of it is refused,
+  // or a save that changes nothing answers that nothing is missing.
   it('a draft without a time saves, copies and undoes with a required field empty', async () => {
     const s = await draftSetup()
     const draft = await s.createDraft('Voll')
     const cleared = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 1, fields: { description: null }, sentence: 'Beschreibung' })
     expect(cleared).toMatchObject({ rev: 2 })
     expect(codes((cleared as { warnings: unknown }).warnings)).toEqual([['description', 'REQUIRED']])
+    // Saved again unchanged: nothing is written, and it still says what is missing (the form keeps its notes).
+    const again = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 2, fields: { description: null }, sentence: 'Beschreibung' })
+    expect([(again as { rev: number }).rev, codes((again as { warnings: unknown }).warnings)]).toEqual([2, [['description', 'REQUIRED']]])
     const copy = await s.as.owner.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), entry: draft.entry })
     expect((await s.row(copy.entry))).toMatchObject({ state: 'draft' })
     // Filled again, then undone: the undo empties the field once more.
