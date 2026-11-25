@@ -354,6 +354,17 @@ describe('2026-11-25-dated-changes (D130)', () => {
     expect(after.line).toMatchObject({ kind: 'unschedule', msg: { key: 'history.changesUnscheduled' } })
   })
 
+  // H3.23. Wrong behaviour caught: an empty plan day sorts before every day, so the planned price went online at once.
+  it('treats a plan day that is no date as no plan', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = await plannedSchnitzel(s, 1200, '')
+    await runThisOne(s)
+    const data = (await s.t.run((ctx) => ctx.db.get(schnitzel)))!.data as Record<string, unknown>
+    expect([data.price, Object.hasOwn(data, 'nextPrice'), Object.hasOwn(data, 'priceFrom'), await datedRows(s)]).toEqual([{ amount: 2190 }, false, false, []])
+  })
+
   // Wrong behaviour caught: the migration cancels a job that already ran or failed, which rewrites its record in
   // `_scheduled_functions` (the only place a failed run is remembered) as cancelled.
   it('cancels only a job that still waits', async () => {

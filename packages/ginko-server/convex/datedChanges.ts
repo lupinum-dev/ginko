@@ -1,7 +1,7 @@
 // Dated changes (D125–D127): moving one to another day, cancelling it, listing an entry's for the editor, and the run
 // on its day that writes it into the entry. Making one is `entries.save` or `entries.publish` with `from` (entries.ts).
 import type { Brick, Json } from '@lupinum/ginko'
-import { changeRefusal, entryBytes, todayIn, validate, type Schema } from '@lupinum/ginko/internal'
+import { changeRefusal, entryBytes, isDate, todayIn, validate, type Schema } from '@lupinum/ginko/internal'
 import { ConvexError, v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
@@ -462,7 +462,8 @@ async function convertPlanned(ctx: MutationCtx, site: Doc<'sites'>) {
       const day = data[rule.from]
       delete data[rule.next]
       delete data[rule.from]
-      const planned = value !== undefined && value !== null && typeof day === 'string'
+      // A plan day that is no date (an empty text, a phrase) is no plan: the two plan fields go, the value is not written.
+      const planned = value !== undefined && value !== null && isDate(day)
       if (planned && day <= today) data[rule.field] = value
       const fieldRevs = { ...(entry.fieldRevs as Record<string, number>) }
       for (const name of [...(planned && day <= today ? [rule.field] : []), rule.next, rule.from]) fieldRevs[name] = (fieldRevs[name] ?? 0) + 1
