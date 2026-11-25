@@ -59,6 +59,15 @@ export function waitingChanges(changes: readonly Change[] | undefined, day: Day)
 }
 
 /**
+ * The changes that still matter on `day`, in the order of their days: those without an end still ahead (the others are
+ * written into the entry) and the exceptions that hold or wait (one that ended changes nothing any more). What a file
+ * entry keeps beside its values, and what an import keeps as rows; each counts toward `MAX_DATED`.
+ */
+export function keptChanges(changes: readonly Change[] | undefined, day: Day): Change[] {
+  return (changes ?? []).filter((c) => (isException(c) ? c.until >= day : c.from > day)).sort(byDay)
+}
+
+/**
  * The live fields of a brick that a change may never set (D119): the fields that say when an entry shows
  * (`publishedOn`, `showUntil`, the week of `plans`) or where (the slug, the fields of a navigation tree). They cannot
  * themselves depend on a day.

@@ -5,7 +5,7 @@ import type {
   Brick, Field, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  changeIssues, coreMessage, dataOn, effectiveProfile, ENTRY_NAME_RULE, waitingChanges, type Change, imageInfo, imageSizeProps, isEntryName, isTranslatable, printOf, sha256, slugKeyOf, routeUrls, wallClockIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
+  changeIssues, coreMessage, dataOn, effectiveProfile, ENTRY_NAME_RULE, isException, keptChanges, type Change, imageInfo, imageSizeProps, isEntryName, isTranslatable, printOf, sha256, slugKeyOf, routeUrls, wallClockIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -638,11 +638,12 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       }
 
       // Values are validated above; they come from JSON-like YAML and parsed Markdown. The bundle is the bundle of the
-      // build's day (D120): a change whose day has come is in the values, the others wait (only `timeline.public`
-      // fields of them reach a page, as `upcoming`).
-      const entry: StoredEntry = { id, data: dataOn(data as Record<string, Json>, changes, today) }
+      // build's day (D120): a change without an end whose day has come is in the values, the others wait (only
+      // `timeline.public` fields of them reach a page, as `upcoming`). An exception is never written into the values:
+      // the bundle lays it over them while it holds, and one that ended is left out.
+      const entry: StoredEntry = { id, data: dataOn(data as Record<string, Json>, changes?.filter((c) => !isException(c)), today) }
       if (changes) {
-        const ahead = waitingChanges(changes, today)
+        const ahead = keptChanges(changes, today)
         if (ahead.length) entry.changes = ahead
       }
       // Old paths of the entry (main-language file only), beside the fields: the bundle forwards them (`oldUrls`).
@@ -695,8 +696,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     }
 
     /**
-     * The warning for each field of a change whose day has come (it would hide every later edit of the field), and the
-     * note, once per site, that a change still ahead waits for a build (D122).
+     * The warning for each field of a change without an end whose day has come (it would hide every later edit of the
+     * field), the warning for an exception that ended (it changes nothing any more), and the note, once per site, that
+     * a change still ahead waits for a build (D122). An exception that holds is right where it is.
      */
     function reportChanges(written: Record<string, unknown>[], changes: Change[], file: string, line: number | undefined) {
       const at = line !== undefined ? { line } : {}
@@ -704,6 +706,10 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         if (change.from > today) {
           if (!notedAhead) notes.push({ file, path: `$changes.${i}`, message: `A change from ${change.from} is still to come: a dated change in a file starts with the first build on or after its day. Build the site on that day, for example with a daily build.`, ...at })
           notedAhead = true
+          return
+        }
+        if (isException(change)) {
+          if (change.until < today) warnings.push({ file, path: `$changes.${i}`, message: `This change ended on ${change.until} and changes nothing any more: it can be deleted.`, ...at })
           return
         }
         const set = isRecord(written[i]?.set) ? written[i]!.set as Record<string, unknown> : {}
