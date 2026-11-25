@@ -591,8 +591,8 @@ function showUntilProblems(key: string, rule: unknown, fields: Fields): string[]
   const { field, plusDays, thenDelete } = rule as Record<string, unknown>
   const problems: string[] = []
   for (const k of Object.keys(rule)) if (!['field', 'plusDays', 'thenDelete'].includes(k)) problems.push(`${key}.showUntil: unknown property “${k}”.`)
-  const type = typeof field === 'string' && Object.hasOwn(fields, field) ? fields[field]!.type : undefined
-  if (type !== 'date' && type !== 'daterange') problems.push(`${key}.showUntil needs a date or daterange field.`)
+  const def = typeof field === 'string' && Object.hasOwn(fields, field) ? fields[field] : undefined
+  if ((def?.type !== 'date' && def?.type !== 'daterange') || def.retired) problems.push(`${key}.showUntil needs a date or daterange field.`)
   if (plusDays !== undefined && !(Number.isInteger(plusDays) && (plusDays as number) >= 0)) problems.push(`${key}.showUntil: plusDays must be a whole number from 0.`)
   if (thenDelete !== undefined && typeof thenDelete !== 'boolean') problems.push(`${key}.showUntil: thenDelete must be true or false.`)
   return problems

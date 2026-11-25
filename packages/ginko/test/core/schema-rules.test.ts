@@ -534,6 +534,18 @@ describe('showUntil', () => {
   ])('%j', (showUntil, problems) => {
     expect(problemsOf(withShowUntil(showUntil))).toEqual(problems)
   })
+
+  // Wrong behaviour caught: a rule names a retired date field, which no form fills any more, so every entry has no end
+  // (showUntil) or no day it was published (publishedOn).
+  it.each([
+    ['showUntil', { showUntil: { field: 'old' } }, ['menu.showUntil needs a date or daterange field.']],
+    ['publishedOn', { publishedOn: 'old' }, ["menu.publishedOn: “old” is no date field of the brick. Name the date field that holds the day an entry was published, such as 'date'."]],
+  ])('%s refuses a retired date field', (_, rule, problems) => {
+    expect(problemsOf(site({}, {
+      retired: { 'menu.old': { drop: true } },
+      bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name', { max: 120 }), old: f.date('Alt', optional) }, max: 20, order: 'manual', ...rule as object }) },
+    }))).toEqual(problems)
+  })
 })
 
 describe('plans (weeks planned ahead)', () => {
