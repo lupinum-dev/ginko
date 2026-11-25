@@ -1540,7 +1540,7 @@ export const publishDue = internalMutation({
         await mailStopped(ctx, site, { _id: entry._id, brick: entry.brick, stopped, title: label })
       } catch (error) {
         // The code or the class only: an error's message can hold an address or a title.
-        const kind = error instanceof ConvexError ? String((error.data as { code?: unknown }).code) : error instanceof Error ? error.constructor.name : typeof error
+        const kind = error instanceof ConvexError ? String((error.data as { code?: unknown } | null)?.code) : error instanceof Error ? error.constructor.name : typeof error
         console.error(`Mail stopped ${entry._id} not queued (${kind}).`)
       }
       await ctx.db.insert('changes', {
