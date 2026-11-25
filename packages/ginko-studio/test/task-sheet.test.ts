@@ -1579,3 +1579,229 @@ describe('"Gilt ab" and "Gilt bis" of a task with an end (slice 3)', () => {
     wrapper.unmount()
   })
 })
+
+describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slice 4)', () => {
+  const seasons = serializeSchema(defineSite({
+    site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    pages: { home: { de: '/' } },
+    bricks: {
+      items: collection({
+        label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' }, timeline: { public: ['price'] },
+        fields: { title: f.text('Titel', { translate: false }), price: f.money('Preis') },
+        tasks: [
+          { id: 'season', label: 'Saisonpreis', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' } },
+          { id: 'named', label: 'Betriebsurlaub', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask', until: 'ask', name: 'ask' } },
+          { id: 'offer', label: 'Aktionspreis', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask', until: 'ask' } },
+        ],
+      }),
+    },
+  }))
+  const brick = seasons.bricks.items!
+  const stored = { _id: 'i1', brick: 'items', kind: 'item', order: 1, rev: 4, lifeRev: 1, fieldRevs: {}, prints: {}, data: { title: 'Suppe', price: { amount: 1290 } } }
+  const mountTask = (task = 0, over: { approval?: boolean } = {}) => mount(TaskSheet, {
+    props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![task]!, main: 'de', locales: ['de'], schema: seasons, entry: stored as never, ...(over.approval ? { approval: true } : {}) },
+    global: { stubs: { GinkoField: FieldStub } },
+    attachTo: document.body,
+  })
+  type Wrapper = ReturnType<typeof mountTask>
+  const footer = (wrapper: Wrapper) => wrapper.get('footer').findAll('button').map((b) => b.text())
+  const press = (wrapper: Wrapper, label: string) => wrapper.get('footer').findAll('button').find((b) => b.text() === label)!.trigger('click')
+  const inDays = (n: number) => addDays(todayIn('Europe/Vienna'), n)
+  const fmt = (day: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('de-AT', { ...o, timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  const short = (day: string) => fmt(day, { day: 'numeric', month: 'short' })
+  const value = (wrapper: Wrapper, id: string) => (wrapper.get(id).element as HTMLInputElement).value
+  const checked = (wrapper: Wrapper) => wrapper.get('#sheet-yearly').attributes('aria-checked')
+  type Sent = { fields: Record<string, unknown>; from?: string; until?: string; yearly?: true; name?: string; change?: string }
+  const sent = (): Sent[] => ops.saveEntry.mock.calls.map((c) => (c as unknown as [Sent])[0])
+  const ready = async (wrapper: Wrapper, price = '9,90') => {
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.get('input[name="price"]').setValue(price)
+  }
+  /** Both days, the switch on, and a name. */
+  const typeSeason = async (wrapper: Wrapper, from: string, until: string, name = 'Sommer') => {
+    await wrapper.get('#sheet-starts-on').setValue(from)
+    await wrapper.get('#sheet-until').setValue(until)
+    await wrapper.get('#sheet-yearly').trigger('click')
+    await wrapper.get('#sheet-name').setValue(name)
+  }
+  const row = (over: Record<string, unknown> = {}) => ({ id: 'd1', from: inDays(10), until: inDays(40), yearly: true, name: 'Sommer', fields: ['price'], values: { price: { amount: 990 } }, normal: { price: { amount: 1290 } }, by: null, at: 0, changedSince: [], mayCancel: true, mayMove: true, ...over })
+  afterEach(() => { datedRows.value = [] })
+
+  // Paper, the Studio: the switch and the name sit under "Gilt bis", in that order. Wrong behaviour caught: a task shows a
+  // key it does not ask for (the server refuses it), the order differs, or the labels and the hint are missing.
+  test('the switch and the name sit under "Gilt bis", in that order; a task shows only the keys it asks for', async () => {
+    const wrapper = mountTask(0)
+    await ready(wrapper)
+    const ids = [...wrapper.element.querySelectorAll('#sheet-until, #sheet-yearly, #sheet-name')].map((e) => e.id)
+    expect(ids).toEqual(['sheet-until', 'sheet-yearly', 'sheet-name'])
+    expect([wrapper.get('#sheet-yearly').attributes('role'), checked(wrapper), wrapper.text().includes('Jedes Jahr wiederholen'), wrapper.get('label[for="sheet-name"]').text(), wrapper.text().includes('Zum Beispiel: Sommer')])
+      .toEqual(['switch', 'false', true, 'Name (optional)', true])
+    wrapper.unmount()
+    const named = mountTask(1)
+    await ready(named)
+    expect([named.find('#sheet-yearly').exists(), named.find('#sheet-name').exists()]).toEqual([false, true])
+    named.unmount()
+    const offer = mountTask(2)
+    await ready(offer)
+    expect([offer.find('#sheet-yearly').exists(), offer.find('#sheet-name').exists()]).toEqual([false, false])
+    offer.unmount()
+  })
+
+  // Row "save, yearly on, days ahead" and "the primary button says what is sent". Wrong behaviour caught: the button names
+  // a year (a season holds every year), or claims a one-off change; the save drops yearly or sends the name untrimmed.
+  test.each([
+    ['publishes', false, 'veröffentlichen'],
+    ['needs a yes', true, 'zur Prüfung senden'],
+  ] as const)('yearly on (%s): the button names the days without a year; the save sends yearly and the trimmed name', async (_case, approval, verb) => {
+    const wrapper = mountTask(0, { approval })
+    await ready(wrapper)
+    const [from, until] = [inDays(10), inDays(60)]
+    await typeSeason(wrapper, from, until, '  Sommer ')
+    expect(footer(wrapper)[0]).toBe(`Jedes Jahr ${short(from)} bis ${short(until)} ${verb}`)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.yearly, s.name])).toEqual([[from, until, true, 'Sommer']])
+    wrapper.unmount()
+  })
+
+  // Row "save, yearly on, today inside the days (from in the past)" and decision 3. Wrong behaviour caught: with the
+  // switch on, a "Gilt ab" in the past is refused (the owner would wait a year or type wrong days); with it off, it passes.
+  test('yearly on: "Gilt ab" may lie in the past, with its hint; switched off, the past is refused as before', async () => {
+    const wrapper = mountTask(0)
+    await ready(wrapper)
+    await typeSeason(wrapper, inDays(-20), inDays(20))
+    expect(wrapper.text()).toContain('Gilt jedes Jahr an diesen Tagen.')
+    await wrapper.get('#sheet-yearly').trigger('click')
+    expect(footer(wrapper)[0]).toBe('Für bestimmte Tage veröffentlichen')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect([ops.saveEntry.mock.calls.length, document.activeElement?.id]).toEqual([0, 'sheet-starts-on'])
+    await wrapper.get('#sheet-yearly').trigger('click')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.yearly])).toEqual([[inDays(-20), inDays(20), true]])
+    wrapper.unmount()
+  })
+
+  // Rows "switch on, days one year or longer" and "name longer than 60", and the server's limit of a year back. Wrong
+  // behaviour caught: the save goes to the server and fails after the press, or the focus stays on the button, or the
+  // sentence sits elsewhere than under the field it is about.
+  test.each([
+    ['one year or longer', 1, 366, 'Sommer', 'sheet-until', catalog.dated.yearlyTooLong],
+    ['"Gilt ab" more than a year back', -400, 20, 'Sommer', 'sheet-starts-on', catalog.dated.startsTooFarBack],
+    ['a name longer than 60', 1, 30, 'x'.repeat(61), 'sheet-name', catalog.dated.nameTooLong],
+  ] as const)('%s: nothing is saved; the field has the focus and says why', async (_case, from, until, name, focus, message) => {
+    const wrapper = mountTask(0)
+    await ready(wrapper)
+    await typeSeason(wrapper, inDays(from), inDays(until), name)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    const described = document.getElementById(focus)?.getAttribute('aria-describedby') ?? ''
+    expect([ops.saveEntry.mock.calls.length, document.activeElement?.id, described.split(' ').some((id) => document.getElementById(id)?.textContent?.includes(message))]).toEqual([0, focus, true])
+    wrapper.unmount()
+  })
+
+  // Row "someone else saved meanwhile" and browser test 5. Wrong behaviour caught: the conflict answer saved, or lost the
+  // switch or the name.
+  test('a conflict answer saves nothing; the days, the switch and the name stay', async () => {
+    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data: { title: 'Suppe', price: { amount: 1390 } }, rev: 5, conflicts: ['price'] } } })
+    const wrapper = mountTask(0)
+    await ready(wrapper)
+    const [from, until] = [inDays(10), inDays(60)]
+    await typeSeason(wrapper, from, until)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Meine Eingaben behalten')!.trigger('click')
+    await flushPromises()
+    expect([ops.saveEntry.mock.calls.length, value(wrapper, '#sheet-starts-on'), value(wrapper, '#sheet-until'), checked(wrapper), value(wrapper, '#sheet-name')]).toEqual([1, from, until, 'true', 'Sommer'])
+    wrapper.unmount()
+  })
+
+  // Row "restored local copy". Wrong behaviour caught: a reload brings the days back without the switch or the name, so
+  // the next press makes a one-off change.
+  test('the local copy brings the switch and the name back with the days', async () => {
+    localStorage.clear()
+    const [from, until] = [inDays(10), inDays(60)]
+    const first = mountTask(0)
+    await ready(first)
+    await typeSeason(first, from, until)
+    first.unmount()
+    const second = mountTask(0)
+    answer({ data: {} })
+    await flushPromises()
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    expect([value(second, '#sheet-starts-on'), value(second, '#sheet-until'), checked(second), value(second, '#sheet-name')]).toEqual([from, until, 'true', 'Sommer'])
+    second.unmount()
+    localStorage.clear()
+  })
+
+  // Row "same start again", holds. Wrong behaviour caught: the switch of a holding season can be switched off (the paper
+  // keeps it: no "only this year"), with no word why; or the save sends a one-off change.
+  test('"Bearbeiten" on a holding season: the switch stays on, a sentence says why; the save keeps yearly', async () => {
+    datedRows.value = [row({ id: 'd2', from: inDays(-5), until: inDays(20), holds: true })]
+    const wrapper = mountTask(0)
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    expect([checked(wrapper), wrapper.get('#sheet-yearly').attributes('disabled') !== undefined, wrapper.text().includes(catalog.dated.yearlyWhileHolding), value(wrapper, '#sheet-name')]).toEqual(['true', true, true, 'Sommer'])
+    await wrapper.get('#sheet-until').setValue(inDays(30))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.yearly, s.name, s.change])).toEqual([[inDays(-5), inDays(30), true, 'Sommer', 'd2']])
+    wrapper.unmount()
+  })
+
+  // Row "same start again", waits. Wrong behaviour caught: "Bearbeiten" fills the days but not the switch or the name.
+  test('"Bearbeiten" on a waiting season fills the days, the switch and the name', async () => {
+    datedRows.value = [row()]
+    const wrapper = mountTask(0)
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    expect([value(wrapper, '#sheet-starts-on'), value(wrapper, '#sheet-until'), checked(wrapper), value(wrapper, '#sheet-name')]).toEqual([inDays(10), inDays(40), 'true', 'Sommer'])
+    wrapper.unmount()
+  })
+
+  // Row "second language shown". Wrong behaviour caught: the switch or the name shows in the English view (where they are
+  // not saved), or a save from there drops them.
+  test('the second language view hides the switch and the name; the save keeps them', async () => {
+    const both = serializeSchema(defineSite({
+      site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      pages: { home: { de: '/', en: '/en' } },
+      bricks: { items: collection({ label: 'Karte', max: 50, order: 'manual', listing: { title: 'name' }, fields: { name: f.text('Name'), price: f.money('Preis') }, tasks: [{ id: 'season', label: 'Saison', kind: 'edit', fields: ['name', 'price'], pick: true, when: { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' } }] }) },
+    }))
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick: both.bricks.items!, task: both.bricks.items!.tasks![0]!, main: 'de', locales: ['de', 'en'], schema: both, entry: { ...stored, data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    answer({ data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } })
+    await flushPromises()
+    await wrapper.get('input[name="price"]').setValue('990')
+    await typeSeason(wrapper, inDays(10), inDays(60))
+    await wrapper.findAll('[role="group"] button, [role="radio"]').find((b) => b.text().startsWith('Englisch'))!.trigger('click')
+    await flushPromises()
+    expect([wrapper.find('#sheet-yearly').exists(), wrapper.find('#sheet-name').exists()]).toEqual([false, false])
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.yearly, s.name])).toEqual([[inDays(10), inDays(60), true, 'Sommer']])
+    wrapper.unmount()
+  })
+
+  // Rows "save" (notices, sheet) and "a name only". Wrong behaviour caught: the sheet's notice of a season reads like a
+  // one-off change, or the name does not lead.
+  test('the sheet\'s notices lead with the name and say a season comes back every year', async () => {
+    datedRows.value = [row({ id: 'd1' }), row({ id: 'd2', from: inDays(-5), until: inDays(20), holds: true, name: undefined })]
+    const wrapper = mountTask(0)
+    await ready(wrapper, '12,90')
+    expect(wrapper.findAll('[data-test="dated-waiting"]').map((n) => n.text().replace(/\s/g, ' '))).toEqual([
+      `Sommer: jedes Jahr von ${short(inDays(10))} bis ${short(inDays(40))}: Preis 9,90 €`,
+      `Bis ${fmt(inDays(20), { weekday: 'short', day: 'numeric', month: 'short' })} zeigt die Website: Preis 9,90 € (sonst 12,90 €). Kommt jedes Jahr wieder.`,
+    ])
+    wrapper.unmount()
+  })
+})

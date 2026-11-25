@@ -209,3 +209,43 @@ describe('the notices of a change with an end', () => {
     wrapper.unmount()
   })
 })
+
+describe('the notices of a change that comes back every year, and of a named one (slice 4)', () => {
+  const fmt = (day: string) => new Intl.DateTimeFormat('de-AT', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  const short = (day: string) => new Intl.DateTimeFormat('de-AT', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  const offer = (id: string, from: string, until: string, over: Record<string, unknown> = {}) => change(id, from, { until, values: { price: { amount: 990 } }, normal: { price: { amount: 1290 } }, ...over })
+
+  // Rows "save" (notices) and "a name only". Wrong behaviour caught: a season reads like a one-off change (with a year, or
+  // without "every year"), a holding one does not say it comes back, or the name does not lead.
+  test('the name leads; a season names its days without a year and says it comes back', () => {
+    rows.value = [
+      offer('d1', '2099-06-01', '2099-08-31', { yearly: true, name: 'Sommer' }),
+      offer('d2', '2026-11-01', '2099-12-31', { yearly: true, holds: true }),
+      offer('d3', '2099-02-03', '2099-02-17', { name: 'Betriebsurlaub' }),
+      offer('d4', '2026-11-01', '2099-11-30', { name: 'Herbst', yearly: true, holds: true }),
+    ]
+    const wrapper = mountNotices()
+    expect(wrapper.findAll('[data-notice]').map((n) => n.find('p').text().replace(/\s/g, ' '))).toEqual([
+      `Sommer: jedes Jahr von ${short('2099-06-01')} bis ${short('2099-08-31')}: Preis 9,90 €`,
+      `Bis ${fmt('2099-12-31')} zeigt die Website: Preis 9,90 € (sonst 12,90 €). Kommt jedes Jahr wieder.`,
+      `Betriebsurlaub: von ${fmt('2099-02-03')} bis ${fmt('2099-02-17')}: Preis 9,90 €`,
+      `Herbst: bis ${fmt('2099-11-30')} zeigt die Website: Preis 9,90 € (sonst 12,90 €). Kommt jedes Jahr wieder.`,
+    ])
+    wrapper.unmount()
+  })
+
+  // Row "Änderung aufheben" and decision 2. Wrong behaviour caught: a holding season offers "Jetzt beenden" (as if it
+  // ended only this year), or its question hides that it does not come back next year.
+  test('a holding season offers "Änderung aufheben", not "Jetzt beenden"; the question names next year', async () => {
+    ops.cancelChange.mockClear()
+    rows.value = [offer('d2', '2026-11-01', '2099-12-31', { yearly: true, holds: true })]
+    const wrapper = mountNotices()
+    expect(wrapper.get('[data-notice="d2"]').findAll('button').map((b) => b.text())).toEqual(['Tage ändern', 'Änderung aufheben'])
+    await press(wrapper, 'Änderung aufheben')
+    expect(ops.cancelChange).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Diese Änderung aufheben? Sie kommt dann auch nächstes Jahr nicht wieder.')
+    await press(wrapper, 'Änderung aufheben')
+    expect(ops.cancelChange).toHaveBeenCalledWith('d2', 'items.price')
+    wrapper.unmount()
+  })
+})

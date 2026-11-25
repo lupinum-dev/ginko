@@ -7,6 +7,7 @@ import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import { collection, defineSite, entryMarkdown, f, serializeSchema, single } from '@lupinum/ginko/internal'
 import * as bothHomes from '../../ginko/test/fixtures/both-homes.ts'
+import * as bothHomesYearly from '../../ginko/test/fixtures/both-homes-yearly.ts'
 import { buildFileBundles, publicBundle, searchIndex } from '../src/index.ts'
 import { readContent } from '../src/read.ts'
 
@@ -194,6 +195,31 @@ $changes:
       const [item] = bundles.de!.bricks.menu?.kind === 'collection' ? bundles.de!.bricks.menu.items : []
       expect([item?.data.price, item?.data.onMenu]).toEqual([{ amount, currency: 'EUR' }, onMenu])
     })
+
+    // Number 1 of slice 4: the file home against the yearly table (the platform read: ginko-server/test/dated-yearly.test.ts).
+    const yearlyFile = [
+      'name: Suppe', `price: ${(bothHomesYearly.stored.price as { amount: number }).amount / 100}`, `onMenu: ${bothHomesYearly.stored.onMenu}`, '$changes:',
+      ...bothHomesYearly.changes.flatMap((c) => [
+        `  - from: ${c.from}`, ...(c.until ? [`    until: ${c.until}`] : []), ...(c.yearly ? ['    yearly: true'] : []), ...(c.name ? [`    name: ${c.name}`] : []),
+        `    set: { ${written(c.set)} }`,
+      ]),
+    ].join('\n')
+    it.each(bothHomesYearly.days)('yearly: %s', async (day, amount, onMenu) => {
+      const s = site({ 'content/menu/suppe.yml': `${yearlyFile}\n` })
+      const { bundles, errors } = await buildFileBundles({ contentDir: s.content, publicDir: s.public, schema: karte, drafts: false, now: new Date(`${day}T10:00:00Z`) })
+      expect(errors).toEqual([])
+      const [item] = bundles.de!.bricks.menu?.kind === 'collection' ? bundles.de!.bricks.menu.items : []
+      expect([item?.data.price, item?.data.onMenu]).toEqual([{ amount, currency: 'EUR' }, onMenu])
+    })
+  })
+
+  // Slice 4, file form. Wrong behaviour caught: the read drops `yearly` or `name`, drops a yearly change after its first
+  // time (it would never come back), or `ginko check` tells the owner to delete it as ended.
+  it('keeps a yearly change after its first time, with its name, and gives no "ended" warning for it', async () => {
+    const summer = 'name: Suppe\nprice: 9\n$changes:\n  - from: 2026-06-01\n    until: 2026-08-31\n    yearly: true\n    name: Sommer\n    set: { price: 7 }\n'
+    const r = await read({ 'content/menu/suppe.yml': summer })
+    expect([r.errors, r.warnings]).toEqual([[], []])
+    expect(r.entries.menu?.[0]).toMatchObject({ data: { price: { amount: 900 } }, changes: [{ from: '2026-06-01', until: '2026-08-31', yearly: true, name: 'Sommer', set: { price: { amount: 700 } } }] })
   })
 })
 
