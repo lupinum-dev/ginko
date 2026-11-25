@@ -138,7 +138,8 @@ export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<B
 /**
  * The bundle with only the entries shown today (`showUntil`), in every collection, by the reader's day: a page from a
  * cache is right after midnight (D111), and the targets of an `include` are filtered too, so a reference to an entry
- * that ended is empty. The server routes apply the same rule (`loadServerBundles`).
+ * that ended is not resolved (the id stays), as for a target that does not exist. The server routes apply the same rule
+ * (`loadServerBundles`).
  */
 function useVisibleBundle(): ComputedRef<Bundle> {
   const bundle = useGinkoBundle()
