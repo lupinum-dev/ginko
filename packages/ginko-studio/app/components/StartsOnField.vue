@@ -27,9 +27,12 @@ const { t } = useI18n()
 const today = useToday(computed(() => props.timeZone))
 const tomorrow = computed(() => addDays(today.value, 1))
 const max = computed(() => `${Number(today.value.slice(0, 4)) + 1}${today.value.slice(4)}`)
+/** "Leeren", also for a date typed and not finished: the input's own typed parts go too, which the model cannot reach. */
 function clear() {
+  const input = document.getElementById(props.id) as HTMLInputElement | null
+  if (input) input.value = ''
   pick('')
-  nextTick(() => document.getElementById(props.id)?.focus())
+  nextTick(() => input?.focus())
 }
 </script>
 
@@ -41,7 +44,7 @@ function clear() {
           <Input :id="id" v-model="day" type="date" class="min-w-0 max-w-56 flex-1 basis-40" :min="tomorrow" :max="max" :aria-invalid="invalid" :aria-describedby="describedBy" @input="check" @change="check" @keyup="check" @blur="check" />
           <div class="flex min-w-0 flex-wrap gap-1.5">
             <Button type="button" variant="secondary" size="sm" class="px-2.5 aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:ring-1 aria-pressed:ring-ring" :aria-pressed="day === tomorrow" @click="pick(tomorrow)">{{ t('fields.date.tomorrow') }}</Button>
-            <Button v-if="optional && day" type="button" variant="ghost" size="sm" @click="clear">{{ t('fields.clear') }}</Button>
+            <Button v-if="optional && (day || bad)" type="button" variant="ghost" size="sm" @click="clear">{{ t('fields.clear') }}</Button>
           </div>
         </div>
       </template>

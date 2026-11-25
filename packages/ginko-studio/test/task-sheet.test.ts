@@ -687,6 +687,20 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
+  // Wrong behaviour caught (H1.5): a date typed and not finished had no "Leeren" (the model is empty), so the person had
+  // to delete each part of it by hand to save as today.
+  test('"Leeren" empties a day typed and not finished', async () => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(day.element, 'validity', { value: { badInput: true }, configurable: true })
+    await day.trigger('keyup')
+    await wrapper.findAll('button').find((b) => b.text() === 'Leeren')!.trigger('click')
+    await flushPromises()
+    expect([(day.element as HTMLInputElement).value, wrapper.text().includes('Das ist kein Datum.'), document.activeElement === day.element]).toEqual(['', false, true])
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught (E1): a reload brought back the typed values without their day, and the next press of the
   // button put them online now.
   test('the local copy brings the day back with the values', async () => {
