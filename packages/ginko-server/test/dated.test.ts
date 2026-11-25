@@ -508,6 +508,13 @@ describe('a dated change that needs a yes', () => {
     return { ...s, sent }
   }
 
+  // Wrong behaviour caught (I2.1): the asker's form reopened the request without its day, so sending it again asked
+  // for the change now.
+  it('the asker\'s own request names its day', async () => {
+    const s = await proposed()
+    expect(await s.as.cook.query(api.proposals.ownFor, { site: 'restaurant', entry: s.saibling })).toMatchObject({ proposal: s.sent.proposal, from: '2026-10-09' })
+  })
+
   it('a yes before the day makes the change in the asker\'s name', async () => {
     const s = await proposed()
     await s.as.owner.mutation(api.proposals.approve, { proposal: s.sent.proposal })

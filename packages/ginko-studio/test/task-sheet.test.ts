@@ -627,6 +627,22 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
   }
   afterEach(() => { datedRows.value = [] })
 
+  // Wrong behaviour caught (I2.1): a reopened own request for a later day showed an empty day, so Veröffentlichen
+  // replaced it with a request for now.
+  test('reopening an own dated request puts its day into the field', async () => {
+    const day = inDays(10)
+    ownProposal.value = { task: 'items.price', status: 'rejected', fits: true, proposal: 'p1', fields: { title: 'Vorschlag' }, from: day, createdAt: 0, reason: 'Zu früh' }
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Deinen Vorschlag wieder öffnen')!.trigger('click')
+    await flushPromises()
+    const short = new Intl.DateTimeFormat('de', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+    expect([(wrapper.get('#sheet-starts-on').element as HTMLInputElement).value, footer(wrapper)[0]]).toEqual([day, `Ab ${short} veröffentlichen`])
+    ownProposal.value = null
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught: the field is missing, an empty field plans a change (instead of saving as today), or a day
   // goes out as a publish now, without `from`, or with "Speichern" still offered beside it (it would drop the day).
   test('empty saves as today; a day saves with from', async () => {

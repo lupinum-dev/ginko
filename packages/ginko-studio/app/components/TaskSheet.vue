@@ -137,6 +137,8 @@ const proposedValues = (o: NonNullable<typeof mine.value>): Data =>
 /** Starts the form from an own proposal's values over `start`. */
 function loadProposal(start: Data, o: NonNullable<typeof mine.value>) {
   form.load({ ...start, ...proposedValues(o) })
+  // A dated request keeps its day: sending it again replaces it with a request for that day, not for now (I2).
+  if (o.from) startsOn.value = o.from
   fromProposal.value = true
   proposalWeek.value = fixedWeek.value ? (o.fields as Data)[fixedWeek.value] : undefined
 }
