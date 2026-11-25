@@ -1587,11 +1587,13 @@ describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slic
     bricks: {
       items: collection({
         label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' }, timeline: { public: ['price'] },
-        fields: { title: f.text('Titel', { translate: false }), price: f.money('Preis') },
+        fields: { title: f.text('Titel', { translate: false }), price: f.money('Preis'), onMenu: f.boolean('Auf der Karte') },
         tasks: [
           { id: 'season', label: 'Saisonpreis', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' } },
           { id: 'named', label: 'Betriebsurlaub', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask', until: 'ask', name: 'ask' } },
           { id: 'offer', label: 'Aktionspreis', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask', until: 'ask' } },
+          // The demo's "Saisongericht": no field to type, its fixed value is the change.
+          { id: 'dish', label: 'Saisongericht', kind: 'edit', fields: [], set: { onMenu: true }, pick: true, when: { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' } },
         ],
       }),
     },
@@ -1763,6 +1765,20 @@ describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slic
     await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
     await flushPromises()
     expect([value(wrapper, '#sheet-starts-on'), value(wrapper, '#sheet-until'), checked(wrapper), value(wrapper, '#sheet-name')]).toEqual([inDays(10), inDays(40), 'true', 'Sommer'])
+    wrapper.unmount()
+  })
+
+  // A task whose change is only its fixed values (`set`, the demo's "Saisongericht"), found by the browser test. Wrong
+  // behaviour caught: with no field to change the sheet says "Es ist noch nichts geändert" and never saves the days.
+  test('a task with only fixed values saves its days: one save, no "nothing changed"', async () => {
+    const wrapper = mountTask(3)
+    answer({ data: {} })
+    await flushPromises()
+    await typeSeason(wrapper, inDays(10), inDays(40))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect([wrapper.text().includes(catalog.dated.nothingChanged), sent().map((s) => [s.fields, s.from, s.until, s.yearly, s.name])])
+      .toEqual([false, [[{}, inDays(10), inDays(40), true, 'Sommer']]])
     wrapper.unmount()
   })
 

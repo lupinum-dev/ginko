@@ -531,9 +531,10 @@ const secondChange = computed(() => {
 const unchangedHere = computed(() => unchangedDay.value && (todayOnly.value || !!holdingEdit.value))
 const primaryDescribedBy = computed(() => [shrunk.value.length ? 'sheet-shrunk' : '', unchangedHere.value ? 'sheet-unchanged' : ''].filter(Boolean).join(' ') || undefined)
 /** A today-only task: the values it sets, as the notices write them ("Nur heute: Aus"). */
+const taskSet = computed(() => ((props.task.kind === 'edit' ? props.task.set : undefined) ?? {}) as Data)
 const todayValues = computed(() => {
-  const set = (props.task.kind === 'edit' ? props.task.set : undefined) as Data | undefined
-  return set ? changesText(props.brick.fields, Object.keys(set), set, props.main, valueWords.value) : ''
+  const set = taskSet.value
+  return Object.keys(set).length ? changesText(props.brick.fields, Object.keys(set), set, props.main, valueWords.value) : ''
 })
 
 /** A day field shows only in the main language's view: switch there before the focus (H1). */
@@ -594,7 +595,9 @@ async function save(step: Step = 'publish') {
     const from = exceptionFrom.value
     // "Bearbeiten" edits that exception while its start stays (L7): its values are all sent, so it is replaced.
     const was = edited.value?.until !== undefined && edited.value.from === from ? edited.value : undefined
-    return sendDated(from, was?.fields, { until: untilOn.value, ...(was ? { change: was.id } : {}), ...(isYearly.value ? { yearly: true as const } : {}), ...(name ? { name } : {}) })
+    // A task whose fixed values (`set`) are the change has nothing to type: its days alone are a save, as for today only.
+    const empty = Object.keys(taskSet.value).length > 0
+    return sendDated(from, was?.fields, { until: untilOn.value, ...(was ? { change: was.id } : {}), ...(isYearly.value ? { yearly: true as const } : {}), ...(name ? { name } : {}), ...(empty ? { empty } : {}) })
   }
   const from = dayOn.value
   if (from !== undefined) {
