@@ -417,32 +417,35 @@ export function upcomingOf(schema: Schema, key: string, entry: StoredEntry, ctx:
   if (!shown?.length || !entry.changes?.length) return undefined
   const last = shownUntil(brick, entry.data)
   const out: Upcoming[] = []
-  for (const change of waitingChanges(entry.changes, today)) {
-    if (last !== undefined && change.from > last) continue
+  for (const { change, from, until } of waitingChanges(entry.changes, today)) {
+    if (last !== undefined && from > last) continue
     const names = Object.keys(change.set).filter((name) => shown.includes(name))
     if (!names.length) continue
-    out.push({ from: change.from, ...(change.until ? { until: change.until } : {}), data: publicValues(schema, key, entry.id, change.set, names, ctx) })
+    out.push({ from, ...(until ? { until } : {}), ...labelsOf(change), data: publicValues(schema, key, entry.id, change.set, names, ctx) })
   }
   return out.length ? out : undefined
 }
 
 /**
- * The exceptions that hold today and set a field of the brick's `timeline.public` (slice 3): their days, their public
- * values and the normal values they cover (`normal`, read from the entry's normal values of today), resolved like the
- * entry's own values. Undefined when there is none.
+ * The exceptions that hold today and set a field of the brick's `timeline.public` (slice 3): the days of the time that
+ * holds, their public values and the normal values they cover (`normal`, read from the entry's normal values of today),
+ * resolved like the entry's own values. Undefined when there is none.
  */
 export function holdingOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): Holding[] | undefined {
   const shown = schema.bricks[key]!.timeline?.public
   if (!shown?.length || !entry.changes?.length) return undefined
   const normal = (entry as Showing).normal ?? entry.data
   const out: Holding[] = []
-  for (const change of holdingOn(entry.changes, today)) {
+  for (const { change, time } of holdingOn(entry.changes, today)) {
     const names = Object.keys(change.set).filter((name) => shown.includes(name))
     if (!names.length) continue
-    out.push({ from: change.from, until: change.until, data: publicValues(schema, key, entry.id, change.set, names, ctx), normal: publicValues(schema, key, entry.id, normal, names, ctx) })
+    out.push({ ...time, ...labelsOf(change), data: publicValues(schema, key, entry.id, change.set, names, ctx), normal: publicValues(schema, key, entry.id, normal, names, ctx) })
   }
   return out.length ? out : undefined
 }
+
+/** The name and `yearly` of a change, each only when it has one (slice 4): a page may show "Sommer, jedes Jahr". */
+const labelsOf = (change: Change): { name?: string; yearly?: true } => ({ ...(change.name ? { name: change.name } : {}), ...(change.yearly ? { yearly: true } : {}) })
 
 /** An entry as visitors see it today, with its normal values kept for `holding`. */
 type Showing = StoredEntry & { normal?: Record<string, Json> }

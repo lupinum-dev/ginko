@@ -491,13 +491,20 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“ gibt es in einer Änderung nicht: sie hat nur „from“, „until“ und „set“."
    ],
-   "changeNotYet": [
-    "„",
+   "changeYearly": "„yearly“ hat nur den Wert true und braucht ein Ende (until).",
+   "changeName": "Der Name einer Änderung hat 1 bis 60 Zeichen und braucht ein Ende (until).",
+   "changeYearlyLong": [
+    "Eine Änderung, die jedes Jahr wiederkommt, dauert weniger als ein Jahr: „until“ (",
     [
      "a",
-     "key"
+     "until"
     ],
-    "“ gibt es für eine Änderung noch nicht."
+    ") liegt zu weit nach „from“ (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
    "changeTwice": [
     "Zwei Änderungen haben den Tag ",
@@ -2014,13 +2021,20 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: it has only “from”, “until” and “set”."
    ],
-   "changeNotYet": [
-    "“",
+   "changeYearly": "“yearly” takes only true and needs an end (until).",
+   "changeName": "The name of a change has 1 to 60 characters and needs an end (until).",
+   "changeYearlyLong": [
+    "A change that comes back every year lasts less than a year: “until” (",
     [
      "a",
-     "key"
+     "until"
     ],
-    "” is not available for a change yet."
+    ") is too far after “from” (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
    "changeTwice": [
     "Two changes have the day ",
@@ -3537,13 +3551,20 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "»: solo tiene «from», «until» y «set»."
    ],
-   "changeNotYet": [
-    "«",
+   "changeYearly": "«yearly» solo admite true y necesita un final (until).",
+   "changeName": "El nombre de un cambio tiene de 1 a 60 caracteres y necesita un final (until).",
+   "changeYearlyLong": [
+    "Un cambio que vuelve cada año dura menos de un año: «until» (",
     [
      "a",
-     "key"
+     "until"
     ],
-    "» todavía no está disponible para un cambio."
+    ") está demasiado lejos de «from» (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
    "changeTwice": [
     "Dos cambios tienen el día ",
@@ -5062,13 +5083,20 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " » : elle n’a que « from », « until » et « set »."
    ],
-   "changeNotYet": [
-    "« ",
+   "changeYearly": "« yearly » ne prend que true et a besoin d’une fin (until).",
+   "changeName": "Le nom d’une modification a de 1 à 60 caractères et a besoin d’une fin (until).",
+   "changeYearlyLong": [
+    "Une modification qui revient chaque année dure moins d’un an : « until » (",
     [
      "a",
-     "key"
+     "until"
     ],
-    " » n’est pas encore disponible pour une modification."
+    ") est trop loin après « from » (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
    "changeTwice": [
     "Deux modifications ont le jour ",
@@ -6586,13 +6614,20 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "»: ha solo «from», «until» e «set»."
    ],
-   "changeNotYet": [
-    "«",
+   "changeYearly": "«yearly» accetta solo true e richiede una fine (until).",
+   "changeName": "Il nome di una modifica ha da 1 a 60 caratteri e richiede una fine (until).",
+   "changeYearlyLong": [
+    "Una modifica che torna ogni anno dura meno di un anno: «until» (",
     [
      "a",
-     "key"
+     "until"
     ],
-    "» in una modifica non è ancora disponibile."
+    ") è troppo lontano da «from» (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
    "changeTwice": [
     "Due modifiche hanno il giorno ",
@@ -8179,13 +8214,20 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "» في التغيير: فيه «from» و«until» و«set» فقط."
    ],
-   "changeNotYet": [
-    "«",
+   "changeYearly": "«yearly» يقبل القيمة true فقط ويحتاج إلى نهاية (until).",
+   "changeName": "اسم التغيير من 1 إلى 60 حرفًا ويحتاج إلى نهاية (until).",
+   "changeYearlyLong": [
+    "التغيير الذي يتكرر كل عام يستمر أقل من عام: «until» (",
     [
      "a",
-     "key"
+     "until"
     ],
-    "» في التغيير غير متاح بعد."
+    ") بعيد جدًا عن «from» (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
    "changeTwice": [
     "تغييران لهما اليوم ",

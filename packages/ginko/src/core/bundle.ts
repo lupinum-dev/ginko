@@ -29,14 +29,14 @@ export interface BundleItem {
  * the fields of the brick's `timeline.public`, resolved like `data` (one language, file references, Markdown trees). A
  * field the change clears is `null`.
  */
-export interface Upcoming { from: string; until?: string; data: Record<string, unknown> }
+export interface Upcoming { from: string; until?: string; name?: string; yearly?: true; data: Record<string, unknown> }
 
 /**
  * An exception that holds today, as a page may read it to show an offer as an offer ("9,90 € bis 31. Dez., sonst
  * 12,90 €"): its days, its values (already in `data`) and the normal values it covers (`normal`), only the fields of the
  * brick's `timeline.public`, resolved like `data`. A field without a normal value is `null` in `normal`.
  */
-export interface Holding { from: string; until: string; data: Record<string, unknown>; normal: Record<string, unknown> }
+export interface Holding { from: string; until: string; name?: string; yearly?: true; data: Record<string, unknown>; normal: Record<string, unknown> }
 
 /**
  * The name of an entry in a list or a heading (llms.txt, its Markdown twin, the search, the navigation): the value of
