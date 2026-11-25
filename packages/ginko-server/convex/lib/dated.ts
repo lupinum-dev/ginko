@@ -3,7 +3,7 @@
 // first minute of its day. The core decides what a change may set and how it is applied (`changeIssues`, `dataOn`); this
 // file holds what the save, the publish, the run on the day and the readers share.
 import type { Json, Label } from '@lupinum/ginko'
-import { addDays, changeIssues, dataOn, dayStartIn, entryBytes, fitsBudget, isDate, labelOf, MAX_DATED, taskDates, taskEnds, todayIn, type Change, type ChangeIssue, type Schema, type Task, type ValidateOptions } from '@lupinum/ginko/internal'
+import { addDays, changeIssues, dataOn, dayStartIn, entryBytes, fitsBudget, isDate, labelOf, MAX_DATED, sizeDays, taskDates, taskEnds, todayIn, type Change, type ChangeIssue, type Schema, type Task, type ValidateOptions } from '@lupinum/ginko/internal'
 import { internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
@@ -279,9 +279,9 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   if (issues.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: issues.map(({ change: _, from: _day, ...issue }) => issue) as unknown as Json })
   await checkNewFiles(ctx, site._id, brick.fields, before, after)
   await checkNewLinks(ctx, site, [{ entry, fields: brick.fields, before, after }], dayStart(from, schema.timeZone))
-  // Every waiting change applied: the entry as it will be after its last day must still fit.
-  const last = dataOn(live, changes, '9999-12-31')
-  const bytes = entryBytes(last, { ...(entry.prints as Prints), ...prints })
+  // The entry must fit on every day its changes give it values: after the last one, and on each exception's days.
+  const allPrints = { ...(entry.prints as Prints), ...prints }
+  const bytes = Math.max(...sizeDays(changes).map((day) => entryBytes(dataOn(live, changes, day), allPrints)))
   if (!fitsBudget(bytes, entry.bytes, BUDGET.entryBytes)) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(bytes, BUDGET.entryBytes))
   // A new day, or a stopped change that starts waiting again (H2).
   if ((!same || same.stopped) && others.filter((r) => !r.stopped).length >= MAX_DATED) fail('TOO_LARGE', 'errors.tooManyDated', { max: MAX_DATED })

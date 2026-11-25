@@ -35,6 +35,20 @@ export function holdingOn(changes: readonly Change[] | undefined, day: Day): (Ch
 }
 
 /**
+ * The days on which an entry's values with `changes` can be largest, for the budget check (round L5): after its last
+ * change, every first day of a change (an exception lies over the values of its days only), and the day after each
+ * exception's end (the values it covered come back).
+ */
+export function sizeDays(changes: readonly Change[] | undefined): Day[] {
+  const days = new Set<Day>(['9999-12-31'])
+  for (const change of changes ?? []) {
+    days.add(change.from)
+    if (isException(change)) days.add(addDays(change.until, 1))
+  }
+  return [...days]
+}
+
+/**
  * The values of `day`: `data` (stored form) with every change without an end whose `from` is at or before `day`
  * applied in the order of their days, then the exceptions that hold on `day` laid over them in the order of their
  * starts. The one place a change is applied (D118): the file reader with the build's day, the platform's run on the

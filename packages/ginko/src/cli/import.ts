@@ -11,7 +11,7 @@
 // storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import { byteSize, changeIssues, dataOn, entryBytes, MAX_DATED, todayIn, keptChanges, entryLinkRefs, ENTRY_NAME_RULE, isEntryName, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
+import { byteSize, changeIssues, dataOn, entryBytes, MAX_DATED, sizeDays, todayIn, keptChanges, entryLinkRefs, ENTRY_NAME_RULE, isEntryName, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
 import type { Runner } from './local.ts'
 import { CliError, isObject, parseExport, stoppedLine, type ExportEntry, type SiteExport } from './model.ts'
 import { english, explainRejected, kib } from './report.ts'
@@ -225,7 +225,8 @@ export async function checkImport(schema: Schema, entries: ExportEntry[]): Promi
     const size = entryBytes(withNewIds(entry.data), entry.prints)
     if (size > SITE_BUDGET.entryBytes) problems.push(`Entry ${entry.id} (${entry.brick}) is ${kib(size)}; the limit is ${kib(SITE_BUDGET.entryBytes)}.`)
     else if (entry.changes?.length && entry.deletedAt === undefined) {
-      const last = entryBytes(withNewIds(dataOn(entry.data, entry.changes, '9999-12-31')), entry.prints)
+      // Every day its changes give it values: after the last one, and on each exception's days (sizeDays).
+      const last = Math.max(...sizeDays(entry.changes).map((day) => entryBytes(withNewIds(dataOn(entry.data, entry.changes, day)), entry.prints)))
       if (last > SITE_BUDGET.entryBytes) problems.push(`Entry ${entry.id} (${entry.brick}) is ${kib(last)} with its waiting changes applied; the limit is ${kib(SITE_BUDGET.entryBytes)}.`)
     }
     if (entry.deletedAt === undefined) {

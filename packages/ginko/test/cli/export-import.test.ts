@@ -177,6 +177,8 @@ describe('checkImport: waiting changes as a save makes them', () => {
   it.each([
     ['21 waiting changes', Array.from({ length: 21 }, (_, i) => ({ from: `2099-01-${String(i + 1).padStart(2, '0')}`, set: { title: { de: `T${i}` } } })), 'Entry n1 (notes) has 21 waiting changes; at most 20 can wait.'],
     ['a change that takes the entry over the budget', [{ from: '2099-01-01', set: { text: { de: 'x'.repeat(500_000) } } }], 'with its waiting changes applied'],
+    // Round L5: an exception lies over the values on its days only, so the values after the last change leave it out.
+    ['an exception that takes the entry over the budget on its days', [{ from: '2099-01-01', until: '2099-01-03', set: { text: { de: 'x'.repeat(500_000) } } }], 'with its waiting changes applied'],
   ])('refuses %s', async (_, changes, problem) => {
     expect((await checkImport(schema, [entry(changes)])).join('\n')).toContain(problem)
   })
