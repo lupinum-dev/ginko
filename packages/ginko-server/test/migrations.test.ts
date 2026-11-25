@@ -219,6 +219,34 @@ describe('2026-11-25-dated-changes (D130)', () => {
     expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).toEqual([])
   })
 
+  // A4. Wrong behaviour caught: a request approved for a time opened again without a word on its entry (nobody learns
+  // why the change did not come), or a release member lost the schedule of its release.
+  it('opens a request approved for a time with a history line, and leaves a release member alone', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const lunch = s.entries.lunch!
+    const later = Date.parse('2026-10-20T08:00:00Z')
+    const ask = async () => (await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: 1, fields: { note: { de: 'Neu' } } }) as { proposal: Id<'proposals'> }).proposal
+    const single = await ask()
+    const member = await s.t.run(async (ctx) => {
+      const release = await ctx.db.insert('releases', { site: s.site, name: 'Herbst', at: later, status: 'scheduled', createdBy: people.owner, createdAt: 0, decidedBy: people.owner, decidedAt: 0 })
+      const p = (await ctx.db.get(single))!
+      const { _id, _creationTime, ...copy } = p
+      const id = await ctx.db.insert('proposals', { ...copy, release, status: 'scheduled', at: later, decidedBy: people.owner, decidedAt: 0 })
+      await ctx.db.patch(single, { status: 'scheduled', at: later, decidedBy: people.owner, decidedAt: 0 })
+      return id
+    })
+    await runThisOne(s)
+    const after = await s.t.run(async (ctx) => ({
+      single: (await ctx.db.get(single))!,
+      member: (await ctx.db.get(member))!,
+      lines: (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', lunch)).collect()).filter((c) => c.kind === 'requestReopened'),
+    }))
+    expect([after.single.status, after.member.status, after.member.at]).toEqual(['open', 'scheduled', later])
+    expect(after.lines).toMatchObject([{ actor: 'system', msg: { key: 'history.requestReopened', params: { at: later } } }])
+    expect(after.lines[0]!.sentence).toBe('Anfrage zu „Mittagsmenü“ wieder offen: Sie war für 20. Okt., 10:00 freigegeben. Wer freigeben darf, entscheidet sie neu.')
+  })
+
   // A3. Wrong behaviour caught: a time whose day had come (also one that passed between the deploy and the step) left
   // the changes unpublished, though the person had planned them for then; or the day was read in UTC, not the site's.
   it.each([

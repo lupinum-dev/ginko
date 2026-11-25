@@ -314,6 +314,7 @@
     "publishedChangesLate": "Changes to “{title}” published at once (the planned time had already passed at approval): {fields}",
     "changesScheduled": "Changes to “{title}”: online from {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "changesUnscheduled": "Changes to “{title}”: schedule cancelled",
+    "requestReopened": "Request for “{title}” open again: it was approved for {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}. Someone who may approve decides it again.",
     "changesDiscarded": "Unpublished changes to “{title}” discarded",
     "changesPublishStopped": "Changes to “{title}” did not go online: {why}",
     "datedSaved": "“{title}”: {fields} from {day, date, ::MMMMd}",

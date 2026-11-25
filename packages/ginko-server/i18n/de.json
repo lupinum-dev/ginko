@@ -314,6 +314,7 @@
     "publishedChangesLate": "Änderungen an „{title}“ sofort veröffentlicht (die geplante Zeit war bei der Freigabe schon vorbei): {fields}",
     "changesScheduled": "Änderungen an „{title}“: online ab {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "changesUnscheduled": "Änderungen an „{title}“: Zeitplan aufgehoben",
+    "requestReopened": "Anfrage zu „{title}“ wieder offen: Sie war für {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}} freigegeben. Wer freigeben darf, entscheidet sie neu.",
     "changesDiscarded": "Unveröffentlichte Änderungen an „{title}“ verworfen",
     "changesPublishStopped": "Änderungen an „{title}“ gingen nicht online: {why}",
     "datedSaved": "„{title}“: {fields} ab {day, date, ::MMMMd}",

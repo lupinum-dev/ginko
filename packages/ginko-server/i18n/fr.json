@@ -314,6 +314,7 @@
     "publishedChangesLate": "Modifications de « {title} » publiées tout de suite (l’heure prévue était déjà passée au moment de l’approbation) : {fields}",
     "changesScheduled": "Modifications de « {title} » : en ligne à partir du {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "changesUnscheduled": "Modifications de « {title} » : programmation annulée",
+    "requestReopened": "Demande pour « {title} » de nouveau ouverte : elle était approuvée pour le {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}. Une personne qui peut approuver la décide à nouveau.",
     "changesDiscarded": "Modifications non publiées de « {title} » abandonnées",
     "changesPublishStopped": "Les modifications de « {title} » ne sont pas passées en ligne : {why}",
     "datedSaved": "« {title} » : {fields} à partir du {day, date, ::MMMMd}",

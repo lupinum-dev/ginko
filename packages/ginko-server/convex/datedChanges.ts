@@ -303,7 +303,7 @@ async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
   await convertPlanned(ctx, site)
   const converted = (await ctx.db.get(site._id))!
   await convertTimed(ctx, converted)
-  await reopenTimedRequests(ctx, converted)
+  await reopenTimedRequests(ctx, (await ctx.db.get(site._id))!)
 }
 
 /**
@@ -385,12 +385,22 @@ async function convertTimedRow(ctx: MutationCtx, id: Id<'pendingChanges'>, publi
   await dropPending(ctx, held)
 }
 
-/** Single requests approved for a time: open again, so an approver decides them anew. Release members keep theirs. */
+/**
+ * Single requests approved for a time: open again, so an approver decides them anew, with one history line on the
+ * entry that names the time. Release members keep theirs.
+ */
 async function reopenTimedRequests(ctx: MutationCtx, site: Doc<'sites'>) {
+  const schema = site.schema as Schema
   for (const p of await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', site._id).eq('status', 'scheduled')).collect()) {
     if (p.release) continue
     if (p.job) await cancelWaiting(ctx, p.job)
     await ctx.db.patch(p._id, { status: 'open', at: undefined, job: undefined, decidedBy: undefined, decidedAt: undefined })
+    const entry = p.entry ? await ctx.db.get(p.entry) : null
+    if (!entry || p.at === undefined) continue
+    await ctx.db.insert('changes', {
+      site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: migrateOpId(p._id), kind: 'requestReopened',
+      ...recorded(msg('history.requestReopened', { title: titleOr(schema, entry), at: p.at }), schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
+    })
   }
 }
 
