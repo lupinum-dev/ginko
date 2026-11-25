@@ -90,8 +90,9 @@ export type ChangeIssue = Issue & { change: number }
 /**
  * The check of an entry's changes (D119), for `ginko check`, the file reader and the platform: `changes` is a list;
  * each change has a day in `from` and at least one field in `set`, and no other key (`until`, `yearly` and `name` are
- * not built yet); each field is one a change may set (`changeRefusal`); an entry has at most one change per day; and the whole entry is checked before and after each day's changes, in the entry's own mode (`release` for an
- * entry that is or goes online, `draft` for a draft without a time): every error that is new after the day is the
+ * not built yet); each field is one a change may set (`changeRefusal`); an entry has at most one change per day; and
+ * the whole entry is checked before and after each day's changes, in the entry's own mode (`release` for an entry that
+ * is or goes online, `draft` for a draft without a time): every error that is new after the day is the
  * problem of that day's changes, also one on a field no change sets (a required field that a change shows through its
  * `showWhen`, a cross-field rule). A problem the entry already had is not the change's. A new problem goes to the change
  * of that day that sets its field, else to the day's last change. `data` is the entry's stored data; `options` are passed
