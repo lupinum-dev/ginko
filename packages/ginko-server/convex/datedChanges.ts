@@ -18,6 +18,7 @@ import { brokenNewLinks, commitEntry, lookupsFor } from './lib/write'
 import type { StopReason } from './schema'
 import { internal } from './_generated/api'
 import { advance, stepArgs } from './lib/migrations'
+import { followName, rootsWith, writeFollowedName } from './entries'
 
 /** A dated change of the actor's site, and its entry; anything else is NOT_FOUND. */
 async function datedRow(ctx: QueryCtx, actor: Actor, id: string): Promise<{ row: Dated; entry: Doc<'entries'> }> {
@@ -196,8 +197,8 @@ async function dueRefusal(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'entries
 
 /**
  * The write of a due change once `dueRefusal` passed, as a transaction of its own (an error rolls all of it back): the
- * values through `commitEntry` as the system, into an online entry or a draft, also when a field was edited since; the
- * history names the planner, and the row goes.
+ * values through `commitEntry` as the system, into an online entry or a draft, also when a field was edited since (a
+ * draft whose name is not fixed follows its new title, as for a save); the history names the planner, and the row goes.
  */
 export const writeDue = internalMutation({
   args: { change: v.id('datedChanges') },
@@ -207,12 +208,16 @@ export const writeDue = internalMutation({
     const entry = (await ctx.db.get(row.entry))!
     const schema = site.schema as Schema
     const roots = Object.keys(row.fields)
+    const brick = schema.bricks[entry.brick]!
     const { data, prints } = overlay(entry, row)
     const actor: Actor = { user: { id: SYSTEM.actor }, site, role: 'admin', grants: [] }
+    // A new title of a draft whose name is not fixed yet renames it, as a save does.
+    const followed = await followName(ctx, actor, entry, brick, entry.data as Data, data)
     const written = await commitEntry(ctx, {
-      actor, entry, fields: schema.bricks[entry.brick]!.fields, roots, data, prints, kind: 'save', opId: `dated:${row._id}`,
+      actor, entry, fields: brick.fields, roots: rootsWith(roots, brick, followed), data, prints, kind: 'save', opId: `dated:${row._id}`,
       history: recorded(msg('history.datedApplied', { title: entryLabel(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, roots), day: dayStart(row.from, schema.timeZone) }), schema),
     })
+    if (followed) await writeFollowedName(ctx, actor, entry, followed)
     if (row.by) await ctx.db.patch(written.change, { plannedBy: row.by })
     await dropDated(ctx, row, true)
     return null

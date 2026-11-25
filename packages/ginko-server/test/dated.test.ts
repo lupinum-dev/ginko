@@ -204,6 +204,24 @@ describe('on the day', () => {
     expect(await s.dated(s.saibling)).toEqual([])
   })
 
+  // Wrong behaviour caught: the run gives a draft whose name is not fixed a new title but keeps the old name and address,
+  // which a save would have changed. Reached by an entry imported online from an export without a fixed name.
+  it('a new title written into a draft whose name is not fixed renames it, as a save does', async () => {
+    const s = await datedSetup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      await ctx.db.patch(s.site, { schema: { ...schema, locales: ['de'] } })
+    })
+    const made = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: { title: { de: 'Herbstfest' }, when: { from: '2026-11-20', to: '2026-11-20' }, description: { de: 'Test' } }, publish: {} })
+    const entry = made.entry as Id<'entries'>
+    await s.t.run((ctx) => ctx.db.patch(entry, { nameFixed: undefined }))
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { title: { de: 'Martinsfest' } }, from: '2026-10-09' })
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry, lifeRev: (await s.row(entry))!.lifeRev })
+    await s.advanceTo(DAY1 + 1000)
+    const row = (await s.row(entry))!
+    expect([row.name, (row.data as { slug: Record<string, string> }).slug.de]).toEqual(['martinsfest', 'martinsfest'])
+  })
+
   // Wrong behaviour caught: an error that is not a refusal (here a stored choice field without its options) makes the
   // run fail silently; the change then neither starts nor says that it stopped.
   it('an error of the run stops the change with "failed" and logs only the class', async () => {

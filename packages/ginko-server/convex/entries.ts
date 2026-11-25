@@ -891,7 +891,7 @@ async function freeName(ctx: MutationCtx, actor: Actor, brickKey: string, brick:
  * follows the main slug too, free in its language. One made from its own text, or set by hand, stays.
  * Writes the slugs into `data`; returns what the caller writes once the save is committed (`writeFollowedName`).
  */
-async function followName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, brick: Brick, before: Data, data: Data) {
+export async function followName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, brick: Brick, before: Data, data: Data) {
   if (entry.kind !== 'item' || entry.nameFixed || stateOf(entry) !== 'draft' || entry.publishAt !== undefined || brick.kind !== 'collection') return undefined
   const schema = actor.site.schema as Schema
   const main = schema.locales[0]!
@@ -917,13 +917,13 @@ async function followName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>,
 }
 
 /** The roots a write commits: `roots`, plus the address field when `followName` moved a slug, so its revision and the change row carry it. */
-function rootsWith(roots: string[], brick: Brick, followed: { slugs: Record<string, string> } | undefined): string[] {
+export function rootsWith(roots: string[], brick: Brick, followed: { slugs: Record<string, string> } | undefined): string[] {
   const slugKey = slugKeyOf(brick)
   return followed && slugKey !== undefined && Object.keys(followed.slugs).length && !roots.includes(slugKey) ? [...roots, slugKey] : roots
 }
 
 /** Writes what `followName` made: the name, and each followed slug row in place (a draft has no address online, so no old row stays). */
-async function writeFollowedName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, followed: { name: string; slugs: Record<string, string> }) {
+export async function writeFollowedName(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, followed: { name: string; slugs: Record<string, string> }) {
   await ctx.db.patch(entry._id, { name: followed.name })
   const rows = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).filter((r) => !r.old)
   for (const [locale, slug] of Object.entries(followed.slugs)) {
