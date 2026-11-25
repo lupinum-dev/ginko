@@ -44,7 +44,7 @@ describe('the notices of changes for a later day', () => {
     const wrapper = mountNotices()
     expect(wrapper.findAll('[role="status"]').map((n) => n.find('p').text().replace(/\s/g, ' '))).toEqual([
       'Ab [2099-03-05]: Preis 12,90 €.',
-      'Ab [2099-04-01]: Name, Preis 22,90 €, Öffnet 11:30, Vegan Ja.',
+      'Ab [2099-04-01]: Name, Preis 22,90 €, Öffnet 11:30, Vegan: ja.',
       'Die geplante Änderung für [2099-02-01] wurde nicht übernommen: Preis 12,90 €.',
     ])
     expect(wrapper.text()).toContain('Seit der Planung geändert: Preis.')

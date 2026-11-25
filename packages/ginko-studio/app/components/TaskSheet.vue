@@ -390,28 +390,47 @@ const datedSaving = ref(false)
 const shortDay = (day: string) => format.date(day, { weekday: 'short', day: 'numeric', month: 'short' })
 /** "26. Nov.": the days of an exception in the button and the hint. */
 const dayMonth = (day: string) => format.date(day, { day: 'numeric', month: 'short' })
+/** The first day of an exception save: "Gilt ab", empty is today; fixed for a holding exception being edited. */
+const exceptionFrom = computed(() => holdingEdit.value?.from ?? (startsOn.value || today.value))
 /**
- * The days an exception save sends: "Gilt ab" (empty is today; fixed for a holding exception being edited) and "Gilt
- * bis"; undefined while "Gilt bis" is empty.
+ * Why the days of an exception cannot be sent yet (the press names it at its field): "Gilt ab" half typed or before
+ * today; "Gilt bis" half typed, empty, before "Gilt ab", or before today (a holding exception, whose start passed).
  */
+const daysProblem = computed(() => {
+  if (!taskEnds.value) return undefined
+  const holding = holdingEdit.value
+  if (!holding && startsOnBad.value) return 'startsBad' as const
+  if (!holding && exceptionFrom.value < today.value) return 'startsPast' as const
+  if (untilBad.value) return 'untilBad' as const
+  if (!untilOn.value) return 'untilEmpty' as const
+  if (untilOn.value < exceptionFrom.value) return 'untilBeforeFrom' as const
+  return untilOn.value < today.value ? 'untilPast' as const : undefined
+})
+/** The days an exception save sends; undefined while they are not both valid. */
 const exceptionDays = computed(() => {
   if (todayOnly.value) return { from: today.value, until: today.value }
-  if (!taskEnds.value || !untilOn.value) return undefined
-  return { from: holdingEdit.value?.from ?? (startsOn.value || today.value), until: untilOn.value }
+  if (!taskEnds.value || daysProblem.value) return undefined
+  return { from: exceptionFrom.value, until: untilOn.value }
 })
-/** What the primary button says for an exception: "Für 26. Nov. bis 31. Dez. …", "Bis 31. Dez. …", "Für heute …". */
+/**
+ * What the primary button says for an exception: "Für 26. Nov. bis 31. Dez. …", "Bis 31. Dez. …", "Für heute …", and
+ * "Bis heute …" for one that started before today.
+ */
 function exceptionLabel({ from, until }: { from: string; until: string }) {
   const verb = props.approval ? 'review' : 'publish'
-  if (from <= today.value) return until === today.value ? t(`dated.${verb}Today`) : t(`dated.${verb}Until`, { until: dayMonth(until) })
+  if (until === today.value) return t(from < today.value ? `dated.${verb}UntilToday` : `dated.${verb}Today`)
+  if (from <= today.value) return t(`dated.${verb}Until`, { until: dayMonth(until) })
   return t(`dated.${verb}FromUntil`, { day: dayMonth(from), until: dayMonth(until) })
 }
 /**
  * The primary button says what it sends: a day sends a change of that day, also when the entry went offline meanwhile
- * (the server refuses it then and says why, J2).
+ * (the server refuses it then and says why, J2). A task with an end sends only values for certain days, also while its
+ * days are not valid yet: it never names a change for good (L6).
  */
 const primaryLabel = computed(() => {
   if (busy.value) return offline.value ? t('entry.save.waiting') : t('entry.save.saving')
   if (exceptionDays.value) return exceptionLabel(exceptionDays.value)
+  if (taskEnds.value) return t(props.approval ? 'dated.reviewDays' : 'dated.publishDays')
   if (dayOn.value) return t(props.approval ? 'dated.reviewFrom' : 'dated.publishFrom', { day: shortDay(dayOn.value) })
   if (!publishStep.value) return t('entry.save.save')
   if (props.approval) return t('entry.publish.review')
@@ -485,13 +504,19 @@ const edited = computed(() => {
 })
 /** A holding exception being edited: "Gilt ab" is fixed and shown as text; the save edits that row (`change`). */
 const holdingEdit = computed(() => (edited.value?.holds ? edited.value : undefined))
-/** After "Bearbeiten", other days in the fields plan a second change; the one being edited stays (H1). */
+/**
+ * After "Bearbeiten", another start plans a second change; the one being edited stays (H1). An exception keeps being
+ * the one edited while its start stays (an empty "Gilt ab" is today), whatever its end (L7).
+ */
 const secondChange = computed(() => {
   const was = edited.value
-  if (!was || was.holds || !startsOn.value || startsOnBad.value) return ''
-  const moved = startsOn.value !== was.from || (was.until !== undefined && !!untilOn.value && untilOn.value !== was.until)
-  return moved ? t('dated.secondChange', { day: format.date(was.from, { weekday: 'long', day: 'numeric', month: 'long' }) }) : ''
+  if (!was || was.holds || startsOnBad.value) return ''
+  const from = taskEnds.value ? exceptionFrom.value : startsOn.value
+  return from && from !== was.from ? t('dated.secondChange', { day: format.date(was.from, { weekday: 'long', day: 'numeric', month: 'long' }) }) : ''
 })
+/** A press that changed nothing in a sheet without "Gilt ab" (today only, a holding exception): said by the button (L8). */
+const unchangedHere = computed(() => unchangedDay.value && (todayOnly.value || !!holdingEdit.value))
+const primaryDescribedBy = computed(() => [shrunk.value.length ? 'sheet-shrunk' : '', unchangedHere.value ? 'sheet-unchanged' : ''].filter(Boolean).join(' ') || undefined)
 /** A today-only task: the values it sets, as the notices write them ("Nur heute: Aus"). */
 const todayValues = computed(() => {
   const set = (props.task.kind === 'edit' ? props.task.set : undefined) as Data | undefined
@@ -536,20 +561,18 @@ async function save(step: Step = 'publish') {
   if ((taskEnds.value || todayOnly.value) && step === 'draft') return document.getElementById('sheet-primary')?.focus()
   if (todayOnly.value) return sendDated(today.value, undefined, { until: today.value, empty: true })
   if (taskEnds.value) {
-    // An exception (slice 3): "Gilt ab" empty is today, never before; "Gilt bis" is required and not before it.
-    const holding = holdingEdit.value
-    const from = holding?.from ?? (startsOn.value || today.value)
-    if (!holding && from < today.value) {
-      startsOnError.value = messageOf({ key: 'errors.dayBeforeToday' })
-      return focusDay('sheet-starts-on')
-    }
-    if (untilBad.value || !untilOn.value || untilOn.value < from) {
-      if (!untilBad.value) untilError.value = untilOn.value ? t('dated.untilBeforeFrom') : t('dated.dayRequired')
+    // An exception (slice 3): "Gilt ab" empty is today, never before; "Gilt bis" is required, not before it nor today.
+    const problem = daysProblem.value
+    if (problem === 'startsPast') startsOnError.value = messageOf({ key: 'errors.dayBeforeToday' })
+    if (problem === 'startsBad' || problem === 'startsPast') return focusDay('sheet-starts-on')
+    if (problem) {
+      if (problem !== 'untilBad') untilError.value = problem === 'untilEmpty' ? t('dated.dayRequired') : problem === 'untilBeforeFrom' ? t('dated.untilBeforeFrom') : messageOf({ key: 'errors.dayBeforeToday' })
       return focusDay('sheet-until')
     }
-    const until = untilOn.value
-    const same = edited.value && (holding || (edited.value.from === from && edited.value.until === until)) ? edited.value.fields : undefined
-    return sendDated(from, same, { until, ...(holding ? { change: holding.id } : {}) })
+    const from = exceptionFrom.value
+    // "Bearbeiten" edits that exception while its start stays (L7): its values are all sent, so it is replaced.
+    const was = edited.value?.until !== undefined && edited.value.from === from ? edited.value : undefined
+    return sendDated(from, was?.fields, { until: untilOn.value, ...(was ? { change: was.id } : {}) })
   }
   const from = dayOn.value
   if (from !== undefined) {
@@ -754,12 +777,12 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
                 <p v-if="coveredHint(String(key))" v-show="isShown(field, draft)" class="-mt-2 text-sm font-medium text-muted-foreground" data-test="covered-hint">{{ coveredHint(String(key)) }}</p>
                 <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
               </template>
-              <div v-if="asksDay && !foreign && holdingEdit" class="grid gap-1" data-slot="field" data-test="fixed-from">
-                <p class="text-sm font-medium">{{ t('dated.startsOn') }}</p>
+              <div v-if="asksDay && !foreign && holdingEdit" class="grid gap-1" role="group" aria-labelledby="sheet-fixed-from" data-slot="field" data-test="fixed-from">
+                <p id="sheet-fixed-from" class="text-sm font-medium">{{ t('dated.startsOn') }}</p>
                 <p class="font-semibold">{{ shortDay(holdingEdit.from) }}</p>
                 <p class="text-sm text-muted-foreground">{{ t('dated.fromFixed') }}</p>
               </div>
-              <StartsOnField v-else-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :earliest="taskEnds ? today : undefined" :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
+              <StartsOnField v-else-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :hint="taskEnds ? t('dated.startsOnHintToday') : undefined" :earliest="taskEnds ? today : undefined" :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
               <StartsOnField v-if="asksDay && taskEnds && !foreign" id="sheet-until" v-model="untilOn" v-model:bad="untilBad" :label="t('dated.until')" :earliest="startsOn || today" :time-zone="schema.timeZone" :error="untilError" />
             </div>
           </template>
@@ -775,6 +798,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
           </template>
           <template v-else>
             <p v-if="shrunk.length" id="sheet-shrunk" class="basis-full text-sm text-muted-foreground">{{ shrunk.join(' ') }}</p>
+            <p v-if="unchangedHere" id="sheet-unchanged" class="basis-full text-sm font-medium text-warning" role="status">{{ t('dated.nothingChanged') }}</p>
             <div v-if="publishStep && later" class="grid basis-full gap-2" data-test="publish-later" @keydown.enter.prevent="save('later')">
               <label for="sheet-publish-at" class="text-sm font-medium">{{ t('entry.publish.dateTime') }}</label>
               <ScheduleField v-model:local="at" v-model:picked="picked" :zone="schema.timeZone" input-id="sheet-publish-at" />
@@ -782,7 +806,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             </div>
             <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
             <!-- On the publish step only a press on this button publishes (Enter in a field saves a draft, like Ctrl+S); with the time open it plans instead, so there is one primary per state. -->
-            <Button id="sheet-primary" :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ primaryLabel }}</Button>
+            <Button id="sheet-primary" :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="primaryDescribedBy" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ primaryLabel }}</Button>
             <template v-if="publishStep">
               <!-- With a day, Speichern (unpublished) would drop it: the day's button is the one way. -->
               <Button v-if="!dayOn && !taskEnds && !todayOnly" type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ isCreate ? t('entry.publish.asDraft') : t('entry.save.save') }}</Button>

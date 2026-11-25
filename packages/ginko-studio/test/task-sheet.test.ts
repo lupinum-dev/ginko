@@ -1323,9 +1323,30 @@ describe('"Gilt ab" and "Gilt bis" of a task with an end (slice 3)', () => {
       Object.defineProperty(field.element, 'validity', { value: { badInput: true }, configurable: true })
       await field.trigger('keyup')
     }
+    // Round L6: the button never names a normal publish ("Ab … veröffentlichen") while the days are not both valid.
+    expect(footer(wrapper)[0]).toBe('Für bestimmte Tage veröffentlichen')
     await press(wrapper, footer(wrapper)[0]!)
     await flushPromises()
     expect([ops.saveEntry.mock.calls.length, document.activeElement?.id, wrapper.text().includes(message)]).toEqual([0, 'sheet-until', true])
+    wrapper.unmount()
+  })
+
+  // Round L6. Wrong behaviour caught: with "Gilt ab" half typed the button said "Bis … veröffentlichen" (as if from
+  // today), and under approval it did not say it sends for review.
+  test.each([
+    ['publishes', false, 'Für bestimmte Tage veröffentlichen'],
+    ['needs a yes', true, 'Für bestimmte Tage zur Prüfung senden'],
+  ] as const)('"Gilt ab" half typed with "Gilt bis" set (%s): the button names certain days, the press saves nothing', async (_case, approval, label) => {
+    const wrapper = mountTask(0, { approval })
+    await ready(wrapper)
+    await wrapper.get('#sheet-until').setValue(inDays(9))
+    const field = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(field.element, 'validity', { value: { badInput: true }, configurable: true })
+    await field.trigger('keyup')
+    expect(footer(wrapper)[0]).toBe(label)
+    await press(wrapper, label)
+    await flushPromises()
+    expect([ops.saveEntry.mock.calls.length, document.activeElement?.id, wrapper.text().includes(catalog.dated.notADate)]).toEqual([0, 'sheet-starts-on', true])
     wrapper.unmount()
   })
 
@@ -1413,6 +1434,9 @@ describe('"Gilt ab" and "Gilt bis" of a task with an end (slice 3)', () => {
     await flushPromises()
     expect([wrapper.find('#sheet-starts-on').exists(), wrapper.get('[data-test="fixed-from"]').text(), value(wrapper, '#sheet-until'), value(wrapper, 'input[name="price"]')])
       .toEqual([false, expect.stringContaining('Gilt ab'), inDays(20), expect.anything()])
+    // Round L12: the fixed day is read as one group named "Gilt ab".
+    const fixed = wrapper.get('[data-test="fixed-from"]')
+    expect([fixed.attributes('role'), document.getElementById(fixed.attributes('aria-labelledby')!)?.textContent]).toEqual(['group', 'Gilt ab'])
     await wrapper.get('#sheet-until').setValue(inDays(30))
     await wrapper.get('input[name="price"]').setValue('9,50')
     await press(wrapper, footer(wrapper)[0]!)
@@ -1431,6 +1455,59 @@ describe('"Gilt ab" and "Gilt bis" of a task with an end (slice 3)', () => {
     await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
     await flushPromises()
     expect([value(wrapper, '#sheet-starts-on'), value(wrapper, '#sheet-until')]).toEqual([inDays(10), inDays(40)])
+    wrapper.unmount()
+  })
+
+  // Round L7. Wrong behaviour caught: a new end for a waiting offer said "Das hier wird eine zweite Änderung" and sent a
+  // second offer of the same start (refused by the server), instead of changing the offer being edited.
+  test('"Bearbeiten" on a waiting offer, only the end changed: the save edits that offer, with no second-change line', async () => {
+    datedRows.value = [waitingRow()]
+    const wrapper = mountTask()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('#sheet-until').setValue(inDays(50))
+    expect(wrapper.find('#sheet-starts-on-status').exists()).toBe(false)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.change, s.fields])).toEqual([[inDays(10), inDays(50), 'd1', { price: { amount: 990 } }]])
+    wrapper.unmount()
+  })
+
+  // Round L7. Wrong behaviour caught: "Gilt ab" emptied (today) after "Bearbeiten" planned a second offer silently, as
+  // the line only counted a day typed in the field.
+  test('"Bearbeiten" on a waiting offer, "Gilt ab" emptied: the line says the edited offer stays; the save is a new offer', async () => {
+    datedRows.value = [waitingRow()]
+    const wrapper = mountTask()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('#sheet-starts-on').setValue('')
+    expect(wrapper.get('#sheet-starts-on-status').text()).toBe(`Die geplante Änderung ab ${fmt(inDays(10), { weekday: 'long', day: 'numeric', month: 'long' })} bleibt bestehen. Das hier wird eine zweite Änderung.`)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.change])).toEqual([[inDays(0), inDays(40), undefined]])
+    wrapper.unmount()
+  })
+
+  // Round L9 and L13. Wrong behaviour caught: an end before today for a holding offer went to the server, which refused
+  // it after the press; an end of today said "Für heute veröffentlichen" for an offer that started days ago.
+  test('"Bearbeiten" on a holding offer: an end before today is refused at the field; an end of today says "Bis heute"', async () => {
+    datedRows.value = [waitingRow({ id: 'd2', from: inDays(-3), until: inDays(20), holds: true })]
+    const wrapper = mountTask()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('#sheet-until').setValue(inDays(-1))
+    expect(footer(wrapper)[0]).toBe('Für bestimmte Tage veröffentlichen')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect([ops.saveEntry.mock.calls.length, document.activeElement?.id, wrapper.text().includes('Der Tag darf nicht vor heute liegen.')]).toEqual([0, 'sheet-until', true])
+    await wrapper.get('#sheet-until').setValue(inDays(0))
+    expect(footer(wrapper)[0]).toBe('Bis heute veröffentlichen')
     wrapper.unmount()
   })
 
@@ -1471,9 +1548,26 @@ describe('"Gilt ab" and "Gilt bis" of a task with an end (slice 3)', () => {
     expect([wrapper.text().includes('Suppe'), wrapper.get('[data-test="today-only"]').text(), wrapper.findAll('[data-test="sheet-fields"] input').length, wrapper.find('#sheet-starts-on').exists()])
       .toEqual([true, catalog.dated.todayOnly, 0, false])
     expect(footer(wrapper)).toEqual(['Für heute veröffentlichen', 'Abbrechen'])
+    // Round L14: the fixed values read "Aus: ja", not "Aus Ja".
+    expect(wrapper.get('[data-test="today-values"]').text()).toBe('Nur heute: Aus: ja')
     await press(wrapper, 'Für heute veröffentlichen')
     await flushPromises()
     expect(sent().map((s) => [s.fields, s.from, s.until])).toEqual([[{}, inDays(0), inDays(0)]])
+    wrapper.unmount()
+  })
+
+  // Round L8. Wrong behaviour caught: a press that changed nothing (the dish is off today already) kept the sheet open
+  // with no word why: the "nothing changed" sentence sat under a day field the sheet does not show.
+  test('a today-only press that changes nothing says so by the button and keeps the sheet open', async () => {
+    ops.saveEntry.mockResolvedValueOnce({ rev: 4, unchanged: true } as never)
+    const wrapper = mountTask(1)
+    answer({ data: {} })
+    await flushPromises()
+    await press(wrapper, 'Für heute veröffentlichen')
+    await flushPromises()
+    const line = wrapper.get('#sheet-unchanged')
+    expect([line.text(), line.attributes('role'), wrapper.get('#sheet-primary').attributes('aria-describedby'), document.activeElement?.id, wrapper.emitted('close')])
+      .toEqual([catalog.dated.nothingChanged, 'status', 'sheet-unchanged', 'sheet-primary', undefined])
     wrapper.unmount()
   })
 

@@ -268,13 +268,15 @@ const SHORT_VALUES: ReadonlySet<Field['type']> = new Set(['money', 'number', 'da
 
 /**
  * What a planned change sets, for its notice (E2): "Preis 22,90 €, Beschreibung". A field with a short value (money,
- * number, date, time, choice, switch) shows its label and the value as a list shows it; any other field its label.
+ * number, date, time, choice) shows its label and the value as a list shows it, a switch "Auf der Karte: nein"; any
+ * other field its label.
  */
 export function changesText(fields: Fields, keys: readonly string[], values: Data, main: Locale, words: ValueWords): string {
   return keys.map((key) => {
     const field = Object.hasOwn(fields, key) ? fields[key] : undefined
     if (!field) return key
     const name = shownLabel(field.label, main)
+    if (field.type === 'boolean') return words.t('ops.value.flag', { label: name, on: values[key] === true ? 'yes' : 'no' })
     return SHORT_VALUES.has(field.type) ? `${name} ${displayValue(field, values[key], main, words)}` : name
   }).join(', ')
 }
