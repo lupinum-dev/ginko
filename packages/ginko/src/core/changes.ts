@@ -130,7 +130,7 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
     } else if (dayTaken.has(raw.from)) {
       // One change per day and entry: the platform keeps one row per day, so two would merge into one silently.
       ok = false
-      add(index, `${at}.from`, 'CHANGE', 'issues.changeTwice', { from: raw.from })
+      add(index, `${at}.from`, 'CHANGE', 'issues.changeTwice', { day: raw.from })
     } else dayTaken.add(raw.from)
     const set = raw.set
     if (!isRecord(set) || !Object.keys(set).length) {
@@ -167,7 +167,7 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
       taken.add(keyOf(problem))
       const root = problem.path.split('.')[0]!
       const owner = ofDay.find((g) => Object.hasOwn(g.change.set, root)) ?? ofDay.at(-1)!
-      out.push({ path: problem.path, code: problem.code, change: owner.index, from: day, ...msg('issues.changeValue', { from: day, problem: bare(problem) }) })
+      out.push({ path: problem.path, code: problem.code, change: owner.index, from: day, ...msg('issues.changeValue', { day, problem: bare(problem) }) })
     }
     known = new Set(errors.map(keyOf))
   }
