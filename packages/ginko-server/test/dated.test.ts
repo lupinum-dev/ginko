@@ -558,4 +558,26 @@ describe('a price fact changed for a later day', () => {
     expect(history.page[0]).toMatchObject({ actor: 'system', msg: { key: 'history.datedApplied' }, planner: expect.objectContaining({ email: 'koch@example.com' }) })
     expect((await s.history(contact)).at(-1)).toMatchObject({ plannedBy: people.cook })
   })
+
+  // R4 C10. Wrong behaviour caught: a stopped change, which will never come, is still quoted as the fact's next value.
+  it('a stopped change is not the fact\'s next value', async () => {
+    const s = await datedSetup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      const brick = schema.bricks.contact! as Schema['bricks'][string] & { timeline?: { public: string[] } }
+      brick.fields.price = { type: 'money', label: { de: 'Einzelstunde', en: 'Single session' }, optional: true } as never
+      brick.timeline = { public: ['price'] }
+      schema.components = { ...schema.components, fact: factComponent(['contact.price'], schema.bricks) }
+      await ctx.db.patch(s.site, { schema })
+      const row = (await ctx.db.get(s.entries.contact!))!
+      await ctx.db.patch(s.entries.contact!, { data: { ...row.data, price: { amount: 9000 } } })
+    })
+    const contact = s.entries.contact!
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: contact, baseRev: (await s.row(contact))!.rev, fields: { price: { amount: 9500 } }, from: '2026-10-09' })
+    const fact = async () => (await s.as.owner.query(api.facts.values, { site: 'restaurant' })).find((f) => f.name === 'contact.price')!
+    expect((await fact()).next).toMatchObject({ from: '2026-10-09' })
+    const [change] = await s.dated(contact)
+    await s.t.run((ctx) => ctx.db.patch(change!._id, { stopped: { at: DAY1, reason: { code: 'invalid', fields: ['price'] } }, job: undefined }))
+    expect((await fact()).next).toBeUndefined()
+  })
 })
