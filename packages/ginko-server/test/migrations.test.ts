@@ -1,11 +1,14 @@
 // The data migrations that run by themselves after a deploy (convex/lib/migrations.ts): `migrations:runPending` starts
 // what is pending, the steps run one after another, and a stopped one starts again from where it stopped.
+import { checkSchema, type Schema } from '@lupinum/ginko/internal'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { convexTest } from 'convex-test'
 import { describe, expect, it, vi } from 'vitest'
-import { internal } from '../convex/_generated/api'
+import { api, internal } from '../convex/_generated/api'
+import type { Id } from '../convex/_generated/dataModel'
 import { MIGRATIONS } from '../convex/lib/migrations'
 import schema from '../convex/schema'
-import { setup } from './setup'
+import { opId, people, setup } from './setup'
 
 type Backend = Awaited<ReturnType<typeof setup>>['t']
 
@@ -33,7 +36,7 @@ describe('migrations.runPending', () => {
       await ctx.db.patch(entry, { trees: '{}', bytes: 99_999, treeBytes: undefined, contentAt: undefined })
       await ctx.db.patch(s.site, { bytes: 1, trashBytes: undefined, treeBytes: undefined, orderRevs: { menu: 3 } })
     })
-    expect(await s.t.mutation(internal.migrations.runPending, {})).toBe(`Migrations: started ${MIGRATIONS[0]!.name} (5 pending). Progress: npx convex run ops:status`)
+    expect(await s.t.mutation(internal.migrations.runPending, {})).toBe(`Migrations: started ${MIGRATIONS[0]!.name} (6 pending). Progress: npx convex run ops:status`)
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
 
     expect((await runs(s.t)).map((r) => [r.name, r.state])).toEqual(MIGRATIONS.map((m) => [m.name, 'done']))
@@ -43,7 +46,7 @@ describe('migrations.runPending', () => {
     // The recount ran after the entry migration: the counters are the sums over the migrated entries.
     const status = await s.t.query(internal.entries.storageStatus, { cursor: null })
     expect(status.sites).toMatchObject([{ site: 'restaurant', legacyRows: 0, countersMatch: true }])
-    expect((await s.t.query(internal.ops.status, {}))!.migrations).toEqual({ done: 5, pending: [], running: null, stopped: null })
+    expect((await s.t.query(internal.ops.status, {}))!.migrations).toEqual({ done: 6, pending: [], running: null, stopped: null })
   })
 
   // Wrong behaviour caught: every deploy runs the finished migrations again.
@@ -53,7 +56,7 @@ describe('migrations.runPending', () => {
     await s.t.mutation(internal.migrations.runPending, {})
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
     const before = (await jobs(s.t)).length
-    expect(await s.t.mutation(internal.migrations.runPending, {})).toBe('Migrations: all 5 done.')
+    expect(await s.t.mutation(internal.migrations.runPending, {})).toBe('Migrations: all 6 done.')
     expect(await jobs(s.t)).toHaveLength(before)
   })
 
@@ -70,7 +73,7 @@ describe('migrations.runPending', () => {
   // Wrong behaviour caught: a fresh install starts the chain over empty tables or reports work that does not exist.
   it('records every migration as done on a fresh deployment without running any', async () => {
     const t = convexTest(schema, modules)
-    expect(await t.mutation(internal.migrations.runPending, {})).toBe('Migrations: fresh deployment, 5 recorded as done.')
+    expect(await t.mutation(internal.migrations.runPending, {})).toBe('Migrations: fresh deployment, 6 recorded as done.')
     expect((await runs(t)).map((r) => [r.name, r.state, r.baseline])).toEqual(MIGRATIONS.map((m) => [m.name, 'done', true]))
     expect(await jobs(t)).toEqual([])
   })
@@ -96,6 +99,89 @@ describe('migrations.runPending', () => {
     expect(row!.cursor).not.toBeNull()
     expect((await runs(s.t))[0]).toMatchObject({ attempts: 2 })
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
-    expect((await s.t.query(internal.ops.status, {}))!.migrations).toMatchObject({ done: 5, stopped: null })
+    expect((await s.t.query(internal.ops.status, {}))!.migrations).toMatchObject({ done: 6, stopped: null })
+  })
+})
+
+describe('2026-11-25-dated-changes (D130)', () => {
+  /** The earlier migrations as done, so runPending starts this one alone; then its pages, one step at a time. */
+  async function runThisOne(s: Awaited<ReturnType<typeof setup>>) {
+    await s.t.run(async (ctx) => {
+      for (const m of MIGRATIONS.slice(0, -1)) await ctx.db.insert('serverMigrations', { name: m.name, state: 'done', cursor: null, pages: 0, attempts: 0, startedAt: 0, finishedAt: 0 })
+    })
+    expect(await s.t.mutation(internal.migrations.runPending, {})).toMatch('started 2026-11-25-dated-changes')
+    for (let page = 0; page < 5 && (await runs(s.t)).some((r) => r.state === 'running'); page++) await oneStep(s.t)
+    expect((await runs(s.t)).every((r) => r.state === 'done')).toBe(true)
+  }
+
+  // Wrong behaviour caught: after the upgrade, a time on unpublished changes, a request approved for a time or a
+  // `planned` price is lost or runs through code that is gone: the change never goes online, a cancelled job still
+  // fires, or the stored schema keeps `planned` and every release of the site is refused.
+  it('turns the older plans into dated changes, open requests and a schema with timeline', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const { schnitzel, saibling, risotto, contact } = { schnitzel: s.entries['menu-schnitzel']!, saibling: s.entries['menu-saibling']!, risotto: s.entries['menu-risotto']!, contact: s.entries.contact! }
+    const later = Date.parse('2026-10-20T08:00:00Z')
+    const proposal = (await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: s.entries.lunch!, baseRev: 1, fields: { note: { de: 'Neu' } } }) as { proposal: Id<'proposals'> }).proposal
+    const before = (await s.t.run((ctx) => ctx.db.get(s.site)))!
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const stored = structuredClone(site.schema) as { bricks: Record<string, { fields: Record<string, unknown>; tasks: { id: string; fields?: string[]; when?: unknown }[]; timeline?: unknown; planned?: unknown }> }
+      const menu = stored.bricks.menu!
+      menu.fields.nextPrice = { type: 'money', label: 'Geplanter Preis', optional: true, pos: 7 }
+      menu.fields.priceFrom = { type: 'date', label: 'Gilt ab', optional: true, pos: 8 }
+      menu.planned = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
+      delete menu.timeline
+      menu.tasks = menu.tasks.map((task) => (task.id === 'price' ? { id: task.id, label: 'Preis ändern', kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'] } : task.id === 'edit' ? { ...task, fields: [...task.fields!, 'nextPrice', 'priceFrom'] } : task)) as typeof menu.tasks
+      await ctx.db.patch(s.site, { schema: stored })
+      const plan = async (entry: Id<'entries'>, next: number, from: string) => {
+        const row = (await ctx.db.get(entry))!
+        await ctx.db.patch(entry, { data: { ...(row.data as object), nextPrice: { amount: next }, priceFrom: from } })
+      }
+      await plan(schnitzel, 2290, '2026-10-18')
+      await plan(saibling, 1590, '2026-10-01')
+      const timed = async (entry: Id<'entries'>, brick: string, fields: Record<string, unknown>, at: number) => {
+        const id = await ctx.db.insert('pendingChanges', { site: s.site, entry, brick, fields, prints: {}, revs: Object.fromEntries(Object.keys(fields).map((k) => [k, 1])), by: people.owner, since: 0, at: 0, publishAt: at })
+        await ctx.db.patch(id, { publishJob: await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry, at }) })
+      }
+      await timed(risotto, 'menu', { price: { amount: 1500 } }, later)
+      await timed(contact, 'contact', { city: 'Graz' }, Date.now() - 60_000)
+      await ctx.db.patch(proposal, { status: 'scheduled', at: later, decidedBy: people.owner, decidedAt: Date.now(), job: await ctx.scheduler.runAt(later, internal.entries.publishDue, { entry: s.entries.lunch!, at: later }) })
+    })
+
+    await runThisOne(s)
+
+    const after = await s.t.run(async (ctx) => ({
+      site: (await ctx.db.get(s.site))!,
+      dated: await ctx.db.query('datedChanges').collect(),
+      pending: await ctx.db.query('pendingChanges').collect(),
+      proposal: (await ctx.db.get(proposal))!,
+      jobs: (await ctx.db.system.query('_scheduled_functions').collect()).filter((j) => j.name === 'entries:publishDue' && j.state.kind === 'pending'),
+      entries: Object.fromEntries(await Promise.all([schnitzel, saibling].map(async (id) => [id, (await ctx.db.get(id))!.data]))),
+    }))
+    // The risotto's time is a dated change of 20 October by the person who saved it; the contact's had passed: it
+    // stays unpublished without a time. No old job is left.
+    expect(after.dated.map((d) => [d.entry, d.from, d.fields, d.by ?? null]).sort()).toEqual([
+      [risotto, '2026-10-20', { price: { amount: 1500 } }, people.owner],
+      [schnitzel, '2026-10-18', { price: { amount: 2290 } }, null],
+    ].sort())
+    expect(after.pending.map((p) => [p.entry, p.publishAt ?? null])).toEqual([[contact, null]])
+    expect(after.jobs).toEqual([])
+    // The request is open again for a new decision.
+    expect([after.proposal.status, after.proposal.at, after.proposal.job, after.proposal.decidedBy]).toEqual(['open', undefined, undefined, undefined])
+    // The planned price whose day had come is in the field; the plan fields are gone from the data.
+    expect(after.entries[saibling]).toMatchObject({ price: { amount: 1590 } })
+    expect(after.entries[schnitzel]).toMatchObject({ price: { amount: 2190 } })
+    for (const data of Object.values(after.entries)) expect(Object.keys(data as object)).not.toEqual(expect.arrayContaining(['nextPrice']))
+    // The stored schema: no plan, the coming price public, the price task asks for the day; the edit task cannot.
+    const menu = (after.site.schema as { bricks: Record<string, any> }).bricks.menu
+    expect([menu.planned, menu.fields.nextPrice, menu.fields.priceFrom, menu.timeline]).toEqual([undefined, undefined, undefined, { public: ['price'] }])
+    expect(menu.tasks.find((t: { id: string }) => t.id === 'price')).toEqual({ id: 'price', label: 'Preis ändern', kind: 'edit', pick: true, fields: ['price'], when: { from: 'ask' } })
+    expect(menu.tasks.find((t: { id: string }) => t.id === 'edit').when).toBeUndefined()
+    expect(checkSchema(after.site.schema as Schema, statusRules)).toEqual([])
+    expect([after.site.schemaRev, after.site.contentRev]).toEqual([before.schemaRev + 1, before.contentRev + 1])
+    // The coming price is on the website's bundle the way a new dated change is.
+    const bundle = await (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json() as { bricks: { menu: { items: { id: string; upcoming?: unknown }[] } } }
+    expect(bundle.bricks.menu.items.find((i) => i.id === schnitzel)?.upcoming).toEqual([{ from: '2026-10-18', data: { price: { amount: 2290, currency: 'EUR' } } }])
   })
 })

@@ -1045,7 +1045,6 @@
     "removeFromRelease": "Aus Release nehmen",
     "releaseApproved": "Release freigegeben. Auf der Website in etwa einer Minute.",
     "approve": "Freigeben",
-    "approveLater": "Für später freigeben…",
     "reject": "Ablehnen…",
     "rejectConfirm": "Ablehnen",
     "reason": "Warum? Das sieht, wer die Änderung vorgeschlagen hat.",

@@ -33,6 +33,9 @@ export const MIGRATIONS: readonly Migration[] = [
   // Once, after both entry migrations: each site's byte counters become the sums over its entries.
   { name: '2026-10-15-recount-storage', step: internal.entries.recountStorage },
   { name: '2026-10-12-image-variants', step: internal.images.variantsMigration },
+  // Planned values of the older ways (a time on unpublished changes, a scheduled single request, `planned`) become
+  // dated changes (D130).
+  { name: '2026-11-25-dated-changes', step: internal.datedChanges.migratePlans },
 ]
 
 const known = new Set(MIGRATIONS.map((m) => m.name))

@@ -29,7 +29,7 @@ const props = defineProps<{
   /** Where the entry is edited; none for a new entry that does not exist yet. */
   entryTo?: string
 }>()
-const emit = defineEmits<{ approve: [at?: number]; reject: [reason: string] }>()
+const emit = defineEmits<{ approve: []; reject: [reason: string] }>()
 const { t, format } = useI18n()
 
 const textOf = useTextOf(() => ({ timeZone: props.timeZone, main: props.locale }))
@@ -85,8 +85,8 @@ const when = computed(() => whenFull(props.proposal.createdAt, props.timeZone, f
       <p v-if="stale" class="text-[13px] text-muted-foreground">{{ t('review.onlyReject') }}</p>
       <ReviewDecide
         :proposal="proposal.proposal" :ready="!!detail" :failed="!!error" :busy="busy"
-        :reject-only="stale" :time-zone="timeZone" large
-        @approve="(at) => emit('approve', at)" @reject="(reason) => emit('reject', reason)"
+        :reject-only="stale" large
+        @approve="emit('approve')" @reject="(reason) => emit('reject', reason)"
       />
     </footer>
   </section>

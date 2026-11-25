@@ -1,22 +1,23 @@
 // Dated changes (D125–D127): moving one to another day, cancelling it, listing an entry's for the editor, and the run
 // on its day that writes it into the entry. Making one is `entries.save` or `entries.publish` with `from` (entries.ts).
-import type { Json } from '@lupinum/ginko'
-import { changeRefusal, todayIn, validate, type Schema } from '@lupinum/ginko/internal'
+import type { Brick, Json } from '@lupinum/ginko'
+import { changeRefusal, entryBytes, todayIn, validate, type Schema } from '@lupinum/ginko/internal'
 import { ConvexError, v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor } from './lib/access'
-import type { Data } from './lib/content'
-import { checkDay, datedOf, dayStart, dropDated, fieldNames, planDated, refuseTaskWithoutDay, touchesPublic, writeDated, type Dated } from './lib/dated'
+import type { Data, Prints } from './lib/content'
+import { checkDay, datedOf, dayStart, dropDated, fieldNames, insertWaiting, planDated, refuseTaskWithoutDay, touchesPublic, writeDated, type Dated } from './lib/dated'
 import { msg, recorded } from './lib/history'
 import { entryLabel } from './lib/list'
 import { labeler } from './lib/names'
-import { overlay } from './lib/pending'
+import { dropPending, dropPendingRoots, overlay, pendingOf, underRoot } from './lib/pending'
 import { needsProposal } from './lib/policy'
 import { mailStoppedChange, stoppedBecause } from './lib/stopped'
 import { brokenNewLinks, commitEntry, lookupsFor } from './lib/write'
 import type { StopReason } from './schema'
 import { internal } from './_generated/api'
+import { advance, stepArgs } from './lib/migrations'
 
 /** A dated change of the actor's site, and its entry; anything else is NOT_FOUND. */
 async function datedRow(ctx: QueryCtx, actor: Actor, id: string): Promise<{ row: Dated; entry: Doc<'entries'> }> {
@@ -200,4 +201,115 @@ async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>,
     ...(row.by ? { plannedBy: row.by } : {}), entryRev: entry.rev, contentRev, at: Date.now(),
   })
   return null
+}
+
+/**
+ * The migration `2026-11-25-dated-changes` (D130), one site per page. What planned values for a later time with the
+ * older ways becomes after this release:
+ * - Unpublished changes with a time (`pendingChanges.publishAt`): its run is cancelled. A day after today becomes a
+ *   dated change of that day (checked like "Publish on a day", planner = who saved them); otherwise, or when the check
+ *   refuses it, the changes stay unpublished without a time, with a history line.
+ * - A single request approved for a time (status `scheduled`, no release): its run is cancelled and it is open again,
+ *   so an approver decides it anew. Release members keep their schedule.
+ * - A brick with `planned` in the stored schema: per entry, a planned value whose day is after today becomes a dated
+ *   change (without a person, like an import), one whose day has come is written into the field, and the two plan
+ *   fields go from the data. The stored schema loses `planned` and the two fields (also in tasks), gains
+ *   `timeline: { public: [field] }`, and a task that showed the plan gets `when: { from: 'ask' }` when a change may set
+ *   all its fields. `schemaRev` and `contentRev` rise.
+ * Safe to run again: a site without these has nothing to do.
+ */
+export const migratePlans = internalMutation({
+  args: stepArgs,
+  handler: async (ctx, args): Promise<null> => {
+    const page = await ctx.db.query('sites').paginate({ cursor: args.cursor, numItems: 1 })
+    for (const site of page.page) await migrateSitePlans(ctx, site)
+    return advance(ctx, args.run, page.isDone ? null : page.continueCursor)
+  },
+})
+
+async function migrateSitePlans(ctx: MutationCtx, site: Doc<'sites'>) {
+  const schema = site.schema as Schema
+  const today = todayIn(schema.timeZone)
+  const system: Actor = { user: { id: SYSTEM.actor }, site, role: 'admin', grants: [] }
+  const opId = (id: string) => `migrate:dated-changes:${id}`
+
+  for (const held of await ctx.db.query('pendingChanges').withIndex('by_site', (q) => q.eq('site', site._id)).collect()) {
+    if (held.publishAt === undefined) continue
+    if (held.publishJob) await ctx.scheduler.cancel(held.publishJob)
+    await ctx.db.patch(held._id, { publishAt: undefined, publishJob: undefined })
+    const entry = await ctx.db.get(held.entry)
+    if (!entry || entry.deletedAt) continue
+    const day = todayIn(schema.timeZone, new Date(held.publishAt))
+    const title = entryLabel(schema, entry.brick, entry.data as Data)
+    const words = { title, fields: fieldNames(schema, entry.brick, Object.keys(held.fields)), day: dayStart(day, schema.timeZone) }
+    const actor = { ...system, site: (await ctx.db.get(site._id))! }
+    try {
+      if (day <= today || Object.keys(held.fields).some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
+      const plan = await planDated(ctx, actor.site, entry, day, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
+      const written = await writeDated(ctx, actor, entry, plan, held.revs, recorded(msg('history.datedFromPending', words), schema), opId(held._id))
+      if (written.dated) await ctx.db.patch(written.dated, { by: held.by })
+      await dropPending(ctx, held)
+    } catch (error) {
+      if (!(error instanceof ConvexError)) throw error
+      await ctx.db.insert('changes', {
+        site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: opId(held._id), kind: 'unschedule',
+        ...recorded(msg('history.changesUnscheduled', { title }), schema), entryRev: entry.rev, contentRev: actor.site.contentRev, at: Date.now(),
+      })
+    }
+  }
+
+  for (const p of await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', site._id).eq('status', 'scheduled')).collect()) {
+    if (p.release) continue
+    if (p.job) await ctx.scheduler.cancel(p.job)
+    await ctx.db.patch(p._id, { status: 'open', at: undefined, job: undefined, decidedBy: undefined, decidedAt: undefined })
+  }
+
+  const planned = Object.entries(schema.bricks).flatMap(([key, brick]) => {
+    const rule = (brick as { planned?: { field: string; next: string; from: string } }).planned
+    return rule ? [{ key, rule }] : []
+  })
+  if (!planned.length) return
+  const next = structuredClone(schema)
+  // The plan fields leave each entry's text, so the site's byte counters shrink with them (online and in the trash).
+  let bytes = 0
+  let trashBytes = 0
+  for (const { key, rule } of planned) {
+    for (const entry of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()) {
+      const data = { ...(entry.data as Data) }
+      if (!Object.hasOwn(data, rule.next) && !Object.hasOwn(data, rule.from)) continue
+      const value = data[rule.next]
+      const day = data[rule.from]
+      delete data[rule.next]
+      delete data[rule.from]
+      const planned = value !== undefined && value !== null && typeof day === 'string'
+      if (planned && day <= today) data[rule.field] = value
+      const fieldRevs = { ...(entry.fieldRevs as Record<string, number>) }
+      for (const name of [...(planned && day <= today ? [rule.field] : []), rule.next, rule.from]) fieldRevs[name] = (fieldRevs[name] ?? 0) + 1
+      const prints = Object.fromEntries(Object.entries(entry.prints as Prints).filter(([leaf]) => !underRoot(leaf, rule.next) && !underRoot(leaf, rule.from)))
+      const size = entryBytes(data, prints)
+      if (entry.deletedAt) trashBytes += size - entry.bytes
+      else bytes += size - entry.bytes
+      await ctx.db.patch(entry._id, { data, prints, fieldRevs, rev: entry.rev + 1, bytes: size, contentAt: Date.now() })
+      if (planned && day > today && !entry.deletedAt) await insertWaiting(ctx, schema, { ...entry, rev: entry.rev + 1 }, [{ from: day, set: { [rule.field]: value } }])
+      const held = await pendingOf(ctx, entry._id)
+      if (held) await dropPendingRoots(ctx, schema, held, [rule.next, rule.from])
+    }
+    const brick = next.bricks[key]! as Brick & { planned?: unknown }
+    delete brick.planned
+    delete brick.fields[rule.next]
+    delete brick.fields[rule.from]
+    brick.timeline = { public: [...new Set([...(brick.timeline?.public ?? []), rule.field])] }
+    brick.tasks = brick.tasks?.map((task) => {
+      if (task.kind === 'remove') return task
+      const showedPlan = task.fields?.includes(rule.next) ?? false
+      const fields = task.fields?.filter((name) => name !== rule.next && name !== rule.from)
+      const datable = task.kind === 'edit' && showedPlan && !task.when && fields!.every((name) => !changeRefusal(next, brick, name))
+      return { ...task, ...(fields ? { fields } : {}), ...(datable ? { when: { from: 'ask' as const } } : {}) }
+    })
+  }
+  const fresh = (await ctx.db.get(site._id))!
+  await ctx.db.patch(site._id, {
+    schema: next as unknown as Json, schemaRev: fresh.schemaRev + 1, contentRev: fresh.contentRev + 1,
+    bytes: fresh.bytes + bytes, trashBytes: (fresh.trashBytes ?? 0) + trashBytes,
+  })
 }

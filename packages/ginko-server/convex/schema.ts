@@ -180,7 +180,11 @@ export default defineSchema({
     by: v.string(),
     since: v.number(),
     at: v.number(),
-    /** When the changes go online (ms), and the scheduled `entries.publishDue` run. */
+    /**
+     * Retired (D130): a time for unpublished changes and its `entries.publishDue` run. Nothing writes them; the
+     * migration `2026-11-25-dated-changes` turns them into a dated change or drops them. Optional until the contract
+     * step (internals/migrations.md).
+     */
     publishAt: v.optional(v.number()),
     publishJob: v.optional(v.id('_scheduled_functions')),
   }).index('by_entry', ['entry']).index('by_site', ['site']),
@@ -308,8 +312,12 @@ export default defineSchema({
     agentKey: v.optional(v.id('agentKeys')),
     status: v.union(v.literal('open'), v.literal('approved'), v.literal('scheduled'), v.literal('applied'), v.literal('rejected'), v.literal('stale'), v.literal('withdrawn')),
     createdAt: v.number(),
-    /** When a scheduled approval applies (ms), and its scheduled run. */
+    /** When the scheduled release of this member applies (ms; `releases.at`). */
     at: v.optional(v.number()),
+    /**
+     * Retired (D130): the run of a scheduled single approval. Nothing writes it; the migration `2026-11-25-dated-changes`
+     * cancels it. Optional until the contract step (internals/migrations.md).
+     */
     job: v.optional(v.id('_scheduled_functions')),
     release: v.optional(v.id('releases')),
     decidedBy: v.optional(v.string()),

@@ -8,12 +8,11 @@ import { opErrorOf } from '../composables/useOps'
 import { useTextOf } from '../composables/useTextOf'
 import { entryPath } from '../utils/basics'
 import { useStudioSite } from '../utils/labels'
-import { whenText } from '../utils/when'
 import type { ProposalRow } from '../utils/review'
 
 const props = defineProps<{ site: string; schema: Schema; proposal: ProposalRow; open: boolean; inRelease?: boolean; variant?: 'row' | 'select' | 'pane' }>()
 const emit = defineEmits<{ toggle: [] }>()
-const { t, format } = useI18n()
+const { t } = useI18n()
 const textOf = useTextOf(() => ({ timeZone: props.schema.timeZone, main: props.schema.locales[0] }))
 const { show } = useToast()
 const ops = useOps(computed(() => props.site))
@@ -32,13 +31,12 @@ const area = computed(() => (brick.value ? shown(brick.value.label) : undefined)
 const entryTo = computed(() => (props.proposal.entry && brick.value ? entryPath(props.site, props.schema, props.proposal.brick, props.proposal.entry) : undefined))
 const shownError = computed(() => error.value || (detail.error.value ? opErrorOf(detail.error.value).message : ''))
 
-async function approve(at?: number) {
+async function approve() {
   busy.value = true
   error.value = ''
   try {
-    const result = await approveMutation.mutate({ proposal: props.proposal.proposal, at }) as { status: string; change?: string | null; liveFrom?: string; reason?: string; reasonMsg?: { key: string; params?: Record<string, unknown> } | null }
+    const result = await approveMutation.mutate({ proposal: props.proposal.proposal }) as { status: string; change?: string | null; liveFrom?: string; reason?: string; reasonMsg?: { key: string; params?: Record<string, unknown> } | null }
     if (result.status === 'stale') show(result.reason ? textOf(result.reasonMsg, result.reason) : t('review.stale'), { tone: 'err' })
-    else if (result.status === 'scheduled' && at !== undefined) show(t('ops.scheduled', { time: whenText(at, props.schema.timeZone, format) }))
     else {
       const change = result.change
       show(`${t('review.approved')} ${ops.liveText(result)}`, change ? { action: { label: t('ops.undo'), run: () => ops.undoChange(change) } } : {})

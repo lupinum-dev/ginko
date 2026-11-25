@@ -1045,7 +1045,6 @@
     "removeFromRelease": "Retirer de la mise à jour",
     "releaseApproved": "Mise à jour approuvée. Sur le site web dans environ une minute.",
     "approve": "Approuver",
-    "approveLater": "Approuver pour plus tard…",
     "reject": "Refuser…",
     "rejectConfirm": "Refuser",
     "reason": "Pourquoi ? La personne qui a proposé la modification le verra.",
