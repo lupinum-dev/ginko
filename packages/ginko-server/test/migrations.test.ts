@@ -187,6 +187,25 @@ describe('2026-11-25-dated-changes (D130)', () => {
     expect(bundle.bricks.menu.items.find((i) => i.id === schnitzel)?.upcoming).toEqual([{ from: '2026-10-18', data: { price: { amount: 2290, currency: 'EUR' } } }])
   })
 
+  // Wrong behaviour caught: the migration cancels a job that already ran or failed, which rewrites its record in
+  // `_scheduled_functions` (the only place a failed run is remembered) as cancelled.
+  it('cancels only a job that still waits', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const at = Date.parse('2026-10-20T08:00:00Z')
+    const job = await s.t.run(async (ctx) => {
+      // An old run of the time that already ran (it finds another time on the row and does nothing).
+      const id = await ctx.scheduler.runAfter(0, internal.entries.publishDue, { entry: s.entries['menu-risotto']!, at: 0 })
+      await ctx.db.insert('pendingChanges', { site: s.site, entry: s.entries['menu-risotto']!, brick: 'menu', fields: { price: { amount: 1500 } }, prints: {}, revs: { price: 1 }, by: people.owner, since: 0, at: 0, publishAt: at, publishJob: id })
+      return id
+    })
+    await oneStep(s.t)
+    const ran = (await s.t.run((ctx) => ctx.db.system.get(job)))!.state.kind
+    expect(ran).not.toBe('pending')
+    await runThisOne(s)
+    expect((await s.t.run((ctx) => ctx.db.system.get(job)))!.state.kind).toBe(ran)
+  })
+
   // Wrong behaviour caught: the migration touches a site that has none of the older plans (a new schemaRev makes every
   // release look like a model change; a new contentRev empties the website's cache).
   it('leaves a site without older plans as it is', async () => {

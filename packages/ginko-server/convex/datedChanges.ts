@@ -3,7 +3,7 @@
 import type { Brick, Json } from '@lupinum/ginko'
 import { changeRefusal, entryBytes, todayIn, validate, type Schema } from '@lupinum/ginko/internal'
 import { ConvexError, v } from 'convex/values'
-import type { Doc } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, byOf, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor } from './lib/access'
 import type { Data, Prints } from './lib/content'
@@ -289,6 +289,11 @@ export const migrateOneSite = internalMutation({
   },
 })
 
+/** Cancels a job only while it still waits: one that ran, failed or was cancelled keeps its state in `_scheduled_functions`. */
+async function cancelWaiting(ctx: MutationCtx, job: Id<'_scheduled_functions'>) {
+  if ((await ctx.db.system.get(job))?.state.kind === 'pending') await ctx.scheduler.cancel(job)
+}
+
 async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
   const schema = site.schema as Schema
   const today = todayIn(schema.timeZone)
@@ -297,7 +302,7 @@ async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
 
   for (const held of await ctx.db.query('pendingChanges').withIndex('by_site', (q) => q.eq('site', site._id)).collect()) {
     if (held.publishAt === undefined) continue
-    if (held.publishJob) await ctx.scheduler.cancel(held.publishJob)
+    if (held.publishJob) await cancelWaiting(ctx, held.publishJob)
     await ctx.db.patch(held._id, { publishAt: undefined, publishJob: undefined })
     const entry = await ctx.db.get(held.entry)
     if (!entry || entry.deletedAt) continue
@@ -322,7 +327,7 @@ async function migrateSite(ctx: MutationCtx, site: Doc<'sites'>) {
 
   for (const p of await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', site._id).eq('status', 'scheduled')).collect()) {
     if (p.release) continue
-    if (p.job) await ctx.scheduler.cancel(p.job)
+    if (p.job) await cancelWaiting(ctx, p.job)
     await ctx.db.patch(p._id, { status: 'open', at: undefined, job: undefined, decidedBy: undefined, decidedAt: undefined })
   }
 
