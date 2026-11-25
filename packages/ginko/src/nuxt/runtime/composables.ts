@@ -144,21 +144,7 @@ export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<B
 function useVisibleBundle(): ComputedRef<Bundle> {
   const bundle = useGinkoBundle()
   const today = useGinkoToday()
-  return computed(() => visibleOn(bundle.value, today.value))
-}
-
-/**
- * The filtered bundle, once per bundle and day: every useGinko, query, nav and neighbours call of a page shares it
- * instead of filtering the whole bundle again. Keyed by the bundle object, so a new bundle (another language, a refresh)
- * gets its own; the schema is the module's.
- */
-const shown = new WeakMap<Bundle, { day: string; bundle: Bundle }>()
-function visibleOn(bundle: Bundle, day: string): Bundle {
-  const known = shown.get(bundle)
-  if (known?.day === day) return known.bundle
-  const visible = shownBundle(bundle, schema, day)
-  shown.set(bundle, { day, bundle: visible })
-  return visible
+  return computed(() => shownBundle(bundle.value, schema, today.value))
 }
 
 /** Items of a core result get the `url` of the bundle's locale when the brick has a route (`withUrl`). */
