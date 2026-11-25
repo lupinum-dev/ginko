@@ -13,6 +13,15 @@ import { UploadError } from './useUpload'
 import { messageOf, type Described } from '../utils/messageOf'
 import type { Who } from '../utils/who'
 
+/** A field issue as the server sends it (core `Issue`, the errors of an INVALID and the warnings of a save). */
+export type FieldMessage = NonNullable<NonNullable<OpError['details']>['errors']>[number]
+
+/** The warnings of a save or create: JSON from the server, in the shape of `OpError` errors. */
+const warningsOf = (result: object): FieldMessage[] => {
+  const value = 'warnings' in result ? result.warnings : undefined
+  return Array.isArray(value) ? value : []
+}
+
 export interface OpError {
   code: string
   /** Empty for CANCELLED: nothing to show. */
@@ -322,7 +331,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
         // A draft is not on the website, so the message does not promise it (SPEC 15).
         const text = args.draft ? t('ops.draftSaved') : [args.publish ? t('ops.published') : t('ops.saved'), liveText(result), noteOf('translation' in result ? result.translation : undefined, args.main)].filter(Boolean).join(' ')
         show(text, change ? { action: { label: t('ops.undo'), run: () => undoChange(change, args.task) } } : {})
-        return { proposal: undefined, rev: result.rev }
+        return { proposal: undefined, rev: result.rev, warnings: warningsOf(result) }
       } catch (error) {
         throw opErrorOf(error)
       }
@@ -342,7 +351,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           : t('ops.draftCreated')
         // A new entry starts at lifeRev 1; undo removes it (a draft or a scheduled one was never on the website).
         show(text, { action: { label: t('ops.undo'), run: async () => { await removeEntry(result.entry, 1, args.removeTask, t('ops.removed'), result.state !== 'live').catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
-        return { proposal: undefined, entry: result.entry }
+        return { proposal: undefined, entry: result.entry, warnings: warningsOf(result) }
       } catch (error) {
         throw opErrorOf(error)
       }

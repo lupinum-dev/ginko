@@ -13,6 +13,15 @@ import { mergeKeyedRows, mergeRows, stableJson } from '@lupinum/ginko/internal'
 import type { Who } from '../utils/who'
 import { useOnline } from '@vueuse/core'
 
+/** An issue of a field: an error, or with `note` what a draft still lacks before it can go online (D116). */
+export type FieldIssue = Issue & { note?: true }
+
+/**
+ * The notes of a draft just created, by entry id: its page opens a new form for the stored entry, which takes them over
+ * once (`load`), so "save as draft" shows what is missing also on the first save of a new entry.
+ */
+const handedNotes = new Map<string, Issue[]>()
+
 /** Stored values are JSON; a JSON copy also unwraps Vue's proxies (structuredClone cannot). */
 export const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value ?? null)) ?? value
 
@@ -57,6 +66,13 @@ export function useEntryForm(o: EntryFormOptions) {
   const baseRev = ref(0)
   const ready = ref(false)
   const issues = ref<Issue[]>([])
+  /**
+   * What a draft without a time still lacks (D116): the warnings of its last save, which the server checks for shape
+   * only (D115). The fields show them as notes, not errors; publishing or planning shows the same as errors.
+   */
+  const notes = ref<Issue[]>([])
+  /** Errors and notes, for the fields. */
+  const fieldIssues = computed<FieldIssue[]>(() => [...issues.value, ...notes.value.map((n) => ({ ...n, note: true as const }))])
   const problem = ref('')
   /** Fields someone saved after the person's base: their values, the entry's rev, and who did it when the server says. */
   const conflict = ref<{ fields: string[]; data: Data; rev: number; by?: Record<string, Who> } | null>(null)
@@ -85,6 +101,10 @@ export function useEntryForm(o: EntryFormOptions) {
   /** Starts the form: `start` are the values shown (prefill or stored). */
   function load(start: Data) {
     const entry = o.entry()
+    // The same entry again (a language switch) keeps its notes; a just created one takes those of its create.
+    const handed = entry ? handedNotes.get(entry._id) : undefined
+    if (entry) handedNotes.delete(entry._id)
+    notes.value = handed ?? (entry !== undefined && entry._id === loadedId.value ? notes.value : [])
     loadedId.value = entry?._id
     draft.value = copy(start)
     baseline.value = entry ? copy(storedOf(entry.data)) : {}
@@ -121,7 +141,9 @@ export function useEntryForm(o: EntryFormOptions) {
 
   function setField(key: string, value: Json | undefined) {
     // A fixed field drops its old error at once; the server checks again on save.
-    if (issues.value.some((i) => i.path === key || i.path.startsWith(`${key}.`))) issues.value = issues.value.filter((i) => i.path !== key && !i.path.startsWith(`${key}.`))
+    const other = (i: Issue) => i.path !== key && !i.path.startsWith(`${key}.`)
+    if (!issues.value.every(other)) issues.value = issues.value.filter(other)
+    if (!notes.value.every(other)) notes.value = notes.value.filter(other)
     waiting.value = false
     const next = { ...draft.value }
     if (value === undefined) delete next[key]
@@ -131,6 +153,7 @@ export function useEntryForm(o: EntryFormOptions) {
 
   function showError(e: OpError) {
     issues.value = []
+    notes.value = []
     problem.value = ''
     conflict.value = null
     if (e.code === 'INVALID' && e.details?.errors) {
@@ -143,6 +166,17 @@ export function useEntryForm(o: EntryFormOptions) {
     } else {
       problem.value = e.message
     }
+  }
+
+  /**
+   * A publish or a plan refused for its fields (D116): the fields show the server's errors, the empty required ones the
+   * notes named among them. True when the refusal was of that kind.
+   */
+  function showFieldErrors(e: OpError): boolean {
+    if (e.code !== 'INVALID' || !e.details?.errors) return false
+    issues.value = e.details.errors
+    notes.value = []
+    return true
   }
 
   /** What the last save asked for: the conflict answers (keepMine, mergeLists) repeat it, so Veröffentlichen stays one. */
@@ -203,6 +237,9 @@ export function useEntryForm(o: EntryFormOptions) {
         const result = await ops.createEntry({ brick: o.brickKey(), data: data as Record<string, Json>, task, removeTask: o.removeTask?.(), op, label: t('ops.saved'), publish, timeZone: o.timeZone?.(), main: o.main() })
         if (result.entry === undefined) waiting.value = true
         else created.value = result.entry
+        // A new draft without a time: what it lacks shows as notes, here and on its own page (`handedNotes`).
+        notes.value = publish === undefined ? result.warnings ?? [] : []
+        if (result.entry !== undefined && notes.value.length) handedNotes.set(result.entry, notes.value)
         // Saved: what was sent no longer counts as open input (a second Speichern would create another).
         initial.value = submitted
       } else {
@@ -215,6 +252,9 @@ export function useEntryForm(o: EntryFormOptions) {
         const task = o.task?.([...new Set([...roots, ...confirm.value.map((leaf) => leaf.split('.')[0]!)])])
         const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}), ...(publishAs === true ? { publish: true as const } : {}) }
         const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main() })
+        // A draft saved as a draft: what it lacks shows as notes. A live entry's warnings are about fields it did not
+        // change, which its form does not show.
+        notes.value = o.draft?.() && publishAs !== true ? result.warnings ?? [] : []
         if (result.rev === undefined) {
           // Nothing was written: the stored state, base and rev stay; only the input counts as handed in.
           waiting.value = true
@@ -451,5 +491,5 @@ export function useEntryForm(o: EntryFormOptions) {
     localOffer.value = null
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, offline, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
+  return { draft, baseline, initial, baseRev, ready, issues, notes, fieldIssues, showFieldErrors, problem, conflict, busy, offline, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
 }

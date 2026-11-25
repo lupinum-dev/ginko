@@ -1,5 +1,5 @@
 <!-- The one frame around every field: label ("(optional)" in muted text), hint under the label, the
-     control, the errors (destructive colour, role="alert"). The control gets `describedBy` and
+     control, the errors (destructive colour, role="alert"), the notes of a draft (muted, read with the control, D116). The control gets `describedBy` and
      `invalid` from the slot, so the wiring of ids lives here and nowhere else. A `source` slot puts
      the main-language text next to the control when the field is at least 36rem wide (above it when narrower: phones,
      a narrow sheet or a split editor). `inline` is for switches:
@@ -9,7 +9,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from '#imports'
-import { CircleAlertIcon } from '@lucide/vue'
+import { CircleAlertIcon, InfoIcon } from '@lucide/vue'
 import { Label } from '@studio/components/ui/label'
 
 const { t } = useI18n()
@@ -20,6 +20,8 @@ const props = defineProps<{
   hint?: string
   optional?: boolean
   errors?: readonly string[]
+  /** What a draft still lacks before it can go online (D116): not an error, the field is not invalid. */
+  notes?: readonly string[]
   group?: boolean
   inline?: boolean
   /** A short value (number, money, time): the box is as wide as one date of a date range, not the whole form. */
@@ -37,7 +39,8 @@ defineSlots<{
 }>()
 
 const invalid = computed(() => (props.errors?.length ?? 0) > 0)
-const describedBy = computed(() => [props.hint ? `${props.id}-hint` : '', props.hintId ?? '', invalid.value ? `${props.id}-err` : ''].filter(Boolean).join(' ') || undefined)
+const noted = computed(() => (props.notes?.length ?? 0) > 0)
+const describedBy = computed(() => [props.hint ? `${props.id}-hint` : '', props.hintId ?? '', invalid.value ? `${props.id}-err` : '', noted.value ? `${props.id}-note` : ''].filter(Boolean).join(' ') || undefined)
 </script>
 
 <template>
@@ -71,6 +74,11 @@ const describedBy = computed(() => [props.hint ? `${props.id}-hint` : '', props.
     <div v-if="invalid" :id="`${id}-err`" role="alert" class="grid gap-1">
       <p v-for="e in errors" :key="e" class="flex items-start gap-1.5 text-sm font-medium text-destructive">
         <CircleAlertIcon class="mt-0.5 size-4 shrink-0" aria-hidden="true" />{{ e }}
+      </p>
+    </div>
+    <div v-if="noted" :id="`${id}-note`" class="grid gap-1">
+      <p v-for="n in notes" :key="n" class="flex items-start gap-1.5 text-sm text-muted-foreground">
+        <InfoIcon class="mt-0.5 size-4 shrink-0" aria-hidden="true" />{{ n }}
       </p>
     </div>
   </div>

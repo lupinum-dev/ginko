@@ -6,7 +6,8 @@ import { useI18n } from '#imports'
 import type { Field, Json, Locale } from '@lupinum/ginko'
 import { isTranslatable } from '@lupinum/ginko/internal'
 import { messageOf } from '@studio/utils/messageOf'
-import { ownIssues, TRANSLATION, type Issue } from '@lupinum/ginko-editor'
+import { ownIssues, TRANSLATION } from '@lupinum/ginko-editor'
+import type { FieldIssue } from '@studio/composables/useEntryForm'
 import GinkoFieldChoice from './GinkoFieldChoice.vue'
 import GinkoFieldChoices from './GinkoFieldChoices.vue'
 import GinkoFieldDate from './GinkoFieldDate.vue'
@@ -36,7 +37,7 @@ const props = defineProps<{
   path: string
   locale: Locale
   locales: readonly Locale[]
-  issues: readonly Issue[]
+  issues: readonly FieldIssue[]
   /** The value when the form opened, for lists that ask "Noch richtig?". */
   baseline?: Json
   /** A date that starts a week: its week shortcuts (`weekShortcuts`). */
@@ -52,7 +53,10 @@ const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 
 const id = computed(() => `f-${props.path.replace(/[^a-zA-Z0-9_-]/g, '-')}`)
 const translatable = computed(() => isTranslatable(props.field))
-const errors = computed(() => ownIssues(props.issues, props.path, props.locales))
+const own = computed(() => ownIssues(props.issues, props.path, props.locales))
+const errors = computed(() => own.value.filter((i) => !i.note))
+/** What a draft still lacks here (D116): shown, but not as an error. */
+const notes = computed(() => own.value.filter((i) => i.note))
 
 /** The value in the active locale for translatable fields, else the value itself. */
 const value = computed<Json | undefined>(() => {
@@ -138,7 +142,7 @@ const missingText = computed(() => {
 </script>
 
 <template>
-  <FieldFrame :id="id" :data-path="path" :data-type="field.type" :data-label="label" :label="cellLabel ?? label" :label-hidden="cellLabel !== undefined" :hint="cellLabel === undefined ? hint : undefined" :hint-id="hintId" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
+  <FieldFrame :id="id" :data-path="path" :data-type="field.type" :data-label="label" :label="cellLabel ?? label" :label-hidden="cellLabel !== undefined" :hint="cellLabel === undefined ? hint : undefined" :hint-id="hintId" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :notes="notes.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
     <template v-if="trState && translation" #source>
       <div class="grid gap-2 rounded-md bg-muted p-3 text-sm" data-slot="translation-source">
         <p class="text-xs font-semibold text-muted-foreground">{{ translation.mainName() }}</p>

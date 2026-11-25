@@ -43,6 +43,19 @@ describe('FieldFrame', () => {
     expect(wrapper.get('input').attributes('aria-describedby')).toBe('f-price-hint f-price-err')
     expect(wrapper.get('input').attributes('aria-invalid')).toBe('true')
   })
+
+  // Wrong behaviour caught (D116): an empty required field of a draft looks and reads like an error (red, announced as
+  // an alert, the control invalid), though the draft saved.
+  test('a field of a draft shows what it lacks as a note: muted, read with the control, not invalid', () => {
+    const wrapper = mount(GinkoField, {
+      props: { field: { type: 'text', label: 'Name' } as Field, modelValue: undefined, path: 'name', locale: 'de', locales: ['de'], issues: [{ path: 'name.de', message: '„Name“ fehlt.', note: true }] },
+    })
+    const note = wrapper.get('#f-name-note')
+    expect([note.text(), note.attributes('role'), note.find('p').classes()]).toEqual(['„Name“ fehlt.', undefined, expect.arrayContaining(['text-muted-foreground'])])
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.get('input').attributes('aria-describedby')).toBe('f-name-note')
+    expect(wrapper.get('input').attributes('aria-invalid')).toBe('false')
+  })
 })
 
 const speisen = [{ id: 'k1', title: 'Schnitzel' }, { id: 'k2', title: 'Gulasch' }, { id: 'k3', title: 'Strudel' }]

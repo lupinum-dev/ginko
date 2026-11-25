@@ -5,6 +5,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { describe, expect, test, vi } from 'vitest'
+import { ConvexError } from 'convex/values'
 import { collection, defineSite, f, single } from '@lupinum/ginko/internal'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
@@ -601,6 +602,25 @@ describe('the footer of a live entry with unpublished changes', () => {
     else expect(buttons(wrapper).some((b) => b.startsWith('Veröffentlichen') || b.startsWith('Zeitplan'))).toBe(false)
     expect(buttons(wrapper).includes('Änderungen verwerfen …')).toBe(discard)
     expect(buttons(wrapper).includes('Zurückziehen')).toBe(unpublish)
+  })
+
+  // Wrong behaviour caught (D116): a publish of a draft refused for an empty required field says so only in the panel,
+  // and the field itself stays without its error (or keeps it as a note).
+  test('a publish refused for the fields marks them as errors', async () => {
+    const errors = [{ path: 'title.de', code: 'REQUIRED', key: 'issues.fieldMissing', params: { label: 'Titel' }, message: '„Titel“ fehlt.' }]
+    const publishEntry = vi.fn(async () => { throw new ConvexError({ code: 'INVALID', key: 'errors.pleaseCheckMarkedFields', message: 'Bitte prüfe die markierten Felder.', details: { errors } }) })
+    vi.stubGlobal('useOps', () => ({ publishEntry }))
+    try {
+      const wrapper = mount(EntryEditor, { props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry: entryOf({ state: 'draft', data: {} }), canRemove: false }, global: { stubs } })
+      await flushPromises()
+      const click = async (text: string) => { await wrapper.findAll('button').find((b) => b.text() === text)!.trigger('click'); await flushPromises() }
+      await click('Veröffentlichen …')
+      await click('Jetzt veröffentlichen')
+      expect(publishEntry).toHaveBeenCalled()
+      expect(wrapper.findComponent({ name: 'EntryFields' }).props('issues')).toEqual(errors)
+    } finally {
+      vi.stubGlobal('useOps', () => ({}))
+    }
   })
 
   // Wrong behaviour caught: Veröffentlichen takes the page offline (the draft path) or puts live a version the person
