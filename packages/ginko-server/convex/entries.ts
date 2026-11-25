@@ -1839,11 +1839,6 @@ const trashBricks = (schema: Schema, only?: string) =>
   Object.entries(schema.bricks).filter(([key, def]) => def.kind === 'collection' && !def.retired && (only === undefined || only === key)).map(([key]) => key)
 
 /**
- * The trash (SPEC 12): removed entries that can still be restored, newest first, across bricks or in one. A
- * paginated query (`useConvexPaginatedQuery`), at most 50 entries a page. Any member may read; `mayRestore` says
- * whether this person can use `restore` (staff needs the remove task, and it must not need approval).
- */
-/**
  * Plans that did not go online (D103) for Today's "waits for you" (D104): every one for an owner or admin, a staff
  * member's own. Newest first, at most 50: a stopped plan stays until someone plans, publishes, cancels or removes it.
  * Each row says it in the catalog's words and, as the fallback, in German.
@@ -1864,6 +1859,11 @@ export const stoppedPlans = query({
   },
 })
 
+/**
+ * The trash (SPEC 12): removed entries that can still be restored, newest first, across bricks or in one. A
+ * paginated query (`useConvexPaginatedQuery`), at most 50 entries a page. Any member may read; `mayRestore` says
+ * whether this person can use `restore` (staff needs the remove task, and it must not need approval).
+ */
 export const trash = query({
   args: { site: v.string(), brick: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
