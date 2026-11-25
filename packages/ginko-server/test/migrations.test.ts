@@ -366,6 +366,9 @@ describe('2026-11-25-dated-changes (D130)', () => {
     await runThisOne(s)
     const data = (await s.t.run((ctx) => ctx.db.get(schnitzel)))!.data as Record<string, unknown>
     expect([data.price, Object.hasOwn(data, 'nextPrice'), Object.hasOwn(data, 'priceFrom'), await datedRows(s)]).toEqual([{ amount: 2190 }, false, false, []])
+    // I2.7. Wrong behaviour caught: the set plan value went without a word, so nobody plans it again.
+    const lines = (await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', schnitzel)).collect())).filter((c) => c.kind === 'planDropped')
+    expect(lines.map((c) => [c.msg?.key, c.sentence?.includes('(Geplanter Preis)')])).toEqual([['history.planDropped', true]])
   })
 
   // Wrong behaviour caught: the migration cancels a job that already ran or failed, which rewrites its record in

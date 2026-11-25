@@ -455,16 +455,17 @@ async function convertPlanned(ctx: MutationCtx, site: Doc<'sites'>) {
   let trashBytes = 0
   for (const { key, rule } of planned) {
     for (const entry of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()) {
+      // One line for a plan that goes, so the person learns it is gone and plans it again.
+      const dropLine = (id: string, roots: string[]) => ctx.db.insert('changes', {
+        site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `${migrateOpId(id)}:plan`, kind: 'planDropped',
+        ...recorded(msg('history.planDropped', { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, roots) }), schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
+      })
       // An unpublished change of a plan field goes with the field, also on an entry without a plan.
       const held = await pendingOf(ctx, entry._id)
       const dropped = held ? [rule.next, rule.from].filter((root) => Object.hasOwn(held.fields, root)) : []
       if (held && dropped.length) {
         await dropPendingRoots(ctx, schema, held, dropped)
-        // One line, so the person learns the plan they had not published yet is gone and plans it again.
-        await ctx.db.insert('changes', {
-          site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `${migrateOpId(held._id)}:plan`, kind: 'planDropped',
-          ...recorded(msg('history.planDropped', { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, dropped) }), schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
-        })
+        await dropLine(held._id, dropped)
       }
       const data = { ...(entry.data as Data) }
       if (!Object.hasOwn(data, rule.next) && !Object.hasOwn(data, rule.from)) continue
@@ -472,8 +473,11 @@ async function convertPlanned(ctx: MutationCtx, site: Doc<'sites'>) {
       const day = data[rule.from]
       delete data[rule.next]
       delete data[rule.from]
-      // A plan day that is no date (an empty text, a phrase) is no plan: the two plan fields go, the value is not written.
-      const planned = value !== undefined && value !== null && isDate(day)
+      // A plan day that is no date (an empty text, a phrase) is no plan: the two plan fields go, the value is not written,
+      // and a value that was set gets its line (I2).
+      const set = value !== undefined && value !== null
+      const planned = set && isDate(day)
+      if (set && !planned) await dropLine(entry._id, [rule.next])
       if (planned && day <= today) data[rule.field] = value
       const fieldRevs = { ...(entry.fieldRevs as Record<string, number>) }
       for (const name of [...(planned && day <= today ? [rule.field] : []), rule.next, rule.from]) fieldRevs[name] = (fieldRevs[name] ?? 0) + 1
