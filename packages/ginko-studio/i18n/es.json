@@ -327,6 +327,7 @@
     "sentFrom": "Enviado a revisión. Planificado desde el {day}.",
     "waiting": "Desde el {day}: {changes}.",
     "stopped": "El cambio planificado para el {day} no se aplicó: {changes}.",
+    "stoppedYearly": "El cambio anual del {day} al {until} no se aplicó: {changes}. No vuelve por sí solo: elige los días de nuevo («Cambiar días») o anúlalo.",
     "changedSince": "Cambiado desde que se planificó: {fields}. Desde el día planificado se aplica igualmente el valor planificado.",
     "cancel": "Anular cambio",
     "cancelQuestion": "¿Anular este cambio planificado? No se puede deshacer.",

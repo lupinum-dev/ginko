@@ -327,6 +327,7 @@
     "sentFrom": "Zur Prüfung gesendet. Geplant ab {day}.",
     "waiting": "Ab {day}: {changes}.",
     "stopped": "Die geplante Änderung für {day} wurde nicht übernommen: {changes}.",
+    "stoppedYearly": "Die jährliche Änderung für {day} bis {until} wurde nicht übernommen: {changes}. Sie kommt nicht von selbst wieder: Wähle die Tage neu („Tage ändern“) oder hebe sie auf.",
     "changedSince": "Seit der Planung geändert: {fields}. Ab dem geplanten Tag gilt trotzdem der geplante Wert.",
     "cancel": "Änderung aufheben",
     "cancelQuestion": "Diese geplante Änderung aufheben? Das lässt sich nicht rückgängig machen.",

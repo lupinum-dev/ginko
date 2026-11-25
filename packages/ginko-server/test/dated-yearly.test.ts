@@ -340,6 +340,10 @@ describe('the runs over the years (state table: end run, start run)', () => {
     await s.advanceTo(at('2028-10-08') + 1000)
     const [row] = await s.dated(s.saibling)
     expect([row!.holds, row!.stopped?.reason]).toEqual([undefined, { code: 'invalid', fields: ['price'], cause: { key: 'errors.exceptionNotOnline' } }])
+    // Round N7: a month later the list still names the days of the time that failed, not next year's.
+    await s.advanceTo(at('2028-11-08') + 1000)
+    await renewSession(s.t, 'owner')
+    expect(await s.list()).toMatchObject([{ id: row!._id, from: '2028-10-08', until: '2028-10-31', yearly: true, stopped: { reason: { code: 'invalid' } } }])
   })
 })
 

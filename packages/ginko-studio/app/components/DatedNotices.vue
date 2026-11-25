@@ -29,6 +29,8 @@ const names = (keys: readonly string[]) => keys.map((k) => shownLabel((props.bri
 function textOf(c: NonNullable<typeof data.value>[number]) {
   const words = { t, format, currency: props.currency }
   const changes = changesText(props.brick.fields, c.fields, c.values as Data, props.main, words)
+  // A stopped season names the days that failed and that it does not come back by itself (round N7).
+  if (c.stopped && c.yearly && c.until !== undefined) return t('dated.stoppedYearly', { day: ops.dayText(c.from), until: ops.dayText(c.until), changes })
   if (c.until === undefined || c.stopped) return t(c.stopped ? 'dated.stopped' : 'dated.waiting', { day: ops.dayText(c.from), changes })
   const normal = c.holds && c.normal ? valuesText(props.brick.fields, c.fields, c.normal as Data, props.main, words) : undefined
   return exceptionText({ ...c, until: c.until }, changes, normal, words)

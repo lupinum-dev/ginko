@@ -51,6 +51,16 @@ describe('the notices of changes for a later day', () => {
     wrapper.unmount()
   })
 
+  // Round N7. Wrong behaviour caught: a stopped season reads like a one-off change of one day, so nobody sees that it
+  // will not come back by itself next year.
+  test('a stopped season names the days of the time that failed and that it does not come back by itself', () => {
+    rows.value = [change('d1', '2099-06-01', { until: '2099-08-31', yearly: true, stopped: { code: 'invalid', fields: ['price'] } })]
+    const wrapper = mountNotices()
+    expect(wrapper.get('[data-notice="d1"] p').text().replace(/\s/g, ' ')).toBe(
+      'Die jährliche Änderung für [2099-06-01] bis [2099-08-31] wurde nicht übernommen: Preis 12,90 €. Sie kommt nicht von selbst wieder: Wähle die Tage neu („Tage ändern“) oder hebe sie auf.')
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught: "Änderung aufheben" takes the entry offline (unpublish) or cancels without asking, though
   // it cannot be undone.
   test('cancel asks first and cancels only the change', async () => {

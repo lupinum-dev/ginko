@@ -327,6 +327,7 @@
     "sentFrom": "Sent for review. Planned from {day}.",
     "waiting": "From {day}: {changes}.",
     "stopped": "The planned change for {day} did not take effect: {changes}.",
+    "stoppedYearly": "The yearly change for {day} to {until} was not applied: {changes}. It does not come back by itself: choose the days again (“Change days”) or cancel it.",
     "changedSince": "Changed since it was planned: {fields}. From the planned day, the planned value still applies.",
     "cancel": "Cancel change",
     "cancelQuestion": "Cancel this planned change? This cannot be undone.",

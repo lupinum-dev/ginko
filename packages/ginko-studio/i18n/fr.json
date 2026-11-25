@@ -327,6 +327,7 @@
     "sentFrom": "Envoyé pour relecture. Prévu à partir du {day}.",
     "waiting": "À partir du {day} : {changes}.",
     "stopped": "Le changement prévu pour le {day} n’a pas été appliqué : {changes}.",
+    "stoppedYearly": "Le changement annuel du {day} au {until} n’a pas été appliqué : {changes}. Il ne revient pas de lui-même : choisissez à nouveau les jours (« Modifier les jours ») ou annulez-le.",
     "changedSince": "Modifié depuis la planification : {fields}. À partir du jour prévu, la valeur prévue s’applique quand même.",
     "cancel": "Annuler le changement",
     "cancelQuestion": "Annuler ce changement prévu ? C’est irréversible.",

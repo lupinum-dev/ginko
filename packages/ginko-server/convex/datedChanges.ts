@@ -195,7 +195,8 @@ export const cancel = mutation({
  * An entry's dated changes for the editor, in the order of their days: the values in storage format, who saved into it
  * last and when, whether the person may cancel and move it through `task`, a stop, and `changedSince`: the fields whose normal value was written after the change was made (the
  * change still wins on its day, D126). An exception is listed with the days of its time of today, the one that holds
- * or comes next (a yearly one's of this or next year, slice 4), with `yearly` and its name.
+ * or comes next (a yearly one's of this or next year, slice 4), with `yearly` and its name; a stopped one with the days
+ * of the time that failed.
  */
 export const list = query({
   args: { site: v.string(), entry: v.string(), task: v.optional(v.string()) },
@@ -207,7 +208,9 @@ export const list = query({
     const today = todayIn(schema.timeZone)
     const out = []
     for (const row of await datedOf(ctx, entry._id)) {
-      const time = row.until !== undefined ? timeOf(row, today) ?? { from: row.from, until: row.until } : undefined
+      // A stopped one keeps the days of the time that failed: a yearly one's next time would read as planned (round N7).
+      const on = row.stopped ? todayIn(schema.timeZone, new Date(row.stopped.at)) : today
+      const time = row.until !== undefined ? timeOf(row, on) ?? { from: row.from, until: row.until } : undefined
       out.push({
         id: row._id, from: time?.from ?? row.from, fields: Object.keys(row.fields), values: row.fields, by: row.by ? await names.who(row.by) : null, at: row.at,
         // An exception: its last day, whether it holds now, and the normal values it covers (the hint under the field).
