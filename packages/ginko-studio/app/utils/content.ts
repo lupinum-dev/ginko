@@ -117,7 +117,8 @@ export function hasTranslation(f: Field): boolean {
 export function leafValue(data: Record<string, unknown> | undefined, path: string): unknown {
   const [root, ...rest] = path.split('.')
   let value: unknown = data?.[root!]
-  if (rest.length === 1) return (value as { alt?: unknown } | undefined)?.alt
+  // A path of two parts is an image's description (`image.alt`); any other two-part path names no text.
+  if (rest.length === 1) return rest[0] === 'alt' ? (value as { alt?: unknown } | undefined)?.alt : undefined
   if (rest.length) {
     const [row, column, ...tail] = rest
     // A list keeps its rows in order, each with an `_id`; a rows field (f.rows) keeps them by row key.
