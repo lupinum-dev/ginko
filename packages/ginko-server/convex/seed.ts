@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { carryPrints, changeIssues, dataOn, MAX_DATED, todayIn, waitingChanges, type Change, defaultsFor, entryBytes, fitsBudget, isEntryName, namesOf, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, withoutUnknownRows, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { carryPrints, changeIssues, dataOn, isException, keptChanges, MAX_DATED, todayIn, type Change, defaultsFor, entryBytes, fitsBudget, isEntryName, namesOf, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, withoutUnknownRows, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -257,7 +257,7 @@ export const importExport = internalMutation({
       name: v.optional(v.string()),
       nameFixed: v.optional(v.literal(true)),
       /** Its waiting dated changes (D128, `$changes` in a file); absent in older exports. */
-      changes: v.optional(v.array(v.object({ from: v.string(), set: v.record(v.string(), v.any()) }))),
+      changes: v.optional(v.array(v.object({ from: v.string(), until: v.optional(v.string()), set: v.record(v.string(), v.any()) }))),
     })),
   },
   handler: async (ctx, args) => {
@@ -362,12 +362,14 @@ export const importExport = internalMutation({
       }
       // Dated changes (D128) are checked like a save makes them; a change whose day has passed is written into the fields
       // before the entry is stored, the others wait. A removed entry has none (removing it cancelled them).
-      const exported = (row.changes ?? []).map((c) => ({ from: c.from, set: remapFileIds(def.fields, c.set as Data, uploads) }))
+      // An exception (slice 3) is never written into the fields: one whose days are still to come or hold today gets its
+      // row (holding at once from today), an ended one is left out.
+      const exported: Change[] = (row.changes ?? []).map((c) => ({ from: c.from, ...(c.until !== undefined ? { until: c.until } : {}), set: remapFileIds(def.fields, c.set as Data, uploads) }))
       const stored = remapFileIds(def.fields, row.data as Data, uploads)
       const changeProblem = exported.length && row.deletedAt === undefined ? (await changeIssues(schema, row.brick, stored, exported))[0] : undefined
       if (changeProblem) problems.push({ code: 'INVALID', key: 'errors.importEntryInvalid', params: { id: row.id, path: changeProblem.path, count: 1 } })
-      const remapped = row.deletedAt === undefined ? dataOn(stored, exported, today) : stored
-      const changes = row.deletedAt === undefined ? waitingChanges(exported, today) : []
+      const remapped = row.deletedAt === undefined ? dataOn(stored, exported.filter((c) => !isException(c)), today) : stored
+      const changes = row.deletedAt === undefined ? keptChanges(exported, today) : []
       const checked = await validate(schema, row.brick, remapped, { mode: 'restore' })
       // A row its rows field no longer has (retired since the export) is dropped; its warning stays (UNKNOWN_ROW).
       const data = withoutUnknownRows(def.fields, remapped, schema.week)

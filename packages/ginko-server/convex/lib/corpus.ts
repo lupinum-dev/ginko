@@ -1,7 +1,7 @@
 // Demo content from a corpus (contracts/<site>/data.json), shared by the local reset (seed.ts) and
 // the demo fill (demo.ts): the entries with their slugs and counters, and invites for the demo people.
 import type { Json } from '@lupinum/ginko'
-import { changeIssues, dataOn, entryBytes, namesOf, sha256, todayIn, waitingChanges, type Change, type Schema } from '@lupinum/ginko/internal'
+import { changeIssues, dataOn, entryBytes, namesOf, sha256, isException, keptChanges, todayIn, type Change, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { checkGrants, normalizeEmail } from '../members'
@@ -53,7 +53,7 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
       const changes = row.changes ?? []
       const problem = changes.length ? (await changeIssues(schema, brick, row.data, changes))[0] : undefined
       if (problem) throw new Error(`corpus ${brick}/${row.id}: ${problem.path} ${problem.message}`)
-      const data = withoutFiles(schema, brick, dataOn(row.data, changes, today))
+      const data = withoutFiles(schema, brick, dataOn(row.data, changes.filter((c) => !isException(c)), today))
       const prints = row.prints ?? {}
       const size = entryBytes(data, prints)
       const trees = await treesOf(def.fields, data)
@@ -64,7 +64,7 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
         ...(def.kind === 'collection' ? { name: names[index]!, nameFixed: true as const } : {}),
       })
       await putTrees(ctx, site._id, id, trees.json)
-      await insertWaiting(ctx, schema, { _id: id, site: site._id, brick, rev: 1 }, waitingChanges(changes, today))
+      await insertWaiting(ctx, schema, { _id: id, site: site._id, brick, rev: 1 }, keptChanges(changes, today))
       bytes += size
       treeBytes += trees.bytes
       count++
