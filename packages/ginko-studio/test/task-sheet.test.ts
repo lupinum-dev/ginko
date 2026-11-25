@@ -881,6 +881,10 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await flushPromises()
     const fields = () => wrapper.get('[data-test="sheet-fields"]').attributes('inert')
     expect(fields()).toBeDefined()
+    // H1.8: the day is inert too, and a change of it meanwhile does not end the wait.
+    expect(wrapper.find('[data-test="sheet-fields"] #sheet-starts-on').exists()).toBe(true)
+    await wrapper.get('#sheet-starts-on').setValue('')
+    expect(fields()).toBeDefined()
     land({ rev: 4 })
     await flushPromises()
     expect(fields()).toBeUndefined()

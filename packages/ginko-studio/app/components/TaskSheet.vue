@@ -360,9 +360,9 @@ watch(() => `${startsOn.value}\u0000${stableJson(draft.value)}`, () => { unchang
 const dayOn = computed(() => (asksDay.value && startsOn.value ? startsOn.value : undefined))
 /**
  * A save with a day is on its way (E8): the form goes back to the entry when it lands, so input typed meanwhile would
- * be lost. The fields and the day are inert until then.
+ * be lost. The fields and the day are inert until then. Set by that save itself, so nothing typed meanwhile ends it (H1).
  */
-const datedSaving = computed(() => busy.value && dayOn.value !== undefined)
+const datedSaving = ref(false)
 const shortDay = (day: string) => format.date(day, { weekday: 'short', day: 'numeric', month: 'short' })
 // Changes of the form's fields that wait for a later day (datedChanges.list): one notice each, so nobody plans over one
 // without knowing. "Bearbeiten" (E3) puts its day and values into the form; cancelling or moving one is done in Alles
@@ -420,7 +420,13 @@ async function save(step: Step = 'publish') {
       await switchLanguage(props.main)
       return nextTick(() => document.getElementById('sheet-starts-on')?.focus())
     }
-    const ok = await form.save(undefined, undefined, from, editing.value?.from === from ? editing.value.fields : undefined)
+    let ok: boolean
+    datedSaving.value = true
+    try {
+      ok = await form.save(undefined, undefined, from, editing.value?.from === from ? editing.value.fields : undefined)
+    } finally {
+      datedSaving.value = false
+    }
     if (!ok && unchangedDay.value) {
       await switchLanguage(props.main)
       nextTick(() => document.getElementById('sheet-starts-on')?.focus())
@@ -601,8 +607,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
                 />
                 <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
               </template>
+              <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :time-zone="schema.timeZone" :error="startsOnError || (unchangedDay ? t('dated.nothingChanged') : '')" :status="secondChange" />
             </div>
-            <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :time-zone="schema.timeZone" :error="startsOnError || (unchangedDay ? t('dated.nothingChanged') : '')" :status="secondChange" />
           </template>
         </div>
 
