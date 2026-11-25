@@ -455,7 +455,15 @@ async function convertPlanned(ctx: MutationCtx, site: Doc<'sites'>) {
     for (const entry of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()) {
       // An unpublished change of a plan field goes with the field, also on an entry without a plan.
       const held = await pendingOf(ctx, entry._id)
-      if (held) await dropPendingRoots(ctx, schema, held, [rule.next, rule.from])
+      const dropped = held ? [rule.next, rule.from].filter((root) => Object.hasOwn(held.fields, root)) : []
+      if (held && dropped.length) {
+        await dropPendingRoots(ctx, schema, held, dropped)
+        // One line, so the person learns the plan they had not published yet is gone and plans it again.
+        await ctx.db.insert('changes', {
+          site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `${migrateOpId(held._id)}:plan`, kind: 'planDropped',
+          ...recorded(msg('history.planDropped', { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, dropped) }), schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
+        })
+      }
       const data = { ...(entry.data as Data) }
       if (!Object.hasOwn(data, rule.next) && !Object.hasOwn(data, rule.from)) continue
       const value = data[rule.next]

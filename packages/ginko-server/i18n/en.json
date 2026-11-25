@@ -321,6 +321,7 @@
     "datedSaved": "“{title}”: {fields} from {day, date, ::MMMMd}",
     "datedProposal": "Change {fields} of “{title}” from {day, date, ::MMMMd}",
     "datedFromPending": "Changes to “{title}” start on {day, date, ::MMMMd}: {fields}",
+    "planDropped": "“{title}”: the unpublished plan ({fields}) no longer exists. Please plan it again.",
     "datedFromPendingProposal": "Publish changes to “{title}” from {day, date, ::MMMMd}: {fields}",
     "datedMoved": "“{title}”: planned change ({fields}) moved from {was, date, ::MMMMd} to {day, date, ::MMMMd}",
     "datedCancelled": "“{title}”: planned change from {day, date, ::MMMMd} cancelled ({fields})",

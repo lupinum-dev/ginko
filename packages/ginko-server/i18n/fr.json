@@ -321,6 +321,7 @@
     "datedSaved": "« {title} » : {fields} à partir du {day, date, ::MMMMd}",
     "datedProposal": "Modifier {fields} de « {title} » à partir du {day, date, ::MMMMd}",
     "datedFromPending": "Les modifications de « {title} » commencent le {day, date, ::MMMMd} : {fields}",
+    "planDropped": "« {title} » : la planification non publiée ({fields}) n’existe plus. Planifiez-la à nouveau.",
     "datedFromPendingProposal": "Publier les modifications de « {title} » à partir du {day, date, ::MMMMd} : {fields}",
     "datedMoved": "« {title} » : changement planifié ({fields}) déplacé du {was, date, ::MMMMd} au {day, date, ::MMMMd}",
     "datedCancelled": "« {title} » : changement planifié à partir du {day, date, ::MMMMd} annulé ({fields})",

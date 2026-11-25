@@ -219,6 +219,9 @@ describe('2026-11-25-dated-changes (D130)', () => {
     await runThisOne(s)
     expect(await datedRows(s)).toEqual([[risotto, '2026-10-20', { price: { amount: 1500 } }]])
     expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).toEqual([])
+    // H3.24. Wrong behaviour caught: the unpublished planned price went without a word, so nobody plans it again.
+    const lines = (await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', risotto)).collect())).filter((c) => c.kind === 'planDropped')
+    expect(lines.map((c) => c.sentence)).toEqual(['„Kürbisrisotto“: Die unveröffentlichte Planung (Geplanter Preis) gibt es nicht mehr. Bitte plane sie neu.'])
   })
 
   // A4. Wrong behaviour caught: a request approved for a time opened again without a word on its entry (nobody learns
