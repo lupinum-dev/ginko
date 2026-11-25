@@ -55,7 +55,7 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput, schem
 
   const changed: Candidate['changed'] = []
   const created: Candidate['created'] = []
-  const checked: { id: string; brick: string; data: Record<string, Json>; shape: boolean }[] = []
+  const checked: { id: string; brick: string; data: Record<string, Json>; draft: boolean }[] = []
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (!Object.hasOwn(state.schema.bricks, key)) {
       if (brick.kind === 'single') created.push({ brick: key, data: defaultsFor(brick.fields, schema.week) })
@@ -66,14 +66,14 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput, schem
       if (entry.brick !== key) continue
       const next = releaseData(state.schema.bricks[key]!.fields, brick.fields, entry.data, writes.get(entry.id) ?? {}, [state.schema.week, schema.week])
       if (next.roots.length) changed.push({ id: entry.id, brick: key, data: next.data })
-      // A draft without a time may be incomplete (D115): only its shape is checked, as sites.release does.
-      if (next.roots.length || all) checked.push({ id: entry.id, brick: key, data: next.data, shape: entry.state === 'draft' && entry.publishAt === undefined })
+      // A draft without a time may be incomplete, not badly formed (D115, mode `draft`), as sites.release does.
+      if (next.roots.length || all) checked.push({ id: entry.id, brick: key, data: next.data, draft: entry.state === 'draft' && entry.publishAt === undefined })
     }
   }
 
   // Every entry of a brick whose fields changed is checked, not only the written ones (break-it 9).
   for (const entry of checked) {
-    for (const issue of (await validate(schema, entry.brick, entry.data, { mode: entry.shape ? 'shape' : 'release' })).errors) {
+    for (const issue of (await validate(schema, entry.brick, entry.data, { mode: entry.draft ? 'draft' : 'release' })).errors) {
       problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
     }
   }

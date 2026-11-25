@@ -242,8 +242,8 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   // A draft's empty `publishedOn` field is filled when it goes online, so it counts as filled (D108): with the day of
   // its plan, else today.
   const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data, planDay(schema, entry.publishAt)) : data
-  // A draft without a time may be incomplete (D115): only its shape is checked; a revert saves through here too.
-  const mode = stateOf(entry) === 'draft' && entry.publishAt === undefined ? 'shape' : 'patch'
+  // A draft without a time may be incomplete, not badly formed (D115, mode `draft`); a revert saves through here too.
+  const mode = stateOf(entry) === 'draft' && entry.publishAt === undefined ? 'draft' : 'patch'
   const { errors, warnings } = await validate(schema, entry.brick, checked, { mode, changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
   if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
   // A planned draft goes online at its time without a person: a save that leaves it failing the full check is refused
@@ -656,8 +656,8 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
 
     const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data, planDay(schema, entry.publishAt)) : data
-    // Held to the check of a save (D101): a draft without a time for its shape only (D115).
-    const mode = stateOf(entry) === 'draft' && entry.publishAt === undefined ? 'shape' : 'patch'
+    // Held to the check of a save (D101): a draft without a time in mode `draft` (well formed, may be incomplete, D115).
+    const mode = stateOf(entry) === 'draft' && entry.publishAt === undefined ? 'draft' : 'patch'
     const { errors } = await validate(schema, entry.brick, checked, { mode, changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('NOT_UNDOABLE', 'errors.oldVersionNoLongerFitsSchema', undefined, { errors: errors as unknown as Json })
     // An undo of a planned draft is held to the full check, as a save is (D101).
@@ -1024,9 +1024,9 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const data = draft ? slugged.data : withPublishedOn(schema, args.brick, slugged.data)
     // Translations sent with a new entry are fresh: every foreign leaf gets the print of its main value.
     const prints = nextPrints({ fields: brick.fields, roots: Object.keys(brick.fields), before: {}, after: data, prints: {}, main: schema.locales[0]!, confirm: undefined })
-    // A draft without a time may be incomplete (D115): only its shape is checked, and what it lacks comes back as
+    // A draft without a time may be incomplete, not badly formed (D115, mode `draft`), and what it lacks comes back as
     // warnings. Online at once or planned, it is checked in full.
-    const { errors, warnings } = await validate(schema, args.brick, withPublishedOn(schema, args.brick, data, planDay(schema, at)), { mode: draft && at === undefined ? 'shape' : 'create', ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+    const { errors, warnings } = await validate(schema, args.brick, withPublishedOn(schema, args.brick, data, planDay(schema, at)), { mode: draft && at === undefined ? 'draft' : 'create', ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
     await refuseSecondPlan(ctx, actor, args.brick, brick, data)
 
@@ -1319,7 +1319,7 @@ type Issue = ValidationResult['errors'][number]
 
 /**
  * The full check of a draft that goes online or gets a time (D101): every rule of the schema, as a create runs it.
- * A draft may hold what a create refuses (a draft without a time is checked for its shape only, D115; an import keeps
+ * A draft may hold what a create refuses (a draft without a time may be incomplete, D115; an import keeps
  * what fits the shape; a referenced entry was removed since; a field became required), so passing as a draft says
  * nothing about going online. The field errors; empty: it passes.
  * `publishedOn`: the day an empty `publishedOn` field gets on the way online, so it counts as filled (D108); `false`

@@ -10,22 +10,39 @@ import { startOfWeek, weekInfo, type SiteWeek } from './time.ts'
 import type { Brick, Field, FileField, Fields, Issue, Json, Locale, MarkdownField, Schema } from './types.ts'
 
 /**
- * Codes of values the Studio and the site cannot read at all (wrong shape, unknown names). The `shape` check refuses
- * only these: a backup brings back what the platform once stored, even where a rule became stricter since, and a draft
- * may be incomplete (D115).
+ * Codes of values the Studio and the site cannot read at all (wrong shape, unknown names). A `restore` refuses only
+ * these: a backup brings back what the platform once stored, even where a rule became stricter since.
  */
 export const SHAPE_CODES: ReadonlySet<string> = new Set(['TYPE', 'NOT_OBJECT', 'NOT_LOCALIZED', 'UNKNOWN_FIELD', 'UNKNOWN_LOCALE', 'UNKNOWN_BRICK'])
+
+/**
+ * Codes a `draft` check refuses (D115): a value must be well formed to be stored; it need not be complete or good enough
+ * for visitors. So a date that is no date, a time that is no time, a row without a proper or with a doubled `_id`, an
+ * address that is no address, a picture reference to a file that is no picture are refused; a missing value, a length,
+ * a count, a range, a choice that is no option or a reference that leads nowhere only warn.
+ */
+export const DRAFT_CODES: ReadonlySet<string> = new Set([
+  ...SHAPE_CODES, 'UNKNOWN_ROW', 'DATE', 'TIME', 'ROW_ID', 'SLUG', 'FILE_REF_NOT_IMAGE',
+])
+/**
+ * `DUPLICATE` is one code for three things; a draft refuses the two that make a value no set (a choice or an entry
+ * twice in one field: `duplicateValues`, `duplicateEntries`) and only warns about the third, a doubled value in a list's
+ * `unique` column (`duplicateRowValue`), which is about content. Told apart by the issue's message key.
+ */
+const DRAFT_DUPLICATES: ReadonlySet<string> = new Set(['issues.duplicateValues', 'issues.duplicateEntries'])
+const refusedInDraft = (i: Issue) => DRAFT_CODES.has(i.code) || (i.code === 'DUPLICATE' && i.key !== undefined && DRAFT_DUPLICATES.has(i.key))
 
 export interface ValidateOptions {
   /**
    * create/release: everything strict. patch: only paths under `changed` are errors, the rest are warnings.
-   * shape: only SHAPE_CODES are errors, the rest are warnings (a missing required value, a length, a count). For what
-   * may be incomplete (D115): a draft without a time at create, save, copy and undo, and in a release; a backup import.
+   * restore (backup import, seed; never a Studio path): only SHAPE_CODES are errors, the rest are warnings.
+   * draft (a draft without a time at create, save, copy, undo, revert and in a release, D115): only what is not well
+   * formed is an error (DRAFT_CODES); what is missing or not good enough for visitors is a warning.
    * The rules across fields (`ruleIssues`: a plan set by halves, a week that does not start on its first day) bind
    * what is written now: errors in create, and in patch when the save touches one of their fields. Stored data that
-   * breaks one (release, shape) only warns.
+   * breaks one (release, restore, draft) only warns.
    */
-  mode: 'create' | 'patch' | 'release' | 'shape'
+  mode: 'create' | 'patch' | 'release' | 'restore' | 'draft'
   /** Leaf paths changed by a patch, e.g. `closedNote` or `days.k3Fd9aZ0qx.dish`. */
   changed?: ReadonlySet<string>
   /** Whether entry `id` exists in collection brick `brick`. Without it, referenced IDs are not looked up. */
@@ -71,7 +88,8 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
     if (opts.uploads) issues.push(...fileRefIssues(value.nodes, path, label, locale, schema, opts.uploads, opts.fileAlt))
   }
   const rules = ruleIssues(schema, brick, data)
-  if (opts.mode === 'shape') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: [...issues.filter((i) => !SHAPE_CODES.has(i.code)), ...rules.map((r) => r.issue)] }
+  if (opts.mode === 'restore') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: [...issues.filter((i) => !SHAPE_CODES.has(i.code)), ...rules.map((r) => r.issue)] }
+  if (opts.mode === 'draft') return { errors: issues.filter(refusedInDraft), warnings: [...issues.filter((i) => !refusedInDraft(i)), ...rules.map((r) => r.issue)] }
   if (opts.mode === 'release') return { errors: issues, warnings: rules.map((r) => r.issue) }
   if (opts.mode === 'create') return { errors: [...issues, ...rules.map((r) => r.issue)], warnings: [] }
   const changed = opts.changed ?? new Set<string>()

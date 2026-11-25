@@ -243,9 +243,9 @@ describe('a draft may be incomplete (D115)', () => {
   const { description: _, ...halfEvent } = event('Halb')
   const codes = (issues: unknown) => (issues as { path: string; code: string }[]).map((i) => [i.path, i.code])
 
-  // Wrong behaviour caught: a half-filled draft is refused (the person loses the input), or the shape check lets an
-  // unknown field or a wrong type in, or an entry that goes online or gets a time skips the full check.
-  it('a create without a time checks the shape only and returns what is missing; online, planned or misshapen it is refused', async () => {
+  // Wrong behaviour caught: a half-filled draft is refused (the person loses the input), or the draft check lets an
+  // unknown field, a wrong type or a badly formed date in, or an entry that goes online or gets a time skips the full check.
+  it('a create without a time is checked as a draft and returns what is missing; online, planned or badly formed it is refused', async () => {
     const s = await draftSetup()
     const create = (data: Record<string, unknown>, publish?: { at?: number }) =>
       s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data, ...(publish ? { publish } : {}) })
@@ -260,6 +260,9 @@ describe('a draft may be incomplete (D115)', () => {
     expect(await errorOf(create({ ...halfEvent, nope: 'x' }))).toMatchObject({ code: 'INVALID', key: 'errors.fieldNoLongerExists' })
     const wrongType = await errorOf(create({ ...halfEvent, title: 7 }))
     expect([wrongType.code, codes((wrongType.details as { errors: unknown }).errors)]).toEqual(['INVALID', [['title', 'NOT_LOCALIZED']]])
+    // A value must be well formed to be stored: a "date" that is a number is no draft content (D115, mode `draft`).
+    const badDay = await errorOf(create({ ...halfEvent, when: 42 }))
+    expect([badDay.code, codes((badDay.details as { errors: unknown }).errors)]).toEqual(['INVALID', [['when', 'DATE']]])
   })
 
   // Wrong behaviour caught: clearing a required field of a draft, copying the draft or undoing a save of it is refused.
@@ -309,7 +312,7 @@ describe('a draft may be incomplete (D115)', () => {
 
   // Wrong behaviour caught: one half-filled draft blocks every release that rechecks its brick, or a release lets an
   // incomplete online or planned entry through.
-  it('a release checks a draft without a time for its shape only; online and planned entries stay strict', async () => {
+  it('a release checks a draft without a time as a draft; online and planned entries stay strict', async () => {
     const s = await draftSetup()
     const draft = await s.createDraft('Halb')
     await breakDraft(s, draft.entry)
