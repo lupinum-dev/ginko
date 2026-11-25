@@ -982,6 +982,9 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const lateAt = lapsed(actor, publish?.at)
     const draft = publish === undefined || (publish.at !== undefined && !lateAt)
     const at = draft ? publish?.at : undefined
+    // Checked before anything reads it as a day (`planDay`) and before anything is written, so a late failure (apply
+    // of a proposal) leaves no half-done removal behind.
+    if (at !== undefined) checkFuture(at)
     // Online at once, an empty `publishedOn` field holds the site's day; a draft's is filled when it goes online, and
     // counts as filled for the check (D108).
     const data = draft ? slugged.data : withPublishedOn(schema, args.brick, slugged.data)
@@ -1002,8 +1005,6 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     if (c.treeBytes + trees.bytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
     const files = fileIdsOf(brick.fields, data, { isUploadId: uploadIdsOf(ctx) })
     await checkFiles(ctx, actor.site._id, files, fileIdsOf(brick.fields, data, { only: 'image' }))
-    // Checked before anything is written, so a late failure (apply of a proposal) leaves no half-done removal behind.
-    if (at !== undefined) checkFuture(at)
 
     // A plain draft is not live; a live or scheduled entry is (SPEC 17).
     if (await needsProposal(ctx, actor, 'create', args.task, args.brick, { state: draft && at === undefined ? 'draft' : 'live' })) {
