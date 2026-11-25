@@ -111,19 +111,21 @@ export function hasTranslation(f: Field): boolean {
 }
 
 /**
- * The value at a leaf path: `name`, `image.alt`, or inside a list `days.<rowId>.dish` and
- * `images.<rowId>.image.alt` (the paths of the server's leavesOf and of the prints).
+ * The value at a leaf path: `name`, `image.alt`, inside a list `images.<rowId>.image.alt`, or inside a rows field
+ * `days.<rowKey>.dish` (the paths of the server's leavesOf and of the prints).
  */
 export function leafValue(data: Record<string, unknown> | undefined, path: string): unknown {
   const [root, ...rest] = path.split('.')
   let value: unknown = data?.[root!]
-  if (rest.length && rest[0] !== 'alt') {
-    const [rowId, column, ...tail] = rest
-    const row = Array.isArray(value) ? value.find((r) => (r as { _id?: string })._id === rowId) : undefined
-    value = (row as Record<string, unknown> | undefined)?.[column!]
+  if (rest.length === 1) return (value as { alt?: unknown } | undefined)?.alt
+  if (rest.length) {
+    const [row, column, ...tail] = rest
+    // A list keeps its rows in order, each with an `_id`; a rows field (f.rows) keeps them by row key.
+    const found = Array.isArray(value)
+      ? value.find((r) => (r as { _id?: string })._id === row)
+      : typeof value === 'object' && value !== null ? (value as Record<string, unknown>)[row!] : undefined
+    value = (found as Record<string, unknown> | undefined)?.[column!]
     if (tail[0] === 'alt') value = (value as { alt?: unknown } | undefined)?.alt
-  } else if (rest[0] === 'alt') {
-    value = (value as { alt?: unknown } | undefined)?.alt
   }
   return value
 }

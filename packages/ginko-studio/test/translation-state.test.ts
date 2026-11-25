@@ -3,7 +3,27 @@ import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, type CollectionBrick } from '@lupinum/ginko/internal'
 import { printOf, serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
-import { hidesUntranslated, languageLabel, leafTranslation, missingNote, pageOf, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'
+import { hidesUntranslated, languageLabel, leafTranslation, leafValue, missingNote, pageOf, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'
+
+describe('leafValue', () => {
+  const data = {
+    name: { de: 'Suppe' },
+    image: { file: 'f1', alt: { de: 'Teller' } },
+    images: [{ _id: 'r1', image: { file: 'f2', alt: { de: 'Garten' } } }],
+    days: { mo: { dish: { de: 'Kürbiscremesuppe' } } },
+  }
+  // Wrong behaviour caught: the English view of the lunch showed "–" as the German text of every day and never said
+  // "Deutsch geändert seit Übersetzung", because a rows field keeps its rows by key, not in a list with `_id`.
+  it.each([
+    ['name', { de: 'Suppe' }],
+    ['image.alt', { de: 'Teller' }],
+    ['images.r1.image.alt', { de: 'Garten' }],
+    ['days.mo.dish', { de: 'Kürbiscremesuppe' }],
+    ['days.di.dish', undefined],
+  ])('%s', (path, expected) => {
+    expect(leafValue(data, path)).toEqual(expected)
+  })
+})
 
 describe('leafTranslation', () => {
   const base = { locale: 'en', main: 'de', confirmed: false }

@@ -8,16 +8,25 @@ const replacements: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', ß:
  * caller states what it takes then (the platform takes the brick key, `nameBase`).
  */
 export function slugify(input: string): string {
-  const slug = input
+  const dashed = input
     .replace(/[äöüßÄÖÜ]/g, (c) => replacements[c] ?? c)
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80)
-    .replace(/-+$/g, '')
-  return slug
+  return trimDashes(trimDashes(dashed).slice(0, 80))
+}
+
+/**
+ * `text` without the hyphens at its start and end. A loop, not `/^-+|-+$/`: that regex backtracks on a long run of
+ * hyphens inside the text (polynomial time on input someone else wrote).
+ */
+export function trimDashes(text: string): string {
+  let start = 0
+  let end = text.length
+  while (start < end && text[start] === '-') start++
+  while (end > start && text[end - 1] === '-') end--
+  return text.slice(start, end)
 }
 
 export const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/

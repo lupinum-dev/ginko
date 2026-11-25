@@ -291,3 +291,14 @@ describe('extend', () => {
     expect(() => extend(old as never, {})).toThrow(/made with `single` or `collection`/)
   })
 })
+
+describe('the id of a site without a Studio', () => {
+  // Wrong behaviour caught: the id from the name keeps hyphens at its ends, or starts with a digit (K2, no regex there).
+  it.each([
+    ['Halden Pumps', 'halden-pumps'],
+    ['  -Café Linde!- ', 'cafe-linde'],
+    ['1. FC Linde', 'site-1-fc-linde'],
+  ])('%j is %j', (name, expected) => {
+    expect(defineSite({ ...base, name, locales: ['de'], bricks: {} }).site).toBe(expected)
+  })
+})

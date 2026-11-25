@@ -3,6 +3,7 @@
 // checks, the CLI and the Nuxt module read one form only. Every brick is written with `single` or `collection` (the
 // patterns and the presets are made that way); a brick in the stored form is refused with a sentence.
 import type { RouteTemplate, SiteInput } from '../core/site.ts'
+import { trimDashes } from '../core/slug.ts'
 import type { Brick, CollectionBrick, Label, Locale, SingleBrick, Task } from '../core/types.ts'
 import { DEF, type BrickDef, type CollectionDef, type SingleDef, type StandardTask, type TaskInput } from './bricks.ts'
 import { entryWord, replaceTexts, standardLabel, translateBrick, withTexts, type BrickTexts, type StudioTexts } from './labels.ts'
@@ -139,7 +140,7 @@ const isDef = (brick: unknown): brick is BrickDef => (brick as { [DEF]?: true })
 
 /** `Halden Pumps` → `halden-pumps`: letters, digits and `-`, as a site id is written. */
 function slugOf(name: string): string {
-  const slug = name.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+  const slug = trimDashes(name.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-')).slice(0, 40)
   return /^[a-z]/.test(slug) ? slug : `site-${slug}`.slice(0, 40)
 }
 
