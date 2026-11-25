@@ -235,7 +235,18 @@
     "placeInvalid": "La page ne peut pas aller là.",
     "headingOnSubpage": "Une sous-page suit sa page parente et n’a pas de titre à elle.",
     "noUnpublishedChanges": "Il n’y a pas de modifications non publiées ici.",
-    "liveChangedMeanwhile": "La version en ligne a été modifiée entre-temps. Abandonnez les modifications non publiées et refaites-les."
+    "liveChangedMeanwhile": "La version en ligne a été modifiée entre-temps. Abandonnez les modifications non publiées et refaites-les.",
+    "datedNotWith": "Un jour ne peut pas aller avec une publication, une langue ou des traductions confirmées.",
+    "datedOnlyOnline": "Seule une entrée en ligne peut recevoir un changement à partir d’un jour. Un brouillon prend la valeur tout de suite : enregistrez-le sans jour.",
+    "dayInvalid": "Ce n’est pas un jour valide.",
+    "dayNotAhead": "Le jour doit être après aujourd’hui.",
+    "dayTooFarAhead": "Le jour peut être au plus dans un an.",
+    "taskCannotDate": "Cette tâche change les valeurs tout de suite, pas à partir d’un jour.",
+    "fieldsCannotDate": "Ces champs ne peuvent pas commencer à un jour : {fields}. Publiez les modifications maintenant ou abandonnez ces champs.",
+    "tooManyDated": "Une entrée peut avoir au plus {max} changements planifiés.",
+    "liveTakesDay": "Les modifications d’une entrée en ligne commencent à un jour, pas à une heure.",
+    "draftTakesTime": "Un brouillon passe en ligne à une heure, pas à partir d’un jour.",
+    "datedNotFound": "Ce changement planifié n’existe plus."
   },
   "history": {
     "changedSingle": "{label} : modification de {fields}",
@@ -302,7 +313,17 @@
     "changesScheduled": "Modifications de « {title} » : en ligne à partir du {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "changesUnscheduled": "Modifications de « {title} » : programmation annulée",
     "changesDiscarded": "Modifications non publiées de « {title} » abandonnées",
-    "changesPublishStopped": "Les modifications de « {title} » ne sont pas passées en ligne : {why}"
+    "changesPublishStopped": "Les modifications de « {title} » ne sont pas passées en ligne : {why}",
+    "datedSaved": "« {title} » : {fields} à partir du {day, date, ::MMMMd}",
+    "datedProposal": "Modifier {fields} de « {title} » à partir du {day, date, ::MMMMd}",
+    "datedFromPending": "Les modifications de « {title} » commencent le {day, date, ::MMMMd} : {fields}",
+    "datedFromPendingProposal": "Publier les modifications de « {title} » à partir du {day, date, ::MMMMd} : {fields}",
+    "datedMoved": "« {title} » : changement planifié ({fields}) déplacé du {was, date, ::MMMMd} au {day, date, ::MMMMd}",
+    "datedCancelled": "« {title} » : changement planifié à partir du {day, date, ::MMMMd} annulé ({fields})",
+    "datedCancelledWithEntry": "« {title} » : {count, plural, one {son changement planifié a été annulé} other {ses # changements planifiés ont été annulés}} avec l’entrée",
+    "datedApplied": "« {title} » : {fields} modifié, comme prévu à partir du {day, date, ::MMMMd}",
+    "datedAppliedLate": "« {title} » : {fields} modifié tout de suite (le jour prévu, {day, date, ::MMMMd}, était déjà arrivé au moment de l’approbation)",
+    "datedStopped": "Le changement de « {title} » à partir du {day, date, ::MMMMd} n’est pas entré en vigueur, car {why}"
   },
   "publicness": {
     "deleted": "L’entrée a été supprimée. Vous pouvez la restaurer jusqu’au {until, date, long} ; elle sera ensuite supprimée définitivement.",
@@ -353,6 +374,10 @@
     "rejected": {
       "subject": "Non approuvée : votre modification pour {site}",
       "text": "Bonjour,\n\nvotre modification pour « {site} » n’a pas été approuvée :\n\n{what}\n\nMotif : « {reason} »\n\nCorrigez-la : {path}\n"
+    },
+    "stoppedChange": {
+      "subject": "Le changement planifié de « {title} » n’est pas entré en vigueur",
+      "text": "Bonjour,\n\nun changement de votre entrée était prévu à partir du {day, date, ::EEEEdMMMM} : {fields}. Il n’est pas entré en vigueur, car {because}\n\nL’entrée est en sécurité : le site affiche les valeurs qu’il avait. Corrigez le changement et donnez-lui un nouveau jour, ou annulez-le.\n\nOuvrir l’entrée : {path}\n"
     }
   },
   "stopped": {
@@ -366,7 +391,8 @@
       "link": "il renvoie vers une page qui n’existe pas : {href}",
       "invalid": "{count, plural, one {{fields} manque ou n’est pas valide.} other {{fields} manquent ou ne sont pas valides.}}",
       "late": "son heure était déjà passée lors de l’import du contenu."
-    }
+    },
+    "changeTitle": "« {title} » : le changement à partir du {day, date, ::MMMMd} n’est pas entré en vigueur"
   },
   "content": {
     "copyOf": "{text} (copie)"

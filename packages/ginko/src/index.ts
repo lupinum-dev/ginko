@@ -29,6 +29,6 @@ export type { DataOf, ItemOf, UpcomingOf, Money, ImageValue, FileValue, UnknownC
 export type { NavNode } from './core/navigation.ts'
 export type { Query, Condition } from './core/query.ts'
 export type {
-  AspectRatio, Locale, Currency, Label, Json, ChoiceOption, Task, BrickSource, Field, Fields, SingleBrick, CollectionBrick, Brick,
+  AspectRatio, Locale, Currency, Label, Json, ChoiceOption, Task, TaskWhen, BrickSource, Field, Fields, SingleBrick, CollectionBrick, Brick,
   BrickStatus, CollectionStatus, SingleStatus,
 } from './core/types.ts'

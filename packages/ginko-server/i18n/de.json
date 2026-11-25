@@ -235,7 +235,18 @@
     "placeInvalid": "Die Seite kann dort nicht hin.",
     "headingOnSubpage": "Eine Unterseite folgt ihrer übergeordneten Seite und hat keine eigene Überschrift.",
     "noUnpublishedChanges": "Hier gibt es keine unveröffentlichten Änderungen.",
-    "liveChangedMeanwhile": "Die Online-Fassung wurde inzwischen geändert. Verwirf die unveröffentlichten Änderungen und mach sie neu."
+    "liveChangedMeanwhile": "Die Online-Fassung wurde inzwischen geändert. Verwirf die unveröffentlichten Änderungen und mach sie neu.",
+    "datedNotWith": "Ein Tag geht nicht zusammen mit Veröffentlichen, einer Sprache oder bestätigten Übersetzungen.",
+    "datedOnlyOnline": "Nur ein Eintrag, der online ist, bekommt eine Änderung ab einem Tag. Ein Entwurf übernimmt den Wert gleich: Speichere ihn ohne Tag.",
+    "dayInvalid": "Das ist kein gültiger Tag.",
+    "dayNotAhead": "Der Tag muss nach heute liegen.",
+    "dayTooFarAhead": "Der Tag darf höchstens ein Jahr voraus liegen.",
+    "taskCannotDate": "Diese Aufgabe ändert Werte ab sofort, nicht ab einem Tag.",
+    "fieldsCannotDate": "Diese Felder können nicht ab einem Tag gelten: {fields}. Veröffentliche die Änderungen jetzt oder verwirf diese Felder.",
+    "tooManyDated": "Ein Eintrag kann höchstens {max} geplante Änderungen haben.",
+    "liveTakesDay": "Änderungen an einem Eintrag, der online ist, gelten ab einem Tag, nicht ab einer Uhrzeit.",
+    "draftTakesTime": "Ein Entwurf geht zu einer Uhrzeit online, nicht ab einem Tag.",
+    "datedNotFound": "Diese geplante Änderung gibt es nicht mehr."
   },
   "history": {
     "changedSingle": "{label}: {fields} geändert",
@@ -302,7 +313,17 @@
     "changesScheduled": "Änderungen an „{title}“: online ab {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "changesUnscheduled": "Änderungen an „{title}“: Zeitplan aufgehoben",
     "changesDiscarded": "Unveröffentlichte Änderungen an „{title}“ verworfen",
-    "changesPublishStopped": "Änderungen an „{title}“ gingen nicht online: {why}"
+    "changesPublishStopped": "Änderungen an „{title}“ gingen nicht online: {why}",
+    "datedSaved": "„{title}“: {fields} ab {day, date, ::MMMMd}",
+    "datedProposal": "„{title}“: {fields} ab {day, date, ::MMMMd} ändern",
+    "datedFromPending": "Änderungen an „{title}“ gelten ab {day, date, ::MMMMd}: {fields}",
+    "datedFromPendingProposal": "Änderungen an „{title}“ ab {day, date, ::MMMMd} veröffentlichen: {fields}",
+    "datedMoved": "„{title}“: geplante Änderung ({fields}) vom {was, date, ::MMMMd} auf den {day, date, ::MMMMd} verschoben",
+    "datedCancelled": "„{title}“: geplante Änderung ab {day, date, ::MMMMd} gestrichen ({fields})",
+    "datedCancelledWithEntry": "„{title}“: {count, plural, one {die geplante Änderung ist} other {# geplante Änderungen sind}} mit dem Eintrag entfallen",
+    "datedApplied": "„{title}“: {fields} geändert, wie ab {day, date, ::MMMMd} geplant",
+    "datedAppliedLate": "„{title}“: {fields} sofort geändert (der geplante Tag, {day, date, ::MMMMd}, war bei der Freigabe schon da)",
+    "datedStopped": "Die Änderung an „{title}“ ab {day, date, ::MMMMd} trat nicht in Kraft, weil {why}"
   },
   "publicness": {
     "deleted": "Der Eintrag wurde entfernt. Er lässt sich bis zum {until, date, long} wiederherstellen, danach wird er endgültig gelöscht.",
@@ -353,6 +374,10 @@
     "rejected": {
       "subject": "Nicht freigegeben: deine Änderung für {site}",
       "text": "Hallo,\n\ndeine Änderung für „{site}“ wurde nicht freigegeben:\n\n{what}\n\nGrund: „{reason}“\n\nKorrigieren: {path}\n"
+    },
+    "stoppedChange": {
+      "subject": "Geplante Änderung an „{title}“ trat nicht in Kraft",
+      "text": "Hallo,\n\nfür deinen Eintrag war ab {day, date, ::EEEEdMMMM} eine Änderung geplant: {fields}. Sie trat nicht in Kraft, weil {because}\n\nDem Eintrag ist nichts passiert: Die Website zeigt die bisherigen Werte. Korrigiere die Änderung und gib ihr einen neuen Tag, oder streiche sie.\n\nEintrag öffnen: {path}\n"
     }
   },
   "stopped": {
@@ -366,7 +391,8 @@
       "link": "er auf eine Seite verlinkt, die es nicht gibt: {href}",
       "invalid": "{count, plural, one {{fields} fehlt oder ungültig ist.} other {{fields} fehlen oder ungültig sind.}}",
       "late": "seine Zeit schon vorbei war, als die Inhalte importiert wurden."
-    }
+    },
+    "changeTitle": "„{title}“: Änderung ab {day, date, ::MMMMd} trat nicht in Kraft"
   },
   "content": {
     "copyOf": "{text} (Kopie)"

@@ -16,7 +16,7 @@ export type StopReason = { code: 'link'; href: string } | { code: 'invalid'; fie
 /** One thing that waits. `by` is a user id; a file entry and an imported plan have no person. */
 export type Waiting =
   | { kind: 'planned'; at: Time; by?: string }
-  | { kind: 'stopped'; at: Time; by?: string; reason: StopReason }
+  | { kind: 'stopped'; at: Time; by?: string; reason: StopReason; change?: { from: Day; fields: string[] } }
   | { kind: 'unpublished'; by?: string; since: Time }
   | { kind: 'change'; from: Day; until?: Day; yearly?: true; name?: string; fields: string[]; by?: string }
   | { kind: 'request'; id: string; op: 'publish' | 'unpublish' | 'save' | 'add' | 'remove'; by?: string; at?: Time; from?: Day; group?: string }
@@ -40,25 +40,40 @@ export interface StatusInput {
   stopped?: { at: Time; by?: string; reason: StopReason }
   /** Saved changes of an online entry that are not on the website yet. */
   unpublished?: { by?: string; since: Time }
+  /** The entry's dated changes still to come (D117), waiting or stopped on their day (`stopped`, D103 reasons). */
+  changes?: readonly { from: Day; fields: string[]; by?: string; stopped?: { at: Time; reason: StopReason } }[]
 }
 
 /**
  * The status of `entry` of `brick` on `today` (the site's day). This slice gives the waiting kinds `planned`, `stopped`,
- * `unpublished` and `ends`; `change` and `request` are in the type and come later. A draft has at most one of
- * `planned` and `stopped`.
+ * `unpublished`, `change` and `ends`; `request` is in the type and comes later. A draft has at most one of `planned`
+ * and `stopped` of its own. The dated changes follow in the order of their days, in every state (D124): a waiting one
+ * as `change`, one that stopped on its day as `stopped` with the `change` it was.
  */
 export function statusOf(brick: Brick, entry: StatusInput, today: Day): EntryStatus {
   const waiting: Waiting[] = []
   if (entry.state === 'draft') {
     if (entry.publishAt !== undefined) waiting.push({ kind: 'planned', at: entry.publishAt, ...(entry.publishBy ? { by: entry.publishBy } : {}) })
     else if (entry.stopped) waiting.push({ kind: 'stopped', at: entry.stopped.at, ...(entry.stopped.by ? { by: entry.stopped.by } : {}), reason: entry.stopped.reason })
+    waiting.push(...changesOf(entry))
     return { now: 'draft', waiting }
   }
   if (entry.unpublished) waiting.push({ kind: 'unpublished', ...(entry.unpublished.by ? { by: entry.unpublished.by } : {}), since: entry.unpublished.since })
+  waiting.push(...changesOf(entry))
   if (!shownOn(brick, entry.data, today)) return { now: 'ended', waiting }
   const on = shownUntil(brick, entry.data)
   if (on !== undefined) waiting.push({ kind: 'ends', on })
   return { now: 'online', waiting }
+}
+
+/** The dated changes of `entry` as waiting things, in the order of their days. */
+function changesOf(entry: StatusInput): Waiting[] {
+  return [...(entry.changes ?? [])].sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0)).map((c): Waiting => {
+    const by = c.by ? { by: c.by } : {}
+    return c.stopped
+      ? { kind: 'stopped', at: c.stopped.at, ...by, reason: c.stopped.reason, change: { from: c.from, fields: [...c.fields] } }
+      : { kind: 'change', from: c.from, fields: [...c.fields], ...by }
+  })
 }
 
 /**

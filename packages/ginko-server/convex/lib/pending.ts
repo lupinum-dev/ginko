@@ -27,7 +27,7 @@ export async function pendingBySite(ctx: QueryCtx, site: Id<'sites'>): Promise<M
 export const underRoot = (leaf: string, root: string) => leaf === root || leaf.startsWith(`${root}.`)
 
 /** The entry as its unpublished changes make it: their fields and the prints under them over the stored ones. */
-export function overlay(entry: Pick<Doc<'entries'>, 'data' | 'prints'>, pending: Pending | null | undefined): { data: Data; prints: Prints } {
+export function overlay(entry: Pick<Doc<'entries'>, 'data' | 'prints'>, pending: Pick<Pending, 'fields' | 'prints'> | null | undefined): { data: Data; prints: Prints } {
   if (!pending) return { data: entry.data as Data, prints: entry.prints }
   const roots = Object.keys(pending.fields)
   const data: Data = { ...(entry.data as Data) }

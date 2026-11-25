@@ -93,6 +93,26 @@ describe('agent door', () => {
     expect((await s.t.run((ctx) => ctx.db.get(s.entries['menu-schnitzel']!)))!.data.price).toEqual({ amount: 2190 })
   })
 
+  // Wrong behaviour caught: an assistant asked for "from 1 November" puts the price online at once, or the day is
+  // offered on a task whose form does not ask one.
+  it('a task that asks a day takes from: the price waits as a dated change and the answer says from when', async () => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      for (const task of schema.bricks.menu!.tasks ?? []) if (task.id === 'price') (task as { when?: { from: 'ask' } }).when = { from: 'ask' }
+      await ctx.db.patch(s.site, { schema })
+    })
+    const key = await keyOf(s, 'owner')
+    const tools = (await rpc(s, key, 'tools/list')).body.result.tools as { name: string; inputSchema: { properties: Record<string, unknown> } }[]
+    expect(Object.keys(tools.find((t) => t.name === 'task_menu_price')!.inputSchema.properties)).toContain('from')
+    expect(Object.keys(tools.find((t) => t.name === 'task_menu_edit')!.inputSchema.properties)).not.toContain('from')
+    const done = await call(s, key, 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 25, from: '2026-11-01' })
+    expect(done.text).toContain('On the website from 2026-11-01')
+    expect((await s.t.run((ctx) => ctx.db.get(s.entries['menu-schnitzel']!)))!.data.price).toEqual({ amount: 2190 })
+    const dated = await s.t.run((ctx) => ctx.db.query('datedChanges').collect())
+    expect(dated).toMatchObject([{ from: '2026-11-01', fields: { price: { amount: 2500 } } }])
+  })
+
   it('a price in euros is stored in cents and the change names the key', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')

@@ -15,7 +15,7 @@ function taskOf(task: Task, collection: boolean): TaskInput {
   if (task.kind === 'create') return { id: task.id, label: task.label, kind: 'add', ...(task.fields ? { fields: task.fields } : {}), ...more }
   // The written form asks "which entry" before every edit of a collection; a stored task without `pick` would change.
   if (collection !== (task.pick === true)) throw new Error(`defOf: the edit task “${task.id}” ${collection ? 'of a collection has no `pick: true`' : 'of a single has `pick`'}.`)
-  return { id: task.id, label: task.label, kind: 'edit', fields: task.fields, ...more }
+  return { id: task.id, label: task.label, kind: 'edit', fields: task.fields, ...more, ...(task.when ? { when: { from: task.when.from } } : {}) }
 }
 
 /** The brick `brick` in the written form. `item` is the word for one entry, for the standard tasks of a site that changes the brick with `extend`. */

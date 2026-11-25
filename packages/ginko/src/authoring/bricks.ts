@@ -3,7 +3,7 @@
 // and the texts of its label files.
 import type { StatusRuleName } from '../patterns/rules.ts'
 import type { ValueInput } from '../core/fields.ts'
-import type { BrickTimeline, CollectionListing, CollectionTree, Fields, Label } from '../core/types.ts'
+import type { BrickTimeline, CollectionListing, CollectionTree, Fields, Label, TaskWhen } from '../core/types.ts'
 
 /** Marks a brick written with `single` or `collection` of this entry. A symbol key, so it is never stored. */
 export const DEF: unique symbol = Symbol.for('ginko.brick.def')
@@ -55,6 +55,8 @@ interface TaskOptions<F extends Fields> {
   prefill?: Prefill<F>
   /** A staff change waits for an owner's yes. */
   needsApproval?: boolean
+  /** An edit task only: `{ from: 'ask' }` lets the form ask from which day the values hold. Default `{ from: 'now' }`. */
+  when?: TaskWhen
 }
 
 /**

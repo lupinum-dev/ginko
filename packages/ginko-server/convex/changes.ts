@@ -45,6 +45,8 @@ async function summaries(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]) {
       ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null, inTrash,
       // An applied proposal: the owner or admin who approved it ("Freigabe: …").
       approver: change.approvedBy ? await names.who(change.approvedBy) : null,
+      // A dated change the system wrote on its day: the person who planned it ("Geplant von …", D126).
+      planner: change.plannedBy ? await names.who(change.plannedBy) : null,
       ...(own.has(change._id) ? { own: true as const } : {}),
     })
   }

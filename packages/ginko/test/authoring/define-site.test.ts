@@ -25,7 +25,7 @@ const services = collection({ untranslated: 'fallback',
   timeline: { public: ['price'] },
   showUntil: { field: 'until', plusDays: 2, thenDelete: true },
   status: { show: 'ending' },
-  tasks: ['add', 'edit', { id: 'price', label: 'Preis ändern', fields: ['price'] }, { id: 'editAll', label: 'Alles ändern', needsApproval: true }, 'remove'],
+  tasks: ['add', 'edit', { id: 'price', label: 'Preis ändern', fields: ['price'], when: { from: 'ask' } }, { id: 'editAll', label: 'Alles ändern', needsApproval: true }, 'remove'],
 })
 
 describe('defineSite writes the stored form', () => {
@@ -63,11 +63,19 @@ describe('defineSite writes the stored form', () => {
     expect(site.bricks.services.tasks).toEqual([
       { id: 'add', label: { de: 'Leistung hinzufügen', en: 'Add a service' }, kind: 'create' },
       { id: 'edit', label: { de: 'Leistung bearbeiten', en: 'Edit a service' }, kind: 'edit', pick: true, fields: ['title', 'until', 'price', 'nextPrice', 'priceFrom'] },
-      { id: 'price', label: { de: 'Preis ändern', en: 'Change a price' }, kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'] },
+      { id: 'price', label: { de: 'Preis ändern', en: 'Change a price' }, kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'], when: { from: 'ask' } },
       { id: 'editAll', label: 'Alles ändern', kind: 'edit', pick: true, fields: ['title', 'until', 'price', 'nextPrice', 'priceFrom'], needsApproval: true },
       { id: 'remove', label: { de: 'Leistung entfernen', en: 'Remove a service' }, kind: 'remove' },
     ])
     expect(site.bricks.home.tasks).toEqual([{ id: 'edit', label: 'Startseite bearbeiten', kind: 'edit', fields: ['title'] }])
+  })
+
+  // Wrong (D123): `when` is lost on the way to the stored model or back, so the form never asks from which day; or an
+  // add task takes it without a word.
+  it('stores when of an edit task, reads it back, and refuses it on an add task', () => {
+    expect(defineSite({ ...base, locales: ['de'], bricks: { services: stored.defOf(site.bricks.services) }, entries: { services: '/leistungen/[slug]' } }).bricks.services.tasks?.[2]).toMatchObject({ id: 'price', when: { from: 'ask' } })
+    const add = collection({ listing: { title: 'title' }, label: 'News', max: 5, order: 'manual', fields: { title: f.text('Titel') }, tasks: [{ id: 'add', when: { from: 'ask' } }] })
+    expect(() => defineSite({ ...base, locales: ['de'], bricks: { add } })).toThrow('add.tasks.add: when is only for an edit task.')
   })
 
   // Wrong: a default or a renamed key is stored under another name or value than the stored form reads.

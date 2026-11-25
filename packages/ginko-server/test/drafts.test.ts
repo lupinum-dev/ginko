@@ -955,32 +955,6 @@ describe('unpublished changes of a live entry (save without publishing)', () => 
     expect(await liveTitle(s, entry)).toBe('Online geändert')
   })
 
-  // Wrong behaviour caught: "publish later" puts the changes live at once, or never; a removal leaves them behind.
-  it('a scheduled publish applies them at the time; until then the website keeps the live version', async () => {
-    const s = await draftSetup()
-    const entry = await liveEvent(s)
-    const live = await liveTitle(s, entry)
-    await save(s, entry, 1, { title: { de: 'Ab morgen' } })
-    expect(await publish(s, entry, { at: NOW + 2 * HOUR })).toMatchObject({ state: 'live', publishAt: NOW + 2 * HOUR })
-    expect(await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })).toMatchObject({ pending: { publishAt: NOW + 2 * HOUR } })
-    await s.advanceTo(NOW + HOUR)
-    expect(await liveTitle(s, entry)).toEqual(live)
-    await s.advanceTo(NOW + 2 * HOUR + 1)
-    expect(await liveTitle(s, entry)).toBe('Ab morgen')
-    expect(await pendingRows(s)).toEqual([])
-
-    // Unpublish of a planned publish takes back only the time; the entry stays online with its changes saved.
-    await save(s, entry, 3, { title: { de: 'Noch später' } })
-    await publish(s, entry, { at: NOW + 4 * HOUR })
-    expect(await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })).toMatchObject({ state: 'live' })
-    expect((await pendingRows(s))[0]).not.toHaveProperty('publishAt')
-    const row = (await s.row(entry))!
-    await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: row.lifeRev })
-    expect(await pendingRows(s)).toEqual([])
-    await s.advanceTo(NOW + 5 * HOUR)
-    expect((await s.row(entry))!.data.title).toEqual({ de: 'Ab morgen' })
-  })
-
   // Wrong behaviour caught: with needsApproval the save goes to review, or the publish skips it; an approval puts live a newer save.
   it('with needsApproval the save needs no yes, the publish does, and a save after sending makes it stale', async () => {
     const s = await draftSetup()

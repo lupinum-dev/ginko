@@ -231,10 +231,12 @@ function compileTask(key: string, input: TaskInput, brick: BrickDef, editable: r
   // A standard label is made from the word for one entry; a text for the task in the label file replaces it.
   const label = task.label ?? replaceTexts(standardLabel(task.id as StandardTask, words, main), main, taskTexts(task.id))
   const approval = task.needsApproval ? { needsApproval: true } : {}
+  if (task.when !== undefined && kind !== 'edit') problems.push(`${key}.tasks.${task.id}: when is only for an edit task.`)
+  const when = task.when !== undefined && kind === 'edit' ? { when: { from: task.when.from } } : {}
   // The stored prefill is JSON (`serializeSchema` checks it against the fields).
   const prefill = task.prefill ? { prefill: task.prefill as Extract<Task, { kind: 'edit' }>['prefill'] } : {}
   if (kind === 'remove') return { id: task.id, label, kind, ...approval }
   if (kind === 'create') return { id: task.id, label, kind, ...(task.fields ? { fields: task.fields } : {}), ...prefill, ...approval }
   // An edit task on a collection first asks which entry.
-  return { id: task.id, label, kind, ...(brick.kind === 'collection' ? { pick: true } : {}), fields: task.fields ?? editable, ...prefill, ...approval }
+  return { id: task.id, label, kind, ...(brick.kind === 'collection' ? { pick: true } : {}), fields: task.fields ?? editable, ...prefill, ...approval, ...when }
 }

@@ -63,6 +63,13 @@ export function draftBricks(actor: Actor): string[] {
  * `publish` on every tool that creates or changes content (SPEC 15): a new entry is a draft and a change to a published
  * entry waits as unpublished changes until the person publishes it, unless the person asked for it to go online now.
  */
+/** A dated change (D125): the day the values start, for an entry that is online. */
+export const FROM = {
+  type: 'string',
+  format: 'date',
+  description: 'A day (YYYY-MM-DD) after today, at most a year ahead: the values start on that day as a planned change of an entry that is online; until then the website keeps the values it has. Not together with publish.',
+} as const
+
 export const PUBLISH = {
   type: 'boolean',
   description: 'true: goes on the website at once. Only when the person asked for that. Without it a new entry is a draft and a change waits unpublished; the person publishes it in the platform.',
@@ -244,8 +251,8 @@ export function builderTools(actor: Actor): ToolDef[] {
     {
       name: 'ginko_write',
       description: `Changes fields of an entry, or of a single brick, in the main language (${main}). Fields you leave out stay as they are; null removes an optional value. `
-        + `${values} Foreign languages go through ginko_translate. The change waits unpublished until the person publishes it in the platform, unless publish is true.`,
-      inputSchema: object({ brick, entry, fields, publish: PUBLISH, propose: PROPOSE, request_id: REQUEST_ID }, ['brick', 'fields']),
+        + `${values} Foreign languages go through ginko_translate. The change waits unpublished until the person publishes it in the platform, unless publish is true; with from it starts on that day by itself.`,
+      inputSchema: object({ brick, entry, fields, publish: PUBLISH, from: FROM, propose: PROPOSE, request_id: REQUEST_ID }, ['brick', 'fields']),
       annotations: WRITES,
     },
     {
