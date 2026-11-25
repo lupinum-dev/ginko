@@ -42,7 +42,8 @@ function mayChange(actor: Actor, schema: Schema, task: string | undefined, entry
  * Why `actor` may not take `step` on `row` through `task`, as the error the step throws; undefined when it may. One rule
  * for `cancel`, `setDay` and the list the editor reads (G7): the task's rights over the change's fields; and a person
  * whose change needs a yes moves none and cancels only their own (taking away someone else's planned values needs one):
- * a row they saved last that holds no one else's values (`shared`, H2).
+ * a row they saved last that holds no one else's values (`shared`, H2). On a draft nothing needs a yes, as for a save on a
+ * draft (`needsProposal`), so this last rule does not apply there.
  */
 async function datedRefusal(ctx: QueryCtx, actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated, step: 'cancel' | 'move'): Promise<ConvexError<Json> | undefined> {
   try {
