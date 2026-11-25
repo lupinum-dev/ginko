@@ -272,6 +272,34 @@ describe('2026-11-25-dated-changes (D130)', () => {
     expect([after.site.schema, after.site.schemaRev, after.site.contentRev, after.changes, after.dated]).toEqual([before.site.schema, before.site.schemaRev, before.site.contentRev, before.changes, 0])
   })
 
+  // A1. Wrong behaviour caught: one timed change the migration cannot convert (here of a brick the stored model no
+  // longer has, so even its title cannot be read) stops the whole site.
+  it('keeps a timed change it cannot convert unpublished and converts the rest of the site', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const [risotto, schnitzel] = [s.entries['menu-risotto']!, s.entries['menu-schnitzel']!]
+    await timedRow(s, risotto, { price: { amount: 1500 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await s.t.run((ctx) => ctx.db.insert('pendingChanges', { site: s.site, entry: s.entries.contact!, brick: 'gone', fields: { city: 'Graz' }, prints: {}, revs: { city: 1 }, by: people.owner, since: 0, at: 0, publishAt: Date.parse('2026-10-20T08:00:00Z') }))
+    await s.t.run((ctx) => ctx.db.patch(s.entries.contact!, { brick: 'gone' }))
+    await withPlanned(s)
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(schnitzel))!
+      await ctx.db.patch(schnitzel, { data: { ...(row.data as object), nextPrice: { amount: 2290 }, priceFrom: '2026-10-25' } })
+    })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await runThisOne(s)
+    expect(log.mock.calls.map((c) => String(c[0]).replace(/changes \S+ stay/, 'changes … stay'))).toEqual(['Migration 2026-11-25-dated-changes: unpublished changes … stay without a time (TypeError).'])
+    log.mockRestore()
+    expect((await s.t.query(internal.ops.status, {}))!.migrations.skipped).toEqual([])
+    expect((await datedRows(s)).sort()).toEqual([[risotto, '2026-10-20', { price: { amount: 1500 } }], [schnitzel, '2026-10-25', { price: { amount: 2290 } }]].sort())
+    const kept = await s.t.run(async (ctx) => ({
+      held: (await ctx.db.query('pendingChanges').collect()).map((p) => [p.entry, p.publishAt ?? null]),
+      line: (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', s.entries.contact!)).collect()).at(-1)!,
+    }))
+    expect(kept.held).toEqual([[s.entries.contact!, null]])
+    expect(kept.line).toMatchObject({ kind: 'unschedule', msg: { key: 'history.changesUnscheduled', params: { title: 'gone' } } })
+  })
+
   // Wrong behaviour caught: one site the migration cannot convert stops it for every other site, or leaves that site
   // half converted, and nobody learns which site it was.
   it('reports a site it cannot convert by name and converts the others', async () => {
@@ -285,12 +313,13 @@ describe('2026-11-25-dated-changes (D130)', () => {
       stored.bricks.menu!.planned = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
       return ctx.db.insert('sites', { ...site, slug: 'zweite', schema: stored })
     })
-    // The restaurant has a timed unpublished change of a brick its stored model no longer has.
+    // The restaurant has a timed unpublished change, and a planned rule on a brick whose stored fields cannot be read.
+    await timedRow(s, s.entries['menu-risotto']!, { price: { amount: 1500 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await withPlanned(s)
     await s.t.run(async (ctx) => {
-      await ctx.db.insert('pendingChanges', { site: s.site, entry: s.entries['menu-risotto']!, brick: 'menu', fields: { price: { amount: 1500 } }, prints: {}, revs: { price: 1 }, by: people.owner, since: 0, at: 0, publishAt: Date.parse('2026-10-20T08:00:00Z') })
       const site = (await ctx.db.get(s.site))!
-      const stored = structuredClone(site.schema) as { bricks: Record<string, unknown> }
-      delete stored.bricks.menu
+      const stored = structuredClone(site.schema) as { bricks: Record<string, { fields: unknown }> }
+      stored.bricks.menu!.fields = null
       await ctx.db.patch(s.site, { schema: stored as unknown as typeof site.schema })
     })
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
