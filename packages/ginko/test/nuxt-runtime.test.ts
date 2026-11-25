@@ -197,6 +197,29 @@ describe('collection composables', () => {
     expect(result.value.items.map((i: { id: string }) => i.id)).toEqual(['martinigans'])
   })
 
+  // Wrong behaviour caught: a page from a cache, read after the target's last day, still includes the target of a
+  // reference (only the queried collection was filtered). The restaurant has no reference, so the test adds one.
+  test('useGinkoQuery include leaves out a target that ended by the reader\'s day', () => {
+    const fields = siteSchema.bricks.notices!.fields
+    fields.event = { type: 'ref', to: 'events', label: 'Event' }
+    try {
+      const de = bundles.de!
+      const notices = { kind: 'collection' as const, items: [{ id: 'n', data: { text: 'Weinabend', event: 'weinabend' }, fallback: [] }] }
+      const run = (date: string) => {
+        useState<Partial<Record<Locale, Bundle>>>(BUNDLE_STATE).value = { de: { ...de, bricks: { ...de.bricks, notices } } }
+        useState<string>(TODAY_STATE).value = date
+        i18nLocale.value = 'de'
+        const [item] = useGinkoQuery('notices' as never, { include: ['event'] } as never).value.items as { data: { event: unknown } }[]
+        return item!.data.event
+      }
+      expect(run('2026-10-16')).toMatchObject({ id: 'weinabend' })
+      // The day after the event: the reference is not resolved, as for a target that is not there.
+      expect(run('2026-10-17')).toBe('weinabend')
+    } finally {
+      delete fields.event
+    }
+  })
+
   test('useGinkoNeighbors: the first entry has no prev', () => {
     today('2026-10-08')
     const { prev, next } = useGinkoNeighbors('events' as never, 'weinabend').value as { prev?: unknown; next?: { id: string } }
