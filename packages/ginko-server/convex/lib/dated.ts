@@ -87,6 +87,16 @@ export const endOf = (until: string, timeZone: string) => dayStartIn(addDays(unt
 
 /** The same date next year: no day of a change may be later. */
 const yearAhead = (today: string) => `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`
+/**
+ * The days a dated save is read at (its `before` and `after`) and named by in its history line and answer: the typed
+ * ones; for a yearly one the time that holds today or comes next, since its first `from` may lie up to a year back
+ * (round N8). The row keeps the typed days.
+ */
+export function savedTime(schema: Schema, from: string, until: string | undefined, yearly: boolean | undefined): { from: string; until: string | undefined } {
+  const time = yearly && until !== undefined ? occurrence({ from, until, yearly: true, set: {} }, todayIn(schema.timeZone)) : undefined
+  return time ? { from: time.from, until: time.until } : { from, until }
+}
+
 /** The same date last year: a yearly change may start no earlier (slice 4, decision 3). */
 const yearBack = (today: string) => `${Number(today.slice(0, 4)) - 1}${today.slice(4)}`
 
@@ -284,6 +294,8 @@ export interface DatedPlan {
   from: string
   /** The last day of an exception; absent for a change without an end. */
   until: string | undefined
+  /** The days the save is read at and named by (`savedTime`): the typed ones, a yearly one's time of today (round N8). */
+  time: { from: string; until: string | undefined }
   /** An exception that comes back every year, and its name (slice 4): the row takes both as they are here. */
   yearly: true | undefined
   name: string | undefined
@@ -335,7 +347,8 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   const same = opts.same ?? rows.find((r) => isRowOf(r, from, until))
   const others = rows.filter((r) => r._id !== same?._id)
   const live = entry.data as Data
-  const before = dataOn(live, asChanges(baseRows(others, until)), from)
+  const time = savedTime(schema, from, until, yearly)
+  const before = dataOn(live, asChanges(baseRows(others, until)), time.from)
   const fields: Record<string, Json> = { ...(same?.fields as Record<string, Json> | undefined) }
   const roots = Object.keys(set)
   // Every field sent is meant: it leaves the change only when it holds the live value and no earlier waiting change
@@ -353,21 +366,21 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
     // day is that day from UTC-12 to UTC+11, where the first instant of a Vienna day is the day before in UTC.
     if (tie) fail('INVALID', 'errors.datedSameStart', { until: Date.parse(`${occurrence(tie.other, tie.day)!.until}T12:00:00Z`) })
   }
-  const after = dataOn(before, [own], from)
+  const after = dataOn(before, [own], time.from)
   const main = schema.locales[0]!
   const keys = Object.keys(fields)
   const kept = Object.fromEntries(Object.entries(same?.prints ?? {}).filter(([leaf]) => !roots.some((r) => underRoot(leaf, r))))
   const fresh = nextPrints({ fields: brick.fields, roots, before, after, prints: entry.prints as Prints, main, confirm: undefined })
   const prints: Prints = { ...kept, ...Object.fromEntries(Object.entries(fresh).filter(([leaf]) => roots.some((r) => keys.includes(r) && underRoot(leaf, r)))) }
   const pick = (d: Data) => Object.fromEntries(roots.filter((r) => d[r] !== undefined).map((r) => [r, d[r]!]))
-  const plan: DatedPlan = { from, until, yearly, name, same, fields, prints, roots, before: pick(before), after: pick(after) }
+  const plan: DatedPlan = { from, until, time, yearly, name, same, fields, prints, roots, before: pick(before), after: pick(after) }
   if (!keys.length) return plan
 
   const changes: Change[] = [...asChanges(others), own]
   const issues = await newIssues(schema, entry.brick, live, asChanges(others), changes, await lookupsFor(ctx, site._id, brick.fields, after))
   if (issues.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: issues.map(({ change: _, from: _day, ...issue }) => issue) as unknown as Json })
   await checkNewFiles(ctx, site._id, brick.fields, before, after)
-  await checkNewLinks(ctx, site, [{ entry, fields: brick.fields, before, after }], dayStart(from, schema.timeZone))
+  await checkNewLinks(ctx, site, [{ entry, fields: brick.fields, before, after }], dayStart(time.from, schema.timeZone))
   // The entry must fit on every day its changes give it values: after the last one, and on each exception's days.
   const allPrints = { ...(entry.prints as Prints), ...prints }
   const bytes = Math.max(...sizeDays(changes).map((day) => entryBytes(dataOn(live, changes, day), allPrints)))

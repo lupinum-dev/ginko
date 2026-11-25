@@ -105,9 +105,13 @@ describe('a yearly save (state table: save, yearly on)', () => {
   it('today inside the days, from a year back: holds at once, the page names this year\'s days', async () => {
     const s = await yearlySetup()
     const before = await s.stored(s.saibling)
-    await s.season(990, '2026-10-08', '2026-10-31', { name: 'Herbst' })
+    const saved = await s.season(990, '2026-10-08', '2026-10-31', { name: 'Herbst' })
     expect((await s.dated(s.saibling))[0]!.holds).toEqual(expect.any(Number))
     expect(await s.stored(s.saibling)).toEqual(before)
+    // Round N8: the history line and the answer name this year's days; the row keeps the typed ones.
+    expect([(saved as { from?: string }).from, (saved as { until?: string }).until]).toEqual(['2027-10-08', '2027-10-31'])
+    expect((await s.history(s.saibling)).at(-1)).toMatchObject({ kind: 'dated', msg: { params: { day: at('2027-10-08'), until: at('2027-10-31') } } })
+    expect(await s.dated(s.saibling)).toMatchObject([{ from: '2026-10-08', until: '2026-10-31' }])
     expect(await s.item(s.saibling)).toMatchObject({
       data: { price: { amount: 990 } },
       holding: [{ from: '2027-10-08', until: '2027-10-31', name: 'Herbst', yearly: true, data: { price: { amount: 990, currency: 'EUR' } }, normal: { price: { amount: 1350, currency: 'EUR' } } }],

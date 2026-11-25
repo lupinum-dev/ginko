@@ -22,7 +22,7 @@ import { errorKind, mailStopped, stoppedChangeLines, stoppedLines } from './lib/
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
-import { asChanges, baseRows, checkDay, checkLabels, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, isRowOf, planDated, refuseTaskWithoutDay, rowLabels, startsOn, taskHasEnd, taskSet, timeOf, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
+import { asChanges, baseRows, checkDay, checkLabels, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, isRowOf, planDated, refuseTaskWithoutDay, rowLabels, savedTime, startsOn, taskHasEnd, taskSet, timeOf, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
 import { advance, stepArgs } from './lib/migrations'
 import { editorEntry, editorEntryWithTranslation, entryLabel as labelOf, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
@@ -379,7 +379,8 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
   if (until !== undefined) checkUntil(schema, from, until, { yearly, holding: editsHolding })
   refuseTaskWithoutDay(schema, args.task, { from, until, yearly, name })
   // A value is given as for a save of the entry; its other parts are those it has on that day.
-  const before = dataOn(entry.data as Data, asChanges(baseRows(rows.filter((r) => r._id !== joined?._id), until)), from)
+  // Read at the time of today for a yearly one whose first day lies back (round N8, `savedTime`).
+  const before = dataOn(entry.data as Data, asChanges(baseRows(rows.filter((r) => r._id !== joined?._id), until)), savedTime(schema, from, until, yearly).from)
   const set: Record<string, Json> = {}
   for (const [key, value] of Object.entries(args.fields)) set[key] = value === null ? null : (mergeField(brick.fields[key]!, before[key], value as Json, args.locale as Locale | undefined) ?? null)
   const plan = await planDated(ctx, actor.site, entry, from, set, rows, { ...(until !== undefined ? { until } : {}), ...(edited ? { same: edited } : {}), ...(yearly ? { yearly } : {}), ...(rowName !== undefined ? { name: rowName } : {}) })
@@ -406,7 +407,7 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
   if (kept.length) lines.push({ kind: 'dated', history: recorded(msg(until !== undefined ? 'history.datedSavedUntil' : 'history.datedSaved', { ...words, fields: fieldNames(schema, entry.brick, kept) }), schema) })
   if (removed.length) lines.push({ kind: 'datedCancelled', history: recorded(msg('history.datedCancelled', { ...words, fields: fieldNames(schema, entry.brick, removed) }), schema) })
   const written = await writeDated(ctx, actor, entry, plan, {}, lines, args.opId)
-  return { entry: entry._id, rev: entry.rev, contentRev: written.contentRev, change: written.change, warnings: [], dated: written.dated ?? null, from, ...(until !== undefined ? { until } : {}) }
+  return { entry: entry._id, rev: entry.rev, contentRev: written.contentRev, change: written.change, warnings: [], dated: written.dated ?? null, from: plan.time.from, ...(plan.time.until !== undefined ? { until: plan.time.until } : {}) }
 }
 
 /**
@@ -416,8 +417,8 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
 function datedWords(schema: Schema, entry: Doc<'entries'>, plan: DatedPlan) {
   const kept = plan.roots.filter((r) => Object.hasOwn(plan.fields, r))
   return {
-    title: labelOf(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, kept.length ? kept : plan.roots), day: dayStart(plan.from, schema.timeZone),
-    ...(plan.until !== undefined ? { until: dayStart(plan.until, schema.timeZone) } : {}),
+    title: labelOf(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, kept.length ? kept : plan.roots), day: dayStart(plan.time.from, schema.timeZone),
+    ...(plan.time.until !== undefined ? { until: dayStart(plan.time.until, schema.timeZone) } : {}),
   }
 }
 
