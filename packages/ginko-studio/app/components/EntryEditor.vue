@@ -784,7 +784,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           :may-restore="canRemove" :may-create="mayCreate"
           @restore="restoreRemoved" @save-as-new="saveAsNew" @discard="discardRemoved"
         />
-        <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
+        <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :planned-from="localOffer.from" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
         <DatedNotices v-if="entry && !removed" :site="site.slug" :entry="entry._id" :brick="brick" :main="main" :time-zone="timeZone" :currency="schema.currency" :task="tasks?.save" />
         <ConflictPanel
           v-if="conflict"

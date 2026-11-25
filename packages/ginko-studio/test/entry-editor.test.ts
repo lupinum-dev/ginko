@@ -11,6 +11,7 @@ import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { useEntryForm } from '../app/composables/useEntryForm'
+import { localDraftKey, writeLocalDraft } from '../app/composables/useLocalDraft'
 import { allAccess } from '../app/composables/useAll'
 import EntryEditor from '../app/components/EntryEditor.vue'
 import PreviewPane from '../app/components/PreviewPane.vue'
@@ -323,6 +324,22 @@ test('Ctrl+S in the form saves a change once, and an unchanged form not at all',
   } finally {
     vi.stubGlobal('useOps', () => ({}))
   }
+})
+
+// Wrong behaviour caught (H1.3): a copy typed in a task sheet for a later day was offered here without its day, so a
+// restore and Speichern made a value for a later day an unpublished change of now, unnoticed.
+test('the offer of a local copy planned for a day names the day', async () => {
+  localStorage.clear()
+  writeLocalDraft(localDraftKey('restaurant', 'u1', 'e1'), { v: 1, savedAt: Date.now(), baseRev: 1, locale: 'de', fields: { title: { de: 'Neu' } }, from: '2099-12-06' })
+  const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 0, data: { title: { de: 'Alt' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' } as const
+  const wrapper = mount(EntryEditor, {
+    props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false },
+    global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+  })
+  await flushPromises()
+  expect(wrapper.get('[data-test="local-planned-from"]').text()).toBe('Die Eingaben waren ab Sonntag, 6. Dezember geplant. Den Tag musst du hier neu wählen.')
+  wrapper.unmount()
+  localStorage.clear()
 })
 
 // Wrong behaviour caught (H1 guard): once the form's conflict answer only merges, "Meine Eingaben speichern" here merged

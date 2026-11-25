@@ -272,6 +272,7 @@
     },
     "localDraft": {
       "offer": "¿Restaurar los cambios sin guardar de {time}?",
+      "plannedFrom": "Estos datos estaban planificados desde el {day}. Elige el día de nuevo aquí.",
       "restore": "Restaurar",
       "discard": "No restaurar",
       "restoredConflict": "Restaurado. Alguien cambió {fields} mientras tanto; decide abajo."

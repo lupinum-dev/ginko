@@ -271,6 +271,7 @@
       "noRights": "Vos modifications restent sur cet appareil. Demandez au propriétaire de restaurer l’entrée, puis rouvrez-la."
     },
     "localDraft": {
+      "plannedFrom": "Ces saisies étaient planifiées à partir du {day}. Choisissez à nouveau le jour ici.",
       "offer": "Restaurer vos modifications non enregistrées de {time} ?",
       "restore": "Restaurer",
       "discard": "Ne pas restaurer",
