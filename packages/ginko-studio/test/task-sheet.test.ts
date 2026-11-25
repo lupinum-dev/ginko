@@ -667,6 +667,44 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
+  // Wrong behaviour caught (E1): a day typed by keyboard and not finished leaves the input empty, which read as "no day",
+  // so the button, Enter or Ctrl+S put the value online now, although it was meant for a later day.
+  test.each([['the button'], ['Enter'], ['Ctrl+S']] as const)('a day typed and not finished is refused (%s)', async (how) => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(day.element, 'validity', { value: { badInput: true } })
+    await day.trigger('keyup')
+    if (how === 'the button') await press(wrapper, 'Veröffentlichen')
+    else if (how === 'Enter') await wrapper.get('form').trigger('submit')
+    else await wrapper.get('input[name="title"]').trigger('keydown', { key: 's', ctrlKey: true })
+    await flushPromises()
+    expect(ops.saveEntry).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Das ist kein Datum. Bitte wähle einen Tag oder leere das Feld.')
+    expect(document.activeElement).toBe(day.element)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E1): a reload brought back the typed values without their day, and the next press of the
+  // button put them online now.
+  test('the local copy brings the day back with the values', async () => {
+    localStorage.clear()
+    const day = inDays(10)
+    const first = mountAsk()
+    await ready(first)
+    await first.get('#sheet-starts-on').setValue(day)
+    first.unmount()
+
+    const second = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    expect([(second.get('input[name="title"]').element as HTMLInputElement).value, (second.get('#sheet-starts-on').element as HTMLInputElement).value]).toEqual(['Neu', day])
+    second.unmount()
+    localStorage.clear()
+  })
+
   // Wrong behaviour caught: someone plans over a waiting change of the same field without being told.
   test('a waiting change of a form field is announced', async () => {
     datedRows.value = [{ id: 'd1', from: '2099-03-05', fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]

@@ -327,6 +327,7 @@
     "changeDay": "Change day",
     "saveDay": "Save day",
     "dayRequired": "Please choose a day.",
+    "notADate": "This is not a date. Choose a day or clear the field.",
     "cancelled": "Planned change cancelled. The website stays as it is.",
     "moved": "The change now starts on {day}."
   },

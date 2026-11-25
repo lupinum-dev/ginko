@@ -327,6 +327,7 @@
     "changeDay": "Changer de jour",
     "saveDay": "Enregistrer le jour",
     "dayRequired": "Choisissez un jour.",
+    "notADate": "Ce n’est pas une date. Choisissez un jour ou videz le champ.",
     "cancelled": "Changement prévu annulé. Le site reste tel quel.",
     "moved": "Le changement commence désormais le {day}."
   },

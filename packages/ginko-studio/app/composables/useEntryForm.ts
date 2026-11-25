@@ -54,6 +54,8 @@ export interface EntryFormOptions {
   removed?: () => boolean
   /** Switches the form to the language of a local copy before it is restored; false when it cannot now. Without it, copies in other languages are not offered. */
   otherLocale?: (locale: Locale) => Promise<boolean>
+  /** "Gilt ab" of the form (a task sheet): the local copy keeps the day with the input and brings it back with it. */
+  day?: Ref<string>
 }
 
 export function useEntryForm(o: EntryFormOptions) {
@@ -451,10 +453,11 @@ export function useEntryForm(o: EntryFormOptions) {
     // Area and title name the input on Heute; a single is named by its area.
     const brick = o.brick()
     const title = brick.kind === 'collection' ? typedTitle(brick, draft.value, o.main()) : undefined
-    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}) })
+    const from = o.day?.value
+    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}), ...(from ? { from } : {}) })
   }
   // Typed back to what was there: the next write removes the copy (a save removes it at once, in write()).
-  const localWriter = useLocalDraftWriter(() => draft.value, keepLocal)
+  const localWriter = useLocalDraftWriter(() => [draft.value, o.day?.value], keepLocal)
 
   function forgetLocal() {
     localWriter.cancel()
@@ -486,6 +489,7 @@ export function useEntryForm(o: EntryFormOptions) {
       else next[k] = copy(value)
     }
     draft.value = next
+    if (o.day) o.day.value = record.from ?? ''
     waiting.value = false
     if (!entry) return
     const clash = own.filter((k) => (entry.fieldRevs[k] ?? 0) > copyBase && !same(entry.data[k], next[k]))

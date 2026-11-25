@@ -81,6 +81,10 @@ const fixedWeek = computed(() => {
 })
 const dayText = (value: Json | undefined) => (typeof value === 'string' ? formatDay(value, format) : '–')
 
+// "Gilt ab" (below): declared before the form, whose local copy keeps the day with the input.
+const startsOn = ref('')
+/** The day field holds a date typed by keyboard and not finished (StartsOnField): no save until it is a day or empty. */
+const startsOnBad = ref(false)
 const form = useEntryForm({
   site: computed(() => props.site),
   brickKey: () => props.brickKey,
@@ -97,6 +101,7 @@ const form = useEntryForm({
   removeTask: () => (props.removeTask ? taskRef(props.brickKey, props.removeTask) : undefined),
   draft: () => !isCreate.value && props.entry?.state === 'draft',
   removed: () => !isCreate.value && !!props.removed,
+  day: startsOn,
 })
 const { draft, baseline, initial, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
 /** The form holds the values of an own proposal, not the stored ones. */
@@ -346,7 +351,6 @@ function toggleLater() {
 // it. A day sends the changed fields as a change that starts on that day; the entry stays as it is until then. Only in
 // the main language's view: a change holds whole values, written in the main language (D119).
 const asksDay = computed(() => props.task.kind === 'edit' && props.task.when?.from === 'ask' && publishStep.value && !isCreate.value && !removedHere.value)
-const startsOn = ref('')
 const startsOnError = ref('')
 watch(startsOn, () => { startsOnError.value = '' })
 const dayOn = computed(() => (asksDay.value && startsOn.value ? startsOn.value : undefined))
@@ -369,6 +373,11 @@ async function save(step: Step = 'publish') {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || !ready.value || removedHere.value) return
   laterProblem.value = ''
+  // A day typed and not finished is not "today": nothing is saved until it is a day or the field is empty (E1).
+  if (asksDay.value && startsOnBad.value) {
+    await switchLanguage(props.main)
+    return nextTick(() => document.getElementById('sheet-starts-on')?.focus())
+  }
   const from = dayOn.value
   if (from !== undefined) {
     // Enter in a field and Ctrl+S never publish (below), and a change for a later day is a publish: the button does it.
@@ -547,7 +556,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
               />
               <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
             </template>
-            <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" optional :time-zone="schema.timeZone" :error="startsOnError" />
+            <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :time-zone="schema.timeZone" :error="startsOnError" />
           </template>
         </div>
 
