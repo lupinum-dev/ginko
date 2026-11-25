@@ -672,16 +672,26 @@ export const taskDates = (task: Task): boolean => task.kind === 'edit' && task.w
 /** A task whose saves are exceptions that end by themselves (`when.until`). */
 export const taskEnds = (task: Task): boolean => task.kind === 'edit' && task.when !== undefined && 'until' in task.when
 
+/** Which of the keys of slice 4 a task asks: `yearly` (the days come back every year) and `name`. */
+export function taskAsks(task: Task | undefined): { yearly: boolean; name: boolean } {
+  const when = task?.kind === 'edit' ? task.when : undefined
+  return { yearly: when !== undefined && 'yearly' in when && when.yearly === 'ask', name: when !== undefined && 'name' in when && when.name === 'ask' }
+}
+
 /**
- * `when` of a task (D123, slice 3): an edit task only, one of `{ from: 'now' }`, `{ from: 'ask' }`, `{ from: 'ask',
- * until: 'ask' }`, `{ from: '@today', until: '@today' }`; a task that dates its values has only fields a change may set
- * (`changeRefusal`), so the form never offers a day for a field that cannot take one.
+ * `when` of a task (D123, slice 3, slice 4): an edit task only, one of `{ from: 'now' }`, `{ from: 'ask' }`, `{ from:
+ * 'ask', until: 'ask' }` (with `yearly: 'ask'` and `name: 'ask'` if wanted), `{ from: '@today', until: '@today' }`; a
+ * task that dates its values has only fields a change may set (`changeRefusal`), so the form never offers a day for a
+ * field that cannot take one.
  */
 function whenProblems(path: string, task: Task, when: unknown, brick: Brick, schema: Schema): string[] {
   if (task.kind !== 'edit') return [`${path}: when is only for an edit task.`]
   const forms = `${path}.when must be { from: 'now' }, { from: 'ask' }, { from: 'ask', until: 'ask' } or { from: '@today', until: '@today' }.`
-  if (typeof when !== 'object' || when === null || Array.isArray(when) || Object.keys(when).some((k) => k !== 'from' && k !== 'until')) return [forms]
-  const { from, until } = when as { from?: unknown; until?: unknown }
+  if (typeof when !== 'object' || when === null || Array.isArray(when) || Object.keys(when).some((k) => !['from', 'until', 'yearly', 'name'].includes(k))) return [forms]
+  const { from, until, yearly, name } = when as { from?: unknown; until?: unknown; yearly?: unknown; name?: unknown }
+  if ((yearly !== undefined || name !== undefined) && !(from === 'ask' && until === 'ask' && (yearly ?? 'ask') === 'ask' && (name ?? 'ask') === 'ask')) {
+    return [`${path}.when: yearly and name need { from: 'ask', until: 'ask' } and take only 'ask'.`]
+  }
   if (from === 'now' && (until === 'ask' || until === '@today')) return [`${path}.when: until needs from: 'ask' or '@today'. With from: 'now' the values hold at once, for good.`]
   const valid = (from === 'now' && until === undefined) || (from === 'ask' && (until === undefined || until === 'ask')) || (from === '@today' && until === '@today')
   if (!valid) return [forms]

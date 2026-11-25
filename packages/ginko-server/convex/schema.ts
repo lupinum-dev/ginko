@@ -209,6 +209,13 @@ export default defineSchema({
      */
     until: v.optional(v.string()),
     /**
+     * An exception that comes back every year on the same days (slice 4). `from` and `until` stay the days of its first
+     * time; `occurrence` (core) gives the time of any day. Its end run keeps the row and plans the next start.
+     */
+    yearly: v.optional(v.literal(true)),
+    /** The name of an exception ("Sommer"), trimmed, 1 to `NAME_MAX` characters; not translated. */
+    name: v.optional(v.string()),
+    /**
      * When the start run of an exception let it through (ms): only then does the read lay it over the entry. Absent while
      * it waits, and on a change without an end.
      */

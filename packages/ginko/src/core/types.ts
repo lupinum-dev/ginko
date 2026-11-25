@@ -148,9 +148,10 @@ export type Task<F extends Fields = Fields> =
  * at once, for good; `{ from: 'ask' }` the form asks for a day, and a day ahead saves them as a dated change (`Change`);
  * `{ from: 'ask', until: 'ask' }` the form asks for both days and saves an exception that ends by itself;
  * `{ from: '@today', until: '@today' }` an exception for today only, with no day field. Every field of a task that asks
- * a day must be one a change may set.
+ * a day must be one a change may set. With both days asked, `yearly: 'ask'` offers "Jedes Jahr wiederholen" (the days
+ * come back every year) and `name: 'ask'` a name for the change (slice 4).
  */
-export type TaskWhen = { from: 'now' | 'ask' } | { from: 'ask'; until: 'ask' } | { from: '@today'; until: '@today' }
+export type TaskWhen = { from: 'now' | 'ask' } | { from: 'ask'; until: 'ask'; yearly?: 'ask'; name?: 'ask' } | { from: '@today'; until: '@today' }
 
 /** Fixed values of an edit task (`set`), written like the fields' values. */
 type TaskSet<F extends Fields> = Fields extends F

@@ -257,7 +257,7 @@ export const importExport = internalMutation({
       name: v.optional(v.string()),
       nameFixed: v.optional(v.literal(true)),
       /** Its waiting dated changes (D128, `$changes` in a file); absent in older exports. */
-      changes: v.optional(v.array(v.object({ from: v.string(), until: v.optional(v.string()), set: v.record(v.string(), v.any()) }))),
+      changes: v.optional(v.array(v.object({ from: v.string(), until: v.optional(v.string()), yearly: v.optional(v.literal(true)), name: v.optional(v.string()), set: v.record(v.string(), v.any()) }))),
     })),
   },
   handler: async (ctx, args) => {
@@ -364,7 +364,11 @@ export const importExport = internalMutation({
       // before the entry is stored, the others wait. A removed entry has none (removing it cancelled them).
       // An exception (slice 3) is never written into the fields: one whose days are still to come or hold today gets its
       // row (holding at once from today), an ended one is left out.
-      const exported: Change[] = (row.changes ?? []).map((c) => ({ from: c.from, ...(c.until !== undefined ? { until: c.until } : {}), set: remapFileIds(def.fields, c.set as Data, uploads) }))
+      // A yearly exception (slice 4) is kept whatever its first days: it comes back on its next time.
+      const exported: Change[] = (row.changes ?? []).map((c) => ({
+        from: c.from, ...(c.until !== undefined ? { until: c.until } : {}), ...(c.yearly ? { yearly: c.yearly } : {}), ...(c.name !== undefined ? { name: c.name } : {}),
+        set: remapFileIds(def.fields, c.set as Data, uploads),
+      }))
       const stored = remapFileIds(def.fields, row.data as Data, uploads)
       const changeProblem = exported.length && row.deletedAt === undefined ? (await changeIssues(schema, row.brick, stored, exported))[0] : undefined
       if (changeProblem) problems.push({ code: 'INVALID', key: 'errors.importEntryInvalid', params: { id: row.id, path: changeProblem.path, count: 1 } })

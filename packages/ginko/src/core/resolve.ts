@@ -4,7 +4,7 @@ import { sha256, stableJson } from './sha256.ts'
 import { resolveRouteLinks } from './links.ts'
 import { resolveFileRefs } from './file-refs.ts'
 import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type MarkdownTrees, type Holding, type Upcoming } from './bundle.ts'
-import { dataOn, holdingOn, isException, waitingChanges, type Change } from './changes.ts'
+import { dataOn, holdingOn, isException, occurrence, waitingChanges, type Change } from './changes.ts'
 import type { MarkdownTree } from './markdown.ts'
 import type { Brick, CollectionBrick, Field, Fields, Json, Locale, Schema } from './types.ts'
 
@@ -417,32 +417,65 @@ export function upcomingOf(schema: Schema, key: string, entry: StoredEntry, ctx:
   if (!shown?.length || !entry.changes?.length) return undefined
   const last = shownUntil(brick, entry.data)
   const out: Upcoming[] = []
-  for (const change of waitingChanges(entry.changes, today)) {
-    if (last !== undefined && change.from > last) continue
+  for (const { change, from, until } of waitingChanges(entry.changes, today)) {
+    if (last !== undefined && from > last) continue
     const names = Object.keys(change.set).filter((name) => shown.includes(name))
     if (!names.length) continue
-    out.push({ from: change.from, ...(change.until ? { until: change.until } : {}), data: publicValues(schema, key, entry.id, change.set, names, ctx) })
+    if (isException(change)) {
+      out.push({ from, ...(until ? { until } : {}), ...labelsOf(change), data: publicValues(schema, key, entry.id, change.set, names, ctx) })
+      continue
+    }
+    // A change for good under an exception shows each field only once no exception holds it (round M2): one item per
+    // day a field first shows; a field that a later change for good takes over before then never shows from this one.
+    const byDay = new Map<string, string[]>()
+    for (const name of names) {
+      const day = firstUncovered(entry.changes, name, from)
+      if (day === undefined || (last !== undefined && day > last)) continue
+      if (entry.changes.some((c) => !isException(c) && c.from > from && c.from <= day && Object.hasOwn(c.set, name))) continue
+      byDay.set(day, [...(byDay.get(day) ?? []), name])
+    }
+    for (const [day, fields] of byDay) out.push({ from: day, ...labelsOf(change), data: publicValues(schema, key, entry.id, change.set, fields, ctx) })
   }
+  out.sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0))
   return out.length ? out : undefined
 }
 
 /**
- * The exceptions that hold today and set a field of the brick's `timeline.public` (slice 3): their days, their public
- * values and the normal values they cover (`normal`, read from the entry's normal values of today), resolved like the
- * entry's own values. Undefined when there is none.
+ * The first day on or after `day` on which no exception holds `field`, walking over chained and overlapping ones; undefined
+ * when exceptions hold it for more than two years on end (two yearly ones that cover the whole year never let it show).
+ */
+function firstUncovered(changes: readonly Change[], field: string, day: string): string | undefined {
+  const covering = changes.filter((c) => isException(c) && Object.hasOwn(c.set, field))
+  const horizon = addDays(day, 2 * 366)
+  let at = day
+  while (at <= horizon) {
+    const end = covering.map((c) => occurrence(c, at)).filter((t) => t !== undefined && t.from <= at).map((t) => t!.until).sort().at(-1)
+    if (end === undefined) return at
+    at = addDays(end, 1)
+  }
+  return undefined
+}
+
+/**
+ * The exceptions that hold today and set a field of the brick's `timeline.public` (slice 3): the days of the time that
+ * holds, their public values and the normal values they cover (`normal`, read from the entry's normal values of today),
+ * resolved like the entry's own values. Undefined when there is none.
  */
 export function holdingOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): Holding[] | undefined {
   const shown = schema.bricks[key]!.timeline?.public
   if (!shown?.length || !entry.changes?.length) return undefined
   const normal = (entry as Showing).normal ?? entry.data
   const out: Holding[] = []
-  for (const change of holdingOn(entry.changes, today)) {
+  for (const { change, time } of holdingOn(entry.changes, today)) {
     const names = Object.keys(change.set).filter((name) => shown.includes(name))
     if (!names.length) continue
-    out.push({ from: change.from, until: change.until, data: publicValues(schema, key, entry.id, change.set, names, ctx), normal: publicValues(schema, key, entry.id, normal, names, ctx) })
+    out.push({ ...time, ...labelsOf(change), data: publicValues(schema, key, entry.id, change.set, names, ctx), normal: publicValues(schema, key, entry.id, normal, names, ctx) })
   }
   return out.length ? out : undefined
 }
+
+/** The name and `yearly` of a change, each only when it has one (slice 4): a page may show "Sommer, jedes Jahr". */
+const labelsOf = (change: Change): { name?: string; yearly?: true } => ({ ...(change.name ? { name: change.name } : {}), ...(change.yearly ? { yearly: true } : {}) })
 
 /** An entry as visitors see it today, with its normal values kept for `holding`. */
 type Showing = StoredEntry & { normal?: Record<string, Json> }

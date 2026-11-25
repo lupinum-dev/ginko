@@ -113,11 +113,13 @@ describe('a save with an end (state table: save, days valid)', () => {
     expect(await s.dated(s.saibling)).toEqual([])
   })
 
-  it('refuses a 21st row, both kinds counted', async () => {
+  // Round N9d: yearly rows count like the others (every second offer is yearly), and a yearly 21st is refused too.
+  it('refuses a 21st row, all kinds counted', async () => {
     const s = await untilSetup()
-    for (let i = 0; i < 10; i++) await s.offer(900 + i, `2026-11-${String(i + 1).padStart(2, '0')}`, '2026-11-30')
+    for (let i = 0; i < 10; i++) await s.offer(900 + i, `2026-11-${String(i + 1).padStart(2, '0')}`, '2026-11-30', i % 2 ? {} : { yearly: true })
     for (let i = 0; i < 10; i++) await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1400 + i } }, from: `2026-12-${String(i + 1).padStart(2, '0')}` })
     expect(await errorOf(s.offer(990, '2026-10-20', '2026-10-31'))).toMatchObject({ key: 'errors.tooManyDated' })
+    expect(await errorOf(s.offer(990, '2026-10-20', '2026-10-31', { yearly: true }))).toMatchObject({ key: 'errors.tooManyDated' })
   })
 })
 
@@ -303,6 +305,34 @@ describe('numbers 1 to 3', () => {
   })
 })
 
+// Round M1 (break-it P1-1): staff cancel only a row their task could have made. Wrong behaviour caught: the cook ends the
+// owner's running offer through "Preis ändern" (the website price jumps back), cancels a change for good through a task
+// with an end, or a season through a task that cannot make one; or the list offers a cancel the server refuses.
+describe('a task cancels only a row it could have made (round M1)', () => {
+  it.each<[string, string, (s: Awaited<ReturnType<typeof untilSetup>>) => Promise<unknown>, string | undefined]>([
+    ['a task without an end, a row with one', 'menu.price', (s) => s.offer(990, TODAY, '2026-10-20'), 'errors.taskCannotEnd'],
+    ['a task with an end, a row without one', 'menu.offer', (s) => s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1500 } }, from: '2026-10-20' }), 'errors.taskNeedsDays'],
+    ['a task without yearly, a yearly row', 'menu.offer', (s) => s.offer(990, '2026-12-01', '2027-01-31', { yearly: true }), 'errors.taskCannotYearly'],
+    ['the today-only task, its own row', 'menu.offToday', (s) => s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.offToday', entry: s.saibling, baseRev: 1, fields: {}, from: TODAY, until: TODAY }), undefined],
+    ['a task without an end, a row without one', 'menu.price', (s) => s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1500 } }, from: '2026-10-20' }), undefined],
+  ])('%s: %s', async (_case, task, make, key) => {
+    const s = await untilSetup()
+    await make(s)
+    const [made] = await s.dated(s.saibling)
+    const [rev, price] = [await s.contentRev(), await s.shownPrice(s.saibling)]
+    const listed = await s.as.cook.query(api.datedChanges.list, { site: 'restaurant', entry: s.saibling, task })
+    expect(listed.find((r) => r.id === made!._id)?.mayCancel).toBe(key === undefined)
+    const cancel = s.as.cook.mutation(api.datedChanges.cancel, { site: 'restaurant', opId: opId(), task, change: made!._id })
+    if (key === undefined) {
+      await cancel
+      expect(await s.dated(s.saibling)).toEqual([])
+      return
+    }
+    expect(await errorOf(cancel)).toMatchObject({ key })
+    expect([(await s.dated(s.saibling)).map((r) => [r._id, r.holds]), await s.contentRev(), await s.shownPrice(s.saibling)]).toEqual([[[made!._id, made!.holds]], rev, price])
+  })
+})
+
 describe('moving and ending (state table: Tage ändern, Änderung aufheben, Jetzt beenden)', () => {
   // Row "Tage ändern", waits. Wrong behaviour caught: a move keeps the old end, or skips the limits.
   it('a waiting row moves both days, within the limits', async () => {
@@ -339,7 +369,7 @@ describe('moving and ending (state table: Tage ändern, Änderung aufheben, Jetz
     const move = (who: 'cook' | 'owner', task: string | undefined, change: Id<'datedChanges'>, from: string, until: string) =>
       s.as[who].mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), ...(task ? { task } : {}), change, from, until })
     expect(await errorOf(move('cook', 'menu.offToday', today!._id, TODAY, '2026-10-15'))).toMatchObject({ key: 'errors.todayOnly' })
-    expect(await errorOf(move('cook', 'menu.price', offer!._id, '2026-10-20', '2026-10-28'))).toMatchObject({ key: 'errors.taskCannotDate' })
+    expect(await errorOf(move('cook', 'menu.price', offer!._id, '2026-10-20', '2026-10-28'))).toMatchObject({ key: 'errors.taskCannotEnd' })
     const listed = await s.as.cook.query(api.datedChanges.list, { site: 'restaurant', entry: s.saibling, task: 'menu.offToday' })
     expect(listed.find((r) => r.id === today!._id)).toMatchObject({ mayMove: false, mayCancel: true })
     await move('owner', undefined, today!._id, TODAY, '2026-10-15')
@@ -415,14 +445,20 @@ describe('the entry around a holding offer (state table)', () => {
     expect(await errorOf(s.offer(990, '2026-10-20', '2026-12-31'))).toMatchObject({ key: 'errors.exceptionOnlyOnline', message: 'Nur ein Eintrag, der online ist, bekommt Werte für bestimmte Tage. Stelle ihn zuerst online.' })
   })
 
-  it('holds: offline the row stays and shows nothing; online again inside its days it shows again', async () => {
+  // Round N9b: the same for a yearly row, which after its end stays (waiting for next year) instead of going.
+  it.each<[string, Record<string, unknown>, number]>([
+    ['an offer', {}, 0],
+    ['a yearly row', { yearly: true }, 1],
+  ])('holds: offline the row stays and shows nothing; online again inside its days it shows again (%s)', async (_, extra, rowsAfterEnd) => {
     const s = await untilSetup()
-    await s.offer(990, TODAY, '2026-10-31')
+    await s.offer(990, TODAY, '2026-10-31', extra)
     await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: (await s.row(s.saibling))!.lifeRev })
     expect(await s.item(s.saibling)).toBeUndefined()
     expect(await s.dated(s.saibling)).toHaveLength(1)
     await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: (await s.row(s.saibling))!.lifeRev })
     expect(await s.shownPrice(s.saibling)).toBe(990)
+    await s.advanceTo(at('2026-11-01') + 1000)
+    expect([await s.shownPrice(s.saibling), (await s.dated(s.saibling)).length]).toEqual([1350, rowsAfterEnd])
   })
 
   // Row "normal value edited (now)". Wrong behaviour caught: a normal edit while an offer holds is refused, changes what
@@ -452,14 +488,21 @@ describe('the entry around a holding offer (state table)', () => {
   })
 
   // Row "entry to the trash / restored". Wrong behaviour caught: a holding offer comes back with a restored entry
-  // (D109: its dated changes go with it).
+  // (D109: its dated changes go with it); round M3: the history calls the holding offer "geplant" (it was running).
+  // Round N9c: a waiting yearly row goes too and counts as planned; it does not come back next year after a restore.
   it('the trash takes a holding offer with the entry; a restore does not bring it back', async () => {
     const s = await untilSetup()
     await s.offer(990, TODAY, '2026-10-31')
+    await s.offer(800, '2026-11-15', '2026-11-30')
+    await s.offer(700, '2026-12-01', '2026-12-31', { yearly: true })
     const lifeRev = (await s.row(s.saibling))!.lifeRev
     await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev })
     expect(await s.dated(s.saibling)).toEqual([])
+    expect((await s.history(s.saibling)).filter((c) => c.kind === 'datedCancelled').map((c) => [c.msg!.key, c.msg!.params!.count]))
+      .toEqual([['history.datedCancelledWithEntry', 2], ['history.datedEndedWithEntry', 1]])
     await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: lifeRev + 1 })
+    expect(await s.shownPrice(s.saibling)).toBe(1350)
+    await s.advanceTo(at('2026-12-01') + 1000)
     expect(await s.shownPrice(s.saibling)).toBe(1350)
   })
 })
@@ -468,7 +511,8 @@ describe('task keys on the server', () => {
   // Wrong behaviour caught: a task that asks one day lets staff save an end; a today-only task saves another day; a task
   // with an end called without its days (round L1) saves its values into the entry for good (number 2).
   it.each([
-    ['an end through a task that asks one day', 'menu.price', { fields: { price: { amount: 990 } }, from: '2026-10-20', until: '2026-12-31' }, 'errors.taskCannotDate'],
+    // Round M4: the sentence says the task changes values from a day, not "from now on" (taskCannotDate).
+    ['an end through a task that asks one day', 'menu.price', { fields: { price: { amount: 990 } }, from: '2026-10-20', until: '2026-12-31' }, 'errors.taskCannotEnd'],
     ['another day through a today-only task', 'menu.offToday', { fields: {}, from: '2026-10-09', until: '2026-10-09' }, 'errors.todayOnly'],
     ['a today-only task without its days', 'menu.offToday', { fields: {} }, 'errors.taskNeedsDays'],
     ['an offer without its days', 'menu.offer', { fields: { price: { amount: 990 } } }, 'errors.taskNeedsDays'],

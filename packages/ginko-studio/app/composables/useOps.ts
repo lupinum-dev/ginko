@@ -6,7 +6,7 @@ import { useI18n } from '#imports'
 import { isConvexCallError, normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import type { InjectionKey } from 'vue'
 import type { Json } from '@lupinum/ginko'
-import { todayIn, type Place } from '@lupinum/ginko/internal'
+import { occurrence, todayIn, type Place } from '@lupinum/ginko/internal'
 import { dayWords, whenText } from '../utils/when'
 import { translationNote } from '../utils/content'
 import { UploadError } from './useUpload'
@@ -127,6 +127,8 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   const noteOf = (notes: Parameters<typeof translationNote>[0], main: string) => translationNote(notes, t, language.value, main)
   /** "Samstag, 17. Oktober": the day a dated change or a week planned ahead starts on. */
   const dayText = (day: string) => dayWords(day, format)
+  /** "1. Juni": a day of a change that comes back every year, without its year (slice 4). */
+  const dayMonth = (day: string) => format.date(day, { day: 'numeric', month: 'short' })
   /** A change for one day (`from` = `until`) names that day, or "heute" in the site's zone (L13). */
   const oneDay = (from: string, timeZone: string | undefined) => timeZone !== undefined && from === todayIn(timeZone)
   /** A write that became a request (SPEC 17); `from`: it is a change for that day, which the message names (E5). */
@@ -228,10 +230,13 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     }
   }
   /** `until`: the new last day of an exception (slice 3). */
-  async function moveChange(change: string, from: string, task?: string, until?: string) {
+  /** `yearly`: the days count for every year, so the message names them without a year, as the notice does (round N6). */
+  async function moveChange(change: string, from: string, task?: string, until?: string, yearly?: boolean) {
     try {
       await moveDated.mutate({ site: site.value, opId: opId(), task, change, from, ...(until === undefined ? {} : { until }) })
-      show(until === undefined ? t('dated.moved', { day: dayText(from) }) : t('dated.movedUntil', { day: dayText(from), until: dayText(until) }))
+      show(until === undefined ? t('dated.moved', { day: dayText(from) })
+        : yearly ? t('dated.movedYearly', { day: dayMonth(from), until: dayMonth(until) })
+        : t('dated.movedUntil', { day: dayText(from), until: dayText(until) }))
     } catch (error) {
       throw opErrorOf(error)
     }
@@ -344,12 +349,21 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
      * `until` (with `from`): the last day of an exception (slice 3); `change`: the exception a save edits (its end and
      * values; its start stays). `timeZone`: the site's, so a change for today alone says "heute".
      */
-    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string; publish?: true; from?: string; until?: string; change?: string; timeZone?: string }) {
+    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string; publish?: true; from?: string; until?: string; change?: string; yearly?: true; name?: string; timeZone?: string }) {
       try {
-        const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm, publish: args.publish, ...(args.from === undefined ? {} : { from: args.from }), ...(args.until === undefined ? {} : { until: args.until }), ...(args.change === undefined ? {} : { change: args.change }) })
+        const result = await save.mutate({
+          site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm, publish: args.publish,
+          ...(args.from === undefined ? {} : { from: args.from }), ...(args.until === undefined ? {} : { until: args.until }), ...(args.change === undefined ? {} : { change: args.change }),
+          ...(args.yearly ? { yearly: args.yearly } : {}), ...(args.name === undefined ? {} : { name: args.name }),
+        })
+        // A change that comes back every year (slice 4) names its days without a year, and from when it shows.
+        const yearlyDays = args.yearly && args.from !== undefined && args.until !== undefined ? { day: dayMonth(args.from), until: dayMonth(args.until) } : undefined
+        // One day is named once ("am 24. Dez.", round N8).
+        const yearlyOne = args.from === args.until ? 'On' : ''
         // A change that needs a yes writes nothing yet (SPEC 17): say so instead of "Saved".
         if (isProposal(result)) {
-          sentForApproval(args.from, args.until, args.timeZone)
+          if (yearlyDays) show(t(`dated.sentYearly${yearlyOne}`, yearlyDays))
+          else sentForApproval(args.from, args.until, args.timeZone)
           return { proposal: result.proposal }
         }
         const change = 'change' in result ? result.change : undefined
@@ -358,7 +372,12 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
         // change waits for that day (E6): an answer without `dated` wrote nothing, and `dated: null` emptied that day.
         if (args.from !== undefined) {
           if (!('dated' in result)) return { proposal: undefined, rev: result.rev, unchanged: true as const }
-          const days = args.until === undefined ? liveText({ from: args.from })
+          const today = args.timeZone === undefined ? args.from : todayIn(args.timeZone)
+          const first = yearlyDays && occurrence({ from: args.from, until: args.until, yearly: true, set: {} }, today)
+          // `first` carries its year when the next time starts in another calendar year than today (round N8).
+          const firstText = (day: string) => (day.slice(0, 4) === today.slice(0, 4) ? dayText(day) : format.date(day, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
+          const days = first && yearlyDays ? (first.from <= today ? t(`dated.liveYearly${yearlyOne}Today`, yearlyDays) : t(`dated.liveYearly${yearlyOne}`, { ...yearlyDays, first: firstText(first.from) }))
+            : args.until === undefined ? liveText({ from: args.from })
             : args.until !== args.from ? t('dated.liveFromUntil', { date: dayText(args.from), until: dayText(args.until) })
             : oneDay(args.from, args.timeZone) ? t('dated.liveToday') : t('dated.liveOn', { date: dayText(args.from) })
           show(result.dated === null ? t('dated.cancelled') : `${t('ops.saved')} ${days}`)

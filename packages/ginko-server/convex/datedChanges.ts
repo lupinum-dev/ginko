@@ -1,13 +1,13 @@
 // Dated changes (D125–D127): moving one to another day, cancelling it, listing an entry's for the editor, and the run
 // on its day that writes it into the entry. Making one is `entries.save` or `entries.publish` with `from` (entries.ts).
 import type { Brick, Json } from '@lupinum/ginko'
-import { changeRefusal, dataOn, entryBytes, isDate, todayIn, validate, type Schema } from '@lupinum/ginko/internal'
+import { addDays, changeRefusal, dataOn, entryBytes, isDate, todayIn, validate, type Schema, type Time } from '@lupinum/ginko/internal'
 import { ConvexError, v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, byOf, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor } from './lib/access'
 import type { Data, Prints } from './lib/content'
-import { asChanges, checkDay, checkUntil, datedOf, dayStart, dropDated, endOf, fieldNames, insertWaiting, isHolding, newIssues, planDated, refuseTaskWithoutDay, scheduleRun, syncDatedRefs, taskOf, taskSet, touchesPublic, writeDated, type Dated } from './lib/dated'
+import { asChanges, changeOf, checkDay, checkUntil, datedOf, dayStart, dropDated, endOf, fieldNames, insertWaiting, isHolding, isRowOf, newIssues, planDated, refuseTaskWithoutDay, scheduleRun, startsOn, syncDatedRefs, taskOf, taskSet, timeOf, touchesPublic, writeDated, type Dated } from './lib/dated'
 import { msg, recorded } from './lib/history'
 import { entryLabel } from './lib/list'
 import { labeler } from './lib/names'
@@ -28,20 +28,28 @@ async function datedRow(ctx: QueryCtx, actor: Actor, id: string): Promise<{ row:
   return { row, entry: await entryOf(ctx, actor, row.entry) }
 }
 
-/** The days a move gives a row, checked like a save's: `until` as asked, else the row's own end. */
-type Days = { from: string; until: string | undefined }
+/** The days a move gives a row, checked like a save's: `until` as asked, else the row's own end; it keeps yearly and its name. */
+type Days = { from: string; until: string | undefined; yearly?: true; name?: string }
+
+/** The labels a row keeps through a move (slice 4), as `Days` and `planDated` take them. */
+const labelsOf = (row: Dated) => ({ ...(row.yearly ? { yearly: row.yearly } : {}), ...(row.name !== undefined ? { name: row.name } : {}) })
+/** What a task needs the right to over a row it moves: `yearly`; a name is a label, not a right (round N1). */
+const rightsOf = (row: Dated) => (row.yearly ? { yearly: row.yearly } : {})
 
 /**
  * Who may move or cancel a dated change (D125): who may make it, with the same task (`when: { from: 'ask' }`) or the full
  * rights of the brick, and the owners and admins. A move is checked at the days the row will have (`days`, round L2),
  * as a save of those days would be: a task that asks one day moves no end, and a today-only task moves nothing (its
- * row's days are fixed as today).
+ * row's days are fixed as today). A cancel is checked as a save of the row's own days: a task cancels only a row it could
+ * have made (round M1), so "Preis ändern" ends no offer and an offer task takes away no change for good.
  */
 function mayChange(actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated, days?: Days) {
   if (actor.role !== 'staff') return
   const named = taskOf(schema, task)
   if (days && named?.kind === 'edit' && named.when?.from === '@today') fail('FORBIDDEN', 'errors.todayOnly')
-  refuseTaskWithoutDay(schema, task, days)
+  // A cancel has no days of its own: the task must be one that could have made the row, checked as a save of the row's
+  // days (round M1). The name is a label, not a right, so it is left out.
+  refuseTaskWithoutDay(schema, task, days ?? { from: row.from, until: row.until, ...(row.yearly ? { yearly: row.yearly } : {}) })
   // The task's fixed values (`set`) come with it, so its rights cover them.
   const fixed = taskSet(schema, task)
   authorize(actor, schema, { task, brick: taskBrickOf(schema, task, entry), kind: 'edit', fields: Object.keys(row.fields).filter((root) => !Object.hasOwn(fixed, root)), entry })
@@ -82,9 +90,12 @@ export const setDay = mutation({
     return idempotent(ctx, actor, args, async () => {
       const { row, entry } = await datedRow(ctx, actor, args.change)
       const schema = actor.site.schema as Schema
-      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: args.from, until: row.until !== undefined ? args.until ?? row.until : args.until } })
+      // Without a new end an exception keeps the end of its time of today: a yearly one's stored end is its first year's
+      // (round N6).
+      const until = row.until === undefined ? args.until : args.until ?? timeOf(row, todayIn(schema.timeZone))?.until ?? row.until
+      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: args.from, until, ...rightsOf(row) } })
       if (refused) throw refused
-      if (row.until !== undefined) return await moveException(ctx, actor, schema, entry, row, args.from, args.until ?? row.until, args.opId)
+      if (row.until !== undefined) return await moveException(ctx, actor, schema, entry, row, args.from, until ?? row.until, args.opId)
       if (args.until !== undefined) fail('INVALID', 'errors.taskCannotDate')
       checkDay(schema, args.from)
       const result: Json = { change: row._id, from: args.from, contentRev: actor.site.contentRev }
@@ -120,18 +131,21 @@ export const setDay = mutation({
 /**
  * "Tage ändern" of an exception (slice 3): a waiting one moves both days, checked as a new one at its new start (and
  * holding at once when that is today); a holding one moves only its end (decision 4), not before today, checked again
- * like its start. The same two days of another row take its fields, as for a save.
+ * like its start. The same two days of another row take its fields, as for a save. A yearly one is moved by the days of
+ * its time of today, and the new days count for every year (slice 4).
  */
 async function moveException(ctx: MutationCtx, actor: Actor, schema: Schema, entry: Doc<'entries'>, row: Dated, from: string, until: string, opId: string) {
   const holding = isHolding(row)
-  if (holding && from !== row.from) fail('INVALID', 'errors.holdingFromFixed')
-  if (!holding) checkDay(schema, from, { exception: true })
-  checkUntil(schema, from, until)
+  const today = todayIn(schema.timeZone)
+  const time = timeOf(row, today) ?? { from: row.from, until: row.until! }
+  if (holding && from !== time.from) fail('INVALID', 'errors.holdingFromFixed')
+  if (!holding) checkDay(schema, from, { exception: true, yearly: row.yearly })
+  checkUntil(schema, from, until, { yearly: row.yearly, holding })
   const result: Json = { change: row._id, from, until, contentRev: actor.site.contentRev }
-  if (from === row.from && until === row.until && !row.stopped) return result
+  if (from === time.from && until === time.until && !row.stopped) return result
   const rows = (await datedOf(ctx, entry._id)).filter((r) => r._id !== row._id)
-  const into = holding ? undefined : rows.find((r) => r.from === from && r.until === until)
-  const plan = await planDated(ctx, actor.site, entry, from, row.fields as Record<string, Json>, rows, { until, same: into ?? row })
+  const into = holding ? undefined : rows.find((r) => isRowOf(r, from, until))
+  const plan = await planDated(ctx, actor.site, entry, from, row.fields as Record<string, Json>, rows, { until, same: into ?? row, ...labelsOf(row) })
   const title = entryLabel(schema, entry.brick, entry.data as Data)
   const history = recorded(msg('history.datedMovedUntil', { title, fields: fieldNames(schema, entry.brick, Object.keys(row.fields)), day: dayStart(from, schema.timeZone), until: dayStart(until, schema.timeZone) }), schema)
   if (into) await dropDated(ctx, row)
@@ -145,7 +159,8 @@ async function moveException(ctx: MutationCtx, actor: Actor, schema: Schema, ent
 /**
  * Cancels a dated change, waiting or stopped: its values never come, the entry stays as it is. A person whose change
  * needs a yes may cancel their own change only: taking away someone else's planned values is a change that needs one.
- * A holding exception ends now ("Jetzt beenden"): the website shows the normal values at once.
+ * A holding exception ends now ("Jetzt beenden"): the website shows the normal values at once. A yearly one goes for
+ * good, also while it holds ("Änderung aufheben", slice 4 decision 2): it never comes back.
  */
 export const cancel = mutation({
   args: { site: v.string(), opId: v.string(), task: v.optional(v.string()), change: v.string() },
@@ -165,7 +180,12 @@ export const cancel = mutation({
       const fields = fieldNames(schema, entry.brick, Object.keys(row.fields))
       const change = await ctx.db.insert('changes', {
         site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'datedCancelled',
-        ...recorded(holding ? msg('history.datedEndedNow', { title, fields }) : msg('history.datedCancelled', { title, day: dayStart(row.from, schema.timeZone), fields }), schema),
+        // A yearly one's line says it does not come back every year any more (round N8).
+        ...recorded(row.yearly
+          ? msg(holding ? 'history.datedEndedYearlyNow' : 'history.datedCancelledYearly', { title, what: row.name ?? fields })
+          : holding
+            ? msg('history.datedEndedNow', { title, fields })
+            : msg('history.datedCancelled', { title, day: dayStart(row.from, schema.timeZone), fields }), schema),
         entryRev: entry.rev, contentRev, at: Date.now(),
       })
       const result: Json = { change, contentRev }
@@ -177,7 +197,9 @@ export const cancel = mutation({
 /**
  * An entry's dated changes for the editor, in the order of their days: the values in storage format, who saved into it
  * last and when, whether the person may cancel and move it through `task`, a stop, and `changedSince`: the fields whose normal value was written after the change was made (the
- * change still wins on its day, D126).
+ * change still wins on its day, D126). An exception is listed with the days of its time of today, the one that holds
+ * or comes next (a yearly one's of this or next year, slice 4), with `yearly` and its name; a stopped one with the days
+ * of the time that failed.
  */
 export const list = query({
   args: { site: v.string(), entry: v.string(), task: v.optional(v.string()) },
@@ -186,16 +208,21 @@ export const list = query({
     const entry = await entryOf(ctx, actor, args.entry)
     const schema = actor.site.schema as Schema
     const names = await labeler(ctx, actor)
+    const today = todayIn(schema.timeZone)
     const out = []
     for (const row of await datedOf(ctx, entry._id)) {
+      // A stopped one keeps the days of the time that failed: a yearly one's next time would read as planned (round N7).
+      const on = row.stopped ? todayIn(schema.timeZone, new Date(row.stopped.at)) : today
+      const time = row.until !== undefined ? timeOf(row, on) ?? { from: row.from, until: row.until } : undefined
       out.push({
-        id: row._id, from: row.from, fields: Object.keys(row.fields), values: row.fields, by: row.by ? await names.who(row.by) : null, at: row.at,
+        id: row._id, from: time?.from ?? row.from, fields: Object.keys(row.fields), values: row.fields, by: row.by ? await names.who(row.by) : null, at: row.at,
         // An exception: its last day, whether it holds now, and the normal values it covers (the hint under the field).
-        ...(row.until !== undefined ? { until: row.until, holds: isHolding(row), normal: Object.fromEntries(Object.keys(row.fields).map((root) => [root, (entry.data as Data)[root] ?? null])) } : {}),
+        ...(time ? { until: time.until, holds: isHolding(row), normal: Object.fromEntries(Object.keys(row.fields).map((root) => [root, (entry.data as Data)[root] ?? null])) } : {}),
+        ...labelsOf(row),
         // What `task` lets this person do with it (G7): the editor offers only these steps.
         mayCancel: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, 'cancel')),
         // A move keeps a row's kind: checked at its own days, so a task that cannot give them moves none.
-        mayMove: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: row.from, until: row.until } })),
+        mayMove: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: row.from, until: row.until, ...rightsOf(row) } })),
         ...(row.stopped ? { stopped: row.stopped } : {}),
         changedSince: Object.keys(row.fields).filter((root) => (entry.fieldRevs[root] ?? 0) > (row.revs[root] ?? 0)),
       })
@@ -214,20 +241,21 @@ export const applyDue = internalMutation({
   args: { change: v.id('datedChanges'), from: v.string() },
   handler: async (ctx, args): Promise<null> => {
     const row = await ctx.db.get(args.change)
-    if (!row || row.from !== args.from || row.stopped) return null
+    // `from` is the start of the time it runs for: a yearly row's of that year (slice 4).
+    if (!row || !startsOn(row, args.from) || row.stopped) return null
     const site = await ctx.db.get(row.site)
     if (!site || site.deleting) return null
     const entry = await ctx.db.get(row.entry)
     if (!entry || entry.deletedAt) return null
     const schema = site.schema as Schema
-    if (todayIn(schema.timeZone) < row.from) {
+    if (todayIn(schema.timeZone) < args.from) {
       // Never sooner than a minute from now: a start that has passed would run again at once, again and again.
-      const at = Math.max(dayStart(row.from, schema.timeZone), Date.now() + 60_000)
-      await ctx.db.patch(row._id, { job: await ctx.scheduler.runAt(at, internal.datedChanges.applyDue, { change: row._id, from: row.from }) })
+      const at = Math.max(dayStart(args.from, schema.timeZone), Date.now() + 60_000)
+      await ctx.db.patch(row._id, { job: await ctx.scheduler.runAt(at, internal.datedChanges.applyDue, { change: row._id, from: args.from }) })
       return null
     }
     const title = entryLabel(schema, entry.brick, entry.data as Data)
-    if (row.until !== undefined) return await startException(ctx, site, entry, row, row.until, title)
+    if (row.until !== undefined) return await startException(ctx, site, entry, row, timeOf(row, args.from)!, title)
     let reason: StopReason | undefined
     let writing = false
     try {
@@ -248,14 +276,16 @@ export const applyDue = internalMutation({
 /**
  * The start run of an exception (slice 3): checked like a change of that day against what the page shows today (the
  * entry with the other holding exceptions over it); it then holds, without writing a field, waits for its end run, and
- * the website reads it. A refusal stops it as for a change without an end, so it shows on no day.
+ * the website reads it. A refusal stops it as for a change without an end, so it shows on no day. `time` is the time it
+ * starts: a yearly row's of that year, checked again each year (slice 4).
  */
-async function startException(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>, row: Dated, until: string, title: string): Promise<null> {
+async function startException(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>, row: Dated, time: Time, title: string): Promise<null> {
   if (row.holds !== undefined) return null
   const schema = site.schema as Schema
   const today = todayIn(schema.timeZone)
+  const { until } = time
   // Its days passed before it could start (the run came late): it ends without ever holding.
-  if (until < today) return await endException(ctx, site, entry, row, until)
+  if (until < today) return await endException(ctx, site, entry, row, time)
   const rows = await datedOf(ctx, entry._id)
   const others = rows.filter((r) => r._id !== row._id && isHolding(r))
   // An entry that is not online gets no exception (as a save refuses one, `exceptionOnlyOnline`): it would show unchecked the
@@ -276,14 +306,17 @@ async function startException(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'
     reason = { code: 'failed' }
     console.error(`Dated change ${row._id} failed (${errorKind(error)}).`)
   }
-  if (reason) return await stop(ctx, site, entry, row, reason, title)
+  if (reason) return await stop(ctx, site, entry, row, reason, title, time.from)
   const now = Date.now()
-  await ctx.db.patch(row._id, { holds: now, job: await scheduleRun(ctx, schema, row._id, row.from, until, true) })
+  await ctx.db.patch(row._id, { holds: now, job: await scheduleRun(ctx, schema, row._id, changeOf(row), true) })
   const contentRev = site.contentRev + 1
   await ctx.db.patch(site._id, { contentRev })
+  const fields = fieldNames(schema, entry.brick, Object.keys(row.fields))
   await ctx.db.insert('changes', {
     site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `dated:${row._id}`, kind: 'datedStarted',
-    ...recorded(msg('history.datedStarted', { title, fields: fieldNames(schema, entry.brick, Object.keys(row.fields)), until: dayStart(until, schema.timeZone) }), schema),
+    ...recorded(row.yearly
+      ? msg('history.datedStartedYearly', { title, what: row.name ?? fields, until: dayStart(until, schema.timeZone) })
+      : msg('history.datedStarted', { title, fields, until: dayStart(until, schema.timeZone) }), schema),
     ...(row.by ? { plannedBy: row.by } : {}), entryRev: entry.rev, contentRev, at: now,
   })
   return null
@@ -292,13 +325,15 @@ async function startException(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'
 /**
  * The end run of an exception at the first minute after its last day (slice 3): the row goes, no field is written and
  * nothing is checked (the normal values were checked when they were saved); the website reads the normal values again.
- * It plans itself again while the site's today is not yet after `until` (the zone or the end moved).
+ * It plans itself again while the site's today is not yet after `until` (the zone or the end moved). `until` is the end
+ * of the time it runs for: a yearly row's of that year, which stays and waits for its next time (slice 4).
  */
 export const endDue = internalMutation({
   args: { change: v.id('datedChanges'), until: v.string() },
   handler: async (ctx, args): Promise<null> => {
     const row = await ctx.db.get(args.change)
-    if (!row || row.until !== args.until || row.holds === undefined) return null
+    const time = row ? timeOf(row, args.until) : undefined
+    if (!row || time?.until !== args.until || row.holds === undefined) return null
     const site = await ctx.db.get(row.site)
     if (!site || site.deleting) return null
     const schema = site.schema as Schema
@@ -312,19 +347,33 @@ export const endDue = internalMutation({
       await dropDated(ctx, row, true)
       return null
     }
-    return await endException(ctx, site, entry, row, args.until)
+    return await endException(ctx, site, entry, row, time)
   },
 })
 
-/** Drops an exception whose last day passed (called from its run), with a history line and a new `contentRev`. */
-async function endException(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>, row: Dated, until: string): Promise<null> {
+/**
+ * Ends the time `time` of an exception whose last day passed (called from its run), with a history line and a new
+ * `contentRev`. A one-off row goes; a yearly row stays without `holds` and waits for the start run of its next time
+ * (slice 4).
+ */
+async function endException(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>, row: Dated, time: Time): Promise<null> {
   const schema = site.schema as Schema
-  await dropDated(ctx, row, true)
+  const title = entryLabel(schema, entry.brick, entry.data as Data)
+  const fields = fieldNames(schema, entry.brick, Object.keys(row.fields))
+  let history
+  if (row.yearly) {
+    const next = timeOf(row, addDays(time.until, 1))!
+    await ctx.db.patch(row._id, { holds: undefined, job: await ctx.scheduler.runAt(dayStart(next.from, schema.timeZone), internal.datedChanges.applyDue, { change: row._id, from: next.from }) })
+    history = msg('history.datedEndedYearly', { title, what: row.name ?? fields, next: dayStart(next.from, schema.timeZone) })
+  } else {
+    await dropDated(ctx, row, true)
+    history = msg('history.datedEnded', { title, fields, day: dayStart(time.from, schema.timeZone), until: dayStart(time.until, schema.timeZone) })
+  }
   const contentRev = site.contentRev + 1
   await ctx.db.patch(site._id, { contentRev })
   await ctx.db.insert('changes', {
     site: site._id, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `dated:${row._id}`, kind: 'datedEnded',
-    ...recorded(msg('history.datedEnded', { title: entryLabel(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, Object.keys(row.fields)), day: dayStart(row.from, schema.timeZone), until: dayStart(until, schema.timeZone) }), schema),
+    ...recorded(history, schema),
     ...(row.by ? { plannedBy: row.by } : {}), entryRev: entry.rev, contentRev, at: Date.now(),
   })
   return null
@@ -381,9 +430,9 @@ export const writeDue = internalMutation({
  * A dated change that did not take effect (D127): nothing is written, the row keeps why and loses its run, the history says
  * it, and the person who made it and the owners are told. A failed mail never undoes the stop. It is not tried again.
  */
-async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>, row: Dated, reason: StopReason, title: string): Promise<null> {
+async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>, row: Dated, reason: StopReason, title: string, from = row.from): Promise<null> {
   const schema = site.schema as Schema
-  const day = dayStart(row.from, schema.timeZone)
+  const day = dayStart(from, schema.timeZone)
   const roots = Object.keys(row.fields)
   await ctx.db.patch(row._id, { stopped: { at: day, reason }, job: undefined })
   try {

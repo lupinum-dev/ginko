@@ -68,6 +68,10 @@ export interface UpcomingOf<F extends Fields> {
   from: string
   /** The last day of an exception: its values hold from `from` to `until`, then the normal values come back. */
   until?: string
+  /** The owner's name for it ("Sommer"), as written: it is not translated. */
+  name?: string
+  /** It comes back every year; `from` and `until` are the days of its next time. */
+  yearly?: true
   data: { [K in keyof DataOf<F>]?: DataOf<F>[K] | null }
 }
 
@@ -77,8 +81,13 @@ export interface UpcomingOf<F extends Fields> {
  * `UpcomingOf`.
  */
 export interface HoldingOf<F extends Fields> {
+  /** The days of the time that holds (for a yearly change: this year's). */
   from: string
   until: string
+  /** The owner's name for it, as written: it is not translated. */
+  name?: string
+  /** It comes back every year. */
+  yearly?: true
   data: { [K in keyof DataOf<F>]?: DataOf<F>[K] | null }
   normal: { [K in keyof DataOf<F>]?: DataOf<F>[K] | null }
 }

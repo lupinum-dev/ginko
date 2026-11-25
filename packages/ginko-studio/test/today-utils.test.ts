@@ -35,7 +35,7 @@ test.each<[string, Record<string, string[] | '*'>, Record<string, number>, Recor
       { key: 'lunch', buttons: ['Mittagsmenü dieser Woche'], more: [] },
       { key: 'lunchPlans', buttons: ['Nächste Woche planen'], more: ['Geplante Woche bearbeiten'] },
     ],
-    menu: [{ key: 'menu', buttons: ['Gericht heute aus', 'Gericht bearbeiten', 'Preis ändern', 'Gericht hinzufügen', 'Aktionspreis', 'Heute nicht auf der Karte'], more: ['Gericht entfernen'] }],
+    menu: [{ key: 'menu', buttons: ['Gericht heute aus', 'Gericht bearbeiten', 'Preis ändern', 'Gericht hinzufügen', 'Aktionspreis', 'Saisongericht', 'Heute nicht auf der Karte'], more: ['Gericht entfernen'] }],
     events: [{ key: 'events', buttons: ['Veranstaltung hinzufügen', 'Veranstaltung ausgebucht'], more: [] }],
     gallery: [{ key: 'gallery', buttons: ['Fotos bearbeiten'], more: [] }],
   }],

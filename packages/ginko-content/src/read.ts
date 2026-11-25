@@ -709,7 +709,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
           return
         }
         if (isException(change)) {
-          if (change.until < today) warnings.push({ file, path: `$changes.${i}`, message: `This change ended on ${change.until} and changes nothing any more: it can be deleted.`, ...at })
+          // A yearly change comes back: it never ends for good (slice 4).
+          if (!change.yearly && change.until < today) warnings.push({ file, path: `$changes.${i}`, message: `This change ended on ${change.until} and changes nothing any more: it can be deleted.`, ...at })
           return
         }
         const set = isRecord(written[i]?.set) ? written[i]!.set as Record<string, unknown> : {}

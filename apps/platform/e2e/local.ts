@@ -47,6 +47,15 @@ export function storedDish(dish: string): { name?: { de?: string }; price?: { am
   return entries.find((e) => e.brick === 'menu' && !e.deletedAt && e.data.name?.de === dish)?.data
 }
 
+/** The rows of a dish's changes with days in the local backend (waiting, holding and stopped ones). */
+export function datedRowsOf(dish: string): unknown[] {
+  assertLocal()
+  const read = (table: string) => execFileSync('npx', ['convex', 'data', table, '--limit', '500', '--format', 'jsonLines'], { cwd: serverDir, encoding: 'utf8' })
+    .trim().split('\n').filter(Boolean).map((l) => JSON.parse(l) as Record<string, unknown>)
+  const entry = read('entries').find((e) => e.brick === 'menu' && !e.deletedAt && (e.data as { name?: { de?: string } }).name?.de === dish)
+  return entry ? read('datedChanges').filter((r) => r.entry === entry._id) : []
+}
+
 /**
  * A dish as the website gets it now: the German bundle item from the local backend, with a change that holds for a time
  * laid over its stored values (slice 3). `onlinePrice` reads the stored entry, which such a change never writes.

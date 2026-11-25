@@ -3,7 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { describe, expect, test, vi } from 'vitest'
-import { collection, defineSite, f } from '@lupinum/ginko/internal'
+import { addDays, collection, defineSite, f, todayIn } from '@lupinum/ginko/internal'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import DatedNotices from '../app/components/DatedNotices.vue'
@@ -48,6 +48,16 @@ describe('the notices of changes for a later day', () => {
       'Die geplante Änderung für [2099-02-01] wurde nicht übernommen: Preis 12,90 €.',
     ])
     expect(wrapper.text()).toContain('Seit der Planung geändert: Preis.')
+    wrapper.unmount()
+  })
+
+  // Round N7. Wrong behaviour caught: a stopped season reads like a one-off change of one day, so nobody sees that it
+  // will not come back by itself next year.
+  test('a stopped season names the days of the time that failed and that it does not come back by itself', () => {
+    rows.value = [change('d1', '2099-06-01', { until: '2099-08-31', yearly: true, stopped: { code: 'invalid', fields: ['price'] } })]
+    const wrapper = mountNotices()
+    expect(wrapper.get('[data-notice="d1"] p').text().replace(/\s/g, ' ')).toBe(
+      'Die jährliche Änderung für [2099-06-01] bis [2099-08-31] wurde nicht übernommen: Preis 12,90 €. Sie kommt nicht von selbst wieder: Wähle die Tage neu („Tage ändern“) oder hebe sie auf.')
     wrapper.unmount()
   })
 
@@ -183,14 +193,28 @@ describe('the notices of a change with an end', () => {
     expect([(wrapper.get('#dated-day-d1').element as HTMLInputElement).value, (wrapper.get('#dated-until-d1').element as HTMLInputElement).value]).toEqual(['2099-12-06', '2099-12-31'])
     await wrapper.get('#dated-until-d1').setValue('2100-01-06')
     await press(wrapper, 'Tage speichern')
-    expect(ops.moveChange).toHaveBeenLastCalledWith('d1', '2099-12-06', 'items.price', '2100-01-06')
+    expect(ops.moveChange).toHaveBeenLastCalledWith('d1', '2099-12-06', 'items.price', '2100-01-06', false)
 
     await wrapper.get('#dated-day-d2-open').trigger('click')
     await flushPromises()
     expect([wrapper.find('#dated-day-d2').exists(), (wrapper.get('#dated-until-d2').element as HTMLInputElement).value]).toEqual([false, '2099-12-31'])
     await wrapper.get('#dated-until-d2').setValue('2100-01-10')
     await press(wrapper, 'Tage speichern')
-    expect(ops.moveChange).toHaveBeenLastCalledWith('d2', '2026-11-01', 'items.price', '2100-01-10')
+    expect(ops.moveChange).toHaveBeenLastCalledWith('d2', '2026-11-01', 'items.price', '2100-01-10', false)
+    wrapper.unmount()
+  })
+
+  // Round N6: "Tage ändern" has the limits of the sheet. Wrong behaviour caught: a waiting season moved to days that hold
+  // today (a start some days back, allowed for a yearly change) is refused as "before today".
+  test('"Tage ändern" moves a waiting season to days that hold today', async () => {
+    const today = todayIn('Europe/Vienna')
+    rows.value = [offer('d1', addDays(today, 10), addDays(today, 40), { yearly: true, name: 'Sommer' })]
+    const wrapper = mountNotices()
+    await wrapper.get('#dated-day-d1-open').trigger('click')
+    await flushPromises()
+    await wrapper.get('#dated-day-d1').setValue(addDays(today, -3))
+    await press(wrapper, 'Tage speichern')
+    expect([wrapper.find('[role="alert"]').exists(), ops.moveChange.mock.lastCall]).toEqual([false, ['d1', addDays(today, -3), 'items.price', addDays(today, 40), true]])
     wrapper.unmount()
   })
 
@@ -206,6 +230,64 @@ describe('the notices of a change with an end', () => {
     await press(wrapper, 'Jetzt beenden')
     expect(ops.cancelChange).toHaveBeenCalledWith('d2', 'items.price')
     expect(ops.unpublishEntry).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+})
+
+describe('the notices of a change that comes back every year, and of a named one (slice 4)', () => {
+  const fmt = (day: string) => new Intl.DateTimeFormat('de-AT', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  const short = (day: string) => new Intl.DateTimeFormat('de-AT', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  const offer = (id: string, from: string, until: string, over: Record<string, unknown> = {}) => change(id, from, { until, values: { price: { amount: 990 } }, normal: { price: { amount: 1290 } }, ...over })
+
+  // Rows "save" (notices) and "a name only". Wrong behaviour caught: a season reads like a one-off change (with a year, or
+  // without "every year"), a holding one does not say it comes back, or the name does not lead.
+  test('the name leads; a season names its days without a year and says it comes back', () => {
+    rows.value = [
+      offer('d1', '2099-06-01', '2099-08-31', { yearly: true, name: 'Sommer' }),
+      offer('d2', '2026-11-01', '2099-12-31', { yearly: true, holds: true }),
+      offer('d3', '2099-02-03', '2099-02-17', { name: 'Betriebsurlaub' }),
+      offer('d4', '2026-11-01', '2099-11-30', { name: 'Herbst', yearly: true, holds: true }),
+    ]
+    const wrapper = mountNotices()
+    expect(wrapper.findAll('[data-notice]').map((n) => n.find('p').text().replace(/\s/g, ' '))).toEqual([
+      `Sommer: jedes Jahr von ${short('2099-06-01')} bis ${short('2099-08-31')}: Preis 9,90 €`,
+      `Bis ${fmt('2099-12-31')} zeigt die Website: Preis 9,90 € (sonst 12,90 €). Kommt jedes Jahr wieder.`,
+      `Betriebsurlaub: von ${fmt('2099-02-03')} bis ${fmt('2099-02-17')}: Preis 9,90 €`,
+      `Herbst: bis ${fmt('2099-11-30')} zeigt die Website: Preis 9,90 € (sonst 12,90 €). Kommt jedes Jahr wieder.`,
+    ])
+    wrapper.unmount()
+  })
+
+  // Round N8, one-day forms. Wrong behaviour caught: a change of one day reads "von 24. Dez. bis 24. Dez.".
+  test('a change of one day names that day once', () => {
+    rows.value = [
+      offer('d1', '2099-12-24', '2099-12-24', { yearly: true }),
+      offer('d2', '2099-12-25', '2099-12-25', { yearly: true, name: 'Probetag' }),
+      offer('d3', '2099-12-23', '2099-12-23', { name: 'Probetag' }),
+      offer('d4', '2099-12-22', '2099-12-22'),
+    ]
+    const wrapper = mountNotices()
+    expect(wrapper.findAll('[data-notice]').map((n) => n.find('p').text().replace(/\s/g, ' '))).toEqual([
+      `Jedes Jahr am ${short('2099-12-24')}: Preis 9,90 €`,
+      `Probetag: jedes Jahr am ${short('2099-12-25')}: Preis 9,90 €`,
+      `Probetag: am ${fmt('2099-12-23')}: Preis 9,90 €`,
+      `Am ${fmt('2099-12-22')}: Preis 9,90 €`,
+    ])
+    wrapper.unmount()
+  })
+
+  // Row "Änderung aufheben" and decision 2. Wrong behaviour caught: a holding season offers "Jetzt beenden" (as if it
+  // ended only this year), or its question hides that it does not come back next year.
+  test('a holding season offers "Änderung aufheben", not "Jetzt beenden"; the question names next year', async () => {
+    ops.cancelChange.mockClear()
+    rows.value = [offer('d2', '2026-11-01', '2099-12-31', { yearly: true, holds: true })]
+    const wrapper = mountNotices()
+    expect(wrapper.get('[data-notice="d2"]').findAll('button').map((b) => b.text())).toEqual(['Tage ändern', 'Änderung aufheben'])
+    await press(wrapper, 'Änderung aufheben')
+    expect(ops.cancelChange).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Diese Änderung aufheben? Sie kommt dann auch nächstes Jahr nicht wieder.')
+    await press(wrapper, 'Änderung aufheben')
+    expect(ops.cancelChange).toHaveBeenCalledWith('d2', 'items.price')
     wrapper.unmount()
   })
 })

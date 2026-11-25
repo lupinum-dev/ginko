@@ -489,16 +489,24 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "“ gibt es in einer Änderung nicht: sie hat nur „from“, „until“ und „set“."
+    "“ gibt es in einer Änderung nicht: sie hat nur „from“, „until“, „yearly“, „name“ und „set“."
    ],
-   "changeNotYet": [
-    "„",
+   "changeYearly": "„yearly“ hat nur den Wert true und braucht ein Ende (until).",
+   "changeName": "Der Name einer Änderung hat 1 bis 60 Zeichen und braucht ein Ende (until).",
+   "changeYearlyLong": [
+    "Eine Änderung, die jedes Jahr wiederkommt, dauert weniger als ein Jahr: „until“ (",
     [
      "a",
-     "key"
+     "until"
     ],
-    "“ gibt es für eine Änderung noch nicht."
+    ") liegt zu weit nach „from“ (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
+   "changeYearlyLeapDay": "Den 29. Februar gibt es nicht jedes Jahr: Eine Änderung, die jedes Jahr wiederkommt, braucht weitere Tage dazu, oder „yearly“ fällt weg.",
    "changeTwice": [
     "Zwei Änderungen haben den Tag ",
     [
@@ -2012,16 +2020,24 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "”: it has only “from”, “until” and “set”."
+    "”: it has only “from”, “until”, “yearly”, “name” and “set”."
    ],
-   "changeNotYet": [
-    "“",
+   "changeYearly": "“yearly” takes only true and needs an end (until).",
+   "changeName": "The name of a change has 1 to 60 characters and needs an end (until).",
+   "changeYearlyLong": [
+    "A change that comes back every year lasts less than a year: “until” (",
     [
      "a",
-     "key"
+     "until"
     ],
-    "” is not available for a change yet."
+    ") is too far after “from” (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
+   "changeYearlyLeapDay": "29 February does not exist every year: a change that comes back every year needs more days, or no “yearly”.",
    "changeTwice": [
     "Two changes have the day ",
     [
@@ -3535,16 +3551,24 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "»: solo tiene «from», «until» y «set»."
+    "»: solo tiene «from», «until», «yearly», «name» y «set»."
    ],
-   "changeNotYet": [
-    "«",
+   "changeYearly": "«yearly» solo admite true y necesita un final (until).",
+   "changeName": "El nombre de un cambio tiene de 1 a 60 caracteres y necesita un final (until).",
+   "changeYearlyLong": [
+    "Un cambio que vuelve cada año dura menos de un año: «until» (",
     [
      "a",
-     "key"
+     "until"
     ],
-    "» todavía no está disponible para un cambio."
+    ") está demasiado lejos de «from» (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
+   "changeYearlyLeapDay": "El 29 de febrero no existe todos los años: un cambio que vuelve cada año necesita más días, o quitar «yearly».",
    "changeTwice": [
     "Dos cambios tienen el día ",
     [
@@ -5060,16 +5084,24 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    " » : elle n’a que « from », « until » et « set »."
+    " » : elle n’a que « from », « until », « yearly », « name » et « set »."
    ],
-   "changeNotYet": [
-    "« ",
+   "changeYearly": "« yearly » ne prend que true et a besoin d’une fin (until).",
+   "changeName": "Le nom d’une modification a de 1 à 60 caractères et a besoin d’une fin (until).",
+   "changeYearlyLong": [
+    "Une modification qui revient chaque année dure moins d’un an : « until » (",
     [
      "a",
-     "key"
+     "until"
     ],
-    " » n’est pas encore disponible pour une modification."
+    ") est trop loin après « from » (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
+   "changeYearlyLeapDay": "Le 29 février n’existe pas chaque année : une modification qui revient chaque année a besoin d’autres jours, ou pas de « yearly ».",
    "changeTwice": [
     "Deux modifications ont le jour ",
     [
@@ -6584,16 +6616,24 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "»: ha solo «from», «until» e «set»."
+    "»: ha solo «from», «until», «yearly», «name» e «set»."
    ],
-   "changeNotYet": [
-    "«",
+   "changeYearly": "«yearly» accetta solo true e richiede una fine (until).",
+   "changeName": "Il nome di una modifica ha da 1 a 60 caratteri e richiede una fine (until).",
+   "changeYearlyLong": [
+    "Una modifica che torna ogni anno dura meno di un anno: «until» (",
     [
      "a",
-     "key"
+     "until"
     ],
-    "» in una modifica non è ancora disponibile."
+    ") è troppo lontano da «from» (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
+   "changeYearlyLeapDay": "Il 29 febbraio non esiste ogni anno: una modifica che torna ogni anno ha bisogno di altri giorni, oppure senza «yearly».",
    "changeTwice": [
     "Due modifiche hanno il giorno ",
     [
@@ -8177,16 +8217,24 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "» في التغيير: فيه «from» و«until» و«set» فقط."
+    "» في التغيير: فيه «from» و«until» و«yearly» و«name» و«set» فقط."
    ],
-   "changeNotYet": [
-    "«",
+   "changeYearly": "«yearly» يقبل القيمة true فقط ويحتاج إلى نهاية (until).",
+   "changeName": "اسم التغيير من 1 إلى 60 حرفًا ويحتاج إلى نهاية (until).",
+   "changeYearlyLong": [
+    "التغيير الذي يتكرر كل عام يستمر أقل من عام: «until» (",
     [
      "a",
-     "key"
+     "until"
     ],
-    "» في التغيير غير متاح بعد."
+    ") بعيد جدًا عن «from» (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
    ],
+   "changeYearlyLeapDay": "يوم 29 فبراير لا يوجد كل عام: التغيير الذي يتكرر كل عام يحتاج إلى أيام أخرى، أو بدون «yearly».",
    "changeTwice": [
     "تغييران لهما اليوم ",
     [

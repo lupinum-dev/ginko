@@ -3,10 +3,11 @@
 import { describe, expect, it } from 'vitest'
 import { statusRules } from '@lupinum/ginko/patterns'
 import {
-  buildBundle, changeIssues, checkSchema, collection, dataOn, defineSite, f, serializeSchema, servedBundle, single,
-  type Change, type Json, type Schema, type SiteInput,
+  addDays, buildBundle, changeIssues, checkSchema, collection, dataOn, defineSite, f, keptChanges, occurrence, serializeSchema,
+  servedBundle, single, type Change, type Json, type Schema, type SiteInput,
 } from '../../src/core/index.ts'
 import * as bothHomes from '../fixtures/both-homes.ts'
+import * as bothHomesYearly from '../fixtures/both-homes-yearly.ts'
 
 const TODAY = '2026-10-08'
 
@@ -86,7 +87,8 @@ describe('changeIssues: the check of an entry\'s changes', () => {
     ['a day that does not exist', [{ from: '2026-02-30', set: { price: money(1) } }], [[0, '$changes.0.from', 'CHANGE']]],
     ['an empty set', [{ from: '2026-11-01', set: {} }], [[0, '$changes.0.set', 'CHANGE']]],
     ['another key', [{ from: '2026-11-01', set: { price: money(1) }, why: 'x' }], [[0, '$changes.0.why', 'CHANGE']]],
-    ['yearly and name (not built yet)', [{ from: '2026-11-01', yearly: true, name: 'Winter', set: { price: money(1) } }], [[0, '$changes.0.yearly', 'NOT_YET'], [0, '$changes.0.name', 'NOT_YET']]],
+    // Slice 4: both keys need an end (the limits are in "a change that comes back every year").
+    ['yearly and name without an end', [{ from: '2026-11-01', yearly: true, name: 'Winter', set: { price: money(1) } }], [[0, '$changes.0.yearly', 'CHANGE'], [0, '$changes.0.name', 'CHANGE']]],
     ['an unknown field', [{ from: '2026-11-01', set: { colour: 'red' } }], [[0, 'colour', 'UNKNOWN_FIELD']]],
     ['the slug', [{ from: '2026-11-01', set: { slug: de('neu') } }], [[0, 'slug', 'CHANGE']]],
     ['the field showUntil reads', [{ from: '2026-11-01', set: { servedUntil: '2026-12-01' } }], [[0, 'servedUntil', 'CHANGE']]],
@@ -236,6 +238,21 @@ describe('when on a task (D123)', () => {
   ])('in the stored model, with an end: %s', (_, task, expected) => {
     expect(problems([task])).toEqual(expected)
   })
+
+  // Slice 4, task keys. Wrong behaviour caught: a season or a named time cannot be a task; `yearly` or `name` sit on a
+  // task without both days asked (a today-only task, or one day), or take another value than 'ask'.
+  const YEARLY_NEEDS = "dishes.price.when: yearly and name need { from: 'ask', until: 'ask' } and take only 'ask'."
+  it.each([
+    ['a season with a name', edit(['price'], { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' }), []],
+    ['a season without a name', edit(['price'], { from: 'ask', until: 'ask', yearly: 'ask' }), []],
+    ['a named time', edit(['price'], { from: 'ask', until: 'ask', name: 'ask' }), []],
+    ['yearly on a today-only task', edit(['price'], { from: '@today', until: '@today', yearly: 'ask' }), [YEARLY_NEEDS]],
+    ['a name on a today-only task', edit(['price'], { from: '@today', until: '@today', name: 'ask' }), [YEARLY_NEEDS]],
+    ['yearly with one day asked', edit(['price'], { from: 'ask', yearly: 'ask' }), [YEARLY_NEEDS]],
+    ['yearly fixed to true', edit(['price'], { from: 'ask', until: 'ask', yearly: true }), [YEARLY_NEEDS]],
+  ])('in the stored model, yearly and name: %s', (_, task, expected) => {
+    expect(problems([task])).toEqual(expected)
+  })
 })
 
 describe('set on a task (slice 3)', () => {
@@ -304,7 +321,6 @@ describe('changeIssues with exceptions', () => {
     ['two exceptions of one start for one field', [{ from: '2026-11-01', until: '2026-11-30', set: { price: money(990) } }, { from: '2026-11-01', until: '2026-12-31', set: { price: money(890) } }], [[1, '$changes.1.from', 'CHANGE']]],
     ['two exceptions of one start for other fields', [{ from: '2026-11-01', until: '2026-11-30', set: { price: money(990) } }, { from: '2026-11-01', until: '2026-12-31', set: { note: de('Aktion') } }], []],
     ['an exception and a normal change of one day', [{ from: '2026-11-01', set: { price: money(1000) } }, { from: '2026-11-01', until: '2026-11-30', set: { price: money(990) } }], []],
-    ['still not yearly', [{ from: '2026-11-01', until: '2026-11-30', yearly: true, set: { price: money(990) } }], [[0, '$changes.0.yearly', 'NOT_YET']]],
     ['an exception that clears a required field', [{ from: '2026-11-01', until: '2026-11-30', set: { price: null } }], [[0, 'price', 'REQUIRED']]],
   ])('%s', async (_, changes, expected) => {
     expect(await codes(changes)).toEqual(expected)
@@ -389,6 +405,40 @@ describe('upcoming in the bundle', () => {
     it('an entry without a holding exception gets no holding key', () => {
       expect(JSON.stringify(buildBundle(input()))).not.toContain('holding')
     })
+
+    // Round M2 (break-it P1-2): a change for good under an offer. Wrong behaviour caught: the page promises
+    // "ab 6. Dezember € 22,90" while the offer keeps 9,90 until 31 December.
+    it('a change for good under an offer is announced for the day after the offer', () => {
+      const changes: Change[] = [{ from: '2026-10-01', until: '2026-12-31', set: { price: money(990) } }, { from: '2026-12-06', set: { price: money(2290) } }]
+      const item = first(buildBundle({ ...input(), entries: { dishes: [{ id: 'd1', data: dish, changes }] } }))
+      expect(item?.upcoming).toEqual([{ from: '2027-01-01', data: { price: shown(2290) } }])
+    })
+
+    // Round M2, the number: every upcoming item is true on its day. A change for good with two public fields, an offer
+    // over its price, a second offer chained after the first, and a second change for good inside the cover (so the first
+    // one's price never shows). Round N9e: a yearly season over the story of the change for good, so its story shows only
+    // after the season. Wrong behaviour caught: an item names a value the page will not show on that day.
+    it('number: every field of every upcoming item equals what the page shows on its day (violations 0)', async () => {
+      const changes: Change[] = [
+        { from: '2026-12-06', set: { price: money(2290), story: de('Neu') } },
+        { from: '2026-11-20', until: '2026-12-31', set: { price: money(990) } },
+        { from: '2027-01-01', until: '2027-01-10', set: { price: money(890) } },
+        { from: '2027-01-05', set: { price: money(2390) } },
+        { from: '2026-12-01', until: '2026-12-15', yearly: true, name: 'Advent', set: { story: de('Advent') } },
+      ]
+      const bundleOn = (data: typeof dish, today: string, kept: Change[]) => servedBundle({ ...input(), today, entries: { dishes: [{ id: 'd1', data, changes: kept }] } })
+      const item = first(await bundleOn(dish, TODAY, changes))!
+      const violations: string[] = []
+      for (const u of item.upcoming ?? []) {
+        // What the page shows on that day: the values of that day with no change left to apply.
+        const shownThen = first(await bundleOn(dataOn(dish, changes, u.from) as typeof dish, u.from, []))!
+        for (const [f, value] of Object.entries(u.data)) if (JSON.stringify(value) !== JSON.stringify(shownThen.data[f])) violations.push(`${u.from} ${f}`)
+      }
+      expect(violations).toEqual([])
+      expect(item.upcoming?.map((u) => [u.from, Object.keys(u.data)])).toEqual([
+        ['2026-11-20', ['price']], ['2026-12-01', ['story']], ['2026-12-16', ['story']], ['2027-01-01', ['price']], ['2027-01-11', ['price']],
+      ])
+    })
   })
 
   it('carries nothing ahead for a brick without timeline', () => {
@@ -397,5 +447,151 @@ describe('upcoming in the bundle', () => {
     delete s.bricks.practice!.timeline
     const bundle = buildBundle(input(s))
     expect(JSON.stringify(bundle)).not.toContain('upcoming')
+  })
+})
+
+// Slice 4: a change that comes back every year, and a name. `occurrence` is the one place a yearly change becomes days;
+// `dataOn` stays the one place a change is applied.
+describe('a change that comes back every year (slice 4)', () => {
+  const year = (c: Omit<Change, 'set'>): Change => ({ ...c, set: { price: money(700) } })
+  // Number 2. The table by hand: compare month and day as text, never before the first day.
+  const md = (day: string) => day.slice(5)
+  const holdsByHand = (c: Change, day: string) => {
+    if (day < c.from || c.until === undefined) return false
+    if (!c.yearly) return day <= c.until
+    const [from, until] = [md(c.from), md(c.until)]
+    return from <= until ? md(day) >= from && md(day) <= until : md(day) >= from || md(day) <= until
+  }
+  /** Every day from `first` to `last`. */
+  const everyDay = (first: string, last: string) => {
+    const out: string[] = []
+    for (let day = first; day <= last; day = addDays(day, 1)) out.push(day)
+    return out
+  }
+  // Wrong behaviour caught: a yearly time holds a day too long or too short in some year, holds before its first day,
+  // loses 29 February (or invents it), breaks over the turn of the year, or names other days than the ones it holds.
+  it.each<[string, Change]>([
+    ['summer', year({ from: '2026-06-01', until: '2026-08-31', yearly: true })],
+    ['over the turn of the year', year({ from: '2026-11-01', until: '2027-02-28', yearly: true })],
+    ['to 29 February', year({ from: '2027-12-01', until: '2028-02-29', yearly: true })],
+    ['from 29 February', year({ from: '2028-02-29', until: '2028-03-05', yearly: true })],
+    ['two days over new year', year({ from: '2026-12-31', until: '2027-01-01', yearly: true })],
+    ['one day', year({ from: '2026-07-04', until: '2026-07-04', yearly: true })],
+    ['almost a year', year({ from: '2026-03-01', until: '2027-02-27', yearly: true })],
+    ['once (not yearly)', year({ from: '2026-10-20', until: '2026-12-31' })],
+  ])('number 2: occurrence of %s against the table by hand, every day of 2026 to 2029', (_, change) => {
+    const all = everyDay('2025-01-01', '2031-12-31')
+    const held = new Set(all.filter((day) => holdsByHand(change, day)))
+    // The time a day lies in (or the next one) by hand: the run of held days around it, or the next run after it.
+    const runOf = (day: string) => {
+      let first = day
+      while (!held.has(first) && first <= '2031-12-31') first = addDays(first, 1)
+      if (first > '2031-12-31') return undefined
+      let [from, until] = [first, first]
+      while (held.has(addDays(from, -1))) from = addDays(from, -1)
+      while (held.has(addDays(until, 1))) until = addDays(until, 1)
+      return { from, until }
+    }
+    const wrong = everyDay('2026-01-01', '2029-12-31')
+      .map((day) => [day, occurrence(change, day), runOf(day)] as const)
+      .filter(([, got, expected]) => JSON.stringify(got) !== JSON.stringify(expected))
+    expect(wrong.slice(0, 5)).toEqual([])
+    // Round N2: a time never ends before it starts (29 February alone would, in a year without it).
+    const backwards = everyDay('2026-01-01', '2029-12-31').filter((day) => {
+      const time = occurrence(change, day)
+      return time !== undefined && time.until !== undefined && time.from > time.until
+    })
+    expect(backwards).toEqual([])
+  })
+
+  // Number 1, the core's own reading of the table both homes are tested against.
+  it.each(bothHomesYearly.days)('number 1: the table of both homes on %s', (day, amount, onMenu) => {
+    expect(dataOn(bothHomesYearly.stored, bothHomesYearly.changes, day)).toEqual({ price: money(amount), onMenu })
+  })
+
+  // Round N9f: number 1 on every day of the three years, against the table's changes read by hand (month and day as text),
+  // so a wrong day between the listed ones is caught too.
+  it('number 1: every day from the day of the save to the end of 2030, read by hand', () => {
+    const byHand = (day: string) => {
+      const winter = day >= '2027-12-01' && (md(day) >= '12-01' || md(day) <= '01-31')
+      const price = day >= '2027-12-24' && day <= '2027-12-26' ? 790 : winter ? 990 : day >= '2028-01-10' ? 1390 : 1290
+      const off = day >= '2028-02-20' && md(day) >= '02-20' && md(day) <= '02-29'
+      return { price: money(price), onMenu: !off }
+    }
+    const wrong = everyDay(bothHomesYearly.savedOn, '2030-12-31')
+      .filter((day) => JSON.stringify(dataOn(bothHomesYearly.stored, bothHomesYearly.changes, day)) !== JSON.stringify(byHand(day)))
+    expect(wrong.slice(0, 5)).toEqual([])
+  })
+
+  // Wrong behaviour caught: the start of the current time is not what decides an overlap (a summer that started in
+  // June loses to a one-off change that started in May), or a three-day closure inside the summer loses to it.
+  it.each([
+    ['a closure inside the summer wins', [year({ from: '2026-06-01', until: '2026-08-31', yearly: true }), { from: '2027-07-10', until: '2027-07-12', set: { price: money(500) } }], '2027-07-11', 500],
+    ['the summer wins over a change that started in May', [year({ from: '2026-06-01', until: '2026-08-31', yearly: true }), { from: '2027-05-01', until: '2027-07-31', set: { price: money(500) } }], '2027-07-11', 700],
+    ['before its first day nothing holds', [year({ from: '2027-06-01', until: '2027-08-31', yearly: true })], '2026-07-11', 900],
+  ])('%s', (_, changes, day, amount) => {
+    expect(dataOn(dish, changes, day).price).toEqual(money(amount))
+  })
+
+  // `ginko check` and the file read keep a yearly change after its first time: it comes back.
+  it('keptChanges always keeps a yearly change', () => {
+    const summer = year({ from: '2025-06-01', until: '2025-08-31', yearly: true })
+    expect(keptChanges([summer, year({ from: '2025-06-01', until: '2025-08-31' })], TODAY)).toEqual([summer])
+  })
+
+  const codes = async (changes: unknown) => (await changeIssues(schema(), 'dishes', dish, changes)).map((i) => [i.change, i.path, i.code])
+  // Limits of the paper (the ones a file can break; "a year back or ahead" depends on the day of the save: platform).
+  // Wrong behaviour caught: a yearly change without an end, or one year long (it never ends, so it never starts again),
+  // passes; a name that is empty, too long or on a change without an end passes; two changes whose current times start
+  // on one day and set one field pass (which wins?).
+  it.each([
+    ['a yearly change', [year({ from: '2026-06-01', until: '2026-08-31', yearly: true, name: 'Sommer' })], []],
+    ['almost a year', [year({ from: '2026-03-01', until: '2027-02-27', yearly: true })], []],
+    ['yearly without an end', [year({ from: '2026-06-01', yearly: true })], [[0, '$changes.0.yearly', 'CHANGE']]],
+    ['yearly with another value', [year({ from: '2026-06-01', until: '2026-08-31', yearly: 'ja' as unknown as true })], [[0, '$changes.0.yearly', 'CHANGE']]],
+    ['yearly and one year long', [year({ from: '2026-03-01', until: '2027-02-28', yearly: true })], [[0, '$changes.0.until', 'CHANGE']]],
+    // Month and day of `until` after those of `from`, a year later: as month and day alone it looks like one day.
+    ['yearly and a year and a day long', [year({ from: '2026-06-15', until: '2027-06-15', yearly: true })], [[0, '$changes.0.until', 'CHANGE']]],
+    // 29 February alone exists every fourth year only (round N2); as one bound of longer days it is kept.
+    ['yearly on 29 February alone', [year({ from: '2028-02-29', until: '2028-02-29', yearly: true })], [[0, '$changes.0.until', 'CHANGE']]],
+    ['yearly from 29 February to 1 March', [year({ from: '2028-02-29', until: '2028-03-01', yearly: true })], []],
+    ['a name on a change with an end', [year({ from: '2026-11-01', until: '2026-11-30', name: 'Betriebsurlaub' })], []],
+    ['a name without an end', [year({ from: '2026-11-01', name: 'Neu' })], [[0, '$changes.0.name', 'CHANGE']]],
+    ['an empty name', [year({ from: '2026-11-01', until: '2026-11-30', name: '  ' })], [[0, '$changes.0.name', 'CHANGE']]],
+    ['a name of 61 characters', [year({ from: '2026-11-01', until: '2026-11-30', name: 'x'.repeat(61) })], [[0, '$changes.0.name', 'CHANGE']]],
+    ['two yearly changes from the same month and day', [year({ from: '2026-06-01', until: '2026-08-31', yearly: true }), year({ from: '2027-06-01', until: '2027-07-31', yearly: true })], [[1, '$changes.1.from', 'CHANGE']]],
+    ['a one-off change from the first day of a later summer', [year({ from: '2026-06-01', until: '2026-08-31', yearly: true }), year({ from: '2027-06-01', until: '2027-06-10' })], [[1, '$changes.1.from', 'CHANGE']]],
+    ['a one-off change inside the summer', [year({ from: '2026-06-01', until: '2026-08-31', yearly: true }), year({ from: '2027-06-02', until: '2027-06-10' })], []],
+  ])('changeIssues: %s', async (_, changes, expected) => {
+    expect(await codes(changes)).toEqual(expected)
+  })
+
+  // What a page gets. Wrong behaviour caught: a holding yearly change names its first year's days (2025) instead of this
+  // year's, a waiting one is announced with days that have passed, or the name and `yearly` do not reach the page.
+  it('holding and upcoming carry the real days of the time, the name and yearly', async () => {
+    const autumn: Change = { from: '2025-10-01', until: '2025-10-31', yearly: true, name: 'Herbst', set: { price: money(700) } }
+    const summer: Change = { from: '2026-06-01', until: '2026-08-31', yearly: true, set: { price: money(800) } }
+    const closure: Change = { from: '2026-12-24', until: '2026-12-26', name: 'Betriebsurlaub', set: { price: money(600) } }
+    const bundle = await servedBundle({
+      schema: schema(), requestedLocale: 'de', files: () => undefined, schemaRev: 1, contentRev: 1, generatedAt: '2026-10-08T10:00:00Z', today: TODAY,
+      entries: { dishes: [{ id: 'd1', data: dish, changes: [autumn, summer, closure] }], practice: [{ id: 'practice', data: { price: money(9000), room: de('A') } }] },
+    })
+    const [item] = bundle.bricks.dishes!.kind === 'collection' ? bundle.bricks.dishes!.items : []
+    expect(item?.data.price).toEqual(shown(700))
+    expect(item?.holding).toEqual([{ from: '2026-10-01', until: '2026-10-31', name: 'Herbst', yearly: true, data: { price: shown(700) }, normal: { price: shown(900) } }])
+    expect(item?.upcoming).toEqual([
+      { from: '2026-12-24', until: '2026-12-26', name: 'Betriebsurlaub', data: { price: shown(600) } },
+      { from: '2027-06-01', until: '2027-08-31', yearly: true, data: { price: shown(800) } },
+    ])
+  })
+
+  it('after its end a yearly change is upcoming again with next year\'s days', async () => {
+    const autumn: Change = { from: '2025-10-01', until: '2025-10-31', yearly: true, set: { price: money(700) } }
+    const bundle = await servedBundle({
+      schema: schema(), requestedLocale: 'de', files: () => undefined, schemaRev: 1, contentRev: 1, generatedAt: '2026-11-01T10:00:00Z', today: '2026-11-01',
+      entries: { dishes: [{ id: 'd1', data: dish, changes: [autumn] }], practice: [{ id: 'practice', data: { price: money(9000), room: de('A') } }] },
+    })
+    const [item] = bundle.bricks.dishes!.kind === 'collection' ? bundle.bricks.dishes!.items : []
+    expect([item?.data.price, item?.holding, item?.upcoming]).toEqual([shown(900), undefined, [{ from: '2027-10-01', until: '2027-10-31', yearly: true, data: { price: shown(700) } }]])
   })
 })
