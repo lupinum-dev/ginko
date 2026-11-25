@@ -404,7 +404,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
  * What a page may read ahead of an entry (D121): each change after `today` that sets a field of the brick's
  * `timeline.public`, with only those fields, resolved like the entry's own values. Undefined when there is none.
  */
-function upcomingOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): Upcoming[] | undefined {
+export function upcomingOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): Upcoming[] | undefined {
   const shown = schema.bricks[key]!.timeline?.public
   if (!shown?.length || !entry.changes?.length) return undefined
   const out: Upcoming[] = []

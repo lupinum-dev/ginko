@@ -18,7 +18,6 @@ import { builderTools, BUILDER_TOOLS, DRY_RUN, FROM, IMPORT_MAX, isBuilder, sugg
 import type { Data } from './lib/content'
 import { leafStatus } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
-import { same } from './lib/write'
 import { effectiveReview } from './lib/policy'
 import { secret } from './release'
 import { normalizeEmail } from './members'
@@ -389,7 +388,7 @@ function fromArg(value: Json | undefined): string | undefined {
   return value
 }
 
-/** When a write shows on the website: in about a minute, or from the day of a week planned ahead or a planned price (`liveFrom`). */
+/** When a write shows on the website: in about a minute, or from the first day of a week planned ahead (`liveFrom`). */
 const liveText = (liveFrom: string | undefined) => (liveFrom ? `On the website from ${liveFrom}.` : 'Live on the website in about a minute.')
 
 /** The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. */
@@ -499,12 +498,10 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   const taskFields = tool.task.fields
   const stored = entry.data as Record<string, Json>
   // The task opens on the entry as the Studio's sheet does: its presets resolved on the entry (`prefill`, so a closure
-  // day already set stays), and a planned change whose day has come is the value in effect with its spent plan cleared
-  // (`opened`, from `prefillAs`), so a new value does not hide behind it.
+  // day already set stays).
   const prefill = await prefillOf(ctx, actor, tool, entry._id)
-  const opened = await prefillAs(ctx, actor, { site, task: tool.ref, entry: entry._id }) as Record<string, Json>
   const fields = {
-    ...Object.fromEntries(Object.entries(opened).filter(([k, value]) => taskFields.includes(k) && (Object.hasOwn(prefill, k) || !same(value, stored[k])))),
+    ...Object.fromEntries(Object.entries(prefill).filter(([k]) => taskFields.includes(k))),
     ...fromToolInput(Object.fromEntries(taskFields.map((f) => [f, brick.fields[f]!])), values, { mainLocale: main, currency: schema.currency, stored, newRowId }),
   }
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')

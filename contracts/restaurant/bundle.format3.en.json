@@ -385,14 +385,20 @@
               "C",
               "G"
             ],
-            "veg": "none",
-            "nextPrice": {
-              "amount": 2290,
-              "currency": "EUR"
-            },
-            "priceFrom": "2026-10-18"
+            "veg": "none"
           },
-          "fallback": []
+          "fallback": [],
+          "upcoming": [
+            {
+              "from": "2026-10-18",
+              "data": {
+                "price": {
+                  "amount": 2290,
+                  "currency": "EUR"
+                }
+              }
+            }
+          ]
         },
         {
           "id": "menu-risotto",

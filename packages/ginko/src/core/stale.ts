@@ -102,35 +102,21 @@ export function plansThisWeek(
 }
 
 /**
- * The value of a planned change (`planned`) once its day has come: `next` when `from` is `today` or earlier, else
- * undefined. From that day the site shows it in place of `field`, so a task opens on it and the Studio lists it.
- * `today` is in the site's time zone.
- */
-export function duePlan<V>(brick: Pick<Brick, 'planned'>, data: Readonly<Record<string, V>>, today: string): V | undefined {
-  const plan = brick.planned
-  if (!plan) return undefined
-  const next = data[plan.next]
-  const from = data[plan.from]
-  return next !== undefined && next !== null && typeof from === 'string' && from <= today ? next : undefined
-}
-
-/**
  * Whether a create task asks for `key`. With `task.fields`: only those fields. Without: every field of the brick. Never
- * the address (made from the title) or the plan of a planned change (`planned`), which needs a value in effect to
- * replace. The Studio's sheet and the agent door's tool both use this rule.
+ * the address (made from the title). The Studio's sheet and the agent door's tool both use this rule.
  */
-export function createAsks(brick: Pick<Brick, 'fields' | 'planned'>, key: string, task?: Pick<Extract<Task, { kind: 'create' }>, 'fields'>): boolean {
+export function createAsks(brick: Pick<Brick, 'fields'>, key: string, task?: Pick<Extract<Task, { kind: 'create' }>, 'fields'>): boolean {
   const field = Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
   if (task?.fields && !task.fields.includes(key)) return false
-  return !!field && field.type !== 'slug' && key !== brick.planned?.next && key !== brick.planned?.from
+  return !!field && field.type !== 'slug'
 }
 
 /**
  * The day a save shows on the website when that is later than `today` (the site's time zone), else undefined (it shows
- * at once): a week planned ahead (`plans`) from its first shown day (`firstDayShown`); a save that changed only the
- * plan of a planned change (`planned`) from the plan's date. `changed` are the root fields the save wrote.
+ * at once): a week planned ahead (`plans`) from its first shown day (`firstDayShown`). A dated change says its own day
+ * (`from`).
  */
-export function liveFrom(schema: Pick<Schema, 'bricks' | 'week'>, brickKey: string, data: Record<string, Json>, changed: readonly string[], today: string): string | undefined {
+export function liveFrom(schema: Pick<Schema, 'bricks' | 'week'>, brickKey: string, data: Record<string, Json>, today: string): string | undefined {
   const brick = Object.hasOwn(schema.bricks, brickKey) ? schema.bricks[brickKey] : undefined
   if (!brick) return undefined
   if (brick.kind === 'collection' && brick.plans) {
@@ -138,9 +124,5 @@ export function liveFrom(schema: Pick<Schema, 'bricks' | 'week'>, brickKey: stri
     const first = typeof start === 'string' ? firstDayShown(start, weekInfo(schema.week)) : undefined
     return first && first > today ? first : undefined
   }
-  const plan = brick.planned
-  if (!plan || !changed.length || !changed.every((root) => root === plan.next || root === plan.from)) return undefined
-  const from = data[plan.from]
-  const next = data[plan.next]
-  return next !== undefined && next !== null && typeof from === 'string' && from > today ? from : undefined
+  return undefined
 }

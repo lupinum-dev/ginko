@@ -41,7 +41,7 @@ const collapse = (text: string) => text.replace(/[ \t]*\n[ \t\n]*/g, '\n').repla
 export function searchSections(bundle: Bundle, options: SearchSectionsOptions): SearchRecord[] {
   const records: SearchRecord[] = []
   // A fact in a text is found by its value ("98 €"), as the page shows it.
-  const resolve = factResolver({ bricks: options.schema.bricks, data: bundle.bricks, locale: bundle.locale, mainLocale: bundle.mainLocale, language: options.language ?? bundle.locale, ...(options.today ? { today: options.today } : {}) })
+  const resolve = factResolver({ bricks: options.schema.bricks, data: bundle.bricks, locale: bundle.locale, mainLocale: bundle.mainLocale, language: options.language ?? bundle.locale })
   for (const [brick, entry] of Object.entries(bundle.bricks)) {
     if (entry.kind !== 'collection') continue
     const def = options.schema.bricks[brick]

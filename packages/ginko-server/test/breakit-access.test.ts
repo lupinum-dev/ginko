@@ -277,7 +277,7 @@ describe('2. staff (the cook) outside the grants', () => {
     ['a task ref with an extra segment', { task: 'menu.price.x' }],
     ['an empty task', { task: '' }],
     // "Preis ab …" became part of "Preis ändern"; an old tab or agent that still sends it is refused.
-    ['a task that was merged away (menu.priceFrom)', { task: 'menu.priceFrom', fields: { nextPrice: { amount: 2000 } } }],
+    ['a task that was merged away (menu.priceFrom)', { task: 'menu.priceFrom', fields: { price: { amount: 2000 } } }],
   ])('entries.save refuses %s', async (_label, over) => {
     const s = await setup()
     const code = await outcome(saveMenu(s, 'cook', { task: 'menu.price', ...over }))
@@ -293,11 +293,10 @@ describe('2. staff (the cook) outside the grants', () => {
   })
 
   // Wrong behaviour caught: "Gericht hinzufügen" lists the fields it asks for, but a cook (or a crafted request) still
-  // writes any other field through it, such as the sold-out day or a planned price.
+  // writes any other field through it, such as the sold-out day.
   it.each([
     ['soldOutOn', { soldOutOn: '2026-10-20' }],
     ['onMenu: false (a defaulted field takes only its default)', { onMenu: false }],
-    ['a planned price', { nextPrice: { amount: 2000 }, priceFrom: '2026-11-01' }],
   ])('entries.create through a create task with fields refuses %s, and takes the listed fields and the default', async (_label, extra) => {
     const s = await setup()
     const dish = { category: 'starters', name: { de: 'Suppe' }, price: { amount: 700 }, allergens: [], veg: 'none' }
@@ -437,7 +436,7 @@ describe('2. staff (the cook) outside the grants', () => {
     expect(names.filter((n) => n.startsWith('task_') && !/^task_(menu_(edit|price|add|remove)|lunch_lunchWeek)$/.test(n))).toEqual([])
     const forbidden = await call(s, key, 'task_notices_add', { publish: true, text: 'Hallo' })
     expect(forbidden.isError).toBe(true)
-    const notOffered = await call(s, key, 'task_menu_priceFrom', { publish: true, entry: saibling(s), nextPrice: 5 })
+    const notOffered = await call(s, key, 'task_menu_priceFrom', { publish: true, entry: saibling(s), price: 5 })
     expect(notOffered.isError).toBe(true)
     // An owner-only change of a brick the cook has no task for cannot be undone with the cook's key.
     await s.as.owner.mutation(api.entries.save, { publish: true, ...SITE, opId: opId(), entry: s.entries['contact']!, baseRev: 1, fields: { city: 'Wien' } })
@@ -1072,11 +1071,10 @@ describe('7a. entries.save refuses wrong types, unknown fields and values over t
     ['allergens 5000 entries', { allergens: Array(5000).fill('A') }],
     ['veg outside the options', { veg: 'carnivore' }],
     ['description 501 characters', { description: { de: 'x'.repeat(501) } }],
-    ['priceFrom impossible date', { priceFrom: '2026-02-30' }],
-    ['priceFrom month 13', { priceFrom: '2026-13-01' }],
-    ['priceFrom a word', { priceFrom: 'tomorrow' }],
-    ['priceFrom a number', { priceFrom: 20261001 }],
-    ['nextPrice negative', { nextPrice: { amount: -5 } }],
+    ['soldOutOn impossible date', { soldOutOn: '2026-02-30' }],
+    ['soldOutOn month 13', { soldOutOn: '2026-13-01' }],
+    ['soldOutOn a word', { soldOutOn: 'tomorrow' }],
+    ['soldOutOn a number', { soldOutOn: 20261001 }],
     ['unknown field', { bogus: 1 }],
     ['unknown field with $', { $set: { name: 'x' } }],
     ['unknown field constructor', { constructor: 1 }],

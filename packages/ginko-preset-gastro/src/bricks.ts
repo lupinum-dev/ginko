@@ -203,25 +203,18 @@ function storedMenu<const A extends AllergenSet>(opts: { allergens?: A }) {
       optional: true, default: true,
       hint: both('Ausschalten, wenn es das Gericht eine Zeit lang nicht gibt, z. B. nach der Saison. Es bleibt gespeichert, und du kannst es wieder einschalten.', 'Turn this off when the dish is not offered for a while, e.g. after its season. It stays saved, and you can turn it back on.'),
     }),
-    // A planned price change: the site shows `nextPrice` from `priceFrom` on (`planned` below, `priceOn`).
-    nextPrice: f.money(both('Geplanter Preis', 'Planned price'), {
-      optional: true,
-      hint: both('Gilt ab dem Datum darunter. Bis dahin bleibt der Preis oben.', 'Applies from the date below. Until then the price above stays.'),
-    }),
-    priceFrom: f.date(both('Geplanter Preis gilt ab', 'Planned price applies from'), { optional: true }),
     // Sold out on one day only: the next day the dish is back by itself.
     soldOutOn: f.date(both('Aus am', 'Sold out on'), {
       optional: true,
       hint: both('An diesem Tag steht das Gericht auf der Website als „heute aus“. Am nächsten Tag ist es wieder normal da.', 'On that day the website shows the dish as “sold out today”. The next day it is back as usual.'),
     }),
   }
-  // The plan sits right under the price in every task that shows the price. `allergens` exists only when the set is
-  // not 'none', which the type cannot see here.
+  // `allergens` exists only when the set is not 'none', which the type cannot see here.
   const dishFields = (choices
-    ? ['category', 'name', 'description', 'price', 'nextPrice', 'priceFrom', 'allergens', 'veg', 'onMenu']
-    : ['category', 'name', 'description', 'price', 'nextPrice', 'priceFrom', 'veg', 'onMenu']) as readonly (keyof typeof fields & string)[]
-  // A new dish is on the menu and cannot be sold out yet, so "add" does not ask for `onMenu` and `soldOutOn`; the plan
-  // fields wait for "Preis ändern". Same cast as `dishFields`.
+    ? ['category', 'name', 'description', 'price', 'allergens', 'veg', 'onMenu']
+    : ['category', 'name', 'description', 'price', 'veg', 'onMenu']) as readonly (keyof typeof fields & string)[]
+  // A new dish is on the menu and cannot be sold out yet, so "add" does not ask for `onMenu` and `soldOutOn`. Same cast
+  // as `dishFields`.
   const addFields = (choices
     ? ['category', 'name', 'description', 'price', 'allergens', 'veg']
     : ['category', 'name', 'description', 'price', 'veg']) as readonly (keyof typeof fields & string)[]
@@ -235,16 +228,16 @@ function storedMenu<const A extends AllergenSet>(opts: { allergens?: A }) {
     listing: { title: 'name', detail: 'price', group: 'category' },
     untranslated: 'fallback', // a dish without an English name is shown in German
     fields,
-    // The platform checks that a plan has both its price and its date, and opens "Preis ändern" on the price in effect.
-    planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
+    // A new price can start on a later day (a dated change, "Preis ändern" asks the day), and a page may announce it.
+    timeline: { public: ['price'] },
     max: 150,
     order: 'manual',
     tasks: [
       // The daily job first: it becomes the main quick task.
       soldOut,
       { id: 'edit', label: both('Gericht bearbeiten', 'Edit a dish'), kind: 'edit', pick: true, fields: dishFields },
-      // One sheet for the price and its plan, so a new price never hides behind a planned one.
-      { id: 'price', label: both('Preis ändern', 'Change a price'), kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'] },
+      // The price at once or from a day on ("Gilt ab").
+      { id: 'price', label: both('Preis ändern', 'Change a price'), kind: 'edit', pick: true, fields: ['price'], when: { from: 'ask' } },
       { id: 'add', label: both('Gericht hinzufügen', 'Add a dish'), kind: 'create', fields: addFields },
       { id: 'remove', label: both('Gericht entfernen', 'Remove a dish'), kind: 'remove' },
     ],

@@ -9,7 +9,7 @@ import industrie from '../sites/industrie/ginko.config.ts'
 import saas from '../sites/saas/ginko.config.ts'
 import restaurant from '../sites/restaurant/ginko.config.ts'
 import {
-  checkSchema, servedBundle, serializeSchema, startValue, validate,
+  changeIssues, checkSchema, servedBundle, serializeSchema, startValue, validate,
   type FileInfo, type SiteInput, type StoredEntry,
 } from '../packages/ginko/src/core/index.ts'
 import { statusRules } from '../packages/ginko/src/patterns/rules.ts'
@@ -73,6 +73,7 @@ export async function render(name: DemoName): Promise<Rendered> {
     for (const entry of data[key] ?? []) {
       const result = await validate(schema, key, entry.data, { mode: 'release' })
       for (const issue of result.errors) problems.push(`${name}: ${key}/${entry.id} ${issue.path} [${issue.code}] ${issue.message}`)
+      for (const issue of await changeIssues(schema, key, entry.data, entry.changes ?? [])) problems.push(`${name}: ${key}/${entry.id} ${issue.path} [${issue.code}] ${issue.message}`)
     }
   }
 

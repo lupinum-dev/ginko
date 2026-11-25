@@ -10,5 +10,4 @@ export {
 export type { HolidayCalendar, HolidaysOption } from './holidays.ts'
 export { lunchWeekOn, type LunchWeekData } from './lunch.ts'
 export { dishOn } from './menu.ts'
-export { priceOn, upcomingPrice, type PricedItem } from './prices.ts'
 export { eventJsonLd, restaurantJsonLd, type EventJsonLdInput, type JsonLdMenuSection, type RestaurantJsonLdInput } from './jsonld.ts'

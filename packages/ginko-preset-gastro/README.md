@@ -68,7 +68,11 @@ These are all the public names. Everything else in the package is internal and c
 
 **Brick factories.** `hours`, `hourPlans`, `notices`, `lunch`, `lunchPlans`, `menu`, `events`, `gallery`: see [Options](#options).
 Their stored field names (`week`, `exceptions`, `closedOn`, `closedNote`, `holidayNoticeDays`, `holidays`, `from1` to `to2`,
-`weekOf`, `days`, `nextPrice`, `priceFrom`, `onMenu`, `soldOutOn`, `soldOut` and so on) are the data of your site. They do not change.
+`weekOf`, `days`, `onMenu`, `soldOutOn`, `soldOut` and so on) are the data of your site. They do not change.
+
+A new price can start on a later day: "Change a price" asks "Starts on" (a dated change, `when: { from: 'ask' }`), and
+`menu()` has `timeline: { public: ['price'] }`, so a page reads `item.data.price` (the price today) and `item.upcoming`
+(the prices still to come, each with its `from`) to announce it.
 
 Availability: a dish has `onMenu` ("On the menu", off after its season; the dish stays saved) and `soldOutOn` (a date:
 sold out on that day only, quick task "Dish sold out today"). An event has `soldOut` ("Fully booked", quick task "Event
@@ -97,8 +101,6 @@ the stored data, the same in the week, in hour plans and in exceptions.
 | `spansOf(times)`, `spansText(spans, and)` | The time spans of a day, and the spans joined as text. |
 | `lunchWeekOn(main, planned, today, week)` | The lunch week to show today: a planned week, the main `lunch` data, or nothing. `week` is the site's week info. |
 | `dishOn(dish, date)` | `{ shown, soldOut }`: `shown` is false for a dish taken off the menu (leave it out of the menu, the allergen key and the JSON-LD), `soldOut` is true on its `soldOutOn` day. |
-| `priceOn(item, date)` | The price on a date. `nextPrice` counts from `priceFrom` on. `menu()` states this rule as `planned`, so the platform keeps price and date together and its task "Preis ändern" shows the plan. |
-| `upcomingPrice(item, today, days)` | `{ from, price }` for a price change in the next `days` days, else `undefined`. |
 | `restaurantJsonLd(input)` | schema.org `Restaurant` data. Prices are in minor units (cents), so `1250` is `12.50`. |
 | `eventJsonLd(input)` | schema.org `Event` data for one event. Same price rule. With `soldOut: true` the offer says `SoldOut` and has no booking link. |
 

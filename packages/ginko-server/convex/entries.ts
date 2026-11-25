@@ -285,8 +285,8 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   if (held) await dropPendingRoots(ctx, schema, held, changed)
   // What the other languages show now (the Studio's message after saving); a draft is not on the website.
   const translation = stateOf(entry) === 'draft' ? [] : translationNotes(schema, entry.brick, { _id: entry._id, data, prints }, before, changed, locale)
-  // A week planned ahead or a planned price shows later than "in about a minute": the Studio says from when.
-  const from = stateOf(entry) === 'live' ? liveFrom(schema, entry.brick, data, changed, todayIn(schema.timeZone)) : undefined
+  // A week planned ahead shows later than "in about a minute": the Studio says from when.
+  const from = stateOf(entry) === 'live' ? liveFrom(schema, entry.brick, data, todayIn(schema.timeZone)) : undefined
   return { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json, translation, ...(from ? { liveFrom: from } : {}) }
 }
 
@@ -1120,7 +1120,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     // What the other languages show of the new entry (the Studio's message after saving); a draft is not on the website.
     const translation = draft ? [] : translationNotes(schema, args.brick, { _id: entry, data, prints }, {}, Object.keys(brick.fields))
     // A new planned week shows from its first day; the Studio says from when.
-    const from = draft ? undefined : liveFrom(schema, args.brick, data, Object.keys(data), todayIn(schema.timeZone))
+    const from = draft ? undefined : liveFrom(schema, args.brick, data, todayIn(schema.timeZone))
     return { entry, rev: 1, contentRev: c.contentRev, state: draft ? 'draft' : 'live', ...(at === undefined ? {} : { publishAt: at }), translation, ...(from ? { liveFrom: from } : {}), warnings: warnings as unknown as Json }
   })
 }

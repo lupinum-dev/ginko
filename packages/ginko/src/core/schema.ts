@@ -28,7 +28,9 @@ export const SCHEMA_KEYS = new Set(['format', 'site', 'name', 'url', 'timeZone',
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'showUntil', 'untranslated', 'publishedOn', 'plans', 'planned', 'timeline', 'drafts', 'status', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'showUntil', 'untranslated', 'publishedOn', 'plans', 'timeline', 'drafts', 'status', 'retired'])
+/** `planned` was a brick key before dated changes (D129): checkSchema tells a schema that still has it how to move. */
+const BRICK_KEYS_AND_PLANNED = new Set([...BRICK_KEYS, 'planned'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'rows', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
@@ -375,7 +377,8 @@ function schemaProblems(schema: Schema, rules: StatusRules): string[] {
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (!/^[a-z][a-zA-Z0-9]{0,40}$/.test(key) || RESERVED_KEYS.has(key)) problems.push(`Invalid brick name “${key}”.`)
     else if (LINK_HEADS.has(key)) problems.push(`The brick name “${key}” is reserved: \`$${key}.…\` in a Markdown text means ${key === 'page' ? 'a page' : 'a file of the Files library'}.`)
-    unknown(key, brick, BRICK_KEYS)
+    // A stored `planned` (before dated changes) gets its own sentence below.
+    unknown(key, brick, BRICK_KEYS_AND_PLANNED)
     pushLabel(`${key}.label`, brick.label)
     if (brick.describe !== undefined) pushLabel(`${key}.describe`, brick.describe)
     if (brick.source !== undefined && brick.source !== 'files') problems.push(`${key}: source must be “files” or missing.`)
@@ -426,7 +429,7 @@ function schemaProblems(schema: Schema, rules: StatusRules): string[] {
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
       if ('when' in task && task.when !== undefined) problems.push(...whenProblems(`${key}.${task.id}`, task, task.when, brick, schema))
     }
-    if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
+    if (Object.hasOwn(brick, 'planned')) problems.push(`${key}.planned: a planned change is a dated change now. Remove planned and its two fields, and write \`timeline: { public: ['<field>'] }\` on the brick and \`when: { from: 'ask' }\` on the task that changes the field.`)
     if (brick.timeline !== undefined) problems.push(...timelineProblems(key, brick, schema))
     if (brick.status !== undefined) problems.push(...statusProblems(key, brick, schema, rules))
     if (brick.kind === 'single' && 'plans' in brick) problems.push(`${key}: plans are only allowed for collections.`)
@@ -659,7 +662,7 @@ function taskIdProblems(key: string, brick: Brick): string[] {
 
 /**
  * A create task that lists `fields` names fields the brick has and can ask for, and leaves no required field without a
- * value: the slug is made from the title, the plan of a planned change belongs to a dish that already has a price, a
+ * value: the slug is made from the title, a
  * retired field is gone, and a field with a default or a prefill has a value.
  */
 /**
@@ -690,7 +693,6 @@ function createFieldsProblems(path: string, task: Extract<Task, { kind: 'create'
     const field = Object.hasOwn(fields, name) ? fields[name] : undefined
     if (!field) problems.push(`${path}: “${name}” is not a field of this brick.`)
     else if (field.type === 'slug') problems.push(`${path}: “${name}” is the address and is made from “${field.from}”, so the task cannot ask for it.`)
-    else if (brick.planned && (name === brick.planned.next || name === brick.planned.from)) problems.push(`${path}: “${name}” is the plan of a planned change, so the task cannot ask for it.`)
     else if (field.retired) problems.push(`${path}: “${name}” is retired, so the task cannot ask for it.`)
   }
   const prefilled = Object.keys(task.prefill ?? {})
@@ -794,40 +796,6 @@ function timelineProblems(key: string, brick: Brick, schema: Pick<Schema, 'local
     if (refusal === 'unknownField') problems.push(`${key}.timeline.public: “${name}” is not a field of the brick.`)
     else if (refusal === 'changeFixed') problems.push(`${key}.timeline.public: “${name}” decides when or where an entry shows, so it cannot change on a day.`)
     else if (refusal === 'changeTranslated') problems.push(`${key}.timeline.public: “${name}” has text per language; a dated change of such a field is not built yet on a site with several languages.`)
-  }
-  return problems
-}
-
-/**
- * A planned change (`planned`): three different fields of the brick, `next` of the type of `field`, `from` a date, both
- * optional (no plan is the normal state). An edit task that changes `field` must show the plan too, so nobody changes a
- * price without seeing that another one is planned.
- */
-function plannedProblems(key: string, brick: Brick): string[] {
-  const planned: unknown = brick.planned
-  if (typeof planned !== 'object' || planned === null || Array.isArray(planned)) return [`${key}: planned must be an object with field, next and from.`]
-  const p = planned as Record<string, unknown>
-  const problems: string[] = []
-  for (const k of Object.keys(p)) if (!['field', 'next', 'from'].includes(k)) problems.push(`${key}.planned: unknown property “${k}”.`)
-  const named = (role: 'field' | 'next' | 'from') => {
-    const name = p[role]
-    const field = typeof name === 'string' && Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
-    if (!field || field.retired) problems.push(`${key}: planned.${role} names “${String(name)}”, which is not a field of the brick.`)
-    return field
-  }
-  const field = named('field')
-  const next = named('next')
-  const from = named('from')
-  if (!field || !next || !from) return problems
-  const [f, n, d] = [p.field as string, p.next as string, p.from as string]
-  if (new Set([f, n, d]).size < 3) problems.push(`${key}: planned needs three different fields.`)
-  if (next.type !== field.type) problems.push(`${key}: planned.next “${n}” needs the type of “${f}” (${field.type}).`)
-  if (from.type !== 'date') problems.push(`${key}: planned.from “${d}” must be a date field.`)
-  if (!next.optional || !from.optional) problems.push(`${key}: planned.next “${n}” and planned.from “${d}” must be optional.`)
-  for (const task of brick.tasks ?? []) {
-    if (task.kind === 'edit' && task.fields.includes(f) && !(task.fields.includes(n) && task.fields.includes(d))) {
-      problems.push(`${key}.${task.id}: the task changes “${f}”, so it must also show its plan “${n}” and “${d}”.`)
-    }
   }
   return problems
 }

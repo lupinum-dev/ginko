@@ -305,7 +305,6 @@ provide(TODAY, reactive({
       :task="picking.task"
       :entries="pickRead.data.value"
       :main="s.main.value"
-      :today="s.today.value"
       @pick="picked"
       @close="picking = null"
     />

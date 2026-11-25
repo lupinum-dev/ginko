@@ -90,8 +90,7 @@ export function changedRoots(before: Data, after: Data): string[] {
 }
 
 /**
- * The fields a task shows: `edit` its fields; `create` every live field it asks for (`createAsks`: its `fields`, else all but the slug and
- * the plan of a planned change, which is made later with the task that changes the value).
+ * The fields a task shows: `edit` its fields; `create` every live field it asks for (`createAsks`: its `fields`, else all but the slug).
  */
 export function taskFields(brick: Brick, task: Task): Fields {
   const keys = task.kind === 'edit' ? task.fields : ordered(brick.fields).map(([k]) => k)

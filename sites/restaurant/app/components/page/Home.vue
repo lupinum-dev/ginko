@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { dishOn, priceOn, restaurantJsonLd } from '@lupinum/ginko-preset-gastro'
+import { dishOn, restaurantJsonLd } from '@lupinum/ginko-preset-gastro'
 import { siteName, telHref } from '../../utils/site'
 
 const path = useGinkoPath()
@@ -17,7 +17,7 @@ const restaurantLd = computed(() => {
   const dishes = menu.value.items.filter((i) => dishOn(i.data, today.value).shown)
   const sections = ['starters', 'soups', 'mains', 'desserts', 'drinks'].map((key) => ({
     name: labels.value.categories[key]!,
-    items: dishes.filter((i) => i.data.category === key).map((i) => ({ name: i.data.name, description: i.data.description, price: priceOn(i.data, today.value) })),
+    items: dishes.filter((i) => i.data.category === key).map((i) => ({ name: i.data.name, description: i.data.description, price: i.data.price })),
   }))
   return restaurantJsonLd({
     name: siteName,

@@ -164,6 +164,7 @@ const MOVED: Record<string, string> = {
   source: 'where a brick lives is `studio.bricks` in the site file',
   route: 'the address of an entry is `entries` in the site file',
   visible: 'write `showUntil`',
+  planned: 'a planned change is a dated change now: remove `planned` and its two fields, write `timeline: { public: [\'<field>\'] }` on the brick and `when: { from: \'ask\' }` on the task that changes the field',
 }
 
 /** The stored-form brick for a brick as written. */
@@ -175,14 +176,7 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
   const editable = names.filter((name) => brick.fields[name]?.type !== 'slug')
   // The words in a standard task: `item` as written; without it "Eintrag" for a collection and the label for a single.
   const words = item ?? (brick.kind === 'collection' ? entryWord(main) : label)
-  let tasks = brick.tasks?.map((task) => compileTask(key, task, brick, editable, words, main, taskTexts, problems))
-  // The plan of a planned field is shown in every edit task that changes the field; the stored task lists it.
-  const planned = brick.planned
-  if (planned && tasks) {
-    tasks = tasks.map((task) => (task.kind === 'edit' && task.fields.includes(planned.field)
-      ? { ...task, fields: [...task.fields, ...[planned.next, planned.from].filter((name) => !task.fields.includes(name))] }
-      : task))
-  }
+  const tasks = brick.tasks?.map((task) => compileTask(key, task, brick, editable, words, main, taskTexts, problems))
   const common = {
     label,
     ...(brick.describe !== undefined ? { describe: brick.describe } : {}),
@@ -191,7 +185,6 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
     ...(brick.preview !== undefined ? { preview: brick.preview } : {}),
     ...(brick.layout ? { layout: brick.layout } : {}),
     ...(tasks ? { tasks } : {}),
-    ...(planned ? { planned } : {}),
     ...(brick.timeline ? { timeline: { public: [...brick.timeline.public] } } : {}),
   }
   const status = brick.status as { show?: string; rule?: string } | undefined

@@ -94,21 +94,13 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
 interface RuleIssue { issue: Issue; touches: string[] }
 
 /**
- * The rules that span fields of a brick: a planned change (`planned`) has both its value and its date, or neither (a
- * value without a date never applies, a date without a value changes nothing); the field that holds a week start
+ * The rules that span fields of a brick: times in order (`after`); the field that holds a week start
  * (`weekStartField`) holds the first day of a week of the site (a week stored as a Thursday never shows).
  */
 function ruleIssues(schema: Schema, brick: Brick, data: unknown): RuleIssue[] {
   if (!isRecord(data)) return []
   const out: RuleIssue[] = []
   const main = schema.locales[0]!
-  const plan = brick.planned
-  if (plan) {
-    const set = (key: string) => data[key] !== undefined && data[key] !== null
-    const missing = set(plan.next) && !set(plan.from) ? plan.from : set(plan.from) && !set(plan.next) ? plan.next : undefined
-    const field = missing && Object.hasOwn(brick.fields, missing) ? brick.fields[missing] : undefined
-    if (missing && field) out.push({ issue: issue(missing, 'REQUIRED', 'fieldMissing', { label: shown(field, main) }), touches: [plan.next, plan.from] })
-  }
   out.push(...timeOrderIssues(brick.fields, data, '', main))
   // The same inside every row of a rows field: its columns may name each other in `after`.
   for (const [name, field] of Object.entries(brick.fields)) {

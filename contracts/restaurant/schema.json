@@ -1362,28 +1362,6 @@
           },
           "pos": 6
         },
-        "nextPrice": {
-          "type": "money",
-          "label": {
-            "de": "Geplanter Preis",
-            "en": "Planned price"
-          },
-          "optional": true,
-          "hint": {
-            "de": "Gilt ab dem Datum darunter. Bis dahin bleibt der Preis oben.",
-            "en": "Applies from the date below. Until then the price above stays."
-          },
-          "pos": 7
-        },
-        "priceFrom": {
-          "type": "date",
-          "label": {
-            "de": "Geplanter Preis gilt ab",
-            "en": "Planned price applies from"
-          },
-          "optional": true,
-          "pos": 8
-        },
         "soldOutOn": {
           "type": "date",
           "label": {
@@ -1395,7 +1373,7 @@
             "de": "An diesem Tag steht das Gericht auf der Website als „heute aus“. Am nächsten Tag ist es wieder normal da.",
             "en": "On that day the website shows the dish as “sold out today”. The next day it is back as usual."
           },
-          "pos": 9
+          "pos": 7
         }
       },
       "preview": "menu",
@@ -1428,8 +1406,6 @@
             "name",
             "description",
             "price",
-            "nextPrice",
-            "priceFrom",
             "allergens",
             "veg",
             "onMenu"
@@ -1444,10 +1420,11 @@
           "kind": "edit",
           "pick": true,
           "fields": [
-            "price",
-            "nextPrice",
-            "priceFrom"
-          ]
+            "price"
+          ],
+          "when": {
+            "from": "ask"
+          }
         },
         {
           "id": "add",
@@ -1474,10 +1451,10 @@
           "kind": "remove"
         }
       ],
-      "planned": {
-        "field": "price",
-        "next": "nextPrice",
-        "from": "priceFrom"
+      "timeline": {
+        "public": [
+          "price"
+        ]
       },
       "max": 150,
       "order": "manual",

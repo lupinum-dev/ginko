@@ -128,17 +128,6 @@ describe('agent door', () => {
     expect(listed.page[0]).toMatchObject({ who: { self: true }, agent: 'Claude Code' })
   })
 
-  // Wrong behaviour caught: from the day of a planned price on, the assistant's new price was stored next to the spent
-  // plan, so the website kept showing the planned price while the answer said the new one was live.
-  it('a price set on or after the day of a planned price replaces the spent plan', async () => {
-    vi.setSystemTime(new Date('2026-10-18T10:00:00Z'))
-    const s = await setup()
-    const done = await call(s, await keyOf(s, 'owner'), 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 23.5, publish: true })
-    expect(done.text).toContain('Live on the website in about a minute.')
-    const data = (await entryRow(s, s.entries['menu-schnitzel']!))!.data
-    expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2350 }, undefined, undefined])
-  })
-
   // Wrong behaviour caught: the door put today over a closure set for tomorrow when the assistant changed only the
   // reason, so the site closed today and tomorrow's closure was gone; the tool also offered today as the default.
   it('"Heute geschlossen" with only a reason keeps a closure set for tomorrow', async () => {

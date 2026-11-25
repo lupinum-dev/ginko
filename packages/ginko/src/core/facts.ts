@@ -6,7 +6,6 @@ import { labelOf } from './labels.ts'
 import { formatMoney, minorDigits } from './money.ts'
 import type { Money } from './infer.ts'
 import type { Brick, Field, Fields, Label, Schema } from './types.ts'
-import { duePlan } from './stale.ts'
 
 /** The tag of the fact component in Markdown: `:fact{name="practice.price"}`. */
 export const FACT_TAG = 'fact'
@@ -57,17 +56,9 @@ export function factComponent(facts: readonly string[], bricks: Readonly<Record<
   }
 }
 
-/**
- * The value of `field` in effect on `today`: the planned value from its date on (`planned` on the brick), else the
- * stored one. Without `today` (a build, where the day is unknown) the stored value.
- */
-export function valueOn(brick: Pick<Brick, 'planned'>, data: Readonly<Record<string, unknown>>, field: string, today?: string): unknown {
-  return (brick.planned?.field === field && today ? duePlan(brick, data, today) : undefined) ?? data[field]
-}
-
 export interface FactContext {
   /** The site's bricks (field types, labels, plans). */
-  bricks: Readonly<Record<string, Pick<Brick, 'kind' | 'fields' | 'planned'>>>
+  bricks: Readonly<Record<string, Pick<Brick, 'kind' | 'fields'>>>
   /** The single bricks' data in the bundle's locale: `bundle.bricks`. */
   data: Readonly<Record<string, { kind: string; data?: Readonly<Record<string, unknown>> }>>
   /** The locale of the data and the site's main locale, for choice labels. */
@@ -75,8 +66,6 @@ export interface FactContext {
   mainLocale: string
   /** BCP 47 tag for numbers, money, dates and lists (the site's `languages` entry, else the locale). */
   language: string
-  /** The site's day: a planned change applies from its date. Unset: the stored value. */
-  today?: string
 }
 
 const isMoney = (v: unknown): v is Money => typeof v === 'object' && v !== null && typeof (v as Money).amount === 'number' && typeof (v as Money).currency === 'string'
@@ -123,7 +112,7 @@ export function factText(path: string, ctx: FactContext): string | undefined {
   const field = def && Object.hasOwn(def.fields, name) ? (def.fields as Fields)[name] : undefined
   const entry = Object.hasOwn(ctx.data, brick) ? ctx.data[brick] : undefined
   if (!def || !field || entry?.kind !== 'single' || !entry.data) return undefined
-  return safeFormat(field, valueOn(def, entry.data, name, ctx.today), ctx)
+  return safeFormat(field, entry.data[name], ctx)
 }
 
 /** formatValue, but undefined where Intl throws (a date it cannot read, a language tag it does not know): a fact then shows nothing, not an error page. */
@@ -141,8 +130,8 @@ export function factResolver(ctx: FactContext): (tag: string, props: Readonly<Re
 }
 
 /** `factResolver` for one locale's bundle, the form search, the Markdown twin and llms-full.txt use. */
-export function bundleFactResolver(bundle: { bricks: FactContext['data']; locale: string; mainLocale: string }, bricks: FactContext['bricks'], language: string, today?: string) {
-  return factResolver({ bricks, data: bundle.bricks, locale: bundle.locale, mainLocale: bundle.mainLocale, language, ...(today ? { today } : {}) })
+export function bundleFactResolver(bundle: { bricks: FactContext['data']; locale: string; mainLocale: string }, bricks: FactContext['bricks'], language: string) {
+  return factResolver({ bricks, data: bundle.bricks, locale: bundle.locale, mainLocale: bundle.mainLocale, language })
 }
 
 /** The facts a component registry offers: the choices of the `fact` component (the site's `facts`, in their order). */
@@ -175,7 +164,7 @@ export interface FactValue {
   field: string
   /** What the website shows today; undefined when the field is empty. */
   text?: string
-  /** A planned change (`planned` on the brick) that has not started yet: its text and first day (YYYY-MM-DD). */
+  /** The first waiting dated change of the field (a `timeline.public` field, D121): its text and first day (YYYY-MM-DD). */
   next?: { text: string; from: string }
   /**
    * The ways a text may have copied this value ("98 €", "€ 98", "98 Euro"), for finding copies that a fact should
@@ -186,18 +175,19 @@ export interface FactValue {
 
 /**
  * The value of every fact of the schema in `locale`. `data` holds the single bricks' data in that locale (as the
- * bundle serves it). Formats with the site's language tag for the locale (`schema.languages`), as the website does.
+ * bundle serves it), `upcoming` their waiting dated changes as the bundle serves them (public fields only, in `from`
+ * order). Formats with the site's language tag for the locale (`schema.languages`), as the website does.
  */
 export function factValues(
   schema: Pick<Schema, 'bricks' | 'components' | 'locales' | 'languages'>,
   data: Readonly<Record<string, Readonly<Record<string, unknown>> | undefined>>,
   locale: string,
-  today?: string,
+  upcoming: Readonly<Record<string, readonly { from: string; data: Readonly<Record<string, unknown>> }[] | undefined>> = {},
 ): FactValue[] {
   const ctx: FactContext = {
     bricks: schema.bricks,
     data: Object.fromEntries(Object.entries(data).map(([brick, values]) => [brick, { kind: 'single', ...(values ? { data: values } : {}) }])),
-    locale, mainLocale: schema.locales[0]!, language: schema.languages?.[locale] ?? locale, ...(today ? { today } : {}),
+    locale, mainLocale: schema.locales[0]!, language: schema.languages?.[locale] ?? locale,
   }
   return factNames(schema.components).flatMap((name): FactValue[] => {
     const [brick, key] = name.split('.') as [string, string]
@@ -206,15 +196,13 @@ export function factValues(
     if (!def || !field) return []
     const values = data[brick] ?? {}
     const text = factText(name, ctx)
-    const plan = def.planned
-    const upcoming = plan && plan.field === key && today && typeof values[plan.from] === 'string' && (values[plan.from] as string) > today ? values[plan.next] : undefined
-    const nextText = upcoming === undefined || upcoming === null ? undefined : safeFormat(field, upcoming, ctx)
-    const shown = valueOn(def, values, key, today)
+    const coming = (upcoming[brick] ?? []).find((change) => Object.hasOwn(change.data, key))
+    const nextText = coming ? safeFormat(field, coming.data[key], ctx) : undefined
     return [{
       name, brick, field: key,
       ...(text ? { text } : {}),
-      ...(nextText ? { next: { text: nextText, from: values[plan!.from] as string } } : {}),
-      copies: text ? copiesOf(field, shown, text, ctx) : [],
+      ...(coming && nextText ? { next: { text: nextText, from: coming.from } } : {}),
+      copies: text ? copiesOf(field, values[key], text, ctx) : [],
     }]
   })
 }

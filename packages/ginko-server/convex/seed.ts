@@ -20,7 +20,7 @@ import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { cleanName, kindOf, WRONG_TYPE } from './lib/files'
 import { deleteStorage } from './lib/library'
 import { dropTrees, putTrees } from './lib/trees'
-import { datedOf, dayStart, syncDatedRefs } from './lib/dated'
+import { datedOf, insertWaiting } from './lib/dated'
 import { BUDGET, same, sizeText, syncEntryRefs, uploadIdsOf } from './lib/write'
 import { stopReason } from './schema'
 
@@ -485,14 +485,7 @@ export const importExport = internalMutation({
         }
       }
       // Each waiting change gets its row and its run, without a person.
-      for (const change of changes) {
-        const dated = await ctx.db.insert('datedChanges', {
-          site: site._id, entry: id, brick: row.brick, from: change.from, fields: change.set, prints: {},
-          revs: Object.fromEntries(Object.keys(change.set).map((root) => [root, row.rev])), at: Date.now(),
-        })
-        await ctx.db.patch(dated, { job: await ctx.scheduler.runAt(dayStart(change.from, schema.timeZone), internal.datedChanges.applyDue, { change: dated, from: change.from }) })
-        await syncDatedRefs(ctx, schema, { _id: dated, site: site._id, brick: row.brick, fields: change.set })
-      }
+      await insertWaiting(ctx, schema, { _id: id, site: site._id, brick: row.brick, rev: row.rev }, changes)
       ids.push([row.id, id])
       for (const [name, field] of Object.entries(fields)) {
         if (field.type !== 'slug') continue

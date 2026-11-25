@@ -97,17 +97,16 @@ export function useGinkoToday(): Ref<string> {
 }
 
 /**
- * The text of a fact (`facts` in ginko.config): `useGinkoFact('practice.price')` → "98 €", the value in effect today
- * (a planned change counts from its date), formatted for the current language. The same text `:fact{name="…"}`
+ * The text of a fact (`facts` in ginko.config): `useGinkoFact('practice.price')` → "98 €", the value the bundle holds
+ * (a dated change counts from its day on), formatted for the current language. The same text `:fact{name="…"}`
  * shows in a Markdown field, in search and in the page's Markdown twin. Undefined while the field is empty.
  */
 export function useGinkoFact(name: MaybeRefOrGetter<string>): ComputedRef<string | undefined> {
   const bundle = useGinkoBundle()
-  const today = useGinkoToday()
   const { languages } = useRuntimeConfig().public.ginko as GinkoPublicConfig
   return computed(() => {
     const b = bundle.value
-    return factText(toValue(name), { bricks: schema.bricks, data: b.bricks, locale: b.locale, mainLocale: b.mainLocale, language: languages[b.locale] ?? b.locale, today: today.value })
+    return factText(toValue(name), { bricks: schema.bricks, data: b.bricks, locale: b.locale, mainLocale: b.mainLocale, language: languages[b.locale] ?? b.locale })
   })
 }
 
