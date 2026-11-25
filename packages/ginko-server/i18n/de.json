@@ -252,6 +252,14 @@
     "dayBeforeToday": "Der Tag darf nicht vor heute liegen.",
     "datedSameStart": "Am selben Tag beginnt schon eine befristete Änderung für dieses Feld; sie gilt bis {until, date, ::MMMMd}. Ändere diese oder wähle einen anderen ersten Tag.",
     "holdingFromFixed": "Diese Änderung gilt schon. Ihr erster Tag bleibt; ändern lassen sich das Ende und die Werte.",
+    "dayTooFarBack": "Der erste Tag darf höchstens ein Jahr zurück liegen.",
+    "yearlyTooLong": "Eine Änderung, die jedes Jahr wiederkommt, muss kürzer als ein Jahr sein.",
+    "yearlyNeedsUntil": "Eine Änderung, die jedes Jahr wiederkommt, braucht einen letzten Tag.",
+    "nameNeedsUntil": "Einen Namen bekommt nur eine befristete Änderung. Gib den letzten Tag an.",
+    "nameLength": "Der Name braucht 1 bis {max} Zeichen.",
+    "yearlyWhileHolding": "Diese Änderung gilt gerade und kommt jedes Jahr wieder. Das lässt sich jetzt nicht ausschalten; du kannst sie aufheben.",
+    "taskCannotYearly": "Mit dieser Aufgabe kommt eine Änderung nicht jedes Jahr wieder.",
+    "taskCannotName": "Diese Aufgabe gibt einer Änderung keinen Namen.",
     "todayOnly": "Diese Aufgabe gilt nur für heute.",
     "taskSetFixed": "Diese Aufgabe setzt diesen Wert fest. Er lässt sich hier nicht ändern.",
     "liveTakesDay": "Änderungen an einem Eintrag, der online ist, gelten ab einem Tag, nicht ab einer Uhrzeit.",
@@ -343,6 +351,8 @@
     "datedStarted": "„{title}“: {fields} gilt jetzt bis {until, date, ::MMMMd}, wie geplant",
     "datedEnded": "„{title}“: befristete Änderung ({fields}) vom {day, date, ::MMMMd} bis {until, date, ::MMMMd} beendet; die Website zeigt wieder den normalen Wert",
     "datedEndedNow": "„{title}“: befristete Änderung ({fields}) vorzeitig beendet; die Website zeigt wieder den normalen Wert",
+    "datedStartedYearly": "„{title}“: {what} gilt jetzt bis {until, date, ::MMMMd}, wie jedes Jahr",
+    "datedEndedYearly": "„{title}“: {what} ist für dieses Jahr vorbei und kommt am {next, date, ::MMMMd} wieder; die Website zeigt wieder den normalen Wert",
     "datedStopped": "Die Änderung an „{title}“ ab {day, date, ::MMMMd} wurde nicht übernommen, weil {why}"
   },
   "publicness": {

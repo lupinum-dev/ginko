@@ -252,6 +252,14 @@
     "dayBeforeToday": "Le jour ne peut pas être avant aujourd’hui.",
     "datedSameStart": "Une modification temporaire pour ce champ commence déjà le même jour ; elle dure jusqu’au {until, date, ::MMMMd}. Modifiez-la ou choisissez un autre premier jour.",
     "holdingFromFixed": "Ce changement s’applique déjà. Son premier jour reste ; sa fin et ses valeurs peuvent changer.",
+    "dayTooFarBack": "Le premier jour peut être au plus il y a un an.",
+    "yearlyTooLong": "Une modification qui revient chaque année doit durer moins d’un an.",
+    "yearlyNeedsUntil": "Une modification qui revient chaque année a besoin d’un dernier jour.",
+    "nameNeedsUntil": "Seule une modification temporaire porte un nom. Indiquez le dernier jour.",
+    "nameLength": "Le nom doit compter de 1 à {max} caractères.",
+    "yearlyWhileHolding": "Cette modification s’applique maintenant et revient chaque année. Cela ne peut pas être désactivé maintenant ; vous pouvez l’annuler.",
+    "taskCannotYearly": "Avec cette tâche, une modification ne revient pas chaque année.",
+    "taskCannotName": "Cette tâche ne donne pas de nom à une modification.",
     "todayOnly": "Cette tâche vaut seulement pour aujourd’hui.",
     "taskSetFixed": "Cette tâche fixe cette valeur. Elle ne peut pas être changée ici.",
     "liveTakesDay": "Les modifications d’une entrée en ligne commencent à un jour, pas à une heure.",
@@ -343,6 +351,8 @@
     "datedStarted": "« {title} » : {fields} s’applique maintenant jusqu’au {until, date, ::MMMMd}, comme prévu",
     "datedEnded": "« {title} » : modification temporaire ({fields}) du {day, date, ::MMMMd} au {until, date, ::MMMMd} terminée ; le site affiche à nouveau la valeur normale",
     "datedEndedNow": "« {title} » : modification temporaire ({fields}) terminée plus tôt ; le site affiche à nouveau la valeur normale",
+    "datedStartedYearly": "« {title} » : {what} s’applique maintenant jusqu’au {until, date, ::MMMMd}, comme chaque année",
+    "datedEndedYearly": "« {title} » : {what} est terminé pour cette année et revient le {next, date, ::MMMMd} ; le site affiche à nouveau la valeur normale",
     "datedStopped": "Le changement de « {title} » à partir du {day, date, ::MMMMd} n’a pas été appliqué, car {why}"
   },
   "publicness": {

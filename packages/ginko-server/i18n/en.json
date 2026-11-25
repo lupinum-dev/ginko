@@ -252,6 +252,14 @@
     "dayBeforeToday": "The day cannot be before today.",
     "datedSameStart": "A temporary change for this field already starts on the same day; it lasts until {until, date, ::MMMMd}. Change that one, or choose another first day.",
     "holdingFromFixed": "This change already holds. Its first day stays; its end and its values can change.",
+    "dayTooFarBack": "The first day can be at most a year back.",
+    "yearlyTooLong": "A change that comes back every year must be shorter than a year.",
+    "yearlyNeedsUntil": "A change that comes back every year needs a last day.",
+    "nameNeedsUntil": "Only a change for certain days gets a name. Give the last day.",
+    "nameLength": "The name needs 1 to {max} characters.",
+    "yearlyWhileHolding": "This change holds now and comes back every year. That cannot be switched off now; you can remove it.",
+    "taskCannotYearly": "With this task a change does not come back every year.",
+    "taskCannotName": "This task gives a change no name.",
     "todayOnly": "This task is for today only.",
     "taskSetFixed": "This task sets this value. It cannot be changed here.",
     "liveTakesDay": "Changes to an entry that is online start on a day, not at a time.",
@@ -343,6 +351,8 @@
     "datedStarted": "“{title}”: {fields} holds now until {until, date, ::MMMMd}, as planned",
     "datedEnded": "“{title}”: temporary change ({fields}) from {day, date, ::MMMMd} until {until, date, ::MMMMd} ended; the website shows the normal value again",
     "datedEndedNow": "“{title}”: temporary change ({fields}) ended early; the website shows the normal value again",
+    "datedStartedYearly": "“{title}”: {what} holds now until {until, date, ::MMMMd}, as every year",
+    "datedEndedYearly": "“{title}”: {what} is over for this year and comes back on {next, date, ::MMMMd}; the website shows the normal value again",
     "datedStopped": "The change to “{title}” from {day, date, ::MMMMd} did not take effect, because {why}"
   },
   "publicness": {

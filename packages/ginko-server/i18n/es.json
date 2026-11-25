@@ -252,6 +252,14 @@
     "dayBeforeToday": "El día no puede ser anterior a hoy.",
     "datedSameStart": "Ya empieza el mismo día un cambio temporal para este campo; dura hasta el {until, date, ::MMMMd}. Cambia ese o elige otro primer día.",
     "holdingFromFixed": "Este cambio ya está vigente. Su primer día se mantiene; se pueden cambiar el final y los valores.",
+    "dayTooFarBack": "El primer día puede estar como máximo un año atrás.",
+    "yearlyTooLong": "Un cambio que vuelve cada año debe durar menos de un año.",
+    "yearlyNeedsUntil": "Un cambio que vuelve cada año necesita un último día.",
+    "nameNeedsUntil": "Solo un cambio temporal lleva nombre. Indica el último día.",
+    "nameLength": "El nombre necesita de 1 a {max} caracteres.",
+    "yearlyWhileHolding": "Este cambio está vigente y vuelve cada año. Eso no se puede desactivar ahora; puedes anularlo.",
+    "taskCannotYearly": "Con esta tarea un cambio no vuelve cada año.",
+    "taskCannotName": "Esta tarea no da nombre a un cambio.",
     "todayOnly": "Esta tarea es solo para hoy.",
     "taskSetFixed": "Esta tarea fija este valor. Aquí no se puede cambiar.",
     "liveTakesDay": "Los cambios de una entrada en línea empiezan en un día, no a una hora.",
@@ -343,6 +351,8 @@
     "datedStarted": "“{title}”: {fields} vale ahora hasta el {until, date, ::MMMMd}, como estaba planificado",
     "datedEnded": "“{title}”: cambio temporal ({fields}) del {day, date, ::MMMMd} al {until, date, ::MMMMd} terminado; la web vuelve a mostrar el valor normal",
     "datedEndedNow": "“{title}”: cambio temporal ({fields}) terminado antes de tiempo; la web vuelve a mostrar el valor normal",
+    "datedStartedYearly": "“{title}”: {what} vale ahora hasta el {until, date, ::MMMMd}, como cada año",
+    "datedEndedYearly": "“{title}”: {what} terminó por este año y vuelve el {next, date, ::MMMMd}; la web vuelve a mostrar el valor normal",
     "datedStopped": "El cambio en “{title}” a partir del {day, date, ::MMMMd} no se aplicó porque {why}"
   },
   "publicness": {

@@ -22,7 +22,7 @@ import { errorKind, mailStopped, stoppedChangeLines, stoppedLines } from './lib/
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
-import { asChanges, baseRows, checkDay, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, planDated, refuseTaskWithoutDay, taskHasEnd, taskSet, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
+import { asChanges, baseRows, checkDay, checkLabels, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, isRowOf, planDated, refuseTaskWithoutDay, startsOn, taskHasEnd, taskSet, timeOf, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
 import { advance, stepArgs } from './lib/migrations'
 import { editorEntry, editorEntryWithTranslation, entryLabel as labelOf, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
@@ -104,6 +104,13 @@ const saveArgs = {
   until: v.optional(v.string()),
   /** With `until`: the holding exception this save edits (its end and values may change, its start may not). */
   change: v.optional(v.string()),
+  /**
+   * With `until`: the exception comes back every year on the same days (slice 4). `from` may then lie up to a year
+   * back; days whose time has passed this year wait for next year.
+   */
+  yearly: v.optional(v.literal(true)),
+  /** With `until`: the exception's name ("Sommer"), 1 to 60 characters, trimmed; not translated. */
+  name: v.optional(v.string()),
 }
 
 export const save = mutation({ args: saveArgs, handler: async (ctx, args) => saveAs(ctx, await actorFor(ctx, args.site), args) })
@@ -193,17 +200,19 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   const today = todayIn(schema.timeZone)
   // A task with an end saves only with both days, whoever calls it: its values lie over the entry for those days and
   // never go into it (number 2), also when a caller leaves the days out and the task's `set` would be merged below.
-  if (taskHasEnd(schema, input.task)) refuseTaskWithoutDay(schema, input.task, { from: input.from, until: input.until })
+  if (taskHasEnd(schema, input.task)) refuseTaskWithoutDay(schema, input.task, { from: input.from, until: input.until, yearly: input.yearly, name: input.name })
+  // `yearly` and a name belong to a dated save with an end (slice 4).
+  if (input.from === undefined) checkLabels(input.until, input.yearly, input.name)
   // A yes on or after the day of a dated save writes online at once what the run on that day would have written (D127):
   // the values onto the online entry, as a save with `publish: true`, while unpublished changes of its fields keep
   // waiting, as the run leaves them. An exception is never written into the entry: a yes after its end comes too late
-  // (stale), a yes inside its days lets it hold from today.
-  if (actor.approvedBy !== undefined && input.until !== undefined && input.until < today) fail('INVALID', 'history.staleTimeGone')
+  // (stale), a yes inside its days lets it hold from today. A yearly one keeps its days: it comes back (slice 4).
+  if (actor.approvedBy !== undefined && input.until !== undefined && input.until < today && !input.yearly) fail('INVALID', 'history.staleTimeGone')
   const lateDay = input.from !== undefined && input.until === undefined && actor.approvedBy !== undefined && input.from <= today ? input.from : undefined
   // A request that edits a holding offer (`change`) keeps its start, which is fixed (decision 4); only a new offer holds
   // from today (round L3).
   const editsHolding = input.change !== undefined && await holdingRow(ctx, input.change)
-  const lateOffer = input.from !== undefined && input.until !== undefined && actor.approvedBy !== undefined && input.from < today && !editsHolding
+  const lateOffer = input.from !== undefined && input.until !== undefined && actor.approvedBy !== undefined && input.from < today && !editsHolding && !input.yearly
   const { from: _from, ...rest } = input
   // A task's fixed values (`set`) are part of every save through it; a value sent for one of them must be that value.
   const fixed = taskSet(schema, input.task)
@@ -347,28 +356,35 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
  */
 async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, brick: Brick, args: ObjectType<typeof saveArgs>, from: string, taskBrick: string) {
   const schema = actor.site.schema as Schema
-  const { until } = args
+  const { until, yearly } = args
   // The main language is the whole value on a site where a change may hold text (one language, D119).
   if (args.publish || (args.locale !== undefined && args.locale !== schema.locales[0]) || args.confirm?.length) fail('INVALID', 'errors.datedNotWith')
   // An offer cannot fall back to a save without a day (its task has an end): its refusal says to publish first (L10).
   if (stateOf(entry) !== 'live') fail('INVALID', until !== undefined ? 'errors.exceptionOnlyOnline' : 'errors.datedOnlyOnline')
+  const name = checkLabels(until, yearly, args.name)
   const rows = await datedOf(ctx, entry._id)
   // "Bearbeiten" on an exception edits that row: its end and values may change (decision 4). A holding one's start may
-  // not; a waiting one is edited while the save keeps its start, and another start is a second exception (H1.4, L7).
+  // not; a waiting one is edited while the save keeps its start, and another start is a second exception (H1.4, L7). A
+  // yearly row is edited by the days of its time of today, and cannot stop coming back while it holds (slice 4,
+  // decision 2: no "only this year").
   const named = until !== undefined && args.change !== undefined ? rows.find((r) => r._id === args.change && r.until !== undefined) : undefined
-  if (named && isHolding(named) && from !== named.from) fail('INVALID', 'errors.holdingFromFixed')
-  const edited = named && (isHolding(named) || named.from === from) ? named : undefined
-  if (!edited || !isHolding(edited)) checkDay(schema, from, { exception: until !== undefined })
-  if (until !== undefined) checkUntil(schema, from, until)
-  refuseTaskWithoutDay(schema, args.task, { from, until })
+  const holdingNamed = named !== undefined && isHolding(named)
+  if (holdingNamed && from !== (timeOf(named, todayIn(schema.timeZone)) ?? named).from) fail('INVALID', 'errors.holdingFromFixed')
+  if (holdingNamed && named.yearly && !yearly) fail('INVALID', 'errors.yearlyWhileHolding')
+  const edited = named && (holdingNamed || startsOn(named, from)) ? named : undefined
+  const editsHolding = edited !== undefined && isHolding(edited)
+  if (!editsHolding) checkDay(schema, from, { exception: until !== undefined, yearly })
+  if (until !== undefined) checkUntil(schema, from, until, { yearly, holding: editsHolding })
+  refuseTaskWithoutDay(schema, args.task, { from, until, yearly, name })
   // A value is given as for a save of the entry; its other parts are those it has on that day.
-  const joined = edited ?? rows.find((r) => r.from === from && r.until === until)
+  const joined = edited ?? rows.find((r) => isRowOf(r, from, until))
   const before = dataOn(entry.data as Data, asChanges(baseRows(rows.filter((r) => r._id !== joined?._id), until)), from)
   const set: Record<string, Json> = {}
   for (const [key, value] of Object.entries(args.fields)) set[key] = value === null ? null : (mergeField(brick.fields[key]!, before[key], value as Json, args.locale as Locale | undefined) ?? null)
-  const plan = await planDated(ctx, actor.site, entry, from, set, rows, { ...(until !== undefined ? { until } : {}), ...(edited ? { same: edited } : {}) })
+  const plan = await planDated(ctx, actor.site, entry, from, set, rows, { ...(until !== undefined ? { until } : {}), ...(edited ? { same: edited } : {}), ...(yearly ? { yearly } : {}), ...(name !== undefined ? { name } : {}) })
   // A stopped change of that day starts again with the same values: only a waiting one is left as it is.
-  if (plan.same && !plan.same.stopped ? same(plan.fields, plan.same.fields) && plan.same.until === until : !plan.same && !Object.keys(plan.fields).length) {
+  const sameLabels = plan.same?.yearly === plan.yearly && plan.same?.name === plan.name
+  if (plan.same && !plan.same.stopped ? same(plan.fields, plan.same.fields) && plan.same.until === until && sameLabels : !plan.same && !Object.keys(plan.fields).length) {
     const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
     return unchanged
   }
