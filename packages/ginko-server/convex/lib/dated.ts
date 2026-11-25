@@ -146,18 +146,24 @@ export async function syncDatedRefs(ctx: MutationCtx, schema: Schema, row: Pick<
  * fields it lacks (one row per day, D125); its own values stay. `rev` is the entry's rev they were made at. The caller
  * checked them (`changeIssues`) and already wrote the passed ones into the entry (`dataOn`, `waitingChanges`).
  */
-export async function insertWaiting(ctx: MutationCtx, schema: Schema, entry: Pick<Doc<'entries'>, '_id' | 'site' | 'brick' | 'rev'>, changes: readonly Change[]) {
+export async function insertWaiting(ctx: MutationCtx, schema: Schema, entry: Pick<Doc<'entries'>, '_id' | 'site' | 'brick' | 'rev'> & { state?: 'draft' | 'live' }, changes: readonly Change[]) {
   const today = todayIn(schema.timeZone)
   for (const change of changes) {
     // An exception is a row of its own (identity: entry, from, until). One that holds today was checked with the entry
-    // like a start run, so it holds at once; the others wait for their start run.
+    // like a start run, so it holds at once; the others wait for their start run. On an entry that is not online a
+    // current one comes back stopped, as its start run stops it (ruling 3, round L5): it would show unchecked the moment
+    // the entry goes online.
     if (change.until !== undefined) {
-      const holds = change.from <= today
+      const started = change.from <= today
+      const stopped = started && entry.state === 'draft'
+        ? { at: dayStart(change.from, schema.timeZone), reason: { code: 'invalid' as const, fields: Object.keys(change.set), cause: { key: 'errors.exceptionNotOnline' } } }
+        : undefined
+      const holds = started && !stopped
       const dated = await ctx.db.insert('datedChanges', {
         site: entry.site, entry: entry._id, brick: entry.brick, from: change.from, until: change.until, fields: change.set, prints: {},
-        revs: Object.fromEntries(Object.keys(change.set).map((root) => [root, entry.rev])), at: Date.now(), ...(holds ? { holds: Date.now() } : {}),
+        revs: Object.fromEntries(Object.keys(change.set).map((root) => [root, entry.rev])), at: Date.now(), ...(holds ? { holds: Date.now() } : {}), ...(stopped ? { stopped } : {}),
       })
-      await ctx.db.patch(dated, { job: await scheduleRun(ctx, schema, dated, change.from, change.until, holds) })
+      if (!stopped) await ctx.db.patch(dated, { job: await scheduleRun(ctx, schema, dated, change.from, change.until, holds) })
       await syncDatedRefs(ctx, schema, { _id: dated, site: entry.site, brick: entry.brick, fields: change.set })
       continue
     }

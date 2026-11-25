@@ -492,7 +492,7 @@ export const importExport = internalMutation({
         }
       }
       // Each waiting change gets its row and its run, without a person.
-      await insertWaiting(ctx, schema, { _id: id, site: site._id, brick: row.brick, rev: row.rev }, changes)
+      await insertWaiting(ctx, schema, { _id: id, site: site._id, brick: row.brick, rev: row.rev, ...(row.state ? { state: row.state } : {}) }, changes)
       ids.push([row.id, id])
       for (const [name, field] of Object.entries(fields)) {
         if (field.type !== 'slug') continue

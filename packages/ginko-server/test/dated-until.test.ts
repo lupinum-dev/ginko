@@ -608,4 +608,26 @@ describe('export and import (state table: export, import, file form)', () => {
     expect(rows.map((r) => [r.from, r.until, r.holds !== undefined])).toEqual([['2026-10-01', '2026-10-31', true], ['2026-11-01', '2026-11-30', false]])
     expect(await s.shownPrice(trout._id)).toBe(1000)
   })
+
+  // Round L5. Wrong behaviour caught: an import lets a draft's current offer hold, so it shows unchecked the moment the
+  // entry goes online. It comes back stopped, as its start run stops it (ruling 3); a later one waits.
+  it('an import stops a draft\'s current offer with its reason; a later one waits', async () => {
+    const s = await untilSetup()
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const dish = { category: 'starters', name: { de: 'Forelle' }, price: { amount: 1200 }, allergens: ['D'], veg: 'none' }
+    await s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [],
+      entries: [{ id: 'm1', brick: 'menu', kind: 'item', order: 99, prints: {}, rev: 1, state: 'draft', data: dish, changes: [
+        { from: '2026-10-01', until: '2026-10-31', set: { price: { amount: 1000 } } },
+        { from: '2026-11-01', until: '2026-11-30', set: { price: { amount: 1100 } } },
+      ] }],
+    })
+    const menu = await s.t.run((ctx) => ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'menu')).collect())
+    const trout = menu.find((e) => (e.data as { name: { de: string } }).name.de === 'Forelle')!
+    const rows = await s.dated(trout._id)
+    expect(rows.map((r) => [r.from, r.holds !== undefined, r.stopped?.reason ?? null])).toEqual([
+      ['2026-10-01', false, { code: 'invalid', fields: ['price'], cause: { key: 'errors.exceptionNotOnline' } }],
+      ['2026-11-01', false, null],
+    ])
+  })
 })
