@@ -185,7 +185,8 @@ function compileBrick(key: string, brick: BrickDef, label: Label, item: Label | 
     ...(brick.preview !== undefined ? { preview: brick.preview } : {}),
     ...(brick.layout ? { layout: brick.layout } : {}),
     ...(tasks ? { tasks } : {}),
-    ...(brick.timeline ? { timeline: { public: [...brick.timeline.public] } } : {}),
+    // As written: the schema check names a wrong shape (checkSchema), which a copy into the right shape would hide.
+    ...(brick.timeline !== undefined ? { timeline: brick.timeline } : {}),
   }
   const status = brick.status as { show?: string; rule?: string } | undefined
   if (brick.kind === 'single') {
