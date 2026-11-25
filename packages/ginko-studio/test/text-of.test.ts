@@ -73,6 +73,13 @@ describe('useTextOf', () => {
     expect(text(revert, '')).toContain('06:00')
   })
 
+  // Wrong behaviour caught: the Studio says "Änderung ab 2026-11-01" in the file's ISO form instead of the reader's day.
+  it('shows the day of a change in the reader\'s form', () => {
+    const text = useTextOf(() => ({ timeZone: 'Europe/Vienna', main: 'de' }))
+    const issue = { key: 'issues.changeValue', params: { from: '2026-11-01', problem: { key: 'issues.fieldMissing', params: { label: 'Preis' } } } }
+    expect(text(issue, '')).toBe('Änderung ab Sonntag, 1. November: „Preis“ fehlt.')
+  })
+
   // Wrong behaviour caught: the wait for the zone blanks every site text, also one without a time in it.
   it('gives a text without a time at once, while the site zone is unknown', () => {
     const text = useTextOf(() => ({ timeZone: undefined, main: 'de' }))
