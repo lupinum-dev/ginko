@@ -681,7 +681,10 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         const prefix = `$changes.${i}.set.`
         const set = item.set
         const live = (name: string) => Object.hasOwn(brick.fields, name) && !brick.fields[name]!.retired
-        const written = Object.fromEntries(Object.entries(set).filter(([name, value]) => value !== null && live(name)))
+        // A file's Markdown is built into a tree with the entry; a text in a change has no such step (D122).
+        const markdown = (name: string) => live(name) && brick.fields[name]!.type === 'markdown'
+        for (const name of Object.keys(set).filter(markdown)) fail(cx, `${prefix}${name}`, `“${name}” is a Markdown text, and a Markdown text cannot be in a change in a file. Change the text in the file on its day.`)
+        const written = Object.fromEntries(Object.entries(set).filter(([name, value]) => value !== null && live(name) && !markdown(name)))
         const view = convertFields(brick.fields, written, { ...cx, prefix })
         const subset = Object.fromEntries(Object.keys(view).map((name) => [name, brick.fields[name]!]))
         const merged = merge(subset, { [main]: view }, { main, locales: schema.locales, entryId: id, prefix, prints: {}, rels: { [main]: cx.file }, errors: cx.errors, where: [] })
