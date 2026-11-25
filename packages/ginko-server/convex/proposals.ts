@@ -3,7 +3,7 @@
 // same operation again as the author, with the approver named in the change row, so there is one
 // write path. A change that no longer fits (revision moved on) becomes `stale` and writes nothing.
 import type { Json } from '@lupinum/ginko'
-import type { Schema } from '@lupinum/ginko/internal'
+import { todayIn, type Schema } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
@@ -92,7 +92,14 @@ function reasonOf(data: { code?: string; key?: string; params?: Record<string, s
  * operations check everything before they write, so a refusal leaves nothing behind: it becomes the
  * reason the proposal is stale. Any other error is a bug and is thrown.
  */
+/**
+ * Compatibility (D130, internals/migrations.md): a request from before D130 to take a planned time off ("unpublish"
+ * whose after is online). That time no longer exists, and a yes now would take the entry offline.
+ */
+const timeGone = (p: Doc<'proposals'>) => p.op === 'unpublish' && (p.after as { state?: unknown } | undefined)?.state === 'live'
+
 async function applyNow(ctx: MutationCtx, p: Doc<'proposals'>, approver: string): Promise<Applied> {
+  if (timeGone(p)) return { ok: false, ...staleBecause('history.staleTimeGone') }
   const site = await ctx.db.get(p.site)
   if (!site) return { ok: false, ...staleBecause('history.staleSiteGone') }
   const author = await memberOf(ctx, site, { id: p.author })
@@ -138,9 +145,12 @@ async function staleReason(ctx: QueryCtx, p: Doc<'proposals'>, touched: Touched 
   const entry = await ctx.db.get(p.entry)
   if (!entry || entry.site !== p.site) return staleBecause('history.staleEntryGone')
   if (entry.deletedAt) return staleBecause('history.staleEntryDeleted')
-  const args = p.args as { baseRev?: number; lifeRev?: number; rev?: number; fields?: Record<string, Json>; confirm?: string[] }
+  const args = p.args as { baseRev?: number; lifeRev?: number; rev?: number; fields?: Record<string, Json>; confirm?: string[]; until?: string; yearly?: true }
   const seen = touched.get(entry._id)
   if (p.op === 'save') {
+    // A request for some days whose last day has passed comes too late (as its yes refuses it, round L5); one that comes
+    // back every year never does: its yes waits for next year (slice 4).
+    if (args.until !== undefined && !args.yearly && args.until < todayIn((site.schema as Schema).timeZone)) return staleBecause('history.staleTimeGone')
     const roots = [...new Set([...Object.keys(args.fields ?? {}), ...(args.confirm ?? []).map(rootOf)])]
     const base = args.baseRev ?? 0
     if (base > entry.rev || roots.some((r) => (entry.fieldRevs[r] ?? 0) > base) || roots.some((r) => seen?.roots.has(r))) return retry
@@ -153,21 +163,18 @@ async function staleReason(ctx: QueryCtx, p: Doc<'proposals'>, touched: Touched 
     if (args.rev === undefined) return staleBecause('history.staleAlreadyLive')
     if (entry.rev !== args.rev || !(await pendingOf(ctx, entry._id))) return retry
   }
-  if (p.op === 'unpublish' && (entry.state ?? 'live') === 'draft' && entry.publishAt === undefined) return staleBecause('history.staleAlreadyDraft')
-  // Taking the time off unpublished changes (the entry stays online): only while they still have one.
-  if (p.op === 'unpublish' && (p.after as { state?: string } | undefined)?.state === 'live' && (await pendingOf(ctx, entry._id))?.publishAt === undefined) return retry
+  if (timeGone(p)) return staleBecause('history.staleTimeGone')
+  if (p.op === 'unpublish' && (entry.state ?? 'live') === 'draft' && entry.publishAt === undefined && !entry.stopped) return staleBecause('history.staleAlreadyDraft')
   touched.set(entry._id, { roots: seen?.roots ?? new Set(), life: true })
   return null
 }
 
-/** `running`: the call comes from the proposal's own scheduled job, which has nothing left to cancel. */
-async function markStale(ctx: MutationCtx, p: Doc<'proposals'>, why: Stale, by: string, running = false) {
-  if (p.job && !running) await ctx.scheduler.cancel(p.job)
-  await ctx.db.patch(p._id, { status: 'stale', reason: why.reason, reasonMsg: why.msg, decidedBy: by, decidedAt: Date.now(), job: undefined })
+async function markStale(ctx: MutationCtx, p: Doc<'proposals'>, why: Stale, by: string) {
+  await ctx.db.patch(p._id, { status: 'stale', reason: why.reason, reasonMsg: why.msg, decidedBy: by, decidedAt: Date.now() })
 }
 
 async function markApplied(ctx: MutationCtx, p: Doc<'proposals'>, by: string, change: Id<'changes'> | undefined) {
-  await ctx.db.patch(p._id, { status: 'applied', decidedBy: by, decidedAt: Date.now(), job: undefined, ...(change ? { change } : {}) })
+  await ctx.db.patch(p._id, { status: 'applied', decidedBy: by, decidedAt: Date.now(), ...(change ? { change } : {}) })
 }
 
 /** Release member status back to open (a scheduled release that could not run). */
@@ -177,8 +184,12 @@ async function reopen(ctx: MutationCtx, p: Doc<'proposals'>) {
 
 // ---- Deciding one proposal ----
 
+/**
+ * A yes to one proposal applies it now. A later time is a release's (`approveRelease`); a single change for a later
+ * day is a dated change, which its author asks for with the day (D130).
+ */
 export const approve = mutation({
-  args: { proposal: v.string(), at: v.optional(v.number()) },
+  args: { proposal: v.string() },
   handler: async (ctx, args): Promise<Json> => {
     const { actor, proposal: p } = await actorForProposal(ctx, args.proposal)
     requireDecide(actor, p)
@@ -186,49 +197,14 @@ export const approve = mutation({
     if (p.release) fail('INVALID', 'errors.proposalInReleaseApproveRelease')
     const by = actor.user.id
 
-    if (args.at !== undefined) {
-      checkFuture(args.at)
-      const reason = await staleReason(ctx, p)
-      if (reason) {
-        await markStale(ctx, p, reason, by)
-        return { proposal: p._id, status: 'stale', reason: reason.reason, reasonMsg: reason.msg }
-      }
-      const job = await ctx.scheduler.runAt(args.at, internal.proposals.applyScheduled, { proposal: p._id, at: args.at })
-      await ctx.db.patch(p._id, { status: 'scheduled', at: args.at, job, decidedBy: by, decidedAt: Date.now() })
-      return { proposal: p._id, status: 'scheduled', at: args.at }
-    }
-
     const applied = await applyNow(ctx, p, by)
     if (!applied.ok) {
       await markStale(ctx, p, applied, by)
       return { proposal: p._id, status: 'stale', reason: applied.reason, reasonMsg: applied.msg }
     }
     await markApplied(ctx, p, by, applied.change)
-    // A week planned ahead or a planned price: the approver is told from when it shows.
+    // A week planned ahead: the approver is told from when it shows.
     return { proposal: p._id, status: 'applied', change: applied.change ?? null, ...(applied.liveFrom ? { liveFrom: applied.liveFrom } : {}) }
-  },
-})
-
-/** The run of a scheduled approval: re-checks everything now. A change in between makes the proposal stale. */
-export const applyScheduled = internalMutation({
-  args: { proposal: v.id('proposals'), at: v.number() },
-  handler: async (ctx, args): Promise<null> => {
-    const p = await ctx.db.get(args.proposal)
-    if (!p || p.status !== 'scheduled' || p.at !== args.at || !p.decidedBy) return null
-    const site = await ctx.db.get(p.site)
-    const approver = site && await memberOf(ctx, site, { id: p.decidedBy })
-    if (!approver || !isApprover(approver) || (p.author === p.decidedBy && p.via !== 'agent')) {
-      await markStale(ctx, p, staleBecause('history.staleApproverNotAllowed'), p.decidedBy, true)
-      return null
-    }
-    const applied = await applyNow(ctx, p, p.decidedBy)
-    if (applied.ok) {
-      await markApplied(ctx, p, p.decidedBy, applied.change)
-      return null
-    }
-    await markStale(ctx, p, applied, p.decidedBy, true)
-    await mailNotLive(ctx, p.site, p.decidedBy, (p.msg as HistoryMsg | undefined) ?? p.sentence)
-    return null
   },
 })
 
@@ -239,9 +215,8 @@ export const reject = mutation({
     requireDecide(actor, p)
     const reason = args.reason.trim()
     if (reason.length < 1 || reason.length > REASON_MAX) fail('INVALID', 'errors.reasonOneSentence', { reasonMax: REASON_MAX })
-    if (p.status !== 'open' && !(p.status === 'scheduled' && !p.release)) fail('CHANGED_SINCE', 'errors.proposalNoLongerOpen', undefined, { status: p.status })
-    if (p.job) await ctx.scheduler.cancel(p.job)
-    await ctx.db.patch(p._id, { status: 'rejected', reason, decidedBy: actor.user.id, decidedAt: Date.now(), job: undefined, release: undefined })
+    if (p.status !== 'open') fail('CHANGED_SINCE', 'errors.proposalNoLongerOpen', undefined, { status: p.status })
+    await ctx.db.patch(p._id, { status: 'rejected', reason, decidedBy: actor.user.id, decidedAt: Date.now(), release: undefined })
     // A rejection needs the author to act, often the same day; an approval needs nothing (decisions: email on rejection only).
     if (p.author !== actor.user.id) await mailRejected(ctx, p, reason)
     return { proposal: p._id, status: 'rejected' }
@@ -342,8 +317,8 @@ const RECENT_MS = 14 * 24 * 60 * 60 * 1000
 
 /**
  * The top of History (UI.md 10.4), also for an approver: the person's own open proposals (`open`), their own
- * proposals rejected in the last two weeks (`rejected`), and planned changes that did not go live in the last
- * two weeks because they no longer fitted at their time (`notLive`): for an approver of the whole site, who
+ * proposals rejected in the last two weeks (`rejected`), and members of a planned release that did not go live in the
+ * last two weeks because they no longer fitted at its time (`notLive`): for an approver of the whole site, who
  * planned them, else their own. Each list reads at most 50 rows through an index.
  */
 export const mine = query({
@@ -402,9 +377,16 @@ export const ownFor = query({
     const p = entry ? await followUp(ctx, await ownDocs(ctx, actor), entry) : null
     if (!p) return null
     const names = await labeler(ctx, actor)
-    const sent = p.args as { fields?: Record<string, Json> }
+    const sent = p.args as { fields?: Record<string, Json>; from?: string; until?: string; yearly?: true; name?: string }
     return {
       proposal: p._id, status: p.status, task: taskOf(p.args) ?? null, fields: sent.fields ?? {}, createdAt: p.createdAt,
+      // The day a dated request starts on: a form that reopens it keeps it (I2).
+      from: sent.from ?? null,
+      // The last day of a request for an exception (slice 3).
+      until: sent.until ?? null,
+      // Whether it comes back every year, and its name (slice 4).
+      yearly: sent.yearly ?? null,
+      name: sent.name ?? null,
       // A rejection `followUp` returns fits already.
       fits: p.status !== 'open' || (await staleReason(ctx, p)) === null,
       decidedAt: p.decidedAt ?? null, decidedBy: p.decidedBy ? await names.who(p.decidedBy) : null, reason: p.reason ?? null,
@@ -444,7 +426,7 @@ export const get = query({
     // Publishing unpublished changes shows their fields; any other publish or unpublish shows the state.
     const diff = (p.op === 'publish' || p.op === 'unpublish') && before.state !== undefined
       ? [{ field: 'state', label: t(locale, 'history.stateField'), kind: 'state', before: when(before.state, before.publishAt), after: when(after.state, after.publishAt) }]
-      : diffFields(brick?.fields, before, after, schema.locales[0]!)
+      : diffFields(brick?.fields, before, after, schema.locales[0]!, schema.week)
     const names = await labeler(ctx, actor)
     const conflict = p.status === 'open' || p.status === 'scheduled' ? await staleReason(ctx, p) : null
     return {
@@ -659,7 +641,7 @@ async function blockRelease(ctx: MutationCtx, release: Doc<'releases'>, members:
   const by = release.decidedBy!
   for (const p of members) {
     const s = stale.find((x) => x.proposal === p._id)
-    if (s) await markStale(ctx, p, { reason: s.reason, msg: s.reasonMsg }, by, true)
+    if (s) await markStale(ctx, p, { reason: s.reason, msg: s.reasonMsg }, by)
     else await reopen(ctx, p)
   }
   await ctx.db.patch(release._id, { status: 'stale', job: undefined })
@@ -667,8 +649,8 @@ async function blockRelease(ctx: MutationCtx, release: Doc<'releases'>, members:
 }
 
 /**
- * Tells the approver that a change they planned did not go live (SPEC 17). Without this, a planned
- * change that no longer fits fails at night and the inbox still says "scheduled".
+ * Tells the approver that a release they planned did not go live (SPEC 17). Without this, a planned
+ * release that no longer fits fails at night and the inbox still says "scheduled".
  */
 async function mailNotLive(ctx: MutationCtx, siteId: Id<'sites'>, approver: string, what: HistoryMsg | string) {
   const site = await ctx.db.get(siteId)
@@ -676,7 +658,7 @@ async function mailNotLive(ctx: MutationCtx, siteId: Id<'sites'>, approver: stri
   const member = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).filter((q) => q.eq(q.field('user'), approver)).first()
   if (!member?.email) return
   const locale = await localeOfUser(ctx, member.user)
-  await queueMail(ctx, {
+  await queueMail(ctx, 'notLive', {
     to: member.email,
     subject: t(locale, 'mail.notLive.subject', { site: site.name }),
     text: t(locale, 'mail.notLive.text', { site: site.name, what: typeof what === 'string' ? what : historyText(what, locale, site.schema as Schema), path: `${siteOrigin()}/s/${site.slug}/history` }),
@@ -696,7 +678,7 @@ async function mailRejected(ctx: MutationCtx, p: Doc<'proposals'>, reason: strin
   const locale = await localeOfUser(ctx, member.user)
   const task = taskOf(p.args)
   const fix = p.via === 'agent' ? '/history' : p.op === 'save' && p.entry && task ? `?task=${encodeURIComponent(task)}&reopen=${p._id}` : ''
-  await queueMail(ctx, {
+  await queueMail(ctx, 'rejected', {
     to: member.email,
     subject: t(locale, 'mail.rejected.subject', { site: site.name }),
     text: t(locale, 'mail.rejected.text', { site: site.name, what: p.msg ? historyText(p.msg as HistoryMsg, locale, site.schema as Schema) : p.sentence, reason, path: `${siteOrigin()}/s/${site.slug}${fix}` }),
@@ -740,7 +722,7 @@ export const sendDigest = internalMutation({
         const via = !w.viaAgent ? '' : ` ${w.ai ? t(locale, 'mail.digest.viaAi', { ai: w.ai }) : t(locale, 'mail.digest.viaAiUnnamed')}`
         return `- ${name}${via}: ${w.msg ? historyText(w.msg, locale, schema) : w.sentence}`
       })
-      await queueMail(ctx, {
+      await queueMail(ctx, 'digest', {
         to: owner.email!,
         subject: t(locale, 'mail.digest.subject', { count: open.length, site: site.name }),
         text: t(locale, 'mail.digest.text', { count: open.length, site: site.name, lines: lines.join('\n'), path: `${siteOrigin()}/s/${site.slug}/review` }),

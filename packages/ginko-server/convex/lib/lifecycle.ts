@@ -1,10 +1,13 @@
 // Entry lifecycle shared by the entry operations and the retention job (SPEC 4.2, 12),
 // so a removal writes the same fields and counters wherever it happens.
-import { SITE_BUDGET } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, type Schema } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { By } from './access'
-import type { Recorded } from './history'
+import type { Data } from './content'
+import { dropDated, isHolding } from './dated'
+import { msg, recorded, type Recorded } from './history'
+import { entryLabel } from './list'
 import { dropPending } from './pending'
 import { dropTrees } from './trees'
 
@@ -45,20 +48,27 @@ export function storageSums(rows: readonly Pick<Doc<'entries'>, 'deletedAt' | 'b
   return { bytes, trashBytes, treeBytes }
 }
 
+/** What a write that ends a draft's plan clears: the time, its job, the planner (D102) and a stopped plan (D103). */
+export const NO_PLAN = { publishAt: undefined, publishJob: undefined, publishBy: undefined, stopped: undefined } as const
+
 /**
  * Soft-deletes one entry (SPEC 4.2 remove): `deletedAt`, lifeRev+1, one change row. Its slug stays reserved and its
  * file references stay; its trees go (the trash keeps none). Its bytes move from `bytes` to `trashBytes`, so removing
  * frees room at once; when the trash then holds more than SITE_BUDGET.trashBytes, the oldest removed entries are deleted for good
  * now instead of after 30 days. A draft was never in the bundle, so removing it leaves `contentRev` alone; a scheduled
- * draft loses its job and its time.
+ * draft loses its job and its time. Its dated changes are cancelled with one history row of their own (D127): a restore
+ * does not bring them back.
  */
 export async function softRemove(ctx: MutationCtx, c: Counters, entry: Doc<'entries'>, opId: string, by: By, history: Recorded, at = Date.now()) {
   // rev counts every change of the entry (SPEC 3), structural ones included.
-  await ctx.db.patch(entry._id, { deletedAt: at, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, publishAt: undefined, publishJob: undefined, trees: undefined, treeBytes: 0 })
+  await ctx.db.patch(entry._id, { deletedAt: at, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, ...NO_PLAN, trees: undefined, treeBytes: 0 })
   await dropTrees(ctx, entry._id)
   if (entry.publishJob) await ctx.scheduler.cancel(entry.publishJob)
   // Unpublished changes go with the entry: a restore brings back the live version.
   for (const p of await ctx.db.query('pendingChanges').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()) await dropPending(ctx, p)
+  // Its dated changes go too; a live entry leaves the bundle (contentRev below), a draft's never reached it.
+  const dated = await ctx.db.query('datedChanges').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()
+  for (const row of dated) await dropDated(ctx, row)
   c.entryCount -= 1
   c.bytes -= entry.bytes
   c.trashBytes += entry.bytes
@@ -68,6 +78,17 @@ export async function softRemove(ctx: MutationCtx, c: Counters, entry: Doc<'entr
     site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'remove', ...history,
     entryRev: entry.rev + 1, contentRev: c.contentRev, at,
   })
+  // One line for the planned changes and one for those that held (round M3: a running one is no planned one).
+  const holding = dated.filter(isHolding).length
+  for (const [key, count] of [['history.datedCancelledWithEntry', dated.length - holding], ['history.datedEndedWithEntry', holding]] as const) {
+    if (!count) continue
+    const schema = (await ctx.db.get(entry.site))!.schema as Schema
+    await ctx.db.insert('changes', {
+      site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'datedCancelled',
+      ...recorded(msg(key, { title: entryLabel(schema, entry.brick, entry.data as Data), count }), schema),
+      entryRev: entry.rev + 1, contentRev: c.contentRev, at,
+    })
+  }
   for (const oldest of await overflowingTrash(ctx, entry.site, c.trashBytes)) await purgeEntry(ctx, c, oldest)
 }
 
@@ -90,6 +111,8 @@ export async function overflowingTrash(ctx: QueryCtx, site: Id<'sites'>, trashBy
 /** Deletes a removed entry for good: its slugs, file references, trees and the row. Its changes stay for a year (SPEC 12). */
 export async function purgeEntry(ctx: MutationCtx, c: Counters, row: Doc<'entries'>) {
   for (const p of await ctx.db.query('pendingChanges').withIndex('by_entry', (q) => q.eq('entry', row._id)).collect()) await dropPending(ctx, p)
+  // A removed entry has none (softRemove cancels them); a row left from before that rule goes with it.
+  for (const d of await ctx.db.query('datedChanges').withIndex('by_entry', (q) => q.eq('entry', row._id)).collect()) await dropDated(ctx, d)
   for (const slug of await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', row._id)).collect()) await ctx.db.delete(slug._id)
   const refs = await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', 'entry').eq('holderId', row._id)).collect()
   for (const ref of refs) await ctx.db.delete(ref._id)

@@ -1,5 +1,6 @@
 {
   "nav": {
+    "claim": "Keep your website up to date.",
     "quick": "Today",
     "all": "Content",
     "review": "Review",
@@ -178,6 +179,10 @@
       "keepMine": "Save my changes",
       "takeTheirs": "Use the new version",
       "keepBoth": "Keep both",
+      "keepInput": "Keep my input",
+      "inForm": "Your input is in the form. It is not saved yet.",
+      "nowOnline": "The entry is online now.",
+      "nowOffline": "The entry is offline now.",
       "someone": "Someone",
       "row": {
         "youAdded": "You added “{row}”",
@@ -216,7 +221,8 @@
       "review": "Send for review",
       "asDraft": "Save as draft",
       "laterOpen": "Publish later",
-      "changesWhen": "When should the changes to “{title}” go online?"
+      "changesWhen": "When should the changes to “{title}” go online?",
+      "laterDay": "From a later day"
     },
     "unpublish": {
       "button": "Take offline",
@@ -270,6 +276,7 @@
     },
     "localDraft": {
       "offer": "Restore your unsaved changes from {time}?",
+      "plannedFrom": "This input was planned from {day}. Choose the day again here.",
       "restore": "Restore",
       "discard": "Do not restore",
       "restoredConflict": "Restored. Someone changed {fields} in the meantime; please decide below."
@@ -308,10 +315,98 @@
       "draftNote": "Not on the website yet. Publish it when it is ready.",
       "scheduledNote": "It goes online by itself at that time.",
       "liveNote": "Saving does not change the website yet. Only “Publish …” does.",
-      "changesNote": "Saved, but not on the website yet. It shows the previous version until you publish.",
-      "changesScheduledNote": "The changes go online on their own at that time."
+      "changesNote": "Saved, but not on the website yet. It shows the previous version until you publish."
     },
     "savedNotLive": "Saved, not online yet"
+  },
+  "dated": {
+    "startsOn": "Starts on",
+    "startsOnHint": "Empty: at once",
+    "publishFrom": "Publish from {day}",
+    "reviewFrom": "Send for review, from {day}",
+    "sentFrom": "Sent for review. Planned from {day}.",
+    "waiting": "From {day}: {changes}.",
+    "stopped": "The planned change for {day} did not take effect: {changes}.",
+    "stoppedYearly": "The yearly change for {day} to {until} was not applied: {changes}. It does not come back by itself: choose the days again (“Change days”) or cancel it.",
+    "changedSince": "Changed since it was planned: {fields}. From the planned day, the planned value still applies.",
+    "cancel": "Cancel change",
+    "cancelQuestion": "Cancel this planned change? This cannot be undone.",
+    "keep": "Keep it",
+    "changeDay": "Change day",
+    "edit": "Edit",
+    "saveDay": "Save day",
+    "dayRequired": "Please choose a day.",
+    "notADate": "This is not a date. Choose a day or clear the field.",
+    "nothingChanged": "Nothing is changed yet. Change a value first.",
+    "secondChange": "The planned change from {day} stays. This will be a second change.",
+    "cancelled": "Planned change cancelled.",
+    "moved": "The change now starts on {day}.",
+    "until": "Ends on",
+    "untilBeforeFrom": "“Ends on” must be on or after “Starts on”.",
+    "publishFromUntil": "Publish for {day} to {until}",
+    "publishUntil": "Publish until {until}",
+    "publishToday": "Publish for today",
+    "reviewFromUntil": "Send for review, {day} to {until}",
+    "reviewUntil": "Send for review, until {until}",
+    "reviewToday": "Send for review, for today",
+    "publishUntilToday": "Publish until today",
+    "reviewUntilToday": "Send for review, until today",
+    "publishDays": "Publish for certain days",
+    "reviewDays": "Send for review, for certain days",
+    "startsOnHintToday": "Empty: today",
+    "sentFromUntil": "Sent for review. Planned from {day} to {until}.",
+    "sentToday": "Sent for review. Planned for today.",
+    "sentOn": "Sent for review. Planned for {day}.",
+    "liveFromUntil": "On the website from {date} to {until}.",
+    "liveToday": "On the website today.",
+    "liveOn": "On the website on {date}.",
+    "waitingUntil": "From {day} to {until}: {changes}",
+    "holding": "Until {until} the website shows: {changes} (otherwise {normal})",
+    "holdingPlain": "Until {until} the website shows: {changes}",
+    "covered": "Until {until} the website shows {value}.",
+    "coveredOther": "Until {until} the website shows another value.",
+    "overlap": "From {from} to {until} both apply. The website shows the change from {from}.",
+    "afterEnd": "Applies once the temporary change ends",
+    "fromFixed": "This change already applies: only its end and its values can change.",
+    "todayOnlyValues": "Today only: {changes}",
+    "todayOnly": "From tomorrow the website shows the normal state again.",
+    "changeDays": "Change days",
+    "saveDays": "Save days",
+    "movedUntil": "The change now applies from {day} to {until}.",
+    "movedYearly": "The change now applies every year from {day} to {until}.",
+    "endNow": "End now",
+    "endQuestion": "End this change now? The website then shows the normal value again. This cannot be undone.",
+    "yearly": "Repeat every year",
+    "yearlyHint": "Holds on these days every year.",
+    "yearlyWhileHolding": "This change holds now and comes back every year. That cannot be switched off now; you can cancel it.",
+    "yearlyOnWhileHolding": "This change is in effect now. Whether it comes back every year can only be changed once it has ended.",
+    "yearlyTooLong": "A change that comes back every year must be shorter than a year.",
+    "yearlyLeapDay": "29 February does not exist every year. Add more days or switch off “Repeat every year”.",
+    "startsTooFarBack": "“Starts on” can be at most a year back.",
+    "name": "Name",
+    "nameHint": "For example: Summer",
+    "nameTooLong": "The name can have at most {max} characters.",
+    "publishYearly": "Publish every year, {day} to {until}",
+    "reviewYearly": "Send for review, every year {day} to {until}",
+    "waitingYearly": "Every year from {day} to {until}: {changes}",
+    "waitingYearlyNamed": "{name}: every year from {day} to {until}: {changes}",
+    "waitingUntilNamed": "{name}: from {day} to {until}: {changes}",
+    "holdingNamed": "{name}: until {until} the website shows: {changes} (otherwise {normal})",
+    "holdingPlainNamed": "{name}: until {until} the website shows: {changes}",
+    "comesBack": "{text}. Comes back every year.",
+    "cancelYearlyQuestion": "Cancel this change? It then does not come back next year either.",
+    "publishYearlyOn": "Publish every year on {day}",
+    "reviewYearlyOn": "Send for review, every year on {day}",
+    "waitingOn": "On {day}: {changes}",
+    "waitingOnNamed": "{name}: on {day}: {changes}",
+    "waitingYearlyOn": "Every year on {day}: {changes}",
+    "waitingYearlyOnNamed": "{name}: every year on {day}: {changes}",
+    "liveYearlyOn": "On the website every year on {day}, starting {first}.",
+    "liveYearlyOnToday": "On the website every year on {day}, starting today.",
+    "sentYearlyOn": "Sent for review. Planned every year on {day}.",
+    "liveYearly": "On the website every year from {day} to {until}, starting {first}.",
+    "liveYearlyToday": "On the website every year from {day} to {until}, starting today.",
+    "sentYearly": "Sent for review. Planned every year from {day} to {until}."
   },
   "site": {
     "zoneNote": "All times are in the website's time zone ({zone}).",
@@ -647,8 +742,7 @@
       "since": "Draft since {date}",
       "goesLive": "Goes live {date}",
       "all": "All drafts in Content",
-      "changesSince": "Unpublished changes since {date}",
-      "changesGoLive": "Changes go online {date}"
+      "changesSince": "Unpublished changes since {date}"
     }
   },
   "editor": {
@@ -1012,6 +1106,7 @@
       "no": "No",
       "none": "none",
       "changed": "changed",
+      "flag": "{label}: {on, select, yes {yes} other {no}}",
       "items": "{count, plural, one {# entry} other {# entries}}"
     },
     "upload": {
@@ -1030,7 +1125,6 @@
     "savedLikeLive": "Saved. It matches the version on the website again.",
     "changesPublished": "Changes published.",
     "changesScheduled": "Scheduled: changes online from {time}.",
-    "changesScheduleCleared": "Schedule cancelled. The changes stay saved, but not online yet.",
     "changesDiscarded": "Changes discarded. The version on the website applies again."
   },
   "review": {
@@ -1044,7 +1138,6 @@
     "removeFromRelease": "Remove from release",
     "releaseApproved": "Release approved. On the website in about a minute.",
     "approve": "Approve",
-    "approveLater": "Approve for later…",
     "reject": "Reject…",
     "rejectConfirm": "Reject",
     "reason": "Why? The author sees this.",
@@ -1331,7 +1424,8 @@
     "waiting": {
       "label": "Waiting for you",
       "more": "{count} more",
-      "inHistory": "See in History"
+      "inHistory": "See in History",
+      "open": "Open"
     },
     "due": {
       "badge": "Due"

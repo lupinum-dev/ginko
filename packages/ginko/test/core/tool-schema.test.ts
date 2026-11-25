@@ -5,7 +5,7 @@ import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import type { Brick, Task } from '../../src/index.ts'
 import { fromToolInput, taskInputSchema } from '../../src/internal.ts'
 
-const ctx = { mainLocale: 'de', currency: 'EUR' } as const
+const ctx = { mainLocale: 'de', currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] } } as const
 const bricks = restaurant.bricks as Record<string, Brick>
 const task = (brick: string, id: string) => bricks[brick]!.tasks!.find((t) => t.id === id)!
 
@@ -40,29 +40,17 @@ describe('taskInputSchema', () => {
     expect(schema.required).toEqual(['entry', 'confirm'])
   })
 
-  it('the weekly plan is a list of exactly seven days with known weekday codes', () => {
+  it('the weekly plan is one object per day, every day required, in the order of the site week', () => {
     const week: Task = { id: 'week', label: 'Wochenplan', kind: 'edit', fields: ['week'] }
-    const list = taskInputSchema(bricks.hours!, week, ctx).properties.week!
-    expect(list).toMatchObject({ type: 'array', minItems: 7, maxItems: 7 })
-    expect(list.items?.properties?.day?.enum).toEqual(['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'])
-    expect(list.items?.required).toEqual(['day', 'closed'])
+    const plan = taskInputSchema(bricks.hours!, week, ctx).properties.week!
+    expect(plan).toMatchObject({ type: 'object', required: ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'], additionalProperties: false })
+    expect(plan.properties?.mo?.required).toEqual(['closed'])
   })
 
   it('a create task leaves out the slug: it comes from the title', () => {
     const schema = taskInputSchema(bricks.events!, task('events', 'add'), ctx)
     expect(Object.keys(schema.properties)).not.toContain('slug')
     expect(schema.required).toEqual(['title', 'when', 'description'])
-  })
-
-  // Wrong behaviour caught: the assistant's "Gericht hinzufügen" offered a planned price, which the Studio's sheet does
-  // not ask for before the dish has a price to change. Without `fields` the task asks every field but that plan.
-  it('a create task without fields leaves out the plan of a planned change', () => {
-    const { fields: _fields, ...open } = task('menu', 'add') as Extract<Task, { kind: 'create' }>
-    const schema = taskInputSchema(bricks.menu!, open, ctx)
-    const keys = Object.keys(schema.properties)
-    expect(keys).toEqual(expect.arrayContaining(['name', 'price', 'onMenu', 'soldOutOn']))
-    expect(keys).not.toContain('nextPrice')
-    expect(keys).not.toContain('priceFrom')
   })
 
   it('the gastro add task offers the fields it lists', () => {
@@ -100,14 +88,14 @@ describe('fromToolInput', () => {
     })
   })
 
-  it('a list row keeps its ID when it is the same row, so its translations stay attached', () => {
-    const stored = { days: [{ _id: 'ldmo000000', day: 'mo', dish: { de: 'Suppe', en: 'Soup' }, allergens: [] }] }
-    const data = fromToolInput(bricks.lunch!.fields, {
-      days: [{ day: 'tu', dish: 'Gulasch', allergens: [] }, { day: 'mo', dish: 'Linsensuppe', allergens: ['L'] }],
+  it('a list row keeps its ID when it is the same row (the same position), so its translations stay attached', () => {
+    const stored = { exceptions: [{ _id: 'ex00000001', when: { from: '2026-12-24', to: '2026-12-24' }, reason: { de: 'Heiligabend', en: 'Christmas Eve' }, closed: true }] }
+    const data = fromToolInput(bricks.hours!.fields, {
+      exceptions: [
+        { when: { from: '2026-12-24', to: '2026-12-24' }, reason: 'Heiligabend', closed: true },
+        { when: { from: '2027-01-07', to: '2027-01-08' }, reason: 'Inventur', closed: true },
+      ],
     }, { mainLocale: 'de', stored, newRowId: ids() })
-    expect(data.days).toEqual([
-      { _id: 'newrow0001', day: 'tu', dish: { de: 'Gulasch' }, allergens: [] },
-      { _id: 'ldmo000000', day: 'mo', dish: { de: 'Linsensuppe' }, allergens: ['L'] },
-    ])
+    expect((data.exceptions as { _id: string }[]).map((row) => row._id)).toEqual(['ex00000001', 'newrow0001'])
   })
 })

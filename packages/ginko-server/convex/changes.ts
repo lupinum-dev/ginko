@@ -45,6 +45,8 @@ async function summaries(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]) {
       ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null, inTrash,
       // An applied proposal: the owner or admin who approved it ("Freigabe: …").
       approver: change.approvedBy ? await names.who(change.approvedBy) : null,
+      // A dated change the system wrote on its day: the person who planned it ("Geplant von …", D126).
+      planner: change.plannedBy ? await names.who(change.plannedBy) : null,
       ...(own.has(change._id) ? { own: true as const } : {}),
     })
   }
@@ -129,7 +131,7 @@ export const get = query({
     const schema = actor.site.schema as Schema
     const brick = Object.hasOwn(schema.bricks, change.brick) ? schema.bricks[change.brick] : undefined
     // before/after hold exactly the changed roots; a change without fields (publish, remove) has no field diff.
-    const diff = diffFields(brick?.fields, (change.before ?? {}) as Record<string, Json>, (change.after ?? {}) as Record<string, Json>, schema.locales[0]!)
+    const diff = diffFields(brick?.fields, (change.before ?? {}) as Record<string, Json>, (change.after ?? {}) as Record<string, Json>, schema.locales[0]!, schema.week)
     const [summary] = await summaries(ctx, actor, [change])
     return { ...summary!, diff }
   },

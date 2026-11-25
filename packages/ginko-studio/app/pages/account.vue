@@ -73,7 +73,7 @@ const HINT = 'text-[13px] text-muted-foreground'
         <ArrowLeftIcon class="size-4" aria-hidden="true" />{{ t('nav.mySites') }}
       </NuxtLink>
       <div class="grid gap-1">
-        <h1 class="text-[22px] font-semibold tracking-tight">{{ t('nav.accountPage') }}</h1>
+        <h1>{{ t('nav.accountPage') }}</h1>
         <p class="text-[15px] text-muted-foreground min-[900px]:text-sm">{{ t('account.lede') }}</p>
       </div>
     </div>
@@ -105,7 +105,7 @@ const HINT = 'text-[13px] text-muted-foreground'
           <p id="language-hint" :class="HINT">{{ t('account.languageHint') }}</p>
         </div>
         <Select :model-value="locale" @update:model-value="(code) => code && pickLocale(String(code))">
-          <SelectTrigger id="language" class="h-10 w-full sm:max-w-72" aria-labelledby="language-label" aria-describedby="language-hint">
+          <SelectTrigger id="language" class="w-full sm:max-w-72" aria-labelledby="language-label" aria-describedby="language-hint">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

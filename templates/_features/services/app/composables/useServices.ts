@@ -1,5 +1,5 @@
 import { formatMoney, type ImageValue, type Money } from '@lupinum/ginko'
-import { offerJsonLd } from '@lupinum/ginko/basics'
+import { offerJsonLd } from '@lupinum/ginko/patterns'
 import type { Card } from '~/components/block/Cards.vue'
 
 /** What the services feature reads of an entry of the `services` brick (app/bricks/services.ts). */

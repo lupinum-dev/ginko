@@ -36,6 +36,13 @@ export default defineNuxtConfig({
       if (nuxt.options.dev || nuxt.options._prepare || !missing.length) return
       throw new Error(`${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} not set. A production build of the Studio needs ${missing.length > 1 ? 'them' : 'it'} (see the ginko-studio README).`)
     },
+    // Pages under /dev (the base components on one page) are for development: a production build has no such route.
+    (_options, nuxt) => {
+      if (nuxt.options.dev) return
+      nuxt.hook('pages:extend', (pages) => {
+        for (let i = pages.length - 1; i >= 0; i--) if (pages[i]!.path.startsWith('/dev')) pages.splice(i, 1)
+      })
+    },
     '@lupinum/ginko-i18n', '@lupinum/better-convex-nuxt', 'shadcn-nuxt',
   ],
   // The whole Studio is one user-locale zone: no URL prefix; the person's language comes from the `ginko_locale`

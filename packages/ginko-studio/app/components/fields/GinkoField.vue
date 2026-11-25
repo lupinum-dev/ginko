@@ -6,7 +6,8 @@ import { useI18n } from '#imports'
 import type { Field, Json, Locale } from '@lupinum/ginko'
 import { isTranslatable } from '@lupinum/ginko/internal'
 import { messageOf } from '@studio/utils/messageOf'
-import { ownIssues, TRANSLATION, type Issue } from '@lupinum/ginko-editor'
+import { ownIssues, TRANSLATION } from '@lupinum/ginko-editor'
+import type { FieldIssue } from '@studio/composables/useEntryForm'
 import GinkoFieldChoice from './GinkoFieldChoice.vue'
 import GinkoFieldChoices from './GinkoFieldChoices.vue'
 import GinkoFieldDate from './GinkoFieldDate.vue'
@@ -14,6 +15,7 @@ import GinkoFieldDaterange from './GinkoFieldDaterange.vue'
 import GinkoFieldFile from './GinkoFieldFile.vue'
 import GinkoFieldImage from './GinkoFieldImage.vue'
 import GinkoFieldList from './GinkoFieldList.vue'
+import GinkoFieldRows from './GinkoFieldRows.vue'
 import GinkoFieldMoney from './GinkoFieldMoney.vue'
 import GinkoFieldNumber from './GinkoFieldNumber.vue'
 import GinkoFieldRef from './GinkoFieldRef.vue'
@@ -35,7 +37,7 @@ const props = defineProps<{
   path: string
   locale: Locale
   locales: readonly Locale[]
-  issues: readonly Issue[]
+  issues: readonly FieldIssue[]
   /** The value when the form opened, for lists that ask "Noch richtig?". */
   baseline?: Json
   /** A date that starts a week: its week shortcuts (`weekShortcuts`). */
@@ -51,7 +53,10 @@ const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 
 const id = computed(() => `f-${props.path.replace(/[^a-zA-Z0-9_-]/g, '-')}`)
 const translatable = computed(() => isTranslatable(props.field))
-const errors = computed(() => ownIssues(props.issues, props.path, props.locales))
+const own = computed(() => ownIssues(props.issues, props.path, props.locales))
+const errors = computed(() => own.value.filter((i) => !i.note))
+/** What a draft still lacks here (D116): shown, but not as an error. */
+const notes = computed(() => own.value.filter((i) => i.note))
 
 /** The value in the active locale for translatable fields, else the value itself. */
 const value = computed<Json | undefined>(() => {
@@ -92,7 +97,7 @@ const showCount = computed(() => (props.field.type === 'text' || props.field.typ
 const inputType = computed(() => (props.field.type === 'text' && props.field.format ? ({ url: 'url', email: 'email', tel: 'tel' } as const)[props.field.format] : 'text'))
 // A choice with up to five options shows radio buttons (GinkoFieldChoice), more a select.
 const radios = computed(() => props.field.type === 'choice' && props.field.options.length <= 5)
-const isGroup = computed(() => ['list', 'choices', 'daterange', 'image', 'file'].includes(props.field.type))
+const isGroup = computed(() => ['list', 'rows', 'choices', 'daterange', 'image', 'file'].includes(props.field.type))
 
 // Translation view (UI.md 4): the main language's value next to the input, and whether it changed
 // since the translation was saved. The state comes from the editor (EntryEditor); lists reuse it per cell.
@@ -137,7 +142,7 @@ const missingText = computed(() => {
 </script>
 
 <template>
-  <FieldFrame :id="id" :data-path="path" :data-type="field.type" :data-label="label" :label="cellLabel ?? label" :label-hidden="cellLabel !== undefined" :hint="cellLabel === undefined ? hint : undefined" :hint-id="hintId" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
+  <FieldFrame :id="id" :data-path="path" :data-type="field.type" :data-label="label" :label="cellLabel ?? label" :label-hidden="cellLabel !== undefined" :hint="cellLabel === undefined ? hint : undefined" :hint-id="hintId" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :notes="notes.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
     <template v-if="trState && translation" #source>
       <div class="grid gap-2 rounded-md bg-muted p-3 text-sm" data-slot="translation-source">
         <p class="text-xs font-semibold text-muted-foreground">{{ translation.mainName() }}</p>
@@ -178,6 +183,7 @@ const missingText = computed(() => {
       <GinkoFieldChoice v-else-if="field.type === 'choice'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldChoices v-else-if="field.type === 'choices'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldList v-else-if="field.type === 'list'" :id="id" :field="field" :model-value="value" :baseline="baseline" :path="path" :locale="locale" :locales="locales" :issues="issues" @update:model-value="set" />
+      <GinkoFieldRows v-else-if="field.type === 'rows'" :id="id" :field="field" :model-value="value" :baseline="baseline" :path="path" :locale="locale" :locales="locales" :issues="issues" @update:model-value="set" />
       <!-- The editor needs the browser (TipTap mounts into a DOM element), so it is not rendered on the server. -->
       <ClientOnly v-else-if="field.type === 'markdown'">
         <MarkdownEditor :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" :content-locale="locale" @update:model-value="set" />
@@ -189,7 +195,7 @@ const missingText = computed(() => {
       <template v-else-if="field.type === 'slug' && foreignTab">
         <div v-if="address" class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
           <span :id="id" class="[overflow-wrap:anywhere]">{{ foreignSlug }}</span>
-          <a v-if="address.href" :href="address.href" target="_blank" rel="noopener" class="font-medium text-primary underline underline-offset-2">{{ t('fields.slug.view') }}<span class="sr-only"> {{ t('nav.newTab') }}</span></a>
+          <a v-if="address.href" :href="address.href" target="_blank" rel="noopener" class="font-medium text-link underline underline-offset-2">{{ t('fields.slug.view') }}<span class="sr-only"> {{ t('nav.newTab') }}</span></a>
           <!-- Only an own address in this language can change; one that is the main-language slug follows the title. -->
           <SlugChange v-if="slugAddress" :id="id" :slug="text" :locale="locale" :before="slugAddress.before" :after="slugAddress.after" class="ml-auto" />
         </div>

@@ -2,9 +2,11 @@
 import type { MarkdownValue } from './markdown.ts'
 import type {
   AspectRatio, BooleanField, ChoiceField, ChoicesField, CollectionBrick, Currency, DateField, DateRangeField, Field, Fields,
-  FileField, ImageField, ListField, LongTextField, MarkdownField, MoneyField, NumberField, RefField, SingleBrick, SlugField,
-  TextField, TimeField,
+  FileField, ImageField, ListField, LongTextField, MarkdownField, MoneyField, NumberField, RefField, RowsField, SingleBrick,
+  SlugField, TextField, TimeField,
 } from './types.ts'
+import type { RowKeyOf } from './fields.ts'
+import type { DayKey } from './time.ts'
 
 declare const unknownChoice: unique symbol
 /** A choice value this code does not know yet (added by a later schema release). Handle it with a fallback. */
@@ -34,6 +36,8 @@ export type ValueOf<F extends Field> =
   : F extends ChoiceField<infer V> ? V | UnknownChoice
   : F extends ChoicesField<infer V> ? (V | UnknownChoice)[]
   : F extends ListField<infer Of> ? (DataOf<Of> & { _id: string })[]
+  // The site's week decides which days are workdays, so each of them may be absent in the type.
+  : F extends RowsField<infer Of, infer R> ? (R extends 'workdays' ? { [K in DayKey]?: DataOf<Of> } : { [K in RowKeyOf<R>]: DataOf<Of> })
   : F extends MarkdownField ? MarkdownValue
   : F extends MoneyField ? Money
   : F extends ImageField ? ImageValue
@@ -54,10 +58,48 @@ export type DataOf<F extends Fields> = {
   [K in OptionalKeys<F>]?: ValueOf<F[K]>
 }
 
+/**
+ * A change that starts later (`upcoming`): its day and the values of the brick's `timeline.public` fields it sets. A
+ * field it clears is `null`. Typed over every field of the brick: `single` and `collection` keep the names of
+ * `timeline.public` as plain strings (`BrickTimeline`), not as literals, so the type cannot narrow to them; at runtime
+ * only those fields are in `data`.
+ */
+export interface UpcomingOf<F extends Fields> {
+  from: string
+  /** The last day of an exception: its values hold from `from` to `until`, then the normal values come back. */
+  until?: string
+  /** The owner's name for it ("Sommer"), as written: it is not translated. */
+  name?: string
+  /** It comes back every year; `from` and `until` are the days of its next time. */
+  yearly?: true
+  data: { [K in keyof DataOf<F>]?: DataOf<F>[K] | null }
+}
+
+/**
+ * An exception that holds today (`holding`): its days, its values of the brick's `timeline.public` fields (already in
+ * `data`) and the normal values they cover, so a page can write "9,90 € bis 31. Dez. (sonst 12,90 €)". Typed like
+ * `UpcomingOf`.
+ */
+export interface HoldingOf<F extends Fields> {
+  /** The days of the time that holds (for a yearly change: this year's). */
+  from: string
+  until: string
+  /** The owner's name for it, as written: it is not translated. */
+  name?: string
+  /** It comes back every year. */
+  yearly?: true
+  data: { [K in keyof DataOf<F>]?: DataOf<F>[K] | null }
+  normal: { [K in keyof DataOf<F>]?: DataOf<F>[K] | null }
+}
+
 export type ItemOf<F extends Fields, Routed extends boolean = boolean> = {
   id: string
   data: DataOf<F>
   fallback: string[]
+  /** The waiting changes of the fields in the brick's `timeline.public`, in the order of their days. Absent when none waits. */
+  upcoming?: UpcomingOf<F>[]
+  /** The exceptions of the fields in the brick's `timeline.public` that hold today. Absent when none holds. */
+  holding?: HoldingOf<F>[]
   /** The address in every language the entry exists in (language switcher, hreflang). Routed bricks only. */
   urls?: Partial<Record<string, string>>
   /** When the entry last changed (ISO 8601, UTC). Absent when unknown. */
@@ -68,6 +110,6 @@ export type ItemOf<F extends Fields, Routed extends boolean = boolean> = {
 } : unknown)
 
 export type BrickValue<B> =
-  B extends SingleBrick<infer F> ? { data: DataOf<F>; fallback: string[] }
+  B extends SingleBrick<infer F> ? { data: DataOf<F>; fallback: string[]; upcoming?: UpcomingOf<F>[]; holding?: HoldingOf<F>[] }
   : B extends CollectionBrick<infer F, infer R> ? { items: ItemOf<F, undefined extends R ? false : true>[] }
   : never

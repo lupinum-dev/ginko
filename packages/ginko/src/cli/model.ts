@@ -1,6 +1,6 @@
 // Shared shapes of the CLI: what the platform's release state looks like, what the CLI sends
 // back, and the error type that ends a command with an English message and a coded failure.
-import type { Json, Schema } from '../core/index.ts'
+import type { Change, Json, Schema } from '../core/index.ts'
 
 /** GET /release/state (SPEC 5.1 step 2): the stored schema and the data of every entry, deleted ones too. */
 export interface ReleaseState {
@@ -9,7 +9,8 @@ export interface ReleaseState {
   schemaRev: number
   contentRev: number
   migrations: { id: string; brick: string; fills: string; fingerprint: string; schemaRev: number }[]
-  entries: { id: string; brick: string; data: Record<string, Json>; deletedAt: number | null }[]
+  /** `state` and `publishAt` are absent from an older platform: such an entry is checked in full. */
+  entries: { id: string; brick: string; data: Record<string, Json>; deletedAt: number | null; state?: 'draft' | 'live'; publishAt?: number }[]
 }
 
 /** One write of a migration result: the target values of one entry (SPEC 5.2 step 6). */
@@ -102,6 +103,12 @@ export interface ExportEntry {
   prints: Record<string, Record<string, string>>
   rev: number
   deletedAt?: number
+  /** A collection entry's name (D96): the file name in a files export, the stored name in a platform export. */
+  name?: string
+  /** The name no longer follows the title: the entry was planned or online. */
+  nameFixed?: true
+  /** Its waiting dated changes (D128): `$changes` of a file, the waiting rows of a platform entry. */
+  changes?: Change[]
 }
 
 /** GET /export (SPEC 9, 12): the site with every entry (deleted ones too) and a signed URL per file. */
@@ -117,6 +124,14 @@ export interface ExportAnswer {
   /** Absent in older exports. */
   folders?: ExportFolder[]
   files: (ExportFileInfo & { url: string })[]
+  /** How many dated changes stopped on their day: they stay behind (D128). Absent when there are none. */
+  stoppedChanges?: number
+}
+
+/** The line that says how many stopped dated changes an export leaves behind, or nothing when there are none. */
+export function stoppedLine(count: number | undefined): string | undefined {
+  if (!count) return undefined
+  return `Warning: ${count === 1 ? '1 stopped change stays' : `${count} stopped changes stay`} behind: an export carries only the dated changes that still wait.`
 }
 
 /** `<dir>/export.json`: the answer without the URLs; each file lies at `path` below the folder. */
@@ -155,7 +170,9 @@ export function parseExport(value: unknown, locator: 'url' | 'path', problem: st
     && typeof value.schemaRev === 'number' && typeof value.contentRev === 'number'
     && Array.isArray(value.entries) && value.entries.every((e) => isObject(e)
       && typeof e.id === 'string' && typeof e.brick === 'string' && (e.kind === 'single' || e.kind === 'item')
-      && typeof e.order === 'number' && isObject(e.data) && isObject(e.prints) && typeof e.rev === 'number' && optionalNumber(e.deletedAt))
+      && typeof e.order === 'number' && isObject(e.data) && isObject(e.prints) && typeof e.rev === 'number' && optionalNumber(e.deletedAt)
+      && optionalString(e.name) && (e.nameFixed === undefined || e.nameFixed === true)
+      && (e.changes === undefined || (Array.isArray(e.changes) && e.changes.every((c) => isObject(c) && typeof c.from === 'string' && isObject(c.set)))))
     && Array.isArray(value.files) && value.files.every((f) => isObject(f)
       && typeof f.id === 'string' && typeof f.name === 'string' && typeof f.mime === 'string' && typeof f.size === 'number'
       && typeof f[locator] === 'string' && optionalNumber(f.width) && optionalNumber(f.height)
@@ -164,6 +181,7 @@ export function parseExport(value: unknown, locator: 'url' | 'path', problem: st
       && (f.focus === undefined || (isObject(f.focus) && typeof f.focus.x === 'number' && typeof f.focus.y === 'number')))
     && (value.folders === undefined || (Array.isArray(value.folders) && value.folders.every((f) => isObject(f)
       && typeof f.id === 'string' && typeof f.name === 'string' && optionalString(f.parent))))
+    && optionalNumber(value.stoppedChanges)
   if (!valid) throw new CliError(problem, locator === 'url' ? 'UNAVAILABLE' : 'INVALID')
   return value as unknown as ExportAnswer | SiteExport
 }

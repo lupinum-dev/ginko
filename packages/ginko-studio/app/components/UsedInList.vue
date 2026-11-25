@@ -18,7 +18,7 @@ const { shown } = useStudioSite()
   <ul class="grid gap-1 text-sm">
     <li v-for="use in uses" :key="use.entry">
       <span v-if="use.deleted" class="text-muted-foreground">{{ use.title }} · {{ fieldsText(use, shown) }} {{ t('files.deletedEntry') }}</span>
-      <NuxtLink v-else :to="`/s/${slug}/all/${use.brick}/${use.entry}`" class="text-primary underline underline-offset-4">{{ use.title }}</NuxtLink>
+      <NuxtLink v-else :to="`/s/${slug}/all/${use.brick}/${use.entry}`" class="text-link underline underline-offset-4">{{ use.title }}</NuxtLink>
       <span v-if="!use.deleted" class="text-muted-foreground"> · {{ fieldsText(use, shown) }}</span>
     </li>
   </ul>

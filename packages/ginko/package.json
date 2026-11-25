@@ -21,7 +21,7 @@
     "./vue": "./src/vue.ts",
     "./internal/search": "./src/internal/search.ts",
     "./search": "./src/search.ts",
-    "./basics": "./src/basics/index.ts",
+    "./patterns": "./src/patterns/index.ts",
     "./nuxt": "./src/nuxt/module.ts"
   },
   "bin": {
@@ -59,9 +59,9 @@
         "types": "./dist/search.d.mts",
         "import": "./dist/search.mjs"
       },
-      "./basics": {
-        "types": "./dist/basics.d.mts",
-        "import": "./dist/basics.mjs"
+      "./patterns": {
+        "types": "./dist/patterns.d.mts",
+        "import": "./dist/patterns.mjs"
       },
       "./nuxt": {
         "types": "./dist/nuxt/module.d.mts",

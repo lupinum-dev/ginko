@@ -2,10 +2,12 @@
 // `snapshot` through GET /export (routes/export.ts), which resolves the push key to its site first; the Studio calls
 // `download` with the person's session. Both answer with the same shape, so a Studio backup is a `ginko export` folder.
 import type { Json } from '@lupinum/ginko'
+import type { Change } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { internalQuery, query, type QueryCtx } from './_generated/server'
 import { actorFor, fail } from './lib/access'
+import { asChanges, datedOf } from './lib/dated'
 
 /** The format of the export file. It changes only with an incompatible change of the shape below. */
 export const EXPORT_FORMAT = 1
@@ -40,9 +42,19 @@ async function snapshotOf(ctx: QueryCtx, siteId: Id<'sites'>) {
   const entries = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', siteId)).collect()
 
   const referenced = new Set<Id<'uploads'>>()
+  const changes = new Map<Id<'entries'>, Change[]>()
+  let stopped = 0
   for (const entry of entries) {
     const refs = await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', 'entry').eq('holderId', entry._id)).collect()
     for (const ref of refs) referenced.add(ref.file)
+    // The waiting dated changes travel as `$changes` (D128); a stopped one stays behind, like a person's name.
+    const dated = await datedOf(ctx, entry._id)
+    if (asChanges(dated).length) changes.set(entry._id, asChanges(dated))
+    for (const row of dated) {
+      if (row.stopped) { stopped += 1; continue }
+      const held = await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', 'dated').eq('holderId', row._id)).collect()
+      for (const ref of held) referenced.add(ref.file)
+    }
   }
   // Library files that no entry uses yet (kept or in a folder) belong to a backup too.
   const library = await ctx.db.query('uploads').withIndex('by_site', (q) => q.eq('site', siteId)).collect()
@@ -84,11 +96,18 @@ async function snapshotOf(ctx: QueryCtx, siteId: Id<'sites'>) {
       // Drafts keep their state in a backup (SPEC 15); a missing state means live.
       ...(e.state === undefined ? {} : { state: e.state }),
       ...(e.publishAt === undefined ? {} : { publishAt: e.publishAt }),
+      // A stopped plan keeps its time and reason, not its person (D107).
+      ...(e.stopped ? { stopped: { at: e.stopped.at, reason: e.stopped.reason } } : {}),
       // What the bundle shows as updatedAt, so a restored site keeps it (an entry from before contentAt counts from its creation).
       contentAt: e.contentAt ?? e._creationTime,
+      ...(e.name === undefined ? {} : { name: e.name }),
+      ...(e.nameFixed ? { nameFixed: true } : {}),
+      ...(changes.has(e._id) ? { changes: changes.get(e._id) } : {}),
     })),
     folders: (await ctx.db.query('folders').withIndex('by_site_parent', (q) => q.eq('site', siteId)).collect())
       .map((f) => ({ id: f._id, name: f.name, ...(f.parent === undefined ? {} : { parent: f.parent }) })),
     files,
+    // The export says how many stayed behind, so `ginko export` and `ginko import` can tell.
+    ...(stopped ? { stoppedChanges: stopped } : {}),
   }
 }

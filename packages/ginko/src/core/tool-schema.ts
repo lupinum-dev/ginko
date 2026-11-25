@@ -1,11 +1,13 @@
 // The input of one task as JSON Schema, for the agent door (SPEC 16): one task becomes one MCP tool.
 // Values are what a person would type: plain text in the main language, money in euros or francs.
-// The MCP layer turns them into the storage format (Localized, cents, list row ids; Markdown stays a string).
-import { effectiveMax, effectiveProfile, isTranslatable } from './fields.ts'
+// The MCP layer turns them into the storage format (Localized, cents, list row ids; Markdown stays a string). A rows
+// field is an object with one property per row key, as it is stored.
+import { effectiveMax, effectiveProfile, isTranslatable, rowKeysOf } from './fields.ts'
 import { describeProfile } from './markdown.ts'
 import { minorDigits } from './money.ts'
 import { labelOf } from './labels.ts'
 import { createAsks } from './stale.ts'
+import type { SiteWeek } from './time.ts'
 import type { Brick, Currency, Field, Fields, Json, Label, Locale, Task } from './types.ts'
 
 /** The JSON Schema subset the tools use. */
@@ -34,6 +36,8 @@ export type JsonSchemaObject = JsonSchema & { type: 'object'; properties: Record
 export interface ToolSchemaContext {
   mainLocale: Locale
   currency: Currency
+  /** The site's week: the days of a rows field of weekdays or workdays. */
+  week: SiteWeek
   /** Prefill of the task, already resolved by `tasks.prefill` (storage format). */
   prefill?: Record<string, Json>
 }
@@ -127,6 +131,15 @@ function fieldSchema(field: Field, ctx: ToolSchemaContext): JsonSchema | undefin
       items: objectOf(field.of, ctx), maxItems: field.max,
       ...(field.min !== undefined ? { minItems: field.min } : {}),
     }
+    case 'rows': {
+      const keys = rowKeysOf(field, ctx.week)
+      const names = Array.isArray(field.rows) ? field.rows.map((row) => `${row.key} = ${labelOf(row.label, ctx.mainLocale, ctx.mainLocale)}`) : keys
+      const row = objectOf(field.of, ctx)
+      return {
+        type: 'object', description: `${description} (one object per row: ${names.join(', ')})`,
+        properties: Object.fromEntries(keys.map((key) => [key, row])), required: keys, additionalProperties: false,
+      }
+    }
     case 'image': return {
       type: 'object', description: `${description} (the ID of an existing file)`,
       properties: { file: { type: 'string' }, alt: { type: 'string', description: 'Image description (for people who cannot see the image)' } },
@@ -156,7 +169,7 @@ function withOptions(description: string, options: readonly { value: string; lab
 function typedValue(field: Field, value: Json, ctx: ToolSchemaContext): Json | undefined {
   if (isTranslatable(field) && value && typeof value === 'object' && !Array.isArray(value)) return value[ctx.mainLocale]
   if (field.type === 'money' && value && typeof value === 'object' && !Array.isArray(value) && typeof value.amount === 'number') return value.amount / unitsOf(field, ctx)
-  if (field.type === 'list' || field.type === 'image' || field.type === 'file') return undefined
+  if (field.type === 'list' || field.type === 'rows' || field.type === 'image' || field.type === 'file') return undefined
   return value
 }
 
@@ -206,6 +219,11 @@ function stored(field: Field, value: Json, before: Json | undefined, ctx: ToolIn
       const id = typeof prev?._id === 'string' ? prev._id : ctx.newRowId()
       return { _id: id, ...fromToolInput(field.of, row, { ...ctx, stored: prev }) }
     })
+  }
+  if (field.type === 'rows' && isObject(value)) {
+    // Rows by key, each with the stored row of that key (its translations stay).
+    const old = isObject(before) ? before : {}
+    return Object.fromEntries(Object.entries(value).map(([key, row]) => [key, isObject(row) ? fromToolInput(field.of, row, { ...ctx, stored: isObject(old[key]) ? old[key] : undefined }) : row]))
   }
   return value
 }

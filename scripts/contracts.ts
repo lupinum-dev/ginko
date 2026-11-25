@@ -9,9 +9,10 @@ import industrie from '../sites/industrie/ginko.config.ts'
 import saas from '../sites/saas/ginko.config.ts'
 import restaurant from '../sites/restaurant/ginko.config.ts'
 import {
-  checkSchema, servedBundle, serializeSchema, validate,
+  changeIssues, checkSchema, servedBundle, serializeSchema, startValue, validate,
   type FileInfo, type SiteInput, type StoredEntry,
 } from '../packages/ginko/src/core/index.ts'
+import { statusRules } from '../packages/ginko/src/patterns/rules.ts'
 
 export const demos = { restaurant, industrie, saas } satisfies Record<string, SiteInput>
 export type DemoName = keyof typeof demos
@@ -55,7 +56,7 @@ const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`
 export async function render(name: DemoName): Promise<Rendered> {
   const problems: string[] = []
   const schema = serializeSchema(demos[name])
-  problems.push(...checkSchema(schema).map((p) => `${name}: ${p}`))
+  problems.push(...checkSchema(schema, statusRules).map((p) => `${name}: ${p}`))
 
   // Stored data per brick (SPEC 6): singles hold one row, collections hold entries.
   const data = JSON.parse(readFileSync(new URL(`../contracts/${name}/data.json`, import.meta.url), 'utf8')) as Record<string, StoredEntry[]>
@@ -63,14 +64,16 @@ export async function render(name: DemoName): Promise<Rendered> {
 
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (brick.kind === 'single') {
-      // A new single is created from defaults on release (SPEC 2.4), so every required field needs one.
+      // A new single is created from defaults on release (SPEC 2.4), so every required field needs one (a rows field
+      // can start from the defaults of its columns).
       for (const [field, def] of Object.entries(brick.fields)) {
-        if (!def.optional && def.default === undefined) problems.push(`${name}: ${key}.${field} ist ein Pflichtfeld ohne default`)
+        if (!def.optional && startValue(def, schema.week) === undefined) problems.push(`${name}: ${key}.${field} ist ein Pflichtfeld ohne default`)
       }
     }
     for (const entry of data[key] ?? []) {
       const result = await validate(schema, key, entry.data, { mode: 'release' })
       for (const issue of result.errors) problems.push(`${name}: ${key}/${entry.id} ${issue.path} [${issue.code}] ${issue.message}`)
+      for (const issue of await changeIssues(schema, key, entry.data, entry.changes ?? [])) problems.push(`${name}: ${key}/${entry.id} ${issue.path} [${issue.code}] ${issue.message}`)
     }
   }
 

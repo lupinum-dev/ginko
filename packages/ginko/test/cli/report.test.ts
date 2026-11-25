@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { explainChanges, explainRejected } from '../../src/cli/report.ts'
 import { checkSchema, collection, defineSite, diffSchema, f, serializeSchema } from '../../src/core/index.ts'
 
 const site = (fields: Parameters<typeof collection>[0]['fields']) => serializeSchema(defineSite({
   site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
-  locales: ['de'], currency: 'EUR', pages: { home: '/' },
-  bricks: { menu: collection({ label: 'Karte', max: 50, order: 'manual', fields }) },
+  locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
+  bricks: { menu: collection({ label: 'Karte', listing: { title: Object.keys(fields)[0]! }, max: 50, order: 'manual', fields }) },
 }))
 
 describe('ginko check report', () => {
@@ -63,15 +64,15 @@ describe('ginko check report', () => {
   it('a config that follows the snippets is accepted', () => {
     const prod = site({ price: f.text('Preis'), note: f.text('Notiz', { max: 300 }) })
     const next = serializeSchema(defineSite({
-      site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: '/' },
-      bricks: { menu: collection({ label: 'Karte', max: 50, order: 'manual', fields: { price: f.text('Preis'), note: f.text('Notiz', { max: 300 }), price2: f.number('Preis', { min: 0, max: 1000, step: 1 }), note2: f.text('Notiz', { max: 100 }) } }) },
+      site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
+      bricks: { menu: collection({ listing: { title: 'note2' }, label: 'Karte', max: 50, order: 'manual', fields: { price: f.text('Preis'), note: f.text('Notiz', { max: 300 }), price2: f.number('Preis', { min: 0, max: 1000, step: 1 }), note2: f.text('Notiz', { max: 100 }) } }) },
       migrations: {
         '2026-11-menu-price2': { brick: 'menu', fills: 'price2', compute: (entry) => Number(entry.price) },
         '2026-11-menu-note2': { brick: 'menu', fills: 'note2', compute: (entry) => entry.note },
       },
       retired: { 'menu.price': { value: { de: 'auf Anfrage' } }, 'menu.note': { from: 'note2' } },
     }))
-    expect(checkSchema(next)).toEqual([])
+    expect(checkSchema(next, statusRules)).toEqual([])
     expect(diffSchema(prod, next).rejected).toEqual([])
   })
 })

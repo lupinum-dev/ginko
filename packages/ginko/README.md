@@ -25,6 +25,7 @@ export default defineSite({
   name: 'My site',
   url: 'https://example.com',
   timeZone: 'Europe/Vienna',
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales: ['en'],
   currency: 'EUR',
   pages: { home: '/' },
@@ -82,7 +83,7 @@ const events = useGinko('events') // typed from ginko.config.ts
 
 ## Stability
 
-`@lupinum/ginko`, `@lupinum/ginko/nuxt`, `@lupinum/ginko/vue`, `@lupinum/ginko/search` and `@lupinum/ginko/basics` are
+`@lupinum/ginko`, `@lupinum/ginko/nuxt`, `@lupinum/ginko/vue`, `@lupinum/ginko/search` and `@lupinum/ginko/patterns` are
 the public API. Every name they export is documented on the docs site. `pos` and `retired` on fields and bricks are set by
 the platform; do not set them. Until 1.0, a minor release may still break it, and the changelog names the break.
 `@lupinum/ginko/internal` and `@lupinum/ginko/internal/search` are for Ginko's own packages. They can change in

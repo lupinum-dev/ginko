@@ -3,7 +3,7 @@
 // today's date, so the test stays true as events pass (on 2026-10-08: 14 static pages + 3 event URLs, martinigans is German only).
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { isVisible, todayIn, type Bundle, type Schema } from '../packages/ginko/src/internal.ts'
+import { shownOn, todayIn, type Bundle, type Schema } from '../packages/ginko/src/internal.ts'
 
 const read = <T>(file: string): T => JSON.parse(readFileSync(new URL(`../contracts/restaurant/${file}`, import.meta.url), 'utf8')) as T
 const schema = read<Schema>('schema.json')
@@ -12,7 +12,7 @@ const expectedUrls = schema.locales.reduce((n, locale) => {
   const bundle = read<Bundle>(`bundle.format3.${locale}.json`)
   const pages = Object.values(schema.pages).filter((paths) => paths[locale]).length
   const items = Object.entries(bundle.bricks).flatMap(([key, brick]) =>
-    brick.kind === 'collection' ? brick.items.filter((i) => i.urls?.[locale] && isVisible(schema.bricks[key]!, i.data, today)) : [])
+    brick.kind === 'collection' ? brick.items.filter((i) => i.urls?.[locale] && shownOn(schema.bricks[key]!, i.data, today)) : [])
   return n + pages + items.length
 }, 0)
 

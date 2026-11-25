@@ -3,18 +3,22 @@
      with more languages, a switch shows the texts to translate; one Speichern stores every language. The person's own
      proposal on the entry (SPEC 17) is where an edit starts while it waits; a rejected one can be reopened. A create task
      ends in a publish step (TEMPLATES 7.3): Veröffentlichen, Als Entwurf speichern, Später veröffentlichen. An edit of a
-     live entry offers Veröffentlichen (only its fields go online) and Speichern (they wait unpublished, SPEC 15). -->
+     live entry offers Veröffentlichen (only its fields go online) and Speichern (they wait unpublished, SPEC 15). A task
+     with `when: { from: 'ask' }` adds "Gilt ab" under its fields: a day makes the save a dated change (D125, D131).
+     With `until: 'ask'` it adds "Gilt bis" too, and every save is an exception for those days (slice 3); a task with
+     `when: { from: '@today', until: '@today' }` shows no field, only its fixed values and one button for today. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { defaultsFor, isHourPlans, isShown, leavesOf, stableJson, weeklyTask, type Schema } from '@lupinum/ginko/internal'
-import { textIn, TRANSLATION } from '@lupinum/ginko-editor'
+import { defaultsFor, isShown, leavesOf, NAME_MAX, stableJson, taskAsks, taskEnds as endsByThemselves, todayIn, weeklyTask, type Schema } from '@lupinum/ginko/internal'
+import { textIn, TRANSLATION, useToday } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
 import ScheduleField from './ScheduleField.vue'
+import StartsOnField from './StartsOnField.vue'
 import ProposalWithdraw from './ProposalWithdraw.vue'
 import { provideSiteRefs } from '../composables/useSiteRefs'
 import { useFactUses } from '../composables/useFacts'
@@ -24,14 +28,22 @@ import { XIcon } from '@lucide/vue'
 import { ConfigProvider, injectConfigProviderContext } from 'reka-ui'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
-import { formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
+import { changesText, valuesText, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, taskTouches, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
+import { planOwner } from '../utils/today'
 import { opErrorOf } from '../composables/useOps'
+import type { DatedExtra } from '../composables/useEntryForm'
+import { messageOf } from '../utils/messageOf'
+import { earliestStart, exceptionProblem, latestYearlyUntil } from '../utils/datedDays'
 import { isModKey } from '../utils/keys'
 import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { refDebounced } from '@vueuse/core'
 import { msToZoned, scheduleProblem, whenFull } from '../utils/when'
 import { whoText } from '../utils/who'
+import { coveredHint as coveredText, coveredId, datedLine, exceptionText } from '../utils/datedLines'
+import FieldFrame from './fields/FieldFrame.vue'
+import { Input } from '@studio/components/ui/input'
+import { Switch } from '@studio/components/ui/switch'
 
 const props = defineProps<{
   site: string
@@ -68,6 +80,8 @@ provideSiteRefs(() => props.site, () => props.schema, () => props.main)
 const factUses = useFactUses(() => props.site, () => props.schema, () => props.brickKey)
 const factQuotes = (key: string) => factUses.quotes()?.[key]
 const fields = computed(() => taskFields(props.brick, props.task))
+/** The fields the task's dated notices are about: those it shows and those it sets (round N3). */
+const touched = computed(() => taskTouches(props.brick, props.task))
 const isCreate = computed(() => props.task.kind === 'create')
 const ref_ = computed(() => taskRef(props.brickKey, props.task))
 /** The weekly task ("Mittagsmenü dieser Woche") always covers this week: its week is shown, not asked (the server holds it to that). */
@@ -77,6 +91,16 @@ const fixedWeek = computed(() => {
 })
 const dayText = (value: Json | undefined) => (typeof value === 'string' ? formatDay(value, format) : '–')
 
+// "Gilt ab" (below): declared before the form, whose local copy keeps the day with the input.
+const startsOn = ref('')
+/** The day field holds a date typed by keyboard and not finished (StartsOnField): no save until it is a day or empty. */
+const startsOnBad = ref(false)
+/** "Gilt bis" of a task that asks both days (slice 3), with its own "not finished" state. */
+const untilOn = ref('')
+const untilBad = ref(false)
+/** "Jedes Jahr wiederholen" and "Name" of a task that asks for them (slice 4), kept in the local copy with the days. */
+const yearly = ref(false)
+const changeName = ref('')
 const form = useEntryForm({
   site: computed(() => props.site),
   brickKey: () => props.brickKey,
@@ -93,6 +117,10 @@ const form = useEntryForm({
   removeTask: () => (props.removeTask ? taskRef(props.brickKey, props.removeTask) : undefined),
   draft: () => !isCreate.value && props.entry?.state === 'draft',
   removed: () => !isCreate.value && !!props.removed,
+  day: startsOn,
+  until: untilOn,
+  yearly,
+  name: changeName,
 })
 const { draft, baseline, initial, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
 /** The form holds the values of an own proposal, not the stored ones. */
@@ -127,6 +155,12 @@ const proposedValues = (o: NonNullable<typeof mine.value>): Data =>
   Object.fromEntries(Object.entries(o.fields as Data).filter(([k]) => Object.hasOwn(fields.value, k) && k !== fixedWeek.value))
 /** Starts the form from an own proposal's values over `start`. */
 function loadProposal(start: Data, o: NonNullable<typeof mine.value>) {
+  // A dated request keeps its day: sending it again replaces it with a request for that day, not for now (I2). Set
+  // before the load, so the form counts them as where it started, not as input (N4).
+  if (o.from) startsOn.value = o.from
+  if (o.until) untilOn.value = o.until
+  if (o.yearly) yearly.value = true
+  if (o.name) changeName.value = o.name
   form.load({ ...start, ...proposedValues(o) })
   fromProposal.value = true
   proposalWeek.value = fixedWeek.value ? (o.fields as Data)[fixedWeek.value] : undefined
@@ -154,7 +188,7 @@ watch([prefill, own, ownError], ([p]) => {
   // Both answers first, so the form does not start on the stored values and jump; a failed proposal read does not hold it up.
   if (!p || ready.value || (ownArgs() !== 'skip' && own.value === undefined && !ownError.value)) return
   // A new entry starts from the schema defaults; choices without a default stay unset on purpose (UI.md 5).
-  const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
+  const start: Data = isCreate.value ? { ...defaultsFor(fields.value, props.schema.week) } : {}
   const o = mine.value
   seed.value = { ...start, ...(p as Data) }
   presetKeys.clear()
@@ -321,8 +355,9 @@ async function finish(ok: boolean) {
 // The publish step (TEMPLATES 7.3): a create task asks what happens to the new entry; an edit of a live entry whether
 // the change goes online now or waits unpublished. Only the Veröffentlichen button publishes.
 const publishStep = computed(() => isCreate.value || (!!props.entry && props.entry.state !== 'draft'))
-// A planned week or hours from a date take effect on their own date: "Später veröffentlichen" would be a second time.
-const laterOffered = computed(() => isCreate.value && props.brick.kind === 'collection' && !props.brick.plans && !isHourPlans(props.brick))
+// A planned week or hours from a date take effect on their own date: "Später veröffentlichen" would be a second time. A
+// plan is a collection that plans a single (`plans`) or that a single's status rule reads (`status: { rule, plans }`).
+const laterOffered = computed(() => isCreate.value && props.brick.kind === 'collection' && planOwner(props.schema, props.brickKey) === undefined)
 const later = ref(false)
 const at = ref('')
 /** The instant `at` names (ScheduleField); undefined while it names none or two. */
@@ -336,15 +371,245 @@ function toggleLater() {
   if (later.value && !at.value) at.value = `${msToZoned(Date.now() + 24 * HOUR, props.schema.timeZone).slice(0, 10)}T09:00`
   if (later.value) nextTick(() => document.getElementById('sheet-publish-at')?.focus())
 }
+
+// "Gilt ab" (D131): a task that asks for the day, on an online entry. Empty is today: the save goes online as without
+// it. A day sends the changed fields as a change that starts on that day; the entry stays as it is until then. Only in
+// the main language's view: a change holds whole values, written in the main language (D119).
+const taskAsksDay = computed(() => props.task.kind === 'edit' && props.task.when?.from === 'ask' && !isCreate.value && !removedHere.value)
+const when = computed(() => (props.task.kind === 'edit' ? props.task.when : undefined))
+/**
+ * The task asks both days (`when.until: 'ask'`, slice 3): every save is an exception for those days, never a new normal
+ * value. Its day fields stay also on an entry that went offline: the save is still an exception, which the server refuses.
+ */
+const taskEnds = computed(() => taskAsksDay.value && endsByThemselves(props.task))
+/** What the task asks besides both days (slice 4): "Jedes Jahr wiederholen" and a name. */
+const asksYearly = computed(() => taskEnds.value && taskAsks(props.task).yearly)
+const asksName = computed(() => taskEnds.value && taskAsks(props.task).name)
+/** The switch is on, where the task asks for it: the days come back every year. */
+const isYearly = computed(() => asksYearly.value && yearly.value)
+/** A today-only task (`when: { from: '@today', until: '@today' }`): one labelled press sends its fixed values for today. */
+const todayOnly = computed(() => !!when.value && when.value.from === '@today' && !isCreate.value && !removedHere.value)
+const today = useToday(computed(() => props.schema.timeZone))
+// The field shows on an online entry, and stays while it holds a day (also half typed) when the entry goes offline
+// meanwhile: the day is still sent, and the server's refusal for a draft says why nothing was saved (I2).
+const asksDay = computed(() => taskAsksDay.value && (taskEnds.value || publishStep.value || !!startsOn.value || startsOnBad.value))
+const startsOnError = ref('')
+watch([startsOn, yearly], () => { startsOnError.value = '' })
+const untilError = ref('')
+watch([startsOn, untilOn, yearly], () => { untilError.value = '' })
+const nameError = ref('')
+watch(changeName, () => { nameError.value = '' })
+// "Es ist noch nichts geändert" (E6) under the day field until the day or a value changes.
+const { unchangedDay } = form
+// By content: a save puts an equal copy into the draft, which is no change.
+watch(() => `${startsOn.value}\u0000${stableJson(draft.value)}`, () => { unchangedDay.value = false })
+const dayOn = computed(() => (taskAsksDay.value && startsOn.value ? startsOn.value : undefined))
+/**
+ * A save with a day is on its way (E8): the form goes back to the entry when it lands, so input typed meanwhile would
+ * be lost. The fields and the day are inert until then. Set by that save itself, so nothing typed meanwhile ends it (H1).
+ */
+const datedSaving = ref(false)
+const shortDay = (day: string) => format.date(day, { weekday: 'short', day: 'numeric', month: 'short' })
+/** "26. Nov.": the days of an exception in the button and the hint. */
+const dayMonth = (day: string) => format.date(day, { day: 'numeric', month: 'short' })
+/** The first day of an exception save: "Gilt ab", empty is today; fixed for a holding exception being edited. */
+const exceptionFrom = computed(() => holdingEdit.value?.from ?? (startsOn.value || today.value))
+/**
+ * Why the days of an exception cannot be sent yet (the press names it at its field): "Gilt ab" half typed or before
+ * today; "Gilt bis" half typed, empty, before "Gilt ab", or before today (a holding exception, whose start passed).
+ * With "Jedes Jahr wiederholen" (slice 4) "Gilt ab" may lie up to a year back and "Gilt bis" in the past (the change
+ * then waits for next year), and the days must be shorter than a year. The server checks the same.
+ */
+const daysProblem = computed(() => {
+  if (!taskEnds.value) return undefined
+  const holding = holdingEdit.value !== undefined
+  const from = exceptionFrom.value
+  if (!holding && startsOnBad.value) return 'startsBad' as const
+  if (!holding && from < earliestStart(today.value, isYearly.value)) return isYearly.value ? 'startsTooFarBack' as const : 'startsPast' as const
+  if (untilBad.value) return 'untilBad' as const
+  if (!untilOn.value) return 'untilEmpty' as const
+  return exceptionProblem({ from, until: untilOn.value, today: today.value, yearly: isYearly.value, holding })
+})
+/** The days an exception save sends; undefined while they are not both valid. */
+const exceptionDays = computed(() => {
+  if (todayOnly.value) return { from: today.value, until: today.value }
+  if (!taskEnds.value || daysProblem.value) return undefined
+  return { from: exceptionFrom.value, until: untilOn.value }
+})
+/**
+ * What the primary button says for an exception: "Für 26. Nov. bis 31. Dez. …", "Bis 31. Dez. …", "Für heute …", and
+ * "Bis heute …" for one that started before today; "Jedes Jahr 1. Juni bis 31. Aug. …" for a yearly one (no year).
+ */
+function exceptionLabel({ from, until }: { from: string; until: string }) {
+  const verb = props.approval ? 'review' : 'publish'
+  if (isYearly.value) return t(from === until ? `dated.${verb}YearlyOn` : `dated.${verb}Yearly`, { day: dayMonth(from), until: dayMonth(until) })
+  if (until === today.value) return t(from < today.value ? `dated.${verb}UntilToday` : `dated.${verb}Today`)
+  if (from <= today.value) return t(`dated.${verb}Until`, { until: dayMonth(until) })
+  return t(`dated.${verb}FromUntil`, { day: dayMonth(from), until: dayMonth(until) })
+}
+/**
+ * The primary button says what it sends: a day sends a change of that day, also when the entry went offline meanwhile
+ * (the server refuses it then and says why, J2). A task with an end sends only values for certain days, also while its
+ * days are not valid yet: it never names a change for good (L6).
+ */
+const primaryLabel = computed(() => {
+  if (busy.value) return offline.value ? t('entry.save.waiting') : t('entry.save.saving')
+  if (exceptionDays.value) return exceptionLabel(exceptionDays.value)
+  if (taskEnds.value) return t(props.approval ? 'dated.reviewDays' : 'dated.publishDays')
+  if (dayOn.value) return t(props.approval ? 'dated.reviewFrom' : 'dated.publishFrom', { day: shortDay(dayOn.value) })
+  if (!publishStep.value) return t('entry.save.save')
+  if (props.approval) return t('entry.publish.review')
+  return later.value ? t('entry.publish.schedule') : t('entry.publish.go')
+})
+// Changes of the form's fields that wait for a later day (datedChanges.list): one notice each, so nobody plans over one
+// without knowing. "Bearbeiten" (E3) puts its day and values into the form; cancelling or moving one is done in Alles
+// bearbeiten.
+// A draft too: an entry taken offline keeps its changes, which then go into the draft on their day (D126, E4).
+const datedArgs = () => (props.entry && !isCreate.value ? { site: props.site, entry: props.entry._id } : 'skip' as const)
+const { data: dated } = useConvexQuery(api.datedChanges.list, datedArgs, { server: false })
+const valueWords = computed(() => ({ t, format, currency: props.schema.currency }))
+const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopped).flatMap((c) => {
+  const ours = c.fields.filter((k) => Object.hasOwn(touched.value, k))
+  if (!ours.length) return []
+  const values = c.values as Data
+  const changes = changesText(touched.value, ours, values, props.main, valueWords.value)
+  const holds = c.holds === true
+  let text: string
+  if (c.until === undefined) text = t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), changes })
+  else {
+    // What visitors see now, and the normal value it covers ("sonst 12,90 €") when that has a short form.
+    const normal = holds && c.normal ? valuesText(touched.value, ours, c.normal as Data, props.main, valueWords.value) : undefined
+    text = exceptionText({ ...c, until: c.until, holds }, changes, normal, valueWords.value)
+  }
+  return [{ id: c.id, from: c.from, until: c.until, holds, yearly: c.yearly === true, name: c.name, fields: ours, values, text }]
+}))
+type Notice = (typeof waitingNotices.value)[number]
+/** The line under a notice: two offers on the same days, a change that waits for an offer's end (datedLines). */
+const lineOf = (n: Notice) => datedLine(waitingNotices.value, n, valueWords.value)
+/** Under a field an exception covers today: what the website shows instead, and until when (spec rule 5). */
+const coveredHint = (key: string) => coveredText(waitingNotices.value, key, touched.value, props.main, valueWords.value)
+/**
+ * "Bearbeiten" on a notice of the kind the task makes (an exception for a task that asks both days, else a change
+ * without an end): its days and values go into the form. A holding exception keeps its start (decision 4).
+ */
+// A season only through a task that asks `yearly`, as the server rules (round N1).
+const mayEdit = (n: Notice) => asksDay.value && !foreign.value && (n.until !== undefined) === taskEnds.value && (!n.yearly || asksYearly.value)
+/** The waiting change "Bearbeiten" filled the form from: saved on its day, it is replaced (every field of it is sent). */
+const editing = ref<{ id: string; fields: string[] }>()
+function editChange(n: Notice) {
+  if (!n.holds) startsOn.value = n.from
+  if (n.until !== undefined) {
+    untilOn.value = n.until
+    yearly.value = n.yearly
+    changeName.value = n.name ?? ''
+  }
+  // Only the fields the form shows take values; the ones the task sets it sends anyway (round N3).
+  const shownKeys = n.fields.filter((key) => Object.hasOwn(fields.value, key))
+  for (const key of shownKeys) form.setField(key, n.values[key] ?? undefined)
+  editing.value = { id: n.id, fields: shownKeys }
+  nextTick(() => document.getElementById(n.holds ? 'sheet-until' : 'sheet-starts-on')?.focus())
+}
+/**
+ * The change being edited, by its row, while it still waits or holds: cancelled, gone online, ended or stopped
+ * meanwhile, it counts no more (I2), also when someone plans another change on the same day (J3). Its days are the row's.
+ */
+const edited = computed(() => {
+  const row = editing.value && waitingNotices.value.find((n) => n.id === editing.value!.id)
+  return row ? { id: row.id, from: row.from, until: row.until, holds: row.holds, yearly: row.yearly, fields: editing.value!.fields } : undefined
+})
+/** A holding exception being edited: "Gilt ab" is fixed and shown as text; the save edits that row (`change`). */
+const holdingEdit = computed(() => (edited.value?.holds ? edited.value : undefined))
+/**
+ * After "Bearbeiten", another start plans a second change; the one being edited stays (H1). An exception keeps being
+ * the one edited while its start stays (an empty "Gilt ab" is today), whatever its end (L7).
+ */
+const secondChange = computed(() => {
+  const was = edited.value
+  if (!was || was.holds || startsOnBad.value) return ''
+  const from = taskEnds.value ? exceptionFrom.value : startsOn.value
+  return from && from !== was.from ? t('dated.secondChange', { day: format.date(was.from, { weekday: 'long', day: 'numeric', month: 'long' }) }) : ''
+})
+/** A press that changed nothing in a sheet without "Gilt ab" (today only, a holding exception): said by the button (L8). */
+const unchangedHere = computed(() => unchangedDay.value && (todayOnly.value || !!holdingEdit.value))
+const primaryDescribedBy = computed(() => [shrunk.value.length ? 'sheet-shrunk' : '', unchangedHere.value ? 'sheet-unchanged' : ''].filter(Boolean).join(' ') || undefined)
+/** A today-only task: the values it sets, as the notices write them ("Nur heute: Aus"). */
+const taskSet = computed(() => ((props.task.kind === 'edit' ? props.task.set : undefined) ?? {}) as Data)
+const todayValues = computed(() => {
+  const set = taskSet.value
+  return Object.keys(set).length ? changesText(props.brick.fields, Object.keys(set), set, props.main, valueWords.value) : ''
+})
+
+/** A day field shows only in the main language's view: switch there before the focus (H1). */
+async function focusDay(id: string) {
+  await switchLanguage(props.main)
+  return nextTick(() => document.getElementById(id)?.focus())
+}
+/**
+ * The save of a change with a day (`from`), and for an exception its end (`extra`): the fields and days are inert while
+ * it is on its way (E8); a save that changed nothing for those days keeps the form open and says so under the day.
+ * `same`: the fields of the change being edited, sent even when equal to the stored value, so it is replaced (E3).
+ */
+async function sendDated(from: string, same?: readonly string[], extra?: DatedExtra) {
+  let ok: boolean
+  beforeSend()
+  datedSaving.value = true
+  try {
+    ok = await form.save(undefined, undefined, from, same, extra)
+  } finally {
+    datedSaving.value = false
+  }
+  if (!ok && unchangedDay.value) await focusDay(holdingEdit.value || todayOnly.value ? 'sheet-primary' : 'sheet-starts-on')
+  await finish(ok)
+}
 /**
  * What a save does: `publish` goes online now (or waits for a yes), `draft` stays off the website (a new entry is a
  * draft, a change waits unpublished), `later` plans a new entry.
  */
 type Step = 'publish' | 'draft' | 'later'
+/** Every save goes through here: the buttons, Enter and Ctrl+S. A conflict answer never saves (I1). */
 async function save(step: Step = 'publish') {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || !ready.value || removedHere.value) return
   laterProblem.value = ''
+  // A day typed and not finished is not "today": nothing is saved until it is a day or the field is empty (E1).
+  if (asksDay.value && startsOnBad.value && !holdingEdit.value) return focusDay('sheet-starts-on')
+  // Enter in a field and Ctrl+S never publish (below), and a change for other days is a publish: the button does it.
+  if ((taskEnds.value || todayOnly.value) && step === 'draft') return document.getElementById('sheet-primary')?.focus()
+  if (todayOnly.value) return sendDated(today.value, undefined, { until: today.value, empty: true })
+  if (taskEnds.value) {
+    // An exception (slice 3): "Gilt ab" empty is today, never before; "Gilt bis" is required, not before it nor today.
+    const problem = daysProblem.value
+    if (problem === 'startsPast') startsOnError.value = messageOf({ key: 'errors.dayBeforeToday' })
+    if (problem === 'startsTooFarBack') startsOnError.value = t('dated.startsTooFarBack')
+    if (problem === 'startsBad' || problem === 'startsPast' || problem === 'startsTooFarBack') return focusDay('sheet-starts-on')
+    if (problem) {
+      if (problem !== 'untilBad') {
+        untilError.value = problem === 'untilEmpty' ? t('dated.dayRequired') : problem === 'untilBeforeFrom' ? t('dated.untilBeforeFrom')
+          : problem === 'yearlyTooLong' ? t('dated.yearlyTooLong') : problem === 'yearlyLeapDay' ? t('dated.yearlyLeapDay') : messageOf({ key: 'errors.dayBeforeToday' })
+      }
+      return focusDay('sheet-until')
+    }
+    const name = asksName.value ? changeName.value.trim() : ''
+    if (name.length > NAME_MAX) {
+      nameError.value = t('dated.nameTooLong', { max: NAME_MAX })
+      return focusDay('sheet-name')
+    }
+    const from = exceptionFrom.value
+    // "Bearbeiten" edits that exception while its start stays (L7): its values are all sent, so it is replaced.
+    const was = edited.value?.until !== undefined && edited.value.from === from ? edited.value : undefined
+    // A task whose fixed values (`set`) are the change has nothing to type: its days alone are a save, as for today only.
+    const empty = Object.keys(taskSet.value).length > 0
+    return sendDated(from, was?.fields, { until: untilOn.value, ...(was ? { change: was.id } : {}), ...(isYearly.value ? { yearly: true as const } : {}), ...(name ? { name } : {}), ...(empty ? { empty } : {}) })
+  }
+  const from = dayOn.value
+  if (from !== undefined) {
+    if (step === 'draft') return document.getElementById('sheet-primary')?.focus()
+    if (from <= todayIn(props.schema.timeZone)) {
+      startsOnError.value = messageOf({ key: 'errors.dayNotAhead' })
+      return focusDay('sheet-starts-on')
+    }
+    return sendDated(from, edited.value?.from === from ? edited.value.fields : undefined)
+  }
   let publish: { at?: number } | true | undefined
   if (publishStep.value && !isCreate.value) publish = step === 'draft' ? undefined : true
   else if (publishStep.value && step !== 'draft') {
@@ -362,6 +627,7 @@ async function save(step: Step = 'publish') {
     await switchLanguage(props.main)
     nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
   }
+  beforeSend()
   await finish(await form.save(undefined, publish))
 }
 /** Cmd/Ctrl+S anywhere in the sheet's form saves like the button, never the browser's "Save page as". */
@@ -373,12 +639,26 @@ function onFormKey(event: KeyboardEvent) {
   // On the publish step the key keeps the entry off the website: nobody publishes by pressing Ctrl+S.
   save(publishStep.value ? 'draft' : 'publish')
 }
-async function keepMine() {
-  await finish(await form.keepMine())
+// A conflict answer only merges (I1): while the conflict was open, the entry may have gone online or offline and the
+// day may have changed, so a remembered step or day could put the input online unasked. The person then presses the
+// button that says what it does now. The line "not saved yet" stays until the next save, and takes the focus: on the
+// primary button the next Enter could publish a draft someone published meanwhile (J1).
+const merged = ref(false)
+/** Whether the entry was online (`publishStep`) when the last save was sent: the line says when that changed since. */
+let onlineAtSave: boolean | undefined
+const movedSince = ref('')
+function beforeSend() {
+  merged.value = false
+  onlineAtSave = publishStep.value
 }
-async function keepBoth() {
-  await finish(await form.mergeLists())
+function afterMerge(ok: boolean) {
+  if (!ok) return
+  merged.value = true
+  movedSince.value = onlineAtSave === undefined || onlineAtSave === publishStep.value ? '' : t(publishStep.value ? 'entry.conflict.nowOnline' : 'entry.conflict.nowOffline')
+  nextTick(() => document.getElementById('sheet-merged')?.focus())
 }
+const keepMine = () => afterMerge(form.keepMine())
+const keepBoth = () => afterMerge(form.mergeLists())
 // Someone removed the entry (N1): bring it back and save the input, or drop it.
 const removedHere = computed(() => !isCreate.value && !!props.removed && !!props.entry)
 async function restoreRemoved(lifeRev: number) {
@@ -473,9 +753,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             <ConflictPanel
               v-if="conflict"
               :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="main" :main="main"
-              :can-keep-both="!!form.listMerge.value"
+              :can-keep-both="!!form.listMerge.value" merge-only :busy="busy"
               @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
             />
+            <p v-else-if="merged" id="sheet-merged" tabindex="-1" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning outline-none" role="status" data-test="merged-input">{{ movedSince ? `${t('entry.conflict.inForm')} ${movedSince}` : t('entry.conflict.inForm') }}</p>
             <div v-if="mine?.status === 'open'" class="flex flex-wrap items-center justify-between gap-x-3 rounded-md bg-warning/10 py-1 pr-1 pl-3" role="status" data-test="own-proposal">
               <p class="py-1.5 font-semibold text-warning">{{ pendingText }}</p>
               <ProposalWithdraw :proposal="mine.proposal" />
@@ -486,31 +767,64 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             </div>
             <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
             <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
+            <div v-for="n in waitingNotices" :key="n.id" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md bg-warning/10 py-1 pr-1 pl-3">
+              <p class="py-1.5 font-semibold text-warning [overflow-wrap:anywhere]" role="status" data-test="dated-waiting">{{ n.text }}</p>
+              <Button v-if="mayEdit(n)" type="button" variant="outline" size="sm" @click="editChange(n)">{{ t('dated.edit') }}</Button>
+              <p v-if="lineOf(n)" class="basis-full pb-1.5 text-sm text-warning" :data-test="lineOf(n)!.test">{{ lineOf(n)!.text }}</p>
+            </div>
+            <template v-if="todayOnly">
+              <p v-if="todayValues" class="font-semibold" data-test="today-values">{{ t('dated.todayOnlyValues', { changes: todayValues }) }}</p>
+              <p data-test="today-only">{{ t('dated.todayOnly') }}</p>
+            </template>
             <p v-if="oldWeek" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.oldWeek', { date: formatDay(oldWeek, format) }) }}</p>
             <!-- Like "Deinen Vorschlag wieder öffnen" above, it replaces the form's values: offered only before anything is typed. -->
             <Button v-if="isCreate && copyFrom && !copied && !dirty" type="button" variant="outline" class="justify-self-start" :disabled="copying" @click="copyThisWeek">{{ t('entry.copyThisWeek') }}</Button>
             <p v-if="foreign" class="text-sm text-muted-foreground">{{ t('entry.foreignHint') }}</p>
-            <template v-for="(field, key) in shownFields" :key="`${lang}:${key}`">
-              <div v-if="key === fixedWeek" class="grid gap-1" data-slot="field" data-test="fixed-week">
-                <p class="text-sm font-medium">{{ shown(field.label) }}</p>
-                <p class="font-semibold">{{ dayText(draft[key]) }}</p>
-                <p class="text-sm text-muted-foreground">{{ t('entry.weekFixed') }}</p>
+            <div class="contents" :inert="datedSaving" :aria-busy="datedSaving || undefined" data-test="sheet-fields">
+              <template v-for="(field, key) in shownFields" :key="`${lang}:${key}`">
+                <div v-if="key === fixedWeek" class="grid gap-1" data-slot="field" data-test="fixed-week">
+                  <p class="text-sm font-medium">{{ shown(field.label) }}</p>
+                  <p class="font-semibold">{{ dayText(draft[key]) }}</p>
+                  <p class="text-sm text-muted-foreground">{{ t('entry.weekFixed') }}</p>
+                </div>
+                <GinkoField
+                  v-else
+                  v-show="isShown(field, draft)"
+                  :field="field"
+                  :model-value="draft[key]"
+                  :baseline="isCreate ? initial[key] : baseline[key]"
+                  :weeks="weekShortcuts(brick, String(key))"
+                  :path="String(key)"
+                  :locale="lang"
+                  :locales="locales"
+                  :issues="shownIssues"
+                  :hint-id="coveredHint(String(key)) ? coveredId(String(key)) : undefined"
+                  @update:model-value="form.setField(String(key), $event)"
+                />
+                <!-- The form edits the normal value; an exception that holds today covers it on the website. -->
+                <p v-if="coveredHint(String(key))" v-show="isShown(field, draft)" :id="coveredId(String(key))" class="-mt-2 text-sm font-medium text-muted-foreground" data-test="covered-hint">{{ coveredHint(String(key)) }}</p>
+                <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
+              </template>
+              <div v-if="asksDay && !foreign && holdingEdit" class="grid gap-1" role="group" aria-labelledby="sheet-fixed-from" data-slot="field" data-test="fixed-from">
+                <p id="sheet-fixed-from" class="text-sm font-medium">{{ t('dated.startsOn') }}</p>
+                <p class="font-semibold">{{ shortDay(holdingEdit.from) }}</p>
+                <p class="text-sm text-muted-foreground">{{ t('dated.fromFixed') }}</p>
               </div>
-              <GinkoField
-                v-else
-                v-show="isShown(field, draft)"
-                :field="field"
-                :model-value="draft[key]"
-                :baseline="isCreate ? initial[key] : baseline[key]"
-                :weeks="weekShortcuts(brick, String(key))"
-                :path="String(key)"
-                :locale="lang"
-                :locales="locales"
-                :issues="shownIssues"
-                @update:model-value="form.setField(String(key), $event)"
-              />
-              <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
-            </template>
+              <StartsOnField v-else-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :hint="taskEnds ? t(isYearly ? 'dated.yearlyHint' : 'dated.startsOnHintToday') : undefined" :earliest="taskEnds ? earliestStart(today, isYearly) : undefined" :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
+              <StartsOnField v-if="asksDay && taskEnds && !foreign" id="sheet-until" v-model="untilOn" v-model:bad="untilBad" :label="t('dated.until')" :earliest="startsOn || earliestStart(today, isYearly)" :latest="isYearly ? latestYearlyUntil(exceptionFrom) : undefined" :time-zone="schema.timeZone" :error="untilError" />
+              <!-- Slice 4: under "Gilt bis", in this order. While the edited row holds, `yearly` stays as it is both ways
+                   (decision 2, round N1); the sentence says why for a yearly row only (the one-off case has none yet). -->
+              <FieldFrame v-if="asksDay && asksYearly && !foreign" id="sheet-yearly" inline :label="t('dated.yearly')" :hint="holdingEdit ? t(holdingEdit.yearly ? 'dated.yearlyWhileHolding' : 'dated.yearlyOnWhileHolding') : undefined">
+                <template #default="{ describedBy }">
+                  <Switch id="sheet-yearly" v-model="yearly" :disabled="holdingEdit !== undefined" :aria-describedby="describedBy" />
+                </template>
+              </FieldFrame>
+              <FieldFrame v-if="asksDay && asksName && !foreign" id="sheet-name" :label="t('dated.name')" optional :hint="t('dated.nameHint')" :errors="nameError ? [nameError] : []">
+                <template #default="{ describedBy, invalid }">
+                  <Input id="sheet-name" v-model="changeName" class="max-w-80" autocomplete="off" :aria-invalid="invalid" :aria-describedby="describedBy" />
+                </template>
+              </FieldFrame>
+            </div>
           </template>
         </div>
 
@@ -524,6 +838,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
           </template>
           <template v-else>
             <p v-if="shrunk.length" id="sheet-shrunk" class="basis-full text-sm text-muted-foreground">{{ shrunk.join(' ') }}</p>
+            <p v-if="unchangedHere" id="sheet-unchanged" class="basis-full text-sm font-medium text-warning" role="status">{{ t('dated.nothingChanged') }}</p>
             <div v-if="publishStep && later" class="grid basis-full gap-2" data-test="publish-later" @keydown.enter.prevent="save('later')">
               <label for="sheet-publish-at" class="text-sm font-medium">{{ t('entry.publish.dateTime') }}</label>
               <ScheduleField v-model:local="at" v-model:picked="picked" :zone="schema.timeZone" input-id="sheet-publish-at" />
@@ -531,9 +846,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             </div>
             <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
             <!-- On the publish step only a press on this button publishes (Enter in a field saves a draft, like Ctrl+S); with the time open it plans instead, so there is one primary per state. -->
-            <Button :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : publishStep ? (approval ? t('entry.publish.review') : later ? t('entry.publish.schedule') : t('entry.publish.go')) : t('entry.save.save') }}</Button>
+            <Button id="sheet-primary" :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="primaryDescribedBy" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ primaryLabel }}</Button>
             <template v-if="publishStep">
-              <Button type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ isCreate ? t('entry.publish.asDraft') : t('entry.save.save') }}</Button>
+              <!-- With a day, Speichern (unpublished) would drop it: the day's button is the one way. -->
+              <Button v-if="!dayOn && !taskEnds && !todayOnly" type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ isCreate ? t('entry.publish.asDraft') : t('entry.save.save') }}</Button>
               <Button v-if="laterOffered" type="button" variant="outline" :aria-expanded="later" @click="toggleLater">{{ t('entry.publish.laterOpen') }}</Button>
             </template>
             <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>

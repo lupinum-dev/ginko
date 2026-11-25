@@ -1,16 +1,15 @@
 // Portfolio template: a small interior and object design studio in Hamburg with its projects (facts, photos with
 // descriptions), the people of the studio, a journal and a page on how a project runs, in English (main) and German.
-// Every brick reads Markdown from content/ (source: 'files'), so the site runs without an account. To let the studio
-// change a brick in Ginko Studio later, remove `source: 'files'` from it (README, "Move to the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
-import { legal, notices, people, posts, site } from '@lupinum/ginko/basics'
+// Every brick reads Markdown from content/, so the site runs without an account. To let the studio change a brick in
+// Ginko Studio later, name it in `studio.bricks` (README, "Move to the Studio").
+import { defineSite, extend, f, single } from '@lupinum/ginko'
+import { legal, notices, people, posts, site } from '@lupinum/ginko/patterns'
 import { pages } from './app/bricks/pages.ts'
 import { projects } from './app/bricks/projects.ts'
 import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'
 
 export default defineSite({
-  site: 'portfolio',
   name: 'Studio Maren Holt',
   // `color` fills the share cards: the light `--brand` of app/assets/css/main.css.
   seo: {
@@ -19,23 +18,33 @@ export default defineSite({
   },
   url: siteUrl('https://example.com'),
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   // German public holidays, and `addressCountry` in the studio's JSON-LD.
   country: 'DE',
   locales,
   languages: { en: 'en-GB', de: 'de-DE' },
   // Money fields would use it; this site shows no prices.
   currency: 'EUR',
+  // The site's id on a Ginko platform, and the bricks the studio edits in Ginko Studio: none yet, every brick is in files.
+  studio: { id: 'portfolio', bricks: [] },
   pages: {
     home: localized('/'),
     projects: localized('/projects'),
     team: localized('/team'),
     news: localized('/news'),
   },
+  // The page of one entry, by brick.
+  entries: {
+    legal: localized('/legal/[slug]'),
+    projects: localized('/projects/[slug]'),
+    posts: localized('/news/[slug]'),
+    pages: localized('/[slug]'),
+  },
   bricks: {
     // The first screen of the home page: what the studio does in one sentence and a lead (content/home.md).
     home: single({
       label: { de: 'Startseite', en: 'Home page' },
-      source: 'files',
       fields: {
         title: f.text({ de: 'Titel', en: 'Title' }, { max: 100, default: 'Welcome' }),
         lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
@@ -43,27 +52,27 @@ export default defineSite({
     }),
     // Legal name, address, phone and email for the footer, the imprint, the "Start a project" email and the studio's
     // JSON-LD (content/site.md).
-    site: site({ source: 'files' }),
+    site: site(),
     // Privacy policy and imprint: one file per text in content/legal/.
-    legal: legal({ source: 'files', route: localized('/legal/[slug]') }),
+    legal: legal(),
     // Short lines at the top of every page ("The Holm chair can now be made to order"), each until a date
     // (content/notices/).
-    notices: notices({ source: 'files' }),
+    notices: notices(),
     // The work, in the studio's order (content/projects/): client, year, place, scope, the text and the photos, each
     // with its description. The home page shows the first three. A project stays online until it is deleted; a new
-    // one can wait as a draft (`draft: true` in its file), and Today lists the drafts.
-    projects: projects({ source: 'files', route: localized('/projects/[slug]'), details: true }),
-    // The journal, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
+    // one can wait as a draft (`$draft: true` in its file), and Today lists the drafts.
+    projects: projects({ details: true }),
+    // The journal, newest first (content/posts/). `authors` names entries of `people`. A file with `$draft: true` never
     // goes online; in the Studio, Today shows how old the newest entry is, next to its write task (Today shows only
     // bricks with a task).
-    posts: {
-      ...posts({ source: 'files', authors: 'people', route: localized('/news/[slug]'), label: { de: 'Journal', en: 'Journal' } }),
-      status: { age: 'date' },
-      tasks: [{ id: 'write', kind: 'create', label: { de: 'Journalbeitrag schreiben', en: 'Write a journal entry' } }],
-    },
+    posts: extend(posts({ authors: 'people' }), {
+      label: { de: 'Journal', en: 'Journal' },
+      status: { show: 'newest', field: 'date' },
+      tasks: [{ id: 'write', kind: 'add', label: { de: 'Journalbeitrag schreiben', en: 'Write a journal entry' } }],
+    }),
     // The people of the studio (content/people/). No photos: the site shows initials.
-    people: people({ source: 'files' }),
+    people: people(),
     // How a project runs, and any other page (content/pages/).
-    pages: pages({ route: localized('/[slug]'), source: 'files' }),
+    pages,
   },
 })

@@ -1,28 +1,37 @@
 // Gasthaus zur Linde: the v1 acceptance target (SPEC 13, DEMOS.md demo 3).
 // Hours, notices, lunch, menu, events and gallery come from the gastro preset; the rest is this house's own.
-import { defineSite, f, single } from '@lupinum/ginko'
+import { defineSite, extend, f, single, type TaskInput } from '@lupinum/ginko'
 import { events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '@lupinum/ginko-preset-gastro'
 
-const lunchBrick = lunch({ weekOf: '2026-10-05' })
+/** The preset's menu with its own tasks; this house adds two tasks with an end (below). */
+const dishes = menu()
 
 export default defineSite({
-  site: 'restaurant',
   name: 'Gasthaus zur Linde',
   url: 'https://ginko-demo-restaurant.vercel.app',
   timeZone: 'Europe/Vienna',
   locales: ['de', 'en'],
   languages: { de: 'de-AT', en: 'en-GB' },
   currency: 'EUR',
+  // The site's week: the lunch week starts on this day.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   // Austrian public holidays for the opening hours (stored as `holidays: 'AT'`).
   country: 'AT',
+  // The site's id on the platform. Every brick is edited in Ginko Studio.
+  studio: { id: 'restaurant', bricks: 'all' },
+  // Paths are written without the language prefix: Ginko adds `/en`.
   pages: {
-    home: { de: '/', en: '/en' },
-    menu: { de: '/speisekarte', en: '/en/menu' },
-    lunch: { de: '/mittagsmenue', en: '/en/lunch' },
-    events: { de: '/veranstaltungen', en: '/en/events' },
-    gallery: { de: '/galerie', en: '/en/gallery' },
-    imprint: { de: '/impressum', en: '/en/imprint' },
-    privacy: { de: '/datenschutz', en: '/en/privacy' },
+    home: '/',
+    menu: { de: '/speisekarte', en: '/menu' },
+    lunch: { de: '/mittagsmenue', en: '/lunch' },
+    events: { de: '/veranstaltungen', en: '/events' },
+    gallery: { de: '/galerie', en: '/gallery' },
+    imprint: { de: '/impressum', en: '/imprint' },
+    privacy: { de: '/datenschutz', en: '/privacy' },
+  },
+  // The page of one event.
+  entries: {
+    events: { de: '/veranstaltungen/[slug]', en: '/events/[slug]' },
   },
   bricks: {
     // Schnell ändern lists bricks in this order, so each plan sits right after the brick it plans.
@@ -31,12 +40,28 @@ export default defineSite({
     hourPlans: hourPlans(),
     notices: notices(),
     // The cook enters the week's lunch menu; it goes live once the owner approves it (SPEC 17).
-    lunch: { ...lunchBrick, tasks: lunchBrick.tasks?.map((task) => ({ ...task, needsApproval: true })) },
+    lunch: extend(lunch({ weekOf: '2026-10-05', needsApproval: true }), { preview: 'lunch' }),
     // Lunch weeks planned ahead, shown from their first day of the week (lunchWeekOn).
     lunchPlans: lunchPlans(),
-    menu: menu(),
-    events: events({ route: { de: '/veranstaltungen/[slug]', en: '/en/events/[slug]' } }),
-    gallery: gallery(),
+    // The menu's fields named: the new tasks' `fields` and `set` would otherwise take part in guessing them.
+    menu: extend<typeof dishes.fields>(dishes, {
+      preview: 'menu',
+      tasks: [
+        // A made brick keeps its tasks with plain field names (`Def.tasks`): typed by the menu's fields again here, as
+        // the preset does for its own `soldOut` task.
+        ...((dishes.tasks ?? []) as readonly TaskInput<typeof dishes.fields>[]),
+        // A price for some days; the normal price comes back by itself after the last day.
+        { id: 'offer', label: { de: 'Aktionspreis', en: 'Special price' }, fields: ['price'], when: { from: 'ask', until: 'ask' } },
+        // A dish that is on the menu only in its season: the same days every year, with a name ("Marillenzeit"). The entry
+        // keeps "not on the menu"; the website shows the dish on those days (slice 4).
+        { id: 'season', label: { de: 'Saisongericht', en: 'Seasonal dish' }, fields: [], set: { onMenu: true }, when: { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' } },
+        // One press: the dish is off the website today and back tomorrow; the entry keeps "on the menu". It goes in slice 6,
+        // when the preset's "Gericht heute aus" takes this form.
+        { id: 'offToday', label: { de: 'Heute nicht auf der Karte', en: 'Not on the menu today' }, fields: [], when: { from: '@today', until: '@today' }, set: { onMenu: false } },
+      ],
+    }),
+    events: events(),
+    gallery: extend(gallery(), { preview: 'gallery' }),
     // A rare job (moving, new number): no quick task, found under this label in Alles bearbeiten.
     contact: single({
       label: 'Adresse und Kontakt',

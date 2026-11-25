@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { collection, defineSite, f, single, type MarkdownTree } from '@lupinum/ginko'
+import { collection, defineSite, f, single, type MarkdownTree } from '@lupinum/ginko/internal'
 import { fileMarkdownRef, serializeSchema, withMarkdownRefs } from '@lupinum/ginko/internal'
 import { buildIndex, searchSections, type SearchRecord } from '@lupinum/ginko/internal/search'
 import { loadIndex, search } from '@lupinum/ginko/search'
@@ -11,15 +11,16 @@ import { buildFileBundles, searchIndex } from '../src/index.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
   bricks: {
-    docs: collection({
+    docs: collection({ body: 'body',
+      listing: { title: 'title' },
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]', en: '/en/docs/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), description: f.longtext('Beschreibung', { optional: true }), badge: f.text('Badge', { optional: true }), body: f.markdown('Text') },
     }),
-    drafts: collection({ label: 'Entwürfe', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
-    legal: single({ label: 'Rechtliches', source: 'files', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
+    drafts: collection({ body: 'body', listing: { title: 'title' }, label: 'Entwürfe', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
+    legal: single({ body: 'body', label: 'Rechtliches', source: 'files', fields: { title: f.text('Titel'), body: f.markdown('Text') } }),
   },
 }))
 

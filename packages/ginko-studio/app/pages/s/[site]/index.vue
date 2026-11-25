@@ -4,13 +4,12 @@
      writes. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
 import { provide } from 'vue'
-import { resolveToken, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
+import { resolveToken, weekInfo, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { useTodayAreas, type TodayFlag } from '../../../composables/useTodayAreas'
 import { taskRef, titleOf, type Task } from '../../../utils/content'
 import { shownLabel } from '../../../utils/labels'
 import type { OwnRow } from '../../../utils/today'
-import { whenFull } from '../../../utils/when'
 import { useTextOf } from '../../../composables/useTextOf'
 import { api } from '#convex/api'
 import EntryRemoveDialog, { type EntryUses, type TrashOverflow } from '../../../components/EntryRemoveDialog.vue'
@@ -58,7 +57,7 @@ const copyFrom = computed(() => {
   if (plan) return plan.entry._id
   const single = singleOf(brick.plans.brick)
   const weekly = weeklyTask(schema!.bricks[brick.plans.brick]!)
-  return single && weekly && single.data[weekly.field] === workWeekOf(s.today.value, schema!.week) ? single._id : undefined
+  return single && weekly && single.data[weekly.field] === workWeekOf(s.today.value, weekInfo(schema!.week)) ? single._id : undefined
 })
 const picking = ref<{ key: string; task: Task } | null>(null)
 // The pick list groups by a choice field and shows prices, so it reads the entries of its one brick while open: slim
@@ -75,7 +74,7 @@ watch([open, picking], ([sheet, pick]) => {
 })
 
 /**
- * "Nächste Woche planen" when that week is planned already: the person's edit task on that plan. A second plan for
+ * "Nächste Woche planen" when that week is planned already: the person's task `edit` on that plan. A second plan for
  * the same week would never show (the server refuses it).
  */
 function planOfWeek(key: string, task: Task): { task: Task; entry: Entry } | undefined {
@@ -84,7 +83,7 @@ function planOfWeek(key: string, task: Task): { task: Task; entry: Entry } | und
   if (task.kind !== 'create' || brick.kind !== 'collection' || !brick.plans) return undefined
   const token = task.prefill?.[brick.plans.field]
   const week = typeof token === 'string' ? resolveToken(token, schema.timeZone, schema.week) : undefined
-  const edit = sections.value.find((x) => x.key === key)?.tasks.find((t) => t.kind === 'edit')
+  const edit = sections.value.find((x) => x.key === key)?.tasks.find((t) => t.id === 'edit')
   const entry = week && entriesOf(key).find((e) => e.state !== 'draft' && e.data[brick.plans!.field] === week)
   return edit && entry ? { task: edit, entry } : undefined
 }
@@ -218,7 +217,7 @@ function focusArea(key: string) {
 const labelOf = (key: string) => shownLabel(s.schema.value!.bricks[key]!.label, s.main.value)
 
 // "Wartet auf dich" in words, one action per tile.
-const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone ?? 'UTC', main: s.main.value }))
+const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone, main: s.main.value }))
 const history = computed(() => `/s/${s.slug.value}/history`)
 const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
   switch (item.kind) {
@@ -226,7 +225,7 @@ const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
       id: `r-${item.p.proposal}`, kind: 'rejected', title: ownLine(item.p), sub: t('site.quick.rejected', { reason: item.p.reason ?? '' }), subWarn: true,
       action: item.fix ? { label: t('site.quick.fix'), primary: true, run: () => fix(item.key, item.p) } : { label: t('today.waiting.inHistory'), to: history.value },
     }
-    case 'review': return { id: 'review', kind: 'review', title: t('site.quick.toReview', { count: item.count }), action: { label: t('nav.review'), to: `/s/${s.slug.value}/review` } }
+    case 'review': return { id: 'review', kind: 'review', title: t('site.quick.toReview', { count: item.count }), action: { label: t('nav.review'), primary: true, to: `/s/${s.slug.value}/review` } }
     case 'unsaved': {
       const row = item.row
       const task = row.task
@@ -236,13 +235,25 @@ const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
         action: { label: t('site.quick.drafts.continue'), to: row.to, run: task ? () => start(task.brick, task.task) : undefined },
       }
     }
+    // A plan that did not go online looks like a change that did not go live; the tile opens the entry (D104). One entry
+    // can have a stopped plan and stopped changes: a change's tile is keyed by the change.
+    case 'stopped': return {
+      id: `s-${stoppedChangeId(item.row) ?? item.row.entry}`, kind: 'notLive', title: textOf(item.row.title, item.row.titleText), sub: textOf(item.row.cause, item.row.causeText),
+      action: { label: t('today.waiting.open'), to: `/s/${s.slug.value}/all/${item.row.brick}/${item.row.entry}` },
+    }
     case 'notLive': return {
       id: `n-${item.p.proposal}`, kind: 'notLive', title: ownLine(item.p),
-      sub: t('history.notLiveBecause', { when: whenFull(item.p.at!, s.schema.value?.timeZone ?? 'UTC', format), reason: textOf(item.p.reasonMsg, item.p.reason ?? '') }),
+      sub: t('history.notLiveBecause', { when: ownWhen(item.p.at!), reason: textOf(item.p.reasonMsg, item.p.reason ?? '') }),
       action: { label: t('today.waiting.inHistory'), to: history.value },
     }
   }
 }))
+
+/** The dated change a stopped tile stands for (entries.stoppedPlans adds `change: { id, from }`), or none for a plan. */
+function stoppedChangeId(row: object): string | undefined {
+  const change = 'change' in row ? row.change : undefined
+  return change && typeof change === 'object' && 'id' in change && typeof change.id === 'string' ? change.id : undefined
+}
 
 provide(TODAY, reactive({
   slug: s.slug, main: s.main, isManager: s.isManager, today: s.today, timeZone: computed(() => s.schema.value?.timeZone ?? 'UTC'),
@@ -252,18 +263,18 @@ provide(TODAY, reactive({
 </script>
 
 <template>
-  <div class="@container w-full max-w-[1400px] px-4 pt-4 pb-10 min-[900px]:px-8 min-[900px]:pt-7 min-[900px]:pb-12">
-    <header class="mb-4 grid gap-1 @[680px]:mb-5">
+  <div class="@container w-full max-w-[1400px] px-4 pt-4 pb-10 min-[900px]:px-8 min-[900px]:pt-[26px] min-[900px]:pb-12">
+    <header class="mb-4 grid gap-2">
       <div class="flex flex-wrap items-baseline gap-x-3">
-        <h1 class="text-[1.375rem] font-semibold tracking-tight">{{ t('nav.quick') }}</h1>
-        <p v-if="s.today.value" class="text-[13px] text-muted-foreground">{{ format.date(s.today.value, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }}</p>
+        <h1>{{ t('nav.quick') }}</h1>
+        <p v-if="s.today.value" class="text-sm text-muted-foreground">{{ format.date(s.today.value, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }}</p>
       </div>
       <TodayVerdict v-if="sections.length" :verdict="verdict" :load-error="loadError" :label-of="labelOf" @area="focusArea" />
     </header>
 
     <TodayWaiting :tiles="tiles" />
 
-    <p v-if="!sections.length && s.schema.value" class="rounded-xl border bg-card p-4 text-muted-foreground">{{ t('site.quick.nothingForYou') }}</p>
+    <p v-if="!sections.length && s.schema.value" class="rounded-[14px] border bg-card p-[18px] text-muted-foreground">{{ t('site.quick.nothingForYou') }}</p>
     <!-- A <div>, never a <section>: each card is the section that has its heading. -->
     <div v-else class="grid grid-cols-1 gap-3 @[680px]:grid-cols-2 @[680px]:gap-4 @[1060px]:grid-cols-3">
       <TodayCard v-for="card in cards" :key="card.key" :card="card" :views="views" :own-line="ownLine" :own-when="ownWhen" />
@@ -301,7 +312,6 @@ provide(TODAY, reactive({
       :task="picking.task"
       :entries="pickRead.data.value"
       :main="s.main.value"
-      :today="s.today.value"
       @pick="picked"
       @close="picking = null"
     />

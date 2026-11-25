@@ -77,7 +77,7 @@ function remove() {
     <p v-if="error" class="error text-sm font-medium text-destructive" role="alert">{{ error }}</p>
 
     <p v-if="fileId && !sending && stored" class="[overflow-wrap:anywhere]">
-      <a :href="stored.url" target="_blank" rel="noopener" class="text-primary underline underline-offset-4">{{ stored.name }}</a>, {{ formatSize(stored.size) }}
+      <a :href="stored.url" target="_blank" rel="noopener" class="text-link underline underline-offset-4">{{ stored.name }}</a>, {{ formatSize(stored.size) }}
       <span class="sr-only">{{ t('fields.file.opensInNewTab') }}</span>
     </p>
     <p v-else-if="fileId && !sending && stored === null" class="error text-sm font-medium text-destructive" role="alert">{{ t('fields.file.unavailable') }}</p>

@@ -177,10 +177,10 @@ onBeforeUnmount(() => { window.removeEventListener('message', onMessage); clearT
 <template>
   <section :class="['@container grid h-full grid-rows-[auto_1fr] overflow-hidden bg-sidebar', docked ? 'border-l' : 'rounded-xl border']" :aria-label="t('entry.preview.label')">
     <header class="flex min-h-12 items-center gap-2 border-b bg-card px-3 py-1.5 text-sm">
-      <div class="flex flex-none rounded-lg bg-muted p-0.5" role="group" :aria-label="t('entry.preview.device')">
+      <div class="flex flex-none gap-0.5 rounded-[9px] bg-muted p-[3px]" role="group" :aria-label="t('entry.preview.device')">
         <button
           v-for="d in DEVICES" :key="d" type="button" :aria-pressed="device === d" :title="`${screenLabel(d)} · ${SCREENS[d].width} px`"
-          class="inline-flex h-8 items-center rounded-md px-2 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/80 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs pointer-coarse:h-10"
+          class="inline-flex h-7 w-[34px] items-center justify-center rounded-md text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/80 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-input/40 pointer-coarse:h-10 pointer-coarse:w-10"
           @click="pick(d)"
         >
           <component :is="SCREENS[d].icon" class="size-4" aria-hidden="true" />

@@ -2,16 +2,16 @@
 import {
   calendarOfCountry, hoursLine, hoursOn, upcomingClosures, upcomingPlans, weekFor,
   type DayHours, type HourPlan, type HoursContext, type HoursData, type Weekday,
-} from '@lupinum/ginko/basics'
+} from '@lupinum/ginko/patterns'
 
-/** The days of the week in storage order. */
+/** The day keys of the stored week, Monday first. */
 const KEYS: Weekday[] = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
 /** The owner's choices for public holidays (`HolidaySetting`). */
 const HOLIDAY_SETTINGS = ['sunday', 'closed', 'normal'] as const
 
 /**
  * The opening hours of the site, read once per component: the `hours` single and the `hourPlans` entries, shaped for
- * the rules of `@lupinum/ginko/basics`, with the site's country for public holidays. `now` is the time of the server's
+ * the rules of `@lupinum/ginko/patterns`, with the site's country for public holidays. `now` is the time of the server's
  * render, carried to the browser, so both show the same state; HoursToday moves it on every minute.
  */
 export function useHours() {
@@ -28,7 +28,7 @@ export function useHours() {
   const data = computed<HoursData>(() => {
     const { week, exceptions, closedOn, closedNote, holidays } = hours.value.data
     return {
-      week: week.map((day) => ({ ...day, day: String(day.day), closed: day.closed === true })),
+      week,
       exceptions: exceptions.map((e) => ({ ...e, reason: e.reason ?? '', closed: e.closed === true })),
       closedOn: closedOn ?? undefined,
       closedNote: closedNote ?? undefined,
@@ -41,7 +41,7 @@ export function useHours() {
     from: plan.data.from,
     to: plan.data.to ?? undefined,
     yearly: plan.data.yearly === true,
-    week: plan.data.week.map((day) => ({ ...day, day: String(day.day), closed: day.closed === true })),
+    week: plan.data.week,
   })))
   const ctx = computed<HoursContext>(() => ({ hours: data.value, plans: plans.value, country }))
 
@@ -66,7 +66,7 @@ export function useHours() {
   const week = computed(() => {
     const { week, plan } = weekFor(ctx.value, today.value)
     const keys = [...KEYS.slice(firstDay - 1), ...KEYS.slice(0, firstDay - 1)]
-    return { plan, days: keys.map((key) => week.find((d) => d.day === key) ?? { day: key, closed: true } satisfies DayHours) }
+    return { plan, days: keys.map((key) => ({ day: key, ...(week[key] ?? { closed: true }) } satisfies DayHours & { day: Weekday })) }
   })
   /** Seasons and new hours that start within 120 days. */
   const comingPlans = computed(() => upcomingPlans(plans.value, today.value, 120))

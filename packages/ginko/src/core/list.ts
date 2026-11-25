@@ -22,24 +22,20 @@ export function searchable(text: string): string {
 }
 
 /**
- * The name the entry's own input gives it: a week planned ahead by its week ("Woche ab 19.10.2026"), else its first
- * filled text or longtext field in `locale`; undefined while nothing is typed. `label` words the week's field label
- * for the reader (default: in `locale`).
+ * The name the entry's own input gives it: the value of the field `listing.title` names, in `locale`. A date field
+ * reads as its label and the day ("Woche ab 19.10.2026"). Undefined for a single (it has no listing) and while the
+ * field is empty. `label` words a field label for the reader (default: in `locale`).
  */
 export function entryTitle(brick: Brick, data: Data, locale: Locale, label: (label: Label) => string = (l) => labelOf(l, locale, locale)): string | undefined {
-  if (brick.kind === 'collection' && brick.plans && typeof data[brick.plans.field] === 'string') {
-    const day = new Date(`${data[brick.plans.field] as string}T00:00:00Z`)
-    const field = brick.fields[brick.plans.field]
-    if (field && !Number.isNaN(day.getTime())) return `${label(field.label)} ${new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(day)}`
+  if (brick.kind !== 'collection') return undefined
+  const key = brick.listing.title
+  const field = Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
+  if (!field) return undefined
+  if (field.type === 'date') {
+    const day = typeof data[key] === 'string' ? new Date(`${data[key] as string}T00:00:00Z`) : undefined
+    return day && !Number.isNaN(day.getTime()) ? `${label(field.label)} ${new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(day)}` : undefined
   }
-  for (const [key, field] of ordered(brick.fields)) {
-    if (field.retired) continue
-    if (field.type === 'text' || field.type === 'longtext') {
-      const text = textIn(data[key], locale).trim()
-      if (text) return text
-    }
-  }
-  return undefined
+  return textIn(data[key], locale).trim() || undefined
 }
 
 /** All words of an entry's text and longtext fields in every language, in `searchable` form: what a list search matches. */
@@ -58,7 +54,7 @@ function sortKey(field: Brick['fields'][string], value: unknown, main: string): 
   switch (field.type) {
     case 'number': return Number(value)
     case 'money': return (value as { amount: number }).amount
-    case 'daterange': return (value as { from: string }).from
+    case 'daterange': return (value as { from?: string }).from ?? '' // a draft may lack a side
     case 'date': return String(value)
     default: return searchable(textIn(value, main))
   }

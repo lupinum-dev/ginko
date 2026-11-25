@@ -22,24 +22,28 @@ test('a preview that never gets ready says so after 8 s and links to the website
 })
 
 // Wrong behaviour caught: a dish (a brick without a route) previewed the events page, the first key of `pages` as
-// Convex stores it (keys sorted), instead of the menu page.
+// Convex stores it (keys sorted), instead of the menu page; or a brick keyed like a page opened that page without
+// saying so in `preview` (design V2 guess 13).
 test.each([
   ['menu', 'de', '/speisekarte'],
   ['menu', 'en', '/en/menu'],
   ['lunchPlans', 'de', '/mittagsmenue'],
   ['hourPlans', 'de', '/'],
   ['notices', 'en', '/en'],
+  ['gallery', 'de', '/'],
+  ['gallery', 'en', '/en'],
 ])('the preview of a %s entry opens %s %s', (brick, locale, page) => {
   const schema = {
     locales: ['de', 'en'],
-    pages: { events: { de: '/veranstaltungen', en: '/en/events' }, gallery: { de: '/galerie' }, home: { de: '/', en: '/en' }, lunch: { de: '/mittagsmenue' }, menu: { de: '/speisekarte', en: '/en/menu' } },
+    pages: { events: { de: '/veranstaltungen', en: '/en/events' }, gallery: { de: '/galerie' }, start: { de: '/', en: '/en' }, lunch: { de: '/mittagsmenue' }, menu: { de: '/speisekarte', en: '/en/menu' } },
     bricks: {
-      hours: { kind: 'single', status: { hours: { plans: 'hourPlans' } }, fields: {} },
+      hours: { kind: 'single', status: { rule: 'opening-hours', plans: 'hourPlans' }, fields: {} },
       hourPlans: { kind: 'collection', fields: {} },
       notices: { kind: 'collection', fields: {} },
-      lunch: { kind: 'single', fields: {} },
+      lunch: { kind: 'single', preview: 'lunch', fields: {} },
       lunchPlans: { kind: 'collection', plans: { brick: 'lunch', field: 'weekOf' }, fields: {} },
-      menu: { kind: 'collection', fields: {} },
+      menu: { kind: 'collection', preview: 'menu', fields: {} },
+      gallery: { kind: 'single', fields: {} },
     },
   } as unknown as Schema
   expect(previewPageOf(schema, brick, locale)).toBe(page)

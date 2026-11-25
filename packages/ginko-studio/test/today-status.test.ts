@@ -5,7 +5,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { expect, test, vi } from 'vitest'
-import { collection, defineSite, f, single } from '@lupinum/ginko'
+import { collection, defineSite, f, single } from '@lupinum/ginko/internal'
 import { serializeSchema, type HoursToday, type StatusLine } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import QuickPage from '../app/pages/s/[site]/index.vue'
@@ -15,10 +15,11 @@ Object.entries({ computed, nextTick, onMounted, reactive, ref, watch, watchEffec
 
 const TODAY = '2026-10-15'
 const schema = serializeSchema(defineSite({
-  site: 'linde', name: 'Linde', url: 'https://linde.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'linde', name: 'Linde', url: 'https://linde.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
   bricks: {
     events: collection({
+      listing: { title: 'title' },
       label: 'Veranstaltungen', describe: 'Was bei uns los ist', max: 20, order: 'manual',
       fields: { title: f.text('Titel'), image: f.image('Bild', { optional: true }) },
       tasks: [{ id: 'add', label: 'Veranstaltung hinzufügen', kind: 'create' }, { id: 'edit', label: 'Veranstaltung ändern', kind: 'edit', pick: true, fields: ['title'] }],
@@ -43,6 +44,8 @@ let toReview: number | undefined = 0
 let hoursEntry: Record<string, unknown> = {}
 /** proposals.mine `open`: the person's own proposals waiting for approval. */
 let ownOpen: unknown[] = []
+/** entries.stoppedPlans: plans and dated changes that stopped. */
+const stopped = ref<unknown[]>([])
 
 vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
@@ -63,6 +66,7 @@ vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   if (name === 'sites.today') return { data: ref(states) }
   if (name === 'proposals.count') return { data: computed(() => (skipped() ? undefined : toReview)) }
   if (name === 'proposals.mine') return { data: ref({ open: ownOpen, rejected: [], notLive: [] }) }
+  if (name === 'entries.stoppedPlans') return { data: stopped }
   if (name === 'entries.ofBricks') return { data: ref([{ _id: 'h1', brick: 'hours', kind: 'single', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: hoursEntry }]) }
   return { data: computed(() => undefined) }
 })
@@ -107,24 +111,26 @@ test('describe is the section\'s one-line lede under its heading', async () => {
   wrapper.unmount()
 })
 
-// Wrong behaviour caught: every first button shouts (or none does), so the one section that needs doing is lost.
-test.each([[true, 'default'], [false, 'secondary']])('a section due: %s fills its first button: %s', async (due, variant) => {
+// Wrong behaviour caught: a card has no filled button or two (nothing says which task is its daily one), or the section
+// that needs doing looks like the others. Since the brand look (D79) every card fills its first task; "Fällig" is the
+// badge beside the heading.
+test.each([[true], [false]])('a card fills only its first task; due: %s shows as the badge', async (due) => {
   states = [{ brick: 'events', line: { kind: 'missing', count: due ? 2 : 0, field: 'image' }, due }]
   const wrapper = await page()
-  const buttons = section(wrapper, 'events').findAll('button[data-slot="button"]')
-  expect(buttons.map((b) => b.attributes('data-variant'))).toEqual([variant, 'outline'])
-  expect(section(wrapper, 'hours').get('button[data-slot="button"]').attributes('data-variant')).toBe('secondary')
+  const events = section(wrapper, 'events')
+  expect(events.findAll('button[data-slot="button"]').map((b) => b.attributes('data-variant'))).toEqual(['default', 'outline'])
+  expect(events.findAll('[data-slot="badge"]').some((b) => b.text() === 'Fällig')).toBe(due)
+  expect(section(wrapper, 'hours').get('button[data-slot="button"]').attributes('data-variant')).toBe('default')
   wrapper.unmount()
 })
 
-// Wrong behaviour caught: after the cook sent this week's lunch for approval, the area still says "Fällig" and fills its
-// button, so they do the week a second time and a competing proposal waits.
-test.each([[false, 'default'], [true, 'secondary']])('own weekly proposal waiting: %s, first button: %s', async (sent, variant) => {
+// Wrong behaviour caught: after the cook sent this week's lunch for approval, the area still says "Fällig", so they do
+// the week a second time and a competing proposal waits.
+test.each([[false], [true]])('own weekly proposal waiting: %s takes "Fällig" away', async (sent) => {
   states = [{ brick: 'lunch', line: null, due: true }]
   ownOpen = sent ? [{ proposal: 'p1', task: 'lunch.week', via: 'ui', sentence: 'Mittagsmenü geändert', msg: null, createdAt: Date.UTC(2026, 9, 15, 9) }] : []
   const wrapper = await page()
   const lunch = section(wrapper, 'lunch')
-  expect(lunch.get('button[data-slot="button"]').attributes('data-variant')).toBe(variant)
   expect(lunch.find('[data-slot="badge"]').exists()).toBe(!sent)
   wrapper.unmount()
   ownOpen = []
@@ -166,7 +172,7 @@ test('the verdict waits for the state of the areas before it says nothing needs 
 // Wrong behaviour caught: with "Heute geschlossen" set for today the page says it twice (flag sentence and hours line,
 // or the reason in the line and again under it), or the hours line takes "Aufheben" with it.
 test('the hours line replaces the today flag sentence and keeps Aufheben', async () => {
-  states = [{ brick: 'hours', line: { kind: 'hours', today: { closed: true, reason: 'Wasserrohrbruch' } }, due: false }]
+  states = [{ brick: 'hours', line: { kind: 'rule', rule: 'opening-hours', today: { closed: true, reason: 'Wasserrohrbruch' } }, due: false }]
   hoursEntry = { closedOn: TODAY, closedNote: 'Wasserrohrbruch' }
   const wrapper = await page()
   const hours = section(wrapper, 'hours')
@@ -174,12 +180,15 @@ test('the hours line replaces the today flag sentence and keeps Aufheben', async
   expect(hours.find('[data-k="site.quick.todayDone"]').exists()).toBe(false)
   expect(hours.text()).not.toContain('„Wasserrohrbruch“')
   expect(hours.findAll('button').map((b) => b.text())).toContain('Aufheben')
+  // The green "open" card must not show on a day entered as closed.
+  expect(hours.attributes('data-tint')).toBeUndefined()
   wrapper.unmount()
-  // Without the flag the hours line stands under the heading.
-  states = [{ brick: 'hours', line: { kind: 'hours', today: { ranges: [['11:30', '14:30'], ['17:30', '22:00']] } }, due: false }]
+  // Without the flag the hours line stands under the heading: one sentence, also where the times stand large.
+  states = [{ brick: 'hours', line: { kind: 'rule', rule: 'opening-hours', today: { ranges: [['11:30', '14:30'], ['17:30', '22:00']] } }, due: false }]
   hoursEntry = {}
   const open = await page()
   expect(section(open, 'hours').get('[data-test="status"]').text()).toBe('Heute geöffnet 11:30–14:30, 17:30–22:00')
+  expect(section(open, 'hours').attributes('data-tint')).toBe('')
   open.unmount()
 })
 
@@ -189,11 +198,28 @@ test.each<[string, HoursToday, boolean, string]>([
   ['a public holiday names it', { closed: true, reason: { de: 'Nationalfeiertag', en: 'Austrian National Day' } }, false, 'Heute geschlossen · Nationalfeiertag'],
   ['no hours for today is due', { unknown: true }, true, 'Für heute sind keine Öffnungszeiten eingetragen.'],
 ])('hours line: %s', async (_name, today, due, text) => {
-  states = [{ brick: 'hours', line: { kind: 'hours', today }, due }]
+  states = [{ brick: 'hours', line: { kind: 'rule', rule: 'opening-hours', today }, due }]
   hoursEntry = {}
   const wrapper = await page()
   const line = section(wrapper, 'hours').get('[data-test="status"]')
   expect(line.text()).toBe(text)
   expect(line.classes().includes('text-warning')).toBe(due)
   wrapper.unmount()
+})
+
+// Wrong behaviour caught: two stopped changes of one entry share the entry as their key, so Vue mixes up their tiles when
+// the list changes (one tile per entry instead of one per change).
+test('two stopped changes of one entry are two tiles, keyed by the change', async () => {
+  states = []
+  const row = (id: string, day: string) => ({
+    entry: 'e1', brick: 'events', at: 1, change: { id, from: day },
+    title: null, titleText: `„Lesung“: Änderung ab ${day} wurde nicht übernommen`, cause: null, causeText: `Grund ${id}`,
+  })
+  stopped.value = [row('c1', '1. November'), row('c2', '8. November')]
+  const wrapper = await page()
+  expect(['Grund c1', 'Grund c2'].map((cause) => wrapper.text().includes(cause))).toEqual([true, true])
+  // The tile's id is its key in the list (TodayWaiting).
+  expect(wrapper.findComponent({ name: 'TodayWaiting' }).props('tiles').map((tile: { id: string }) => tile.id)).toEqual(['s-c1', 's-c2'])
+  wrapper.unmount()
+  stopped.value = []
 })

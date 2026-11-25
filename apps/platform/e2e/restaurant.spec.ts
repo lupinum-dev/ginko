@@ -1,8 +1,8 @@
 // The restaurant jobs of UI.md 9, as the owner (Wirtin) and the cook (Koch) do them, at 390 and 1440 px.
-import { addDays, DEFAULT_WEEK, todayIn, workWeekOf } from '@lupinum/ginko/internal'
-import { expect, test, type Page } from '@playwright/test'
+import { addDays, todayIn, weekInfo, workWeekOf } from '@lupinum/ginko/internal'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
-import { codeFor, openQuick, resetContent, serverDir } from './local'
+import { codeFor, onlinePrice, openQuick, resetContent, serverDir } from './local'
 
 const today = () => todayIn('Europe/Vienna')
 const asOwner = { storageState: STATE.owner }
@@ -19,6 +19,13 @@ async function confirmAllergens(page: Page) {
   await expect(ask).toBeVisible()
   await page.getByRole('button', { name: 'Ja, stimmt' }).click()
   await expect(ask).toHaveCount(0)
+}
+
+/** Taps the pill of a choice option: its radio or checkbox is in the pill but not drawn (21bbb3d3). */
+async function pick(scope: Locator, role: 'radio' | 'checkbox', name: string) {
+  const input = scope.getByRole(role, { name, exact: true })
+  await scope.locator('label').filter({ has: scope.page().getByRole(role, { name, exact: true }) }).click()
+  await expect(input).toBeChecked()
 }
 
 test.describe('Wirtin', () => {
@@ -66,7 +73,7 @@ test.describe('Wirtin', () => {
     await page.getByRole('button', { name: 'Mittagsmenü dieser Woche' }).click()
     const sheet = page.getByRole('dialog')
     // The weekly task always covers this week: the week is shown, not asked.
-    const monday = new Date(`${workWeekOf(today(), DEFAULT_WEEK)}T12:00:00Z`).toLocaleDateString('de', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    const monday = new Date(`${workWeekOf(today(), weekInfo({ firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }))}T12:00:00Z`).toLocaleDateString('de', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' })
     await expect(sheet.locator('[data-test="fixed-week"]')).toContainText(monday)
     await expect(sheet.locator('input[type="date"]')).toHaveCount(0)
     const tuesday = sheet.locator('li', { has: page.getByRole('heading', { name: 'Dienstag' }) })
@@ -84,13 +91,13 @@ test.describe('Wirtin', () => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Gericht hinzufügen' }).click()
     const sheet = page.getByRole('dialog')
-    await sheet.getByRole('radio', { name: 'Hauptspeisen' }).check()
+    await pick(sheet, 'radio', 'Hauptspeisen')
     await sheet.getByLabel('Name').fill('Ofengemüse')
     await sheet.getByLabel('Preis', { exact: true }).fill('13,50')
-    await sheet.getByRole('radio', { name: 'vegan' }).check()
+    await pick(sheet, 'radio', 'vegan')
     await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
     await expect(sheet.getByText('„Allergene“ fehlt.')).toBeVisible()
-    await sheet.getByRole('checkbox', { name: 'Keine', exact: true }).click()
+    await pick(sheet, 'checkbox', 'Keine')
     await sheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
     await expect(toast(page)).toContainText('Veröffentlicht')
   })
@@ -350,7 +357,8 @@ test.describe('Koch', () => {
     await expect(page.getByRole('link', { name: 'Team' })).toHaveCount(0)
   })
 
-  test('4. changes a price found by search; a parallel change by the Wirtin shows as a conflict', async ({ page, browser }) => {
+  // Wrong behaviour caught (I1): "Meine Eingaben behalten" saved at once, or closed the sheet with his price unsaved.
+  test('4. changes a price found by search; a parallel change by the Wirtin shows as a conflict, and his kept input waits for his press', async ({ page, browser }) => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Preis ändern' }).click()
     await page.getByRole('searchbox').fill('schnitz')
@@ -381,9 +389,20 @@ test.describe('Koch', () => {
     await expect(conflict).toContainText('Ein Mitglied hat inzwischen Preis geändert.')
     await expect(conflict).toContainText('23,00')
     await expect(conflict).toContainText('22,50')
-    await conflict.getByRole('button', { name: 'Meine Eingaben speichern' }).click()
-    // The answer repeats what he pressed: the price goes online.
+    // An answer to the conflict only puts his input back in the form (I1): the sheet stays open and says so, nothing
+    // is saved, and the price online is still the Wirtin's.
+    await conflict.getByRole('button', { name: 'Meine Eingaben behalten' }).click()
+    const sheet = page.getByRole('dialog')
+    const merged = sheet.getByText('Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.')
+    await expect(merged).toBeVisible()
+    await expect(merged).toBeFocused()
+    await expect(price).toHaveValue('22,50')
+    expect(onlinePrice('Wiener Schnitzel vom Kalb')).toBe(2300)
+    // The primary button says what it does, and a press does it.
+    const primary = sheet.getByRole('button', { name: 'Veröffentlichen', exact: true })
+    await primary.click()
     await expect(toast(page)).toContainText('Veröffentlicht')
+    await expect.poll(() => onlinePrice('Wiener Schnitzel vom Kalb')).toBe(2250)
   })
 })
 

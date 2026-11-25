@@ -1,12 +1,12 @@
-// Rows of a list field compared by their `_id`: what History shows of a list change, and the merge when
-// two people changed the same list at once. Pure functions, shared by the server and the Studio.
+// Rows of a list field compared by their `_id`, and rows of a rows field by their key: what History shows of a change,
+// and the merge when two people changed the same list at once. Pure functions, shared by the server and the Studio.
 import { stableJson } from './sha256.ts'
 import type { Json } from './types.ts'
 
 type Row = Record<string, Json>
 
 export interface RowDiff {
-  /** The row's `_id`; `#<index>` for a row without one (legacy data). */
+  /** The row's `_id` (`#<index>` for a list row without one, legacy data), or a rows field's row key. */
   id: string
   change: 'added' | 'removed' | 'changed'
   before: Json | null
@@ -38,6 +38,29 @@ export function rowDiffs(before: Json | null | undefined, after: Json | null | u
   const kept = (map: Map<string, unknown>, other: Map<string, unknown>) => [...map.keys()].filter((id) => other.has(id))
   const reordered = kept(oldById, nextById).join('\n') !== kept(nextById, oldById).join('\n')
   return reordered ? { rows, reordered } : { rows }
+}
+
+/**
+ * Added, removed and changed rows of a rows field (`{ mo: { … }, … }`) by row key, in `order`: the field's rows
+ * (`rowKeysOf`), so the lines read Monday to Friday whatever order the stored maps hold their keys in. A row the
+ * field no longer has comes after them.
+ */
+export function keyedRowDiffs(before: Json | null | undefined, after: Json | null | undefined, order: readonly string[]): { rows: RowDiff[] } {
+  const was = isRow(before) ? before : {}
+  const now = isRow(after) ? after : {}
+  const rows: RowDiff[] = []
+  for (const key of new Set([...order, ...Object.keys(now), ...Object.keys(was)])) {
+    const old = Object.hasOwn(was, key) ? was[key] : undefined
+    const row = Object.hasOwn(now, key) ? now[key] : undefined
+    if (old === undefined && row === undefined) continue
+    if (old === undefined) rows.push({ id: key, change: 'added', before: null, after: row! })
+    else if (row === undefined) rows.push({ id: key, change: 'removed', before: old, after: null })
+    else if (differs(old, row)) {
+      const fields = isRow(old) && isRow(row) ? [...new Set([...Object.keys(old), ...Object.keys(row)])].filter((k) => differs(old[k], row[k])) : undefined
+      rows.push({ id: key, change: 'changed', before: old, after: row, ...(fields ? { fields } : {}) })
+    }
+  }
+  return { rows }
 }
 
 /**
@@ -87,4 +110,22 @@ export function mergeRows(base: Json | null | undefined, mine: Json | null | und
     if (ids.includes(id)) previous = id
   }
   return { rows, clashes, reordered }
+}
+
+/**
+ * Both people's changes of one rows field (`{ mo: { … }, … }`) since `base`, row by row: a row only one side changed
+ * takes that side's row. `clashes` are the keys of rows both changed differently; such a row keeps theirs, and the
+ * person chooses one version. Rows are never added or moved by people, so there is nothing else to merge.
+ */
+export function mergeKeyedRows(base: Json | null | undefined, mine: Json | null | undefined, theirs: Json | null | undefined): { rows: Row; clashes: string[] } {
+  const [b, m, t] = [base, mine, theirs].map((value) => (isRow(value) ? value : {})) as [Row, Row, Row]
+  const rows: Row = {}
+  const clashes: string[] = []
+  for (const key of new Set([...Object.keys(t), ...Object.keys(m)])) {
+    const [was, my, their] = [b[key], m[key], t[key]]
+    if (differs(was, my) && differs(was, their) && differs(my, their)) clashes.push(key)
+    const value = differs(was, my) && !clashes.includes(key) ? my : their
+    if (value !== undefined) rows[key] = value
+  }
+  return { rows, clashes }
 }

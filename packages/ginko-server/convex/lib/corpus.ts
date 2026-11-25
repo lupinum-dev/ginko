@@ -1,14 +1,16 @@
 // Demo content from a corpus (contracts/<site>/data.json), shared by the local reset (seed.ts) and
 // the demo fill (demo.ts): the entries with their slugs and counters, and invites for the demo people.
 import type { Json } from '@lupinum/ginko'
-import { entryBytes, sha256, type Schema } from '@lupinum/ginko/internal'
+import { changeIssues, dataOn, entryBytes, namesOf, sha256, isException, keptChanges, todayIn, type Change, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { checkGrants, normalizeEmail } from '../members'
 import { treesOf } from './content'
+import { insertWaiting } from './dated'
 import { putTrees } from './trees'
 
-type CorpusEntry = { id: string; order?: number; data: Record<string, Json>; prints?: Record<string, Record<string, string>> }
+/** `changes`: dated changes (D125); a passed one is written into `data`, a waiting one gets its row and its run. */
+type CorpusEntry = { id: string; order?: number; data: Record<string, Json>; prints?: Record<string, Record<string, string>>; changes?: Change[] }
 
 /** File fields point at uploads; the corpus names files that do not exist here, so they are left out. */
 function withoutFiles(schema: Schema, brick: string, data: Record<string, Json>): Record<string, Json> {
@@ -19,6 +21,12 @@ function withoutFiles(schema: Schema, brick: string, data: Record<string, Json>)
     if (field?.type === 'image' || field?.type === 'file') continue
     if (field?.type === 'list' && Array.isArray(value) && Object.values(field.of).some((f) => f.type === 'image' || f.type === 'file')) {
       out[key] = []
+      continue
+    }
+    // A rows field keeps its rows: only its file cells go.
+    if (field?.type === 'rows' && value && typeof value === 'object' && !Array.isArray(value)) {
+      const files = Object.keys(field.of).filter((k) => field.of[k]!.type === 'image' || field.of[k]!.type === 'file')
+      out[key] = files.length ? Object.fromEntries(Object.entries(value).map(([row, cells]) => [row, cells && typeof cells === 'object' && !Array.isArray(cells) ? Object.fromEntries(Object.entries(cells).filter(([k]) => !files.includes(k))) : cells])) : value
       continue
     }
     out[key] = value
@@ -35,11 +43,17 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
   let bytes = 0
   let treeBytes = 0
   let count = 0
+  const today = todayIn(schema.timeZone)
   for (const [brick, rows] of Object.entries(corpus)) {
     const def = schema.bricks[brick]
     if (!def) continue
+    // Corpus entries are online, so their names (D96) are fixed: from the main slug or the title, as the upgrade makes them.
+    const names = def.kind === 'collection' ? namesOf(brick, def, schema.locales[0]!, rows.map((row) => withoutFiles(schema, brick, row.data))) : []
     for (const [index, row] of rows.entries()) {
-      const data = withoutFiles(schema, brick, row.data)
+      const changes = row.changes ?? []
+      const problem = changes.length ? (await changeIssues(schema, brick, row.data, changes))[0] : undefined
+      if (problem) throw new Error(`corpus ${brick}/${row.id}: ${problem.path} ${problem.message}`)
+      const data = withoutFiles(schema, brick, dataOn(row.data, changes.filter((c) => !isException(c)), today))
       const prints = row.prints ?? {}
       const size = entryBytes(data, prints)
       const trees = await treesOf(def.fields, data)
@@ -47,8 +61,10 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
       const id = await ctx.db.insert('entries', {
         site: site._id, brick, kind: def.kind === 'single' ? 'single' : 'item', order: row.order ?? index + 1,
         data, rev: 1, fieldRevs, lifeRev: 1, prints, bytes: size, treeBytes: trees.bytes, contentAt: Date.now(),
+        ...(def.kind === 'collection' ? { name: names[index]!, nameFixed: true as const } : {}),
       })
       await putTrees(ctx, site._id, id, trees.json)
+      await insertWaiting(ctx, schema, { _id: id, site: site._id, brick, rev: 1 }, keptChanges(changes, today))
       bytes += size
       treeBytes += trees.bytes
       count++

@@ -40,8 +40,8 @@ describe('singaporeHolidays', () => {
   })
 })
 
-const open = (day: string): DayHours => ({ day, closed: false, from1: '11:30', to1: '14:00' })
-const week = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'].map(open)
+const open: DayHours = { closed: false, from1: '11:30', to1: '14:00' }
+const week = Object.fromEntries((['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const).map((day) => [day, open]))
 const closedOnHolidays: HoursData = { week, exceptions: [], holidays: 'closed' }
 
 describe('hoursOn with a calendar', () => {

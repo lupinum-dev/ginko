@@ -2,11 +2,12 @@
 // a release before it is sent. The platform repeats the same work in sites.release (SPEC 5.2),
 // so both must stay in step: same migration rules, same defaults, same validation.
 import {
-  checkSite, defaultsFor, entryBytes, recheckAll, fitsBudget, isTranslatable, releaseData, SITE_BUDGET, validate,
+  checkSite, defaultsFor, entryBytes, recheckAll, fitsBudget, isTranslatable, planDay, releaseData, SITE_BUDGET, validate, withPublishedOn,
   type Field, type Fields, type Json, type Locale, type Migration, type MigrationDescriptor, type Schema, type SiteInput,
 } from '../core/index.ts'
 import { type Candidate, isObject, type ReleaseState, type Write } from './model.ts'
 import { english, kib } from './report.ts'
+import { statusRules } from '../patterns/rules.ts'
 
 /**
  * Builds the release candidate from the stored state and the local config. Runs every migration
@@ -15,7 +16,7 @@ import { english, kib } from './report.ts'
  * `schema` is the platform schema of `site` (without file bricks, CONTENT.md); `plan()` passes the one it built.
  */
 export async function buildCandidate(state: ReleaseState, site: SiteInput, schema: Schema): Promise<Candidate> {
-  const problems = checkSite(site, schema)
+  const problems = checkSite(site, statusRules, schema)
   const applied = new Set([...state.schema.migrations, ...state.migrations].map((m) => m.id))
   const fresh = schema.migrations.filter((m) => !applied.has(m.id))
 
@@ -54,24 +55,30 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput, schem
 
   const changed: Candidate['changed'] = []
   const created: Candidate['created'] = []
-  const checked: { id: string; brick: string; data: Record<string, Json> }[] = []
+  const checked: { id: string; brick: string; data: Record<string, Json>; draft: boolean; planned?: number }[] = []
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (!Object.hasOwn(state.schema.bricks, key)) {
-      if (brick.kind === 'single') created.push({ brick: key, data: defaultsFor(brick.fields) })
+      if (brick.kind === 'single') created.push({ brick: key, data: defaultsFor(brick.fields, schema.week) })
       continue
     }
     const all = recheckAll(state.schema, schema, key)
     for (const entry of state.entries) {
       if (entry.brick !== key) continue
-      const next = releaseData(state.schema.bricks[key]!.fields, brick.fields, entry.data, writes.get(entry.id) ?? {})
+      const next = releaseData(state.schema.bricks[key]!.fields, brick.fields, entry.data, writes.get(entry.id) ?? {}, [state.schema.week, schema.week])
       if (next.roots.length) changed.push({ id: entry.id, brick: key, data: next.data })
-      if (next.roots.length || all) checked.push({ id: entry.id, brick: key, data: next.data })
+      // A draft without a time may be incomplete, not badly formed (D115, mode `draft`); a planned one is checked with its
+      // empty `publishedOn` filled by the plan's day (rule 9, D108). As sites.release does.
+      if (next.roots.length || all) {
+        const draft = entry.state === 'draft'
+        checked.push({ id: entry.id, brick: key, data: next.data, draft: draft && entry.publishAt === undefined, ...(draft && entry.publishAt !== undefined ? { planned: entry.publishAt } : {}) })
+      }
     }
   }
 
   // Every entry of a brick whose fields changed is checked, not only the written ones (break-it 9).
   for (const entry of checked) {
-    for (const issue of (await validate(schema, entry.brick, entry.data, { mode: 'release' })).errors) {
+    const data = entry.planned === undefined ? entry.data : withPublishedOn(schema, entry.brick, entry.data, planDay(schema, entry.planned))
+    for (const issue of (await validate(schema, entry.brick, data, { mode: entry.draft ? 'draft' : 'release' })).errors) {
       problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
     }
   }
@@ -139,7 +146,7 @@ function migrate(migration: Migration, descriptor: MigrationDescriptor, field: F
   return out
 }
 
-/** The entry with its translatable values (top level and inside list rows) resolved to one locale. A missing locale is left out. */
+/** The entry with its translatable values (top level and inside the rows of lists and rows fields) resolved to one locale. A missing locale is left out. */
 function forLocale(fields: Fields, data: Record<string, Json>, locale: Locale): Record<string, Json> {
   const out: Record<string, Json> = {}
   for (const [name, value] of Object.entries(data)) {
@@ -149,6 +156,8 @@ function forLocale(fields: Fields, data: Record<string, Json>, locale: Locale): 
       if (picked !== undefined) out[name] = picked
     } else if (field?.type === 'list' && Array.isArray(value)) {
       out[name] = value.map((row) => (isObject(row) ? forLocale(field.of, row as Record<string, Json>, locale) : row))
+    } else if (field?.type === 'rows' && isObject(value)) {
+      out[name] = Object.fromEntries(Object.entries(value as Record<string, Json>).map(([key, row]) => [key, isObject(row) ? forLocale(field.of, row as Record<string, Json>, locale) : row]))
     } else {
       out[name] = value
     }

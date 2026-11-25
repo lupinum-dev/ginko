@@ -20,7 +20,7 @@ const closures = computed(() => upcomingClosures(ctx.value, today.value, h.value
 // Only the menu of the week that contains today counts (a planned week wins); on the weekend the coming week is not today's dish.
 const dish = computed(() => {
   if (state.value.kind !== 'open' || !lunchCurrent.value || lunch.value.data.weekOf !== startOfWeek(today.value, useGinkoWeek())) return undefined
-  return lunch.value.data.days.find((d) => d.day === weekdayOf(today.value))
+  return lunch.value.data.days[weekdayOf(today.value)]
 })
 </script>
 
@@ -46,7 +46,7 @@ const dish = computed(() => {
     <div v-if="dish" class="lunch">
       <h3>{{ t('lunchToday') }}</h3>
       <p class="dish">
-        <span :lang="langOf(lunch, `days.${dish._id}.dish`)">{{ dish.dish }}</span>
+        <span :lang="langOf(lunch, `days.${weekdayOf(today)}.dish`)">{{ dish.dish }}</span>
         <span v-if="dish.price" class="price">{{ formatMoney(dish.price, language) }}</span>
       </p>
       <Allergens :codes="dish.allergens" class="on-dark" />

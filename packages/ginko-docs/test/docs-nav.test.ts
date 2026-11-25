@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { NavNode } from '@lupinum/ginko'
+import { defineSite, type NavNode } from '@lupinum/ginko'
 import { navTree, outline, type Bundle, type BundleItem, type OutlineNode, type OutlineRow } from '@lupinum/ginko/internal'
 import { enrichNav, type DocFields, type DocNode } from '../app/lib/docsNav'
+import { docsCollection } from '../src/config.ts'
 
 const node = (id: string, children: NavNode[] = []): NavNode => ({ id, title: id, path: `/docs/${id}`, children } as NavNode)
 
@@ -35,6 +36,7 @@ describe('enrichNav', () => {
 // website does, so an owner arranges pages by a picture that is not the site. Random structures, stored cycles included.
 describe('the Studio outline and the website', () => {
   it('nest and group the same pages the same way', () => {
+    const { docs } = defineSite({ name: 'Docs', url: 'https://docs.example', timeZone: 'Europe/Vienna', currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo'] }, locales: ['en'], entries: { docs: '/docs/[slug]' }, bricks: { docs: docsCollection() } }).bricks
     let seed = 11
     const rnd = (n: number) => { seed = (seed * 1103515245 + 12345) % 2 ** 31; return seed % n }
     for (let round = 0; round < 300; round++) {
@@ -46,7 +48,7 @@ describe('the Studio outline and the website', () => {
       }
       const items: BundleItem[] = rows.map((r) => ({ id: r.id, data: { title: r.id, ...r }, fallback: [], urls: { en: `/docs/${r.id}` } }))
       const bundle = { format: 3, site: 's', locale: 'en', locales: ['en'], mainLocale: 'en', currency: 'EUR', schemaRev: 1, contentRev: 1, generatedAt: '', bricks: { docs: { kind: 'collection', items } } } as Bundle
-      const site = enrichNav(navTree(bundle, ['docs'], 'en'), (id) => rows.find((r) => r.id === id))
+      const site = enrichNav(navTree(bundle, ['docs'], 'en', { bricks: { docs } }), (id) => rows.find((r) => r.id === id))
       const fromSite = (n: DocNode): unknown => [n.id, n.tab, n.section, n.children.map(fromSite)]
       const fromOutline = (n: OutlineNode, tab?: string): unknown => [n.row.id, n.tab ?? tab, n.section, n.children.map((c) => fromOutline(c, n.tab ?? tab))]
       expect(outline(rows).map((n) => fromOutline(n)), JSON.stringify(rows)).toEqual(site.map(fromSite))

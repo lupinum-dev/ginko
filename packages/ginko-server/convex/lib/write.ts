@@ -102,15 +102,20 @@ export interface LiveEdit {
  * Cheap first: without a new link target in the Markdown text no bundle is built. Otherwise the bundles of
  * all languages are built with the new data of every edit in place of the stored one and checked by the core
  * `checkLinks` without a `files` option (the platform does not know the site's public files, so an unknown
- * plain path is not an error). Edits of drafts are not live and must not be passed.
+ * plain path is not an error). A plain draft is not going online and is not passed; a draft that goes online is: the
+ * plan call, the save and undo of a planned draft, with `plannedBy` its time (D106), and publishing at once.
  */
-export async function checkNewLinks(ctx: QueryCtx, site: Doc<'sites'>, edits: LiveEdit[]) {
-  const issue = await brokenNewLinks(ctx, site, edits)
+export async function checkNewLinks(ctx: QueryCtx, site: Doc<'sites'>, edits: LiveEdit[], plannedBy?: number) {
+  const issue = await brokenNewLinks(ctx, site, edits, plannedBy)
   if (issue) fail('INVALID', 'errors.linkBroken', { link: issue.href }, { field: issue.field, link: issue.href })
 }
 
-/** The first new broken link of the edits, if any; `checkNewLinks` throws on it, the scheduled publish records it. */
-export async function brokenNewLinks(ctx: QueryCtx, site: Doc<'sites'>, edits: LiveEdit[]): Promise<LinkIssue | undefined> {
+/**
+ * The first new broken link of the edits, if any; `checkNewLinks` throws on it, the scheduled publish records it.
+ * `plannedBy`: the edits go online at that time (a plan, or its job), so a draft planned for then or earlier is a
+ * valid target (D106).
+ */
+export async function brokenNewLinks(ctx: QueryCtx, site: Doc<'sites'>, edits: LiveEdit[], plannedBy?: number): Promise<LinkIssue | undefined> {
   const added = new Map<string, Set<string>>()
   for (const e of edits) {
     const known = linkTargets(e.fields, e.before)
@@ -121,7 +126,7 @@ export async function brokenNewLinks(ctx: QueryCtx, site: Doc<'sites'>, edits: L
   const schema = site.schema as Schema
   const overrides = new Map(edits.map((e) => [e.entry._id as string, e.after]))
   const items: NewItem[] = edits.filter((e) => e.isNew).map((e) => ({ brick: e.entry.brick, id: e.entry._id, data: e.after }))
-  const bundles = await Promise.all(schema.locales.map((locale) => bundleOf(ctx, site, locale, overrides, items)))
+  const bundles = await Promise.all(schema.locales.map((locale) => bundleOf(ctx, site, locale, { overrides, added: items, plannedBy, keepEnded: true })))
   for (const issue of checkLinks(bundles, schema)) {
     if (issue.severity !== 'error') continue
     const edit = edits.find((e) => issue.brick === e.entry.brick && (issue.id === e.entry._id || issue.id === e.entry.brick))
@@ -186,7 +191,7 @@ interface Placement {
   field: FileField
 }
 
-/** Every file placed in a file field of the entry, list rows included. */
+/** Every file placed in a file field of the entry, the rows of lists and rows fields included. */
 function placementsOf(fields: Fields, data: Data): Placement[] {
   const out: Placement[] = []
   const walk = (path: string, field: Field, value: Json | undefined) => {
@@ -197,13 +202,16 @@ function placementsOf(fields: Fields, data: Data): Placement[] {
         if (typeof row === 'object' && row !== null && !Array.isArray(row)) for (const [k, inner] of Object.entries(field.of)) walk(`${path}.${i}.${k}`, inner, row[k])
       })
     }
+    if (field.type === 'rows' && !Array.isArray(value)) {
+      for (const [key, row] of Object.entries(value)) if (typeof row === 'object' && row !== null && !Array.isArray(row)) for (const [k, inner] of Object.entries(field.of)) walk(`${path}.${key}.${k}`, inner, row[k])
+    }
   }
   for (const [name, field] of Object.entries(fields)) walk(name, field, data[name])
   return out
 }
 
 /** Replaces the file references of one holder with exactly `ids`. */
-export async function syncFileRefs(ctx: MutationCtx, site: Id<'sites'>, holder: 'entry' | 'change' | 'pending', holderId: string, ids: Set<string>) {
+export async function syncFileRefs(ctx: MutationCtx, site: Id<'sites'>, holder: 'entry' | 'change' | 'pending' | 'dated', holderId: string, ids: Set<string>) {
   const rows = await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', holder).eq('holderId', holderId)).collect()
   const have = new Set(rows.map((r) => r.file as string))
   for (const row of rows) if (!ids.has(row.file)) await ctx.db.delete(row._id)

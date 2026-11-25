@@ -19,10 +19,8 @@ export function useDocsBlog() {
   const { format } = useI18n()
   const formatDate = (iso: string) => format.date(iso, 'long')
 
-  // `draft` is a reserved content key, no schema field; it reaches the bundle only in dev, where drafts show.
-  const isDraft = (post: Post) => 'draft' in post.data && post.data.draft === true
   return {
-    hasPosts, hasChangelog, authorsOf, isDraft, formatDate,
+    hasPosts, hasChangelog, authorsOf, formatDate,
     blogPath: computed(() => localePath(address.blog)),
     feedPath: computed(() => localePath(`${address.blog}/rss.xml`)),
     changelogPath: computed(() => localePath(address.changelog)),

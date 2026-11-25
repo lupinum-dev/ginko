@@ -27,6 +27,8 @@ const stored: Entry = {
 let refuseNext: unknown
 /** The next save becomes a proposal, as for a task that needs approval. */
 let proposeNext = false
+/** The warnings the next save or create returns, as the server does for a draft without a time (D115). */
+let warnNext: unknown[] | undefined
 /** While set, the next save waits for it, as a save on its way does. */
 let landing: Promise<void> | undefined
 /** The live list's view of the entry: undefined once someone removed it. */
@@ -48,11 +50,15 @@ vi.stubGlobal('useOps', () => ({
       proposeNext = false
       return {}
     }
-    return { rev: 7 }
+    const warnings = warnNext ?? []
+    warnNext = undefined
+    return { rev: 7, warnings }
   },
   createEntry: async (args: { data: unknown }) => {
     calls.push(['create', args.data])
-    return { entry: 'e2' }
+    const warnings = warnNext ?? []
+    warnNext = undefined
+    return { entry: 'e2', rev: 1, warnings }
   },
   restoreEntry: async (entry: string, lifeRev: number) => {
     calls.push(['restore', entry, lifeRev])
@@ -67,7 +73,7 @@ const { useKeptEntry } = await import('../app/composables/useKeptEntry')
 const { default: ConflictPanel } = await import('../app/components/ConflictPanel.vue')
 
 const brick = {
-  kind: 'collection', label: 'Gerichte',
+  kind: 'collection', label: 'Gerichte', listing: { title: 'name' },
   fields: {
     name: { type: 'text', label: 'Name', pos: 0 }, description: { type: 'longtext', label: 'Beschreibung', pos: 1 },
     sides: { type: 'list', label: 'Beilagen', pos: 2, of: { name: { type: 'text', label: 'Name' } } },
@@ -98,6 +104,7 @@ beforeEach(() => {
   toasts.length = 0
   live.value = stored
   refuseNext = undefined
+  warnNext = undefined
   landing = undefined
   connected.value = true
   localStorage.clear()
@@ -157,10 +164,105 @@ describe('useEntryForm', () => {
     }
     expect(await form.save()).toBe(false)
 
-    expect(await form.mergeLists()).toBe(true)
+    expect([form.mergeLists(), await form.saveAgain()]).toEqual([true, true])
     expect(calls).toEqual([
       ['save', { entry: 'e1', baseRev: 6, fields: { sides: [salad, { _id: 'r2', name: 'Frittatensuppe' }, { _id: 'r3', name: 'Kaspressknödel' }] } }],
     ])
+  })
+})
+
+// A rows field keeps its rows, so a conflict merges row by row key, as a list merges by `_id`.
+describe('notes of a draft (D116)', () => {
+  const missing = { path: 'description', message: '„Beschreibung“ fehlt.', code: 'REQUIRED' }
+
+  // Wrong behaviour caught: a draft saved with an empty required field shows it as an error (or not at all), a fixed
+  // field keeps its note, a live entry's save shows notes about fields it did not touch, or a refused publish still
+  // calls the field a note.
+  test('a draft saved with an empty required field shows it as a note; typing there drops it; a refused publish shows it as an error', async () => {
+    const form = mountForm({ draft: () => true })
+    form.setField('description', undefined)
+    warnNext = [missing]
+    expect(await form.save()).toBe(true)
+    expect([form.issues.value, form.fieldIssues.value]).toEqual([[], [{ ...missing, note: true }]])
+    form.setField('description', 'Neu')
+    expect(form.fieldIssues.value).toEqual([])
+    form.showFieldErrors({ code: 'INVALID', message: 'Bitte prüfe die markierten Felder.', details: { errors: [missing] } })
+    expect(form.fieldIssues.value).toEqual([missing])
+
+    const liveForm = mountForm()
+    liveForm.setField('name', 'Anders')
+    warnNext = [missing]
+    expect(await liveForm.save()).toBe(true)
+    expect(liveForm.fieldIssues.value).toEqual([])
+  })
+
+  // Wrong behaviour caught: the first save of a new draft opens its own page, whose new form has lost the notes; or a
+  // form opened after the entry was saved again (a sheet that never opened its page) shows the notes of its create.
+  test('a new draft hands its notes once to the form of its own page, while its revision is unchanged; a publish at create has none', async () => {
+    const createDraft = async () => {
+      const create = mountForm({ entry: () => undefined })
+      create.setField('name', 'Neu')
+      warnNext = [missing]
+      await create.save()
+      expect(create.notes.value).toEqual([missing])
+    }
+    const page = (rev: number) => mountForm({ entry: () => ({ ...stored, _id: 'e2', rev }) })
+    await createDraft()
+    expect(page(1).notes.value).toEqual([missing])
+    expect(page(1).notes.value).toEqual([])
+    await createDraft()
+    expect(page(2).notes.value).toEqual([])
+    expect(page(1).notes.value).toEqual([])
+
+    const published = mountForm({ entry: () => undefined })
+    published.setField('name', 'Online')
+    warnNext = [missing]
+    await published.save(undefined, {})
+    expect(published.notes.value).toEqual([])
+  })
+})
+
+describe('a rows field in a conflict', () => {
+  const hoursBrick = {
+    kind: 'collection', label: 'Gerichte', listing: { title: 'name' },
+    fields: {
+      name: { type: 'text', label: 'Name', pos: 0 },
+      hours: { type: 'rows', label: 'Zeiten', pos: 1, rows: [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }], of: { note: { type: 'text', label: 'Notiz', translate: false } } },
+    },
+  } as never
+  const rowsForm = () => mountForm({ brick: () => hoursBrick, fields: () => (hoursBrick as { fields: never }).fields })
+  const withHours = (rev: number, mo: string, tu: string) => ({ ...stored, rev, data: { ...stored.data, hours: { mo: { note: mo }, tu: { note: tu } } } })
+  /** I change Monday; the cook saved `theirs` meanwhile. */
+  async function conflictOver(theirs: Entry) {
+    live.value = withHours(5, 'zu', 'zu')
+    const form = rowsForm()
+    form.setField('hours', { mo: { note: '11–14' }, tu: { note: 'zu' } })
+    refuseNext = { code: 'CHANGED_SINCE', message: 'Inzwischen hat jemand das geändert.', details: { rev: 6, conflicts: ['hours'], data: theirs.data, by: { hours: { email: 'koch@example.com' } } } }
+    expect(await form.save()).toBe(false)
+    return form
+  }
+
+  // Wrong behaviour caught: the weekday table offers no "Beides behalten" (it did when the rows were a list), so one
+  // person's day is lost.
+  test('we change different rows: "Beides behalten" saves both rows', async () => {
+    const form = await conflictOver(withHours(6, 'zu', '17–22'))
+    expect([form.mergeLists(), await form.saveAgain()]).toEqual([true, true])
+    expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { hours: { mo: { note: '11–14' }, tu: { note: '17–22' } } } }]])
+  })
+
+  // Wrong behaviour caught: "Meine behalten" sends my whole table, so the cook's Tuesday goes back to what it was.
+  test('"Meine behalten" keeps the row the other person changed and I left alone', async () => {
+    const form = await conflictOver(withHours(6, 'zu', '17–22'))
+    expect([form.keepMine(), await form.saveAgain()]).toEqual([true, true])
+    expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { hours: { mo: { note: '11–14' }, tu: { note: '17–22' } } } }]])
+  })
+
+  // Wrong behaviour caught: a clash on one row is merged, and one person's value of that row is lost without a word.
+  test('we change the same row differently: no "Beides behalten", the conflict stays', async () => {
+    const form = await conflictOver(withHours(6, '12–15', 'zu'))
+    expect(form.mergeLists()).toBe(false)
+    expect(form.conflict.value?.fields).toEqual(['hours'])
+    expect(calls).toEqual([])
   })
 })
 
@@ -190,7 +292,7 @@ describe('a form that saves every language', () => {
     }
     expect(form.conflict.value?.fields).toEqual(['name'])
 
-    expect(await form.keepMine()).toBe(true)
+    expect([form.keepMine(), await form.saveAgain()]).toEqual([true, true])
     expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { name: { de: 'Wiener Schnitzel', en: 'Viennese veal schnitzel' } } }]])
   })
 
@@ -307,7 +409,7 @@ describe('TaskSheet', () => {
   /** This week's lunch as stored: Montag with its dish and allergens. */
   const thisWeek = {
     weekOf: '2026-10-12', note: { de: 'Suppe inklusive' },
-    days: [{ _id: 'ldmo000000', day: 'mo', dish: { de: 'Gulasch' }, allergens: ['A'] }, { _id: 'ldtu000000', day: 'tu', dish: { de: 'Fisch' }, allergens: ['D'] }],
+    days: { mo: { dish: { de: 'Gulasch' }, allergens: ['A'] }, tu: { dish: { de: 'Fisch' }, allergens: ['D'] } },
   }
 
   /**
@@ -339,6 +441,8 @@ describe('TaskSheet', () => {
     const entry = o.data ? { ...stored, _id: 'l1', brick: o.brickKey, kind: brick.kind === 'single' ? 'single' : 'item', data: o.data } as Entry : undefined
     const sheet = mount(TaskSheet, {
       props: { site: 'restaurant', brickKey: o.brickKey, brick, task: brick.tasks!.find((t) => t.id === o.task)!, entry, main: 'de', locales: ['de', 'en'], schema, copyFrom: o.copyFrom, reopen: o.reopen },
+      // The site's week, as layouts/site.vue provides it: rows of workdays follow it.
+      global: { provide: { 'ginko:week': vue.ref(schema.week) } },
       attachTo: document.body,
     })
     await flushPromises()
@@ -482,9 +586,9 @@ describe('TaskSheet', () => {
     await sheet.findAll('button').find((b) => b.text() === 'Von dieser Woche übernehmen')!.trigger('click')
     await flushPromises()
     const dish = (row: string) => sheet.get(`[data-row="${row}"] input[type="text"]`)
-    expect((dish('ldmo000000').element as HTMLInputElement).value).toBe('Gulasch')
+    expect((dish('mo').element as HTMLInputElement).value).toBe('Gulasch')
     expect((sheet.get('input[type="date"]').element as HTMLInputElement).value).toBe('2026-10-19')
-    await dish('ldmo000000').setValue('Schnitzel')
+    await dish('mo').setValue('Schnitzel')
     await sheet.get('form').trigger('submit')
     await flushPromises()
     expect(sheet.get('[role="alert"]').text()).toBe('Bitte bestätige bei „Montag“: Sind die Allergene noch richtig?')

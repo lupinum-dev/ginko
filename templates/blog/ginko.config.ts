@@ -1,14 +1,13 @@
 // Blog template: "Field Notes", a personal blog of two writers about nature in and around the city, with posts, tags
-// and the authors' pages, in English (main) and German. Every brick reads Markdown from content/ (source: 'files'),
-// so the site runs without an account. To write in Ginko Studio later, remove `source: 'files'` from a brick (README,
-// "Move to the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
-import { legal, notices, people, posts, site } from '@lupinum/ginko/basics'
+// and the authors' pages, in English (main) and German. Every brick reads Markdown from content/, so the site
+// runs without an account. To write in Ginko Studio later, name a brick in `studio.bricks` (README, "Move to the
+// Studio").
+import { defineSite, extend, f, single } from '@lupinum/ginko'
+import { legal, notices, people, posts, site } from '@lupinum/ginko/patterns'
 import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'
 
 export default defineSite({
-  site: 'blog',
   name: 'Field Notes',
   // `color` fills the share cards: the light `--brand` of app/assets/css/main.css.
   seo: {
@@ -16,12 +15,16 @@ export default defineSite({
     color: '#4f46e5',
   },
   url: siteUrl('https://example.com'),
-  // "Today" for the build: a post dated after it is not published yet (content/posts/, README "Write a post").
+  // The clock of `$publishAt`: a post planned for 09:00 goes online at 09:00 here (content/posts/, README "Write a post").
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   languages: { en: 'en-GB', de: 'de-DE' },
   // Required by Ginko; the blog shows no prices.
   currency: 'EUR',
+  // The site's id on a Ginko platform, and the bricks the team edits in Ginko Studio: none yet, every brick is in files.
+  studio: { id: 'blog', bricks: [] },
   pages: {
     home: localized('/'),
     // The list of all posts (app/pages/news/index.vue, from the blog feature) and the authors (app/pages/team.vue,
@@ -29,30 +32,34 @@ export default defineSite({
     news: localized('/posts'),
     team: localized('/about'),
   },
+  // The page of one entry, by brick.
+  entries: {
+    posts: localized('/posts/[slug]'),
+    people: localized('/about/[slug]'),
+    legal: localized('/legal/[slug]'),
+  },
   bricks: {
     // The line at the top of the home page: what the blog is about (content/home.md).
     home: single({
       label: { en: 'Home page', de: 'Startseite', fr: 'Page d’accueil' },
-      source: 'files',
       fields: {
         title: f.text({ en: 'Title', de: 'Titel', fr: 'Titre' }, { max: 80, default: 'Welcome' }),
         lead: f.longtext({ en: 'Lead', de: 'Einleitung', fr: 'Introduction' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
       },
     }),
-    // The posts, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
-    // goes online, and a post dated after the day of the build waits for the first build on or after its date.
-    // In the Studio, Today lists the drafts and the scheduled posts.
-    posts: {
-      ...posts({ source: 'files', authors: 'people', route: localized('/posts/[slug]') }),
-      tasks: [{ id: 'write', kind: 'create', label: { en: 'Write a post', de: 'Beitrag schreiben', fr: 'Écrire un article' } }],
-    },
+    // The posts, newest first (content/posts/). `authors` names entries of `people`. A file with `$draft: true` never
+    // goes online, and a post with `$publishAt` waits for the first build at or after that time.
+    // In the Studio, Today lists the drafts and the planned posts.
+    posts: extend(posts({ authors: 'people' }), {
+      tasks: [{ id: 'write', kind: 'add', label: { en: 'Write a post', de: 'Beitrag schreiben', fr: 'Écrire un article' } }],
+    }),
     // The two writers, each with a page that lists their posts (content/people/). No photos: the site shows initials.
-    people: people({ source: 'files', route: localized('/about/[slug]'), label: { en: 'Authors', de: 'Autorinnen und Autoren', fr: 'Auteurs' } }),
+    people: people({ pages: true, label: { en: 'Authors', de: 'Autorinnen und Autoren', fr: 'Auteurs' } }),
     // Name and email for the footer and the imprint (content/site.md).
-    site: site({ source: 'files' }),
+    site: site(),
     // Privacy policy, terms and imprint at /legal/<slug> (content/legal/).
-    legal: legal({ source: 'files', route: localized('/legal/[slug]') }),
+    legal: legal(),
     // Short lines above every page, each until a date (content/notices/).
-    notices: notices({ source: 'files' }),
+    notices: notices(),
   },
 })

@@ -1,22 +1,26 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
-import { formatMoney, type Brick, type CollectionBrick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { createAsks, entryTitle, fileRefsIn, isTranslatable, isVisible, leavesOf, ordered, printOf, slugBases, stableJson, untranslatedMode, urlsFor, weeklyTask, weekStartField, type Schema } from '@lupinum/ginko/internal'
+import { formatMoney, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
+import { DAY_KEYS, createAsks, entryTitle, fileRefsIn, isTranslatable, leavesOf, ordered, printOf, slugBases, slugify, stableJson, statusOf, untranslatedMode, urlsFor, weeklyTask, weekStartField, type DayKey, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import type { api } from '#convex/api'
 import type { FunctionReturnType } from 'convex/server'
 import { shownLabel } from './labels'
 import type { Words } from './when'
 
+/** The Studio's words (`useI18n()`: t, format) and the site's currency (`useStudioSite().currency()`), for values shown as text. */
+export type ValueWords = Words & { currency: Currency }
+
 export type Data = Record<string, Json>
 export type { Task }
 
 /**
  * The addresses a new entry will get, per slug field and language, read from the text each is made of as the server
- * reads it (entries.ts `slugsFor`, core `slugBases`): a language without its own text takes the main language's. The
- * server adds "-2" when an address is taken; the preview of an entry not saved yet does without.
+ * reads it (entries.ts `namedFor`, core `slugBases`): a language without its own text takes the main language's, and
+ * the main language without text takes the brick key (`events`). The server adds "-2" when an address is taken; the
+ * preview of an entry not saved yet does without.
  */
-export function draftSlugs(brick: Brick, locales: readonly Locale[], data: Data): Data {
+export function draftSlugs(brickKey: string, brick: Brick, locales: readonly Locale[], data: Data): Data {
   const out: Data = {}
   for (const [name, field] of Object.entries(brick.fields)) {
     if (field.type !== 'slug' || field.retired) continue
@@ -25,13 +29,13 @@ export function draftSlugs(brick: Brick, locales: readonly Locale[], data: Data)
       const text = from && typeof from === 'object' && !Array.isArray(from) ? from[locale] : undefined
       return [locale, typeof text === 'string' ? text : '']
     }))
-    const bases = slugBases(locales, texts)
+    const bases = slugBases(locales, texts, slugify(brickKey))
     out[name] = Object.fromEntries(locales.map((locale) => [locale, bases[locale] ?? bases[locales[0]!] ?? '']))
   }
   return out
 }
 
-/** A short name for an entry: its first text field in the main language, else the brick's label. */
+/** A short name for an entry: the field `listing.title` names, in the main language, else the brick's label. */
 export function titleOf(brick: Brick, data: Data, locale: Locale): string {
   return typedTitle(brick, data, locale) ?? shownLabel(brick.label, locale)
 }
@@ -46,7 +50,7 @@ export function publishQuestion(brick: Brick, data: Data, locale: Locale, t: Wor
 }
 
 /** The name of a list row: its first filled text or choice column ("Dienstag", a dish). `key` tells which column it is. */
-export function rowTitle(columns: Fields, row: unknown, locale: Locale, words: Words): { key: string; text: string } | undefined {
+export function rowTitle(columns: Fields, row: unknown, locale: Locale, words: ValueWords): { key: string; text: string } | undefined {
   if (!row || typeof row !== 'object') return undefined
   for (const [key, field] of ordered(columns)) {
     if (field.retired || (field.type !== 'text' && field.type !== 'longtext' && field.type !== 'choice')) continue
@@ -58,12 +62,25 @@ export function rowTitle(columns: Fields, row: unknown, locale: Locale, words: W
   return undefined
 }
 
-/** The first choice field of a brick, used to group pick lists (Kategorie). */
-export function groupField(brick: Brick): { key: string; field: Extract<Field, { type: 'choice' }> } | undefined {
-  for (const [key, field] of ordered(brick.fields)) {
-    if (field.type === 'choice' && !field.retired) return { key, field }
+/**
+ * The name of a row of a rows field: for the days of the week the weekday in the Studio's language ("Montag"), worded
+ * as the Studio words weekdays elsewhere; for an own list of rows its label. The stored field keeps no weekday names.
+ */
+export function rowLabel(field: Extract<Field, { type: 'rows' }>, key: string, locale: Locale, words: Words): string {
+  if (typeof field.rows !== 'string') {
+    const row = field.rows.find((r) => r.key === key)
+    return row ? shownLabel(row.label, locale) : key
   }
-  return undefined
+  const day = DAY_KEYS.indexOf(key as DayKey)
+  // 1 January 2024 was a Monday: day n of that week names the weekday.
+  return day === -1 ? key : words.format.date(`2024-01-0${day + 1}`, { weekday: 'long', timeZone: 'UTC' })
+}
+
+/** The choice field that groups a pick list (`listing.group`, such as Kategorie), when the brick names one. */
+export function groupField(brick: Brick): { key: string; field: Extract<Field, { type: 'choice' }> } | undefined {
+  const key = brick.kind === 'collection' ? brick.listing.group : undefined
+  const field = key !== undefined && Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
+  return key !== undefined && field?.type === 'choice' && !field.retired ? { key, field } : undefined
 }
 
 /** Root fields whose value differs between two data objects. */
@@ -73,8 +90,7 @@ export function changedRoots(before: Data, after: Data): string[] {
 }
 
 /**
- * The fields a task shows: `edit` its fields; `create` every live field it asks for (`createAsks`: its `fields`, else all but the slug and
- * the plan of a planned change, which is made later with the task that changes the value).
+ * The fields a task shows: `edit` its fields; `create` every live field it asks for (`createAsks`: its `fields`, else all but the slug).
  */
 export function taskFields(brick: Brick, task: Task): Fields {
   const keys = task.kind === 'edit' ? task.fields : ordered(brick.fields).map(([k]) => k)
@@ -88,26 +104,42 @@ export function taskFields(brick: Brick, task: Task): Fields {
   return out
 }
 
-/** A field with text to translate: translatable itself, an image (alt text), or a list with such columns (Astra phase 8). */
+/**
+ * The fields a task's dated changes are about: those it shows and those it sets (`set`). Its notices, the hints under
+ * fields and the lines about overlaps read these, so a task with only fixed values still sees its own changes (round N3).
+ */
+export function taskTouches(brick: Brick, task: Task): Fields {
+  const out = taskFields(brick, task)
+  for (const key of Object.keys((task.kind === 'edit' ? task.set : undefined) ?? {})) {
+    const field = brick.fields[key]
+    if (field && !field.retired) out[key] = field
+  }
+  return out
+}
+
+/** A field with text to translate: translatable itself, an image (alt text), or a list or rows field with such columns (Astra phase 8). */
 export function hasTranslation(f: Field): boolean {
-  if (f.type === 'list') return Object.values(f.of).some(hasTranslation)
+  if (f.type === 'list' || f.type === 'rows') return Object.values(f.of).some(hasTranslation)
   return (isTranslatable(f) && f.type !== 'slug') || f.type === 'image'
 }
 
 /**
- * The value at a leaf path: `name`, `image.alt`, or inside a list `days.<rowId>.dish` and
- * `images.<rowId>.image.alt` (the paths of the server's leavesOf and of the prints).
+ * The value at a leaf path: `name`, `image.alt`, inside a list `images.<rowId>.image.alt`, or inside a rows field
+ * `days.<rowKey>.dish` (the paths of the server's leavesOf and of the prints).
  */
 export function leafValue(data: Record<string, unknown> | undefined, path: string): unknown {
   const [root, ...rest] = path.split('.')
   let value: unknown = data?.[root!]
-  if (rest.length && rest[0] !== 'alt') {
-    const [rowId, column, ...tail] = rest
-    const row = Array.isArray(value) ? value.find((r) => (r as { _id?: string })._id === rowId) : undefined
-    value = (row as Record<string, unknown> | undefined)?.[column!]
+  // A path of two parts is an image's description (`image.alt`); any other two-part path names no text.
+  if (rest.length === 1) return rest[0] === 'alt' ? (value as { alt?: unknown } | undefined)?.alt : undefined
+  if (rest.length) {
+    const [row, column, ...tail] = rest
+    // A list keeps its rows in order, each with an `_id`; a rows field (f.rows) keeps them by row key.
+    const found = Array.isArray(value)
+      ? value.find((r) => (r as { _id?: string })._id === row)
+      : typeof value === 'object' && value !== null ? (value as Record<string, unknown>)[row!] : undefined
+    value = (found as Record<string, unknown> | undefined)?.[column!]
     if (tail[0] === 'alt') value = (value as { alt?: unknown } | undefined)?.alt
-  } else if (rest[0] === 'alt') {
-    value = (value as { alt?: unknown } | undefined)?.alt
   }
   return value
 }
@@ -157,6 +189,25 @@ export function ownChangesOver(field: Field, base: Json | undefined, mine: Json 
       return out
     })
   }
+  // A rows field has the same rows on both sides: a row I left as it was takes theirs; a row I changed merges like a
+  // list row both still have.
+  if (field.type === 'rows' && isRecord(mine) && isRecord(base) && isRecord(theirs)) {
+    const out: Record<string, Json> = {}
+    for (const key of new Set([...Object.keys(theirs), ...Object.keys(mine)])) {
+      const [row, b, t] = [mine[key], base[key], theirs[key]]
+      if (t !== undefined && stableJson(row ?? null) === stableJson(b ?? null)) { out[key] = t; continue }
+      if (row === undefined) continue
+      if (!isRecord(row) || !isRecord(b) || !isRecord(t)) { out[key] = row; continue }
+      const merged: Record<string, Json> = { ...row }
+      for (const [col, inner] of Object.entries(field.of)) {
+        const value = ownChangesOver(inner, b[col], row[col], t[col])
+        if (value === undefined) delete merged[col]
+        else merged[col] = value
+      }
+      out[key] = merged
+    }
+    return out
+  }
   return mine
 }
 
@@ -200,22 +251,59 @@ export function mainLocaleOf(schema: Schema): Locale {
   return schema.locales[0]!
 }
 
-/** A value as a short text for people (conflict notes, summaries). `words` is the Studio's `useI18n()` (t, format). */
-export function displayValue(field: Field, value: unknown, locale: Locale, words: Words): string {
+/** A value as a short text for people (conflict notes, summaries). Money shows in the field's currency, else the site's. */
+export function displayValue(field: Field, value: unknown, locale: Locale, words: ValueWords): string {
   const { t, format } = words
   if (value === undefined || value === null || value === '') return t('ops.value.empty')
   switch (field.type) {
     case 'text': case 'longtext': case 'slug': return textIn(value, locale) || t('ops.value.empty')
-    case 'money': return formatMoney({ amount: (value as { amount: number }).amount, currency: field.currency ?? 'EUR' }, locale)
+    case 'money': return formatMoney({ amount: (value as { amount: number }).amount, currency: field.currency ?? words.currency }, locale)
     case 'boolean': return value ? t('ops.value.yes') : t('ops.value.no')
     case 'date': return formatDay(String(value), format)
-    case 'daterange': { const r = value as { from: string; to: string }; return r.from === r.to ? formatDay(r.from, format) : `${formatDay(r.from, format)} – ${formatDay(r.to, format)}` }
+    case 'time': return String(value)
+    case 'daterange': {
+      // A draft may lack a side: it shows as "…".
+      const r = value as { from?: string; to?: string }
+      const day = (d: string | undefined) => (d ? formatDay(d, format) : '…')
+      return r.from === r.to ? day(r.from) : `${day(r.from)} – ${day(r.to)}`
+    }
     case 'choice': { const o = field.options.find((x) => x.value === value); return o ? shownLabel(o.label, locale) : String(value) }
     case 'choices': { const v = value as string[]; return v.length ? field.options.filter((o) => v.includes(o.value)).map((o) => shownLabel(o.label, locale)).join(', ') : t('ops.value.none') }
     case 'list': return t('ops.value.items', { count: (value as unknown[]).length })
+    case 'rows': return t('ops.value.items', { count: Object.keys(value as object).length })
     case 'number': return `${format.number(Number(value), { useGrouping: false, maximumFractionDigits: 20 })}${field.unit ? ` ${field.unit}` : ''}`
     default: return t('ops.value.changed')
   }
+}
+
+/** The fields whose value a notice names in a few characters; any other field is named by its label alone. */
+const SHORT_VALUES: ReadonlySet<Field['type']> = new Set(['money', 'number', 'date', 'time', 'choice', 'boolean'])
+
+/**
+ * What a planned change sets, for its notice (E2): "Preis 22,90 €, Beschreibung". A field with a short value (money,
+ * number, date, time, choice) shows its label and the value as a list shows it, a switch "Auf der Karte: nein"; any
+ * other field its label.
+ */
+export function changesText(fields: Fields, keys: readonly string[], values: Data, main: Locale, words: ValueWords): string {
+  return keys.map((key) => {
+    const field = Object.hasOwn(fields, key) ? fields[key] : undefined
+    if (!field) return key
+    const name = shownLabel(field.label, main)
+    if (field.type === 'boolean') return words.t('ops.value.flag', { label: name, on: values[key] === true ? 'yes' : 'no' })
+    return SHORT_VALUES.has(field.type) ? `${name} ${displayValue(field, values[key], main, words)}` : name
+  }).join(', ')
+}
+
+/**
+ * The values alone, as a list shows them ("12,90 €"), for the normal value an exception covers (slice 3); undefined when
+ * one of the fields has no short value, which only its label could name.
+ */
+export function valuesText(fields: Fields, keys: readonly string[], values: Data, main: Locale, words: ValueWords): string | undefined {
+  const shown = keys.map((key) => {
+    const field = Object.hasOwn(fields, key) ? fields[key] : undefined
+    return field && SHORT_VALUES.has(field.type) ? displayValue(field, values[key], main, words) : undefined
+  })
+  return shown.every((s) => s !== undefined) ? shown.join(', ') : undefined
 }
 
 /** 2026-10-08 → 8.10.2026 in German, 10/8/2026 in English: a calendar date, so no time zone shifts it. */
@@ -225,19 +313,16 @@ export function formatDay(date: string, format: Words['format']): string {
 }
 
 /**
- * The date that matters for an entry in a list: the field that decides when it is visible, else its first
- * date field. A range shows "von – bis". Undefined when the entry has none, it is empty, or the title names it.
+ * The line under an entry's name in a list: the value of the field `listing.detail` names, in the main language `main`
+ * (a range shows "von – bis", money its amount). Undefined when the brick names none or the value is empty.
  */
-export function relevantDate(brick: Brick, data: Data, words: Words): string | undefined {
-  // A planned week carries its date in its name already (`titleOf`).
-  if (brick.kind === 'collection' && brick.plans) return undefined
-  const visible = brick.kind === 'collection' && brick.visible && brick.visible.mode !== 'always' ? brick.visible.field : undefined
-  const key = visible ?? ordered(brick.fields).find(([, f]) => !f.retired && (f.type === 'date' || f.type === 'daterange'))?.[0]
-  const field = key ? brick.fields[key] : undefined
-  if (!key || !field || (field.type !== 'date' && field.type !== 'daterange')) return undefined
+export function listingDetail(brick: Brick, data: Data, main: Locale, words: ValueWords): string | undefined {
+  const key = brick.kind === 'collection' ? brick.listing.detail : undefined
+  const field = key !== undefined && Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
+  if (key === undefined || !field || field.retired) return undefined
   const value = data[key]
   if (value === undefined || value === null || value === '') return undefined
-  return displayValue(field, value, 'de', words)
+  return displayValue(field, value, main, words)
 }
 
 /** "de" → "German" (en) or "Deutsch" (de): language names in the Studio's language (`language`, e.g. `en-GB`). */
@@ -298,7 +383,7 @@ export type TranslationPage = StoredTranslation['page']
 /**
  * The page of an entry in one language (the address line of a translation): none while the entry has no page there
  * (its required texts are not translated yet); `online` only while the website shows it: the site has a release, the
- * entry is no draft, and its date has not passed (`today` in the site's zone, core isVisible).
+ * entry is online by `statusOf` (D113; `today` in the site's zone): no draft, and its date has not passed.
  */
 export function pageOf(
   schema: Schema, key: string, brick: CollectionBrick, entry: { _id: string; data: Data; prints?: Record<string, Record<string, string>>; state?: 'draft' | 'live' },
@@ -306,7 +391,7 @@ export function pageOf(
 ): { path: string; online: boolean } | undefined {
   const path = urlsFor(schema, key, brick, { id: entry._id, data: entry.data, prints: entry.prints })[locale]
   if (!path) return undefined
-  return { path, online: site.released && entry.state !== 'draft' && isVisible(brick, entry.data, site.today) }
+  return { path, online: site.released && statusOf(brick, { data: entry.data, state: entry.state ?? 'live' }, site.today).now === 'online' }
 }
 
 /** The language names the translation notes use: the foreign one (`lang`) and the main one, in the Studio's language. */
@@ -382,7 +467,7 @@ export function leafTranslation(input: { draft: Record<string, unknown> | undefi
 
 /**
  * Whether the website leaves the whole entry out of a language while this leaf has no text there (`name`, `image.alt`,
- * or `days.<rowId>.dish` in a list). It mirrors core resolve.ts `localized()`: a required text of a collection whose
+ * or `days.<rowId>.dish` in a list, `days.mo.dish` in a rows field). It mirrors core resolve.ts `localized()`: a required text of a collection whose
  * untranslated entries are hidden (`untranslatedMode`, pages by default) makes the entry untranslated; slugs and image
  * descriptions never do, and parts of pages fall back to the main language instead.
  */
@@ -390,6 +475,6 @@ export function hidesUntranslated(brick: Brick, leaf: string): boolean {
   if (brick.kind !== 'collection' || untranslatedMode(brick) !== 'hide' || leaf.endsWith('.alt')) return false
   const [root, , column] = leaf.split('.')
   const top = brick.fields[root!]
-  const field = column === undefined ? top : top?.type === 'list' ? top.of[column] : undefined
+  const field = column === undefined ? top : top?.type === 'list' || top?.type === 'rows' ? top.of[column] : undefined
   return !!field && isTranslatable(field) && !field.optional && field.type !== 'slug'
 }

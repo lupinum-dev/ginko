@@ -5,11 +5,12 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { collection, defineSite, f, single } from '@lupinum/ginko'
+import { addDays, collection, defineSite, f, single, todayIn } from '@lupinum/ginko/internal'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import { Popover, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
 import SlashMenu from '../app/components/editor/SlashMenu.vue'
+import catalog from '../i18n/de.json' with { type: 'json' }
 
 const { computed, defineComponent, h, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, toValue, watch } = vue
 Object.entries({ computed, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
@@ -31,6 +32,8 @@ vi.stubGlobal('useOps', () => ops)
 const prefill = { live: false, asked: 0, data: shallowRef<unknown>(), error: shallowRef<unknown>() }
 vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   // No own proposal on the entry (proposals.ownFor answers null): the form starts from the prefill.
+  // A skipped query (no entry to ask for) hears nothing.
+  if (String(fn) === 'datedChanges.list') return { data: computed(() => (toValue(args) === 'skip' ? undefined : datedRows.value)), error: ref(undefined) }
   if (String(fn) !== 'tasks.prefill') return { data: String(fn) === 'proposals.ownFor' ? ownProposal : ref(undefined), error: ref(undefined) }
   watch(() => toValue(args), (now) => {
     prefill.live = now !== 'skip'
@@ -40,6 +43,8 @@ vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   }, { immediate: true, flush: 'sync' })
   return { data: prefill.data, error: prefill.error }
 })
+/** The entry's changes for a later day (datedChanges.list). */
+const datedRows = shallowRef<unknown>([])
 /** The person's own proposal on the entry (proposals.ownFor); null while there is none. */
 const ownProposal = shallowRef<unknown>(null)
 /** The server's answer to the live query; a skipped one never hears it. */
@@ -58,7 +63,7 @@ const schema = serializeSchema(defineSite({
   pages: { home: { de: '/' } },
   bricks: {
     notices: collection({
-      label: 'Hinweise', max: 5, order: 'manual',
+      label: 'Hinweise', max: 5, order: 'manual', listing: { title: 'text', detail: 'until' },
       fields: { text: f.text('Text', { translate: false }), until: f.date('Gilt bis', { optional: true }) },
       tasks: [{ id: 'add', label: 'Hinweis hinzufügen', kind: 'create' }],
     }),
@@ -293,7 +298,7 @@ describe('languages', () => {
     pages: { home: { de: '/', en: '/en' } },
     bricks: {
       dishes: collection({
-        label: 'Speisen', max: 50, order: 'manual',
+        label: 'Speisen', max: 50, order: 'manual', listing: { title: 'name', detail: 'price' },
         fields: { name: f.text('Name'), price: f.money('Preis') },
         tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create' }],
       }),
@@ -448,7 +453,7 @@ describe('publish step', () => {
     pages: { home: { de: '/' } },
     bricks: {
       posts: collection({
-        label: 'Beiträge', max: 50, order: 'manual', fields: { title: f.text('Titel', { translate: false }) },
+        label: 'Beiträge', max: 50, order: 'manual', listing: { title: 'title' }, fields: { title: f.text('Titel', { translate: false }) },
         tasks: [{ id: 'write', label: 'Beitrag schreiben', kind: 'create' }, { id: 'fix', label: 'Beitrag ändern', kind: 'edit', fields: ['title'], pick: true }],
       }),
     },
@@ -589,6 +594,1347 @@ describe('publish step', () => {
     await flushPromises()
     expect(ops.createEntry).toHaveBeenCalledTimes(1)
     expect(sentPublish()).toBeUndefined()
+    wrapper.unmount()
+  })
+})
+
+describe('"Gilt ab" of a task that asks for the day (D131)', () => {
+  const menu = serializeSchema(defineSite({
+    site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    pages: { home: { de: '/' } },
+    bricks: {
+      items: collection({
+        label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' }, timeline: { public: ['title'] },
+        fields: { title: f.text('Titel', { translate: false }) },
+        tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', fields: ['title'], pick: true, when: { from: 'ask' } }],
+      }),
+    },
+  }))
+  const brick = menu.bricks.items!
+  const stored = { _id: 'i1', brick: 'items', kind: 'item', order: 1, rev: 4, lifeRev: 1, fieldRevs: {}, prints: {}, data: { title: 'Alt' } }
+  const mountAsk = () => mount(TaskSheet, {
+    props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: stored as never },
+    global: { stubs: { GinkoField: FieldStub } },
+    attachTo: document.body,
+  })
+  const footer = (wrapper: ReturnType<typeof mountAsk>) => wrapper.get('footer').findAll('button').map((b) => b.text())
+  const press = (wrapper: ReturnType<typeof mountAsk>, label: string) => wrapper.get('footer').findAll('button').find((b) => b.text() === label)!.trigger('click')
+  // Days are counted from the site's today, not the UTC one: near midnight they differ (E10).
+  const inDays = (n: number) => addDays(todayIn('Europe/Vienna'), n)
+  const ready = async (wrapper: ReturnType<typeof mountAsk>) => {
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.get('input[name="title"]').setValue('Neu')
+  }
+  afterEach(() => { datedRows.value = [] })
+
+  // Wrong behaviour caught (I2.1): a reopened own request for a later day showed an empty day, so Veröffentlichen
+  // replaced it with a request for now.
+  test('reopening an own dated request puts its day into the field', async () => {
+    const day = inDays(10)
+    ownProposal.value = { task: 'items.price', status: 'rejected', fits: true, proposal: 'p1', fields: { title: 'Vorschlag' }, from: day, createdAt: 0, reason: 'Zu früh' }
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Deinen Vorschlag wieder öffnen')!.trigger('click')
+    await flushPromises()
+    const short = new Intl.DateTimeFormat('de', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+    expect([(wrapper.get('#sheet-starts-on').element as HTMLInputElement).value, footer(wrapper)[0]]).toEqual([day, `Ab ${short} veröffentlichen`])
+    ownProposal.value = null
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: the field is missing, an empty field plans a change (instead of saving as today), or a day
+  // goes out as a publish now, without `from`, or with "Speichern" still offered beside it (it would drop the day).
+  test('empty saves as today; a day saves with from', async () => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    expect(wrapper.get('label[for="sheet-starts-on"]').text()).toContain('Gilt ab')
+    expect(wrapper.text()).toContain('Leer: ab sofort')
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    const [now] = ops.saveEntry.mock.calls[0] as unknown as [{ publish?: true; from?: string }]
+    expect([now.publish, now.from]).toEqual([true, undefined])
+    wrapper.unmount()
+
+    ops.saveEntry.mockClear()
+    const second = mountAsk()
+    await ready(second)
+    const day = inDays(10)
+    await second.get('#sheet-starts-on').setValue(day)
+    const [primary] = footer(second)
+    expect(primary).toMatch(/^Ab .+ veröffentlichen$/)
+    expect(footer(second)).not.toContain('Speichern')
+    await press(second, primary!)
+    await flushPromises()
+    const [later] = ops.saveEntry.mock.calls[0] as unknown as [{ publish?: true; from?: string; fields: unknown }]
+    expect([later.fields, later.publish, later.from]).toEqual([{ title: 'Neu' }, undefined, day])
+    expect(second.emitted('close')).toHaveLength(1)
+    second.unmount()
+  })
+
+  // Wrong behaviour caught: today goes to the server as a day (it refuses it after the person waited) instead of the
+  // field saying so at once.
+  test('today is refused in the field', async () => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    await wrapper.get('#sheet-starts-on').setValue(inDays(0))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(ops.saveEntry).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Der Tag muss nach heute liegen.')
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I2.3): someone took the entry offline while the sheet was open; the day field went, and the
+  // save wrote the value into the draft without a word, though the person had set a later day.
+  test('an entry taken offline with a day typed: the save sends the day and shows the refusal', async () => {
+    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'INVALID', message: 'Nur ein Eintrag, der online ist, bekommt eine Änderung ab einem Tag.' } })
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = inDays(10)
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    await wrapper.setProps({ entry: { ...stored, state: 'draft' } as never })
+    expect((wrapper.get('#sheet-starts-on').element as HTMLInputElement).value).toBe(day)
+    // J2: the button says what it sends, a change of that day, not "Speichern".
+    const short = new Intl.DateTimeFormat('de', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+    expect(footer(wrapper)[0]).toBe(`Ab ${short} veröffentlichen`)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    const calls = ops.saveEntry.mock.calls.map((c) => (c as unknown as [{ from?: string; publish?: true }])[0])
+    expect([calls.map((c) => [c.from, c.publish]), wrapper.get('[role="alert"]').text(), wrapper.emitted('close')]).toEqual([[[day, undefined]], 'Nur ein Eintrag, der online ist, bekommt eine Änderung ab einem Tag.', undefined])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E1): a day typed by keyboard and not finished leaves the input empty, which read as "no day",
+  // so the button, Enter or Ctrl+S put the value online now, although it was meant for a later day.
+  test.each([['the button'], ['Enter'], ['Ctrl+S']] as const)('a day typed and not finished is refused (%s)', async (how) => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(day.element, 'validity', { value: { badInput: true } })
+    await day.trigger('keyup')
+    if (how === 'the button') await press(wrapper, 'Veröffentlichen')
+    else if (how === 'Enter') await wrapper.get('form').trigger('submit')
+    else await wrapper.get('input[name="title"]').trigger('keydown', { key: 's', ctrlKey: true })
+    await flushPromises()
+    expect(ops.saveEntry).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Das ist kein Datum. Bitte wähle einen Tag oder leere das Feld.')
+    expect(document.activeElement).toBe(day.element)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1.5): a date typed and not finished had no "Leeren" (the model is empty), so the person had
+  // to delete each part of it by hand to save as today.
+  test('"Leeren" empties a day typed and not finished', async () => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(day.element, 'validity', { value: { badInput: true }, configurable: true })
+    await day.trigger('keyup')
+    // The browser drops the typed parts with the value: the emptied input is no longer "not a date".
+    Object.defineProperty(day.element, 'validity', { value: { badInput: false }, configurable: true })
+    await wrapper.findAll('button').find((b) => b.text() === 'Leeren')!.trigger('click')
+    await flushPromises()
+    expect([(day.element as HTMLInputElement).value, wrapper.text().includes('Das ist kein Datum.'), document.activeElement === day.element]).toEqual(['', false, true])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I2.2): a browser that keeps the typed parts after "Leeren" still showed nothing wrong, and
+  // the next press saved as "today" while the field showed a half-typed day.
+  test('"Leeren" keeps "not a date" while the input still reports typed parts', async () => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    const day = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(day.element, 'validity', { value: { badInput: true }, configurable: true })
+    await day.trigger('keyup')
+    await wrapper.findAll('button').find((b) => b.text() === 'Leeren')!.trigger('click')
+    await flushPromises()
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    expect([wrapper.text().includes('Das ist kein Datum.'), ops.saveEntry.mock.calls.length]).toEqual([true, 0])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E1): a reload brought back the typed values without their day, and the next press of the
+  // button put them online now.
+  test('the local copy brings the day back with the values', async () => {
+    localStorage.clear()
+    const day = inDays(10)
+    const first = mountAsk()
+    await ready(first)
+    await first.get('#sheet-starts-on').setValue(day)
+    first.unmount()
+
+    const second = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    expect([(second.get('input[name="title"]').element as HTMLInputElement).value, (second.get('#sheet-starts-on').element as HTMLInputElement).value]).toEqual(['Neu', day])
+    second.unmount()
+    localStorage.clear()
+  })
+
+  // Wrong behaviour caught (H1.2): restoring a copy without a day emptied the day already typed, so the next press put
+  // the values online now.
+  test('a local copy without a day keeps the day typed', async () => {
+    localStorage.clear()
+    const first = mountAsk()
+    await ready(first)
+    first.unmount()
+
+    const second = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    const day = inDays(10)
+    await second.get('#sheet-starts-on').setValue(day)
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    expect([(second.get('input[name="title"]').element as HTMLInputElement).value, (second.get('#sheet-starts-on').element as HTMLInputElement).value]).toEqual(['Neu', day])
+    second.unmount()
+    localStorage.clear()
+  })
+
+  // Wrong behaviour caught: someone plans over a waiting change of the same field without being told.
+  test('a waiting change of a form field is announced', async () => {
+    datedRows.value = [{ id: 'd1', from: '2099-03-05', fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    expect(wrapper.get('[data-test="dated-waiting"]').text()).toBe('Ab Donnerstag, 5. März: Titel.')
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E3): to change a planned price, the person had to know the day and retype every value, and
+  // putting a field back to its online value left the old planned value in that day's change.
+  test('"Bearbeiten" fills the day and the values, and the save replaces that day\'s change', async () => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    const day_ = wrapper.get('#sheet-starts-on').element as HTMLInputElement
+    expect([(wrapper.get('input[name="title"]').element as HTMLInputElement).value, day_.value, document.activeElement === day_]).toEqual(['Später', day, true])
+    await wrapper.get('input[name="title"]').setValue('Alt')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ fields: unknown; from?: string }]
+    expect([sent.fields, sent.from]).toEqual([{ title: 'Alt' }, day])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1.6): a half-typed day stayed "not a date" after "Bearbeiten" put a day into the field, so
+  // the save of that day was refused.
+  test('"Bearbeiten" over a day typed and not finished saves with its day', async () => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    const field = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(field.element, 'validity', { value: { badInput: true }, configurable: true })
+    await field.trigger('keyup')
+    Object.defineProperty(field.element, 'validity', { value: { badInput: false }, configurable: true })
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Das ist kein Datum.')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => s.from)).toEqual([day])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1.4): after "Bearbeiten" another day silently planned a second change, and the person
+  // believed the edited one was moved.
+  test('after "Bearbeiten" another day says the edited change stays', async () => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    const status = () => wrapper.find('#sheet-starts-on-status')
+    expect(status().exists()).toBe(false)
+    await wrapper.get('#sheet-starts-on').setValue(inDays(21))
+    const long = new Intl.DateTimeFormat('de', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+    expect([status().text(), status().attributes('role'), wrapper.get('#sheet-starts-on').attributes('aria-invalid')]).toEqual([`Die geplante Änderung ab ${long} bleibt bestehen. Das hier wird eine zweite Änderung.`, 'status', 'false'])
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    expect(status().exists()).toBe(false)
+    await wrapper.get('#sheet-starts-on').setValue('')
+    expect(status().exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I2.4, J3): the edited change was cancelled (or went online) while the sheet was open, yet
+  // the sheet still spoke of it as staying and sent its fields as if replacing it, so a value equal to the stored one was
+  // planned as a change; or another person's change planned on the same day meanwhile counted as the edited one, and the
+  // fields of the cancelled change were forced into it.
+  test.each([
+    ['cancelled, nothing else on that day', false, 'Alt'],
+    ['cancelled, another change on the same day', true, 'Alt'],
+    ['cancelled, another change on the same day, a value typed', true, 'Neu'],
+  ] as const)('"Bearbeiten" counts only while its own change still waits (%s)', async (_case, other, typed) => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    datedRows.value = other ? [{ id: 'd2', from: day, fields: ['title'], values: { title: 'Fremd' }, by: null, at: 0, changedSince: [] }] : []
+    await wrapper.get('#sheet-starts-on').setValue(inDays(21))
+    expect(wrapper.find('#sheet-starts-on-status').exists()).toBe(false)
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    await wrapper.get('input[name="title"]').setValue(typed)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    const fields = ops.saveEntry.mock.calls.map((c) => (c as unknown as [{ fields: object }])[0].fields)
+    // A value equal to the stored one is no change: no call, and the field says so. A typed value is the only field sent.
+    if (typed === 'Alt') expect([fields, wrapper.get('#sheet-starts-on-status').text()]).toEqual([[], 'Es ist noch nichts geändert. Ändere zuerst einen Wert.'])
+    else expect(fields).toEqual([{ title: 'Neu' }])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E4): the sheet of a draft (an entry taken offline) said nothing of its planned changes.
+  test('the sheet of a draft announces its planned changes', async () => {
+    datedRows.value = [{ id: 'd1', from: '2099-03-05', fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: { ...stored, state: 'draft' } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    answer({ data: {} })
+    await flushPromises()
+    expect(wrapper.get('[data-test="dated-waiting"]').text()).toBe('Ab Donnerstag, 5. März: Titel.')
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E5): under approval the button said "Zur Prüfung senden" without the day, so staff could
+  // not tell the request was for a later day, or the day was dropped from the call.
+  test('under approval the button names the day and the request carries it', async () => {
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: stored as never, approval: true },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    await ready(wrapper)
+    const day = inDays(10)
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    const [primary] = footer(wrapper)
+    expect(primary).toMatch(/^Ab .+ zur Prüfung senden$/)
+    await press(wrapper, primary!)
+    await flushPromises()
+    const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ from?: string; publish?: true }]
+    expect([sent.from, sent.publish]).toEqual([day, undefined])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E6): a day set and nothing changed (or only values the day already holds) closed the sheet
+  // with "Gespeichert. Auf der Website ab …", so the person believed a change was planned that was not.
+  test.each([
+    ['no field changed', false],
+    ['the server answers that the day already holds the values', true],
+  ] as const)('a day with nothing new keeps the sheet open and says so: %s', async (_case, typed) => {
+    if (typed) ops.saveEntry.mockImplementationOnce(async () => ({ rev: 4, unchanged: true }) as never)
+    const wrapper = mountAsk()
+    // The prefill holds the stored values of the task's fields.
+    answer({ data: { title: 'Alt' } })
+    await flushPromises()
+    if (typed) await wrapper.get('input[name="title"]').setValue('Später')
+    await wrapper.get('#sheet-starts-on').setValue(inDays(10))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(ops.saveEntry).toHaveBeenCalledTimes(typed ? 1 : 0)
+    // H1.9: a status under the field, not its error: the day itself is valid.
+    const status = wrapper.get('#sheet-starts-on-status')
+    expect([status.text(), status.attributes('role'), wrapper.get('#sheet-starts-on').attributes('aria-invalid')]).toEqual(['Es ist noch nichts geändert. Ändere zuerst einen Wert.', 'status', 'false'])
+    expect(wrapper.emitted('close')).toBeUndefined()
+    expect(document.activeElement).toBe(wrapper.get('#sheet-starts-on').element)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E8): a value typed while a save with a day was on its way was lost, because the form goes
+  // back to the entry when that save lands.
+  test('the fields cannot be typed in while a save with a day is on its way', async () => {
+    let land!: (value: unknown) => void
+    ops.saveEntry.mockImplementationOnce(() => new Promise((resolve) => { land = resolve }) as never)
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    await wrapper.get('#sheet-starts-on').setValue(inDays(10))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    const fields = () => wrapper.get('[data-test="sheet-fields"]').attributes('inert')
+    expect(fields()).toBeDefined()
+    // H1.8: the day is inert too, and a change of it meanwhile does not end the wait.
+    expect(wrapper.find('[data-test="sheet-fields"] #sheet-starts-on').exists()).toBe(true)
+    await wrapper.get('#sheet-starts-on').setValue('')
+    expect(fields()).toBeDefined()
+    land({ rev: 4 })
+    await flushPromises()
+    expect(fields()).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E10): with a day set, Enter in a field or Ctrl+S saved the input without its day (as an
+  // unpublished change, or online now), instead of leaving the plan to the button that names the day.
+  test.each([['Enter'], ['Ctrl+S']] as const)('%s with a day saves nothing and points to the button', async (how) => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    await wrapper.get('#sheet-starts-on').setValue(inDays(10))
+    if (how === 'Enter') await wrapper.get('form').trigger('submit')
+    else await wrapper.get('input[name="title"]').trigger('keydown', { key: 's', ctrlKey: true })
+    await flushPromises()
+    expect(ops.saveEntry).not.toHaveBeenCalled()
+    expect(document.activeElement?.id).toBe('sheet-primary')
+    wrapper.unmount()
+  })
+
+  // I1: a conflict answer in the sheet only merges. While the conflict was open the entry may have gone online and the
+  // day may have changed, so the person presses the button that says what it does now.
+  const clash = (data: Record<string, unknown> = { title: 'Fremd' }, conflicts = ['title']) =>
+    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data, rev: 5, conflicts } } })
+  const answerWith = (wrapper: ReturnType<typeof mountAsk>, label: string) => wrapper.findAll('button').find((b) => b.text() === label)!.trigger('click')
+  const keepMine = (wrapper: ReturnType<typeof mountAsk>) => answerWith(wrapper, 'Meine Eingaben behalten')
+  type Sent = { from?: string; publish?: true; baseRev: number }
+  const sent = (): Sent[] => ops.saveEntry.mock.calls.map((c) => (c as unknown as [Sent])[0])
+  /** Calls of every op of the ops mock (saves, creates, whatever is added later). */
+  const opCalls = () => Object.values(ops).reduce((n, op) => n + (vi.isMockFunction(op) ? op.mock.calls.length : 0), 0)
+  /**
+   * The answer sent nothing: `calls` op calls so far (all before the answer), a status line says the input is not saved
+   * (with `extra` when the entry went online or offline meanwhile), and the focus is on that line, not on a button (J1).
+   */
+  const onlyMerged = (wrapper: ReturnType<typeof mountAsk>, calls: number, extra = '') => {
+    const line = wrapper.get('[data-test="merged-input"]')
+    expect([opCalls(), line.text(), line.attributes('role'), document.activeElement === line.element, document.activeElement?.tagName])
+      .toEqual([calls, `Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.${extra ? ` ${extra}` : ''}`, 'status', true, 'P'])
+  }
+
+  // Wrong behaviour caught (I1 a, b; E10): the answer saved again with the step or the day of the first try, so a day set
+  // after the conflict was dropped (online now), a day cleared after it was still sent, or a kept day was lost.
+  test.each([
+    ['a day kept', 10, 10],
+    ['a day set after the conflict', '', 10],
+    ['a day cleared after the conflict', 10, ''],
+  ] as const)('the answer saves nothing; the primary button then sends what it says (%s)', async (_case, first, then) => {
+    clash()
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    if (first !== '') await wrapper.get('#sheet-starts-on').setValue(inDays(first))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    if (then !== first) await wrapper.get('#sheet-starts-on').setValue(then === '' ? '' : inDays(then))
+    await keepMine(wrapper)
+    await flushPromises()
+    onlyMerged(wrapper, 1)
+    const [primary] = footer(wrapper)
+    if (then === '') expect(primary).toBe('Veröffentlichen')
+    await press(wrapper, primary!)
+    await flushPromises()
+    const again = sent()[1]!
+    expect([again.from, again.publish, again.baseRev]).toEqual(then === '' ? [undefined, true, 5] : [inDays(then), undefined, 5])
+    expect(wrapper.find('[data-test="merged-input"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I1 c, J1): the person saved into a draft; meanwhile someone published the entry, and the
+  // answer repeated the step of the first press, which is "publish" on the now online entry: the input went online
+  // unasked. Or the focus sat on Veröffentlichen, so the next Enter published, and nothing said the entry was online now.
+  test.each([
+    ['Speichern keeps the input off the website', 'Speichern', undefined],
+    ['Veröffentlichen publishes it', 'Veröffentlichen', true],
+  ] as const)('a draft published during the conflict: the answer saves nothing; %s', async (_case, button, publish) => {
+    clash()
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: { ...stored, state: 'draft' } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    await ready(wrapper)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    await wrapper.setProps({ entry: { ...stored, rev: 5, fieldRevs: { title: 5 }, data: { title: 'Fremd' } } as never })
+    await keepMine(wrapper)
+    await flushPromises()
+    onlyMerged(wrapper, 1, 'Der Eintrag ist inzwischen online.')
+    expect(footer(wrapper)).toEqual(['Veröffentlichen', 'Speichern', 'Abbrechen'])
+    await press(wrapper, button)
+    await flushPromises()
+    const again = sent()[1]!
+    expect([sent().length, again.from, again.publish, again.baseRev]).toEqual([2, undefined, publish, 5])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I1 d): a restored local copy whose field someone saved meanwhile opens the conflict, and the
+  // answer saved the copy at once (with a step nobody chose), or lost its day.
+  test('after restoring a local copy the answer saves nothing and the day stays', async () => {
+    localStorage.clear()
+    const day = inDays(10)
+    const first = mountAsk()
+    await ready(first)
+    await first.get('#sheet-starts-on').setValue(day)
+    first.unmount()
+
+    const second = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: { ...stored, rev: 5, fieldRevs: { title: 5 }, data: { title: 'Fremd' } } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    answer({ data: {} })
+    await flushPromises()
+    await answerWith(second, 'Wiederherstellen')
+    await flushPromises()
+    await keepMine(second)
+    await flushPromises()
+    onlyMerged(second, 0)
+    expect((second.get('#sheet-starts-on').element as HTMLInputElement).value).toBe(day)
+    second.unmount()
+    localStorage.clear()
+  })
+
+  // Wrong behaviour caught (I1 e): "Beides behalten" saved at once with the step of the first try, as the other answer did.
+  test('"Beides behalten" saves nothing; the primary button then sends the day', async () => {
+    const listed = serializeSchema(defineSite({
+      site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+      pages: { home: { de: '/' } },
+      bricks: {
+        items: collection({
+          label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' },
+          fields: { title: f.text('Titel', { translate: false }), sides: f.list('Beilagen', { of: { name: f.text('Name', { translate: false }) } }) },
+          tasks: [{ id: 'sides', label: 'Beilagen ändern', kind: 'edit', fields: ['sides'], pick: true, when: { from: 'ask' } }],
+        }),
+      },
+    }))
+    const salad = { _id: 'r1', name: 'Salat' }
+    // The list as typed: the stored row and one row more.
+    const ListStub = defineComponent({ props: fieldProps, emits: ['update:modelValue'], setup: (props, { emit }) => () => h('input', { name: props.path, onInput: (e: Event) => emit('update:modelValue', [salad, { _id: 'r3', name: (e.target as HTMLInputElement).value }]) }) })
+    clash({ title: 'Alt', sides: [salad, { _id: 'r2', name: 'Suppe' }] }, ['sides'])
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick: listed.bricks.items!, task: listed.bricks.items!.tasks![0]!, main: 'de', locales: ['de'], schema: listed, entry: { ...stored, data: { title: 'Alt', sides: [salad] } } as never },
+      global: { stubs: { GinkoField: ListStub } },
+      attachTo: document.body,
+    })
+    answer({ data: { sides: [salad] } })
+    await flushPromises()
+    await wrapper.get('input[name="sides"]').setValue('Knödel')
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    await wrapper.get('#sheet-starts-on').setValue(inDays(10))
+    await answerWith(wrapper, 'Beides behalten')
+    await flushPromises()
+    onlyMerged(wrapper, 1)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    const again = sent()[1]!
+    expect([again.from, again.publish, again.baseRev]).toEqual([inDays(10), undefined, 5])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (I1): an answer pressed while a save is on its way merged onto a base that save is changing.
+  test('the conflict answers wait while a save is on its way', async () => {
+    clash()
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    ops.saveEntry.mockImplementationOnce(() => new Promise(() => {}))
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    const answers = ['Meine Eingaben behalten', 'Neuen Stand übernehmen'].map((label) => wrapper.findAll('button').find((b) => b.text() === label)!)
+    expect(answers.map((b) => b.attributes('disabled'))).toEqual(['', ''])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E10): in the English view the day field is not shown, and a press there put the German
+  // input online now instead of on its day.
+  const both = serializeSchema(defineSite({
+    site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    pages: { home: { de: '/', en: '/en' } },
+    bricks: {
+      items: collection({
+        label: 'Karte', max: 50, order: 'manual', listing: { title: 'name' },
+        fields: { name: f.text('Name'), price: f.money('Preis') },
+        tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', fields: ['name', 'price'], pick: true, when: { from: 'ask' } }],
+      }),
+    },
+  }))
+  /** A sheet in German and English, the price typed (or not) and the day set in German, then the English view. */
+  const inEnglish = async (price: string | undefined, day: string) => {
+    const items = both.bricks.items!
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick: items, task: items.tasks![0]!, main: 'de', locales: ['de', 'en'], schema: both, entry: { ...stored, data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    answer({ data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } })
+    await flushPromises()
+    if (price !== undefined) await wrapper.get('input[name="price"]').setValue(price)
+    await wrapper.get('#sheet-starts-on').setValue(day)
+    await wrapper.findAll('[role="group"] button, [role="radio"]').find((b) => b.text().startsWith('Englisch'))!.trigger('click')
+    await flushPromises()
+    return wrapper
+  }
+
+  test('the second language view keeps the day', async () => {
+    const day = inDays(10)
+    const wrapper = await inEnglish('990', day)
+    expect(wrapper.find('#sheet-starts-on').exists()).toBe(false)
+    const [primary] = footer(wrapper)
+    expect(primary).toMatch(/^Ab .+ veröffentlichen$/)
+    await press(wrapper, primary!)
+    await flushPromises()
+    const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ from?: string; publish?: true }]
+    expect([sent.from, sent.publish]).toEqual([day, undefined])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1.7): in the English view a refused day said nothing, because the day field with its message
+  // shows only in German and the focus went nowhere.
+  test.each([
+    ['today', '990', 0, 'Der Tag muss nach heute liegen.'],
+    ['nothing changed', undefined, 10, 'Es ist noch nichts geändert. Ändere zuerst einen Wert.'],
+  ] as const)('a refused day in the English view goes back to German: %s', async (_case, price, days, message) => {
+    const wrapper = await inEnglish(price, inDays(days))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(ops.saveEntry).not.toHaveBeenCalled()
+    expect([wrapper.text().includes(message), document.activeElement?.id]).toEqual([true, 'sheet-starts-on'])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E10): the earliest day came from the browser's (or UTC's) today, so shortly after midnight
+  // at the site the site's today passed as a later day, and "Morgen" set the site's today.
+  test('the earliest day is tomorrow in the site\'s zone, whatever the browser\'s zone', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    // 23:30 UTC on 25 November is 00:30 on 26 November in Vienna.
+    vi.setSystemTime(new Date('2026-11-25T23:30:00Z'))
+    try {
+      const wrapper = mountAsk()
+      await ready(wrapper)
+      await wrapper.get('#sheet-starts-on').setValue('2026-11-26')
+      await press(wrapper, footer(wrapper)[0]!)
+      await flushPromises()
+      expect(ops.saveEntry).not.toHaveBeenCalled()
+      expect(wrapper.text()).toContain('Der Tag muss nach heute liegen.')
+      await wrapper.findAll('button').find((b) => b.text() === 'Morgen')!.trigger('click')
+      expect((wrapper.get('#sheet-starts-on').element as HTMLInputElement).value).toBe('2026-11-27')
+      wrapper.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+// Slice 3: a task that asks both days ("Aktionspreis") and a task for today only. Each test names the row of the paper's
+// state table it stands for.
+describe('"Gilt ab" and "Gilt bis" of a task with an end (slice 3)', () => {
+  const offers = serializeSchema(defineSite({
+    site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    pages: { home: { de: '/' } },
+    bricks: {
+      items: collection({
+        label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' }, timeline: { public: ['price'] },
+        fields: { title: f.text('Titel', { translate: false }), price: f.money('Preis'), soldOut: f.boolean('Aus', { default: false }) },
+        tasks: [
+          { id: 'offer', label: 'Aktionspreis', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask', until: 'ask' } },
+          { id: 'off', label: 'Heute aus', kind: 'edit', fields: [], pick: true, when: { from: '@today', until: '@today' }, set: { soldOut: true } },
+          { id: 'price', label: 'Preis ändern', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask' } },
+        ],
+      }),
+    },
+  }))
+  const brick = offers.bricks.items!
+  const stored = { _id: 'i1', brick: 'items', kind: 'item', order: 1, rev: 4, lifeRev: 1, fieldRevs: {}, prints: {}, data: { title: 'Suppe', price: { amount: 1290 } } }
+  const mountTask = (task = 0, over: { approval?: boolean; entry?: unknown } = {}) => mount(TaskSheet, {
+    props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![task]!, main: 'de', locales: ['de'], schema: offers, entry: (over.entry ?? stored) as never, ...(over.approval ? { approval: true } : {}) },
+    global: { stubs: { GinkoField: FieldStub } },
+    attachTo: document.body,
+  })
+  type Wrapper = ReturnType<typeof mountTask>
+  const footer = (wrapper: Wrapper) => wrapper.get('footer').findAll('button').map((b) => b.text())
+  const press = (wrapper: Wrapper, label: string) => wrapper.get('footer').findAll('button').find((b) => b.text() === label)!.trigger('click')
+  const inDays = (n: number) => addDays(todayIn('Europe/Vienna'), n)
+  // The Studio formats German as the site's de-AT ("4. Jän."), as the shim does.
+  const fmt = (day: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('de-AT', { ...o, timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  /** Money keeps a no-break space before the sign: compared with plain spaces. */
+  const plain = (text: string) => text.replace(/\s/g, ' ')
+  /** "26. Nov.": the days in the button and the hint. */
+  const short = (day: string) => fmt(day, { day: 'numeric', month: 'short' })
+  /** "So., 6. Dez.": the days of a notice. */
+  const withDay = (day: string) => fmt(day, { weekday: 'short', day: 'numeric', month: 'short' })
+  const value = (wrapper: Wrapper, id: string) => (wrapper.get(id).element as HTMLInputElement).value
+  type Sent = { fields: Record<string, unknown>; from?: string; until?: string; change?: string; publish?: true; baseRev: number }
+  const sent = (): Sent[] => ops.saveEntry.mock.calls.map((c) => (c as unknown as [Sent])[0])
+  const ready = async (wrapper: Wrapper, price = '9,90') => {
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.get('input[name="price"]').setValue(price)
+  }
+  const waitingRow = (over: Record<string, unknown> = {}) => ({ id: 'd1', from: inDays(10), until: inDays(40), fields: ['price'], values: { price: { amount: 990 } }, normal: { price: { amount: 1290 } }, by: null, at: 0, changedSince: [], mayCancel: true, mayMove: true, ...over })
+  afterEach(() => { datedRows.value = [] })
+
+  // Row "save, days valid" and "the primary button says what is sent". Wrong behaviour caught: the second day is
+  // missing, the button does not say for which days it publishes, "Speichern" (unpublished) stays beside a day and would
+  // drop it, or an empty "Gilt ab" is not sent as today.
+  test('both days are asked; the button names them; an empty "Gilt ab" is today', async () => {
+    const wrapper = mountTask()
+    await ready(wrapper)
+    expect([wrapper.get('label[for="sheet-starts-on"]').text(), wrapper.get('label[for="sheet-until"]').text()]).toEqual([expect.stringContaining('Gilt ab'), expect.stringContaining('Gilt bis')])
+    const [from, until] = [inDays(1), inDays(36)]
+    await wrapper.get('#sheet-starts-on').setValue(from)
+    await wrapper.get('#sheet-until').setValue(until)
+    expect(footer(wrapper)).toEqual([`Für ${short(from)} bis ${short(until)} veröffentlichen`, 'Abbrechen'])
+    await wrapper.get('#sheet-starts-on').setValue('')
+    expect(footer(wrapper)[0]).toBe(`Bis ${short(until)} veröffentlichen`)
+    await wrapper.get('#sheet-until').setValue(inDays(0))
+    expect(footer(wrapper)[0]).toBe('Für heute veröffentlichen')
+    await wrapper.get('#sheet-until').setValue(until)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.fields, s.from, s.until, s.publish])).toEqual([[{ price: '9,90' }, inDays(0), until, undefined]])
+    wrapper.unmount()
+  })
+
+  // Row "the person needs a yes". Wrong behaviour caught: under approval the button claims to publish.
+  test('under approval the button sends both days for review', async () => {
+    const wrapper = mountTask(0, { approval: true })
+    await ready(wrapper)
+    await wrapper.get('#sheet-starts-on').setValue(inDays(1))
+    await wrapper.get('#sheet-until').setValue(inDays(36))
+    expect(footer(wrapper)[0]).toBe(`Für ${short(inDays(1))} bis ${short(inDays(36))} zur Prüfung senden`)
+    wrapper.unmount()
+  })
+
+  // Row "Gilt bis empty or half typed". Wrong behaviour caught: an offer without an end (or with an end before its start,
+  // or half typed) is sent, so the price would change for good; or the focus stays on the button.
+  test.each([
+    ['empty', '', false, 'Bitte einen Tag wählen.'],
+    ['half typed', '', true, 'Das ist kein Datum. Bitte wähle einen Tag oder leere das Feld.'],
+    ['before "Gilt ab"', 'before', false, '„Gilt bis“ muss am oder nach „Gilt ab“ liegen.'],
+  ] as const)('"Gilt bis" %s: nothing is saved, the field has the focus and says why', async (_case, until, bad, message) => {
+    const wrapper = mountTask()
+    await ready(wrapper)
+    await wrapper.get('#sheet-starts-on').setValue(inDays(5))
+    const field = wrapper.get('#sheet-until')
+    await field.setValue(until === 'before' ? inDays(4) : until)
+    if (bad) {
+      Object.defineProperty(field.element, 'validity', { value: { badInput: true }, configurable: true })
+      await field.trigger('keyup')
+    }
+    // Round L6: the button never names a normal publish ("Ab … veröffentlichen") while the days are not both valid.
+    expect(footer(wrapper)[0]).toBe('Für bestimmte Tage veröffentlichen')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect([ops.saveEntry.mock.calls.length, document.activeElement?.id, wrapper.text().includes(message)]).toEqual([0, 'sheet-until', true])
+    wrapper.unmount()
+  })
+
+  // Round L6. Wrong behaviour caught: with "Gilt ab" half typed the button said "Bis … veröffentlichen" (as if from
+  // today), and under approval it did not say it sends for review.
+  test.each([
+    ['publishes', false, 'Für bestimmte Tage veröffentlichen'],
+    ['needs a yes', true, 'Für bestimmte Tage zur Prüfung senden'],
+  ] as const)('"Gilt ab" half typed with "Gilt bis" set (%s): the button names certain days, the press saves nothing', async (_case, approval, label) => {
+    const wrapper = mountTask(0, { approval })
+    await ready(wrapper)
+    await wrapper.get('#sheet-until').setValue(inDays(9))
+    const field = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(field.element, 'validity', { value: { badInput: true }, configurable: true })
+    await field.trigger('keyup')
+    expect(footer(wrapper)[0]).toBe(label)
+    await press(wrapper, label)
+    await flushPromises()
+    expect([ops.saveEntry.mock.calls.length, document.activeElement?.id, wrapper.text().includes(catalog.dated.notADate)]).toEqual([0, 'sheet-starts-on', true])
+    wrapper.unmount()
+  })
+
+  // Row "someone else saved the entry meanwhile" and number 5. Wrong behaviour caught: the conflict answer saved (with the
+  // days of the first try), or lost a day; the button no longer names both days.
+  test('a conflict answer saves nothing; both days stay and the button names them', async () => {
+    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data: { title: 'Suppe', price: { amount: 1390 } }, rev: 5, conflicts: ['price'] } } })
+    const wrapper = mountTask()
+    await ready(wrapper)
+    const [from, until] = [inDays(1), inDays(36)]
+    await wrapper.get('#sheet-starts-on').setValue(from)
+    await wrapper.get('#sheet-until').setValue(until)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Meine Eingaben behalten')!.trigger('click')
+    await flushPromises()
+    expect([ops.saveEntry.mock.calls.length, value(wrapper, '#sheet-starts-on'), value(wrapper, '#sheet-until'), footer(wrapper)[0]])
+      .toEqual([1, from, until, `Für ${short(from)} bis ${short(until)} veröffentlichen`])
+    expect(document.activeElement?.id).toBe('sheet-merged')
+    wrapper.unmount()
+  })
+
+  // Row "restored local copy". Wrong behaviour caught: a reload brings the price back without its days, so the next
+  // press changes it for good.
+  test('the local copy brings both days back with the values', async () => {
+    localStorage.clear()
+    const [from, until] = [inDays(3), inDays(9)]
+    const first = mountTask()
+    await ready(first)
+    await first.get('#sheet-starts-on').setValue(from)
+    await first.get('#sheet-until').setValue(until)
+    first.unmount()
+    const second = mountTask()
+    answer({ data: {} })
+    await flushPromises()
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    expect([value(second, 'input[name="price"]'), value(second, '#sheet-starts-on'), value(second, '#sheet-until')]).toEqual(['9,90', from, until])
+    second.unmount()
+    localStorage.clear()
+  })
+
+  // Rows "save" (notices) and "the form always edits the normal value". Wrong behaviour caught: a waiting offer is not
+  // shown with both days; a holding offer does not say what visitors see and what comes back; the field under a holding
+  // offer pretends the website shows its value.
+  test('the notices name both days, what the website shows and the normal value; the covered field has its hint', async () => {
+    const until = inDays(20)
+    datedRows.value = [
+      waitingRow({ id: 'd1', from: inDays(10), until: inDays(40) }),
+      waitingRow({ id: 'd2', from: inDays(0), until, holds: true, values: { price: { amount: 990 } } }),
+    ]
+    const wrapper = mountTask()
+    await ready(wrapper, '12,90')
+    expect(wrapper.findAll('[data-test="dated-waiting"]').map((n) => plain(n.text()))).toEqual([
+      `Von ${withDay(inDays(10))} bis ${withDay(inDays(40))}: Preis 9,90 €`,
+      `Bis ${withDay(until)} zeigt die Website: Preis 9,90 € (sonst 12,90 €)`,
+    ])
+    expect(plain(wrapper.get('[data-test="covered-hint"]').text())).toBe(`Die Website zeigt bis ${short(until)} 9,90 €.`)
+    wrapper.unmount()
+  })
+
+  // Rows "overlap with another exception" and "a change without an end inside". Wrong behaviour caught: two offers on the
+  // same days with no word which one the website shows; a new normal price inside an offer seems to start on its day.
+  test('an overlap says which offer the website shows; a normal change inside an offer says it waits for the end', async () => {
+    datedRows.value = [
+      waitingRow({ id: 'd1', from: inDays(10), until: inDays(40) }),
+      waitingRow({ id: 'd2', from: inDays(20), until: inDays(50), values: { price: { amount: 790 } } }),
+      { id: 'd3', from: inDays(30), fields: ['price'], values: { price: { amount: 1390 } }, by: null, at: 0, changedSince: [], mayCancel: true, mayMove: true },
+    ]
+    const wrapper = mountTask()
+    await ready(wrapper)
+    expect(wrapper.get('[data-test="dated-overlap"]').text()).toBe(`Von ${short(inDays(20))} bis ${short(inDays(40))} gelten beide. Die Website zeigt die Änderung ab ${short(inDays(20))}.`)
+    expect(wrapper.get('[data-test="dated-after-end"]').text()).toBe('Gilt, sobald die befristete Änderung endet')
+    wrapper.unmount()
+  })
+
+  // Row "Bearbeiten then other days", holds, and decision 4. Wrong behaviour caught: the start of a holding offer can be
+  // changed, or the save makes a second offer instead of changing this one.
+  test('"Bearbeiten" on a holding offer fixes "Gilt ab" as text and saves into the same offer', async () => {
+    datedRows.value = [waitingRow({ id: 'd2', from: inDays(0), until: inDays(20), holds: true })]
+    const wrapper = mountTask()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    expect([wrapper.find('#sheet-starts-on').exists(), wrapper.get('[data-test="fixed-from"]').text(), value(wrapper, '#sheet-until'), value(wrapper, 'input[name="price"]')])
+      .toEqual([false, expect.stringContaining('Gilt ab'), inDays(20), expect.anything()])
+    // Round L12: the fixed day is read as one group named "Gilt ab".
+    const fixed = wrapper.get('[data-test="fixed-from"]')
+    expect([fixed.attributes('role'), document.getElementById(fixed.attributes('aria-labelledby')!)?.textContent]).toEqual(['group', 'Gilt ab'])
+    await wrapper.get('#sheet-until').setValue(inDays(30))
+    await wrapper.get('input[name="price"]').setValue('9,50')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.change])).toEqual([[inDays(0), inDays(30), 'd2']])
+    wrapper.unmount()
+  })
+
+  // Row "Bearbeiten" on a waiting offer. Wrong behaviour caught: "Bearbeiten" fills one day only, so the save makes a
+  // change without an end.
+  test('"Bearbeiten" on a waiting offer fills both days and the values', async () => {
+    datedRows.value = [waitingRow()]
+    const wrapper = mountTask()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    expect([value(wrapper, '#sheet-starts-on'), value(wrapper, '#sheet-until')]).toEqual([inDays(10), inDays(40)])
+    wrapper.unmount()
+  })
+
+  // Round L7. Wrong behaviour caught: a new end for a waiting offer said "Das hier wird eine zweite Änderung" and sent a
+  // second offer of the same start (refused by the server), instead of changing the offer being edited.
+  test('"Bearbeiten" on a waiting offer, only the end changed: the save edits that offer, with no second-change line', async () => {
+    datedRows.value = [waitingRow()]
+    const wrapper = mountTask()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('#sheet-until').setValue(inDays(50))
+    expect(wrapper.find('#sheet-starts-on-status').exists()).toBe(false)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.change, s.fields])).toEqual([[inDays(10), inDays(50), 'd1', { price: { amount: 990 } }]])
+    wrapper.unmount()
+  })
+
+  // Round L7. Wrong behaviour caught: "Gilt ab" emptied (today) after "Bearbeiten" planned a second offer silently, as
+  // the line only counted a day typed in the field.
+  test('"Bearbeiten" on a waiting offer, "Gilt ab" emptied: the line says the edited offer stays; the save is a new offer', async () => {
+    datedRows.value = [waitingRow()]
+    const wrapper = mountTask()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('#sheet-starts-on').setValue('')
+    expect(wrapper.get('#sheet-starts-on-status').text()).toBe(`Die geplante Änderung ab ${fmt(inDays(10), { weekday: 'long', day: 'numeric', month: 'long' })} bleibt bestehen. Das hier wird eine zweite Änderung.`)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.change])).toEqual([[inDays(0), inDays(40), undefined]])
+    wrapper.unmount()
+  })
+
+  // Round L9 and L13. Wrong behaviour caught: an end before today for a holding offer went to the server, which refused
+  // it after the press; an end of today said "Für heute veröffentlichen" for an offer that started days ago.
+  test('"Bearbeiten" on a holding offer: an end before today is refused at the field; an end of today says "Bis heute"', async () => {
+    datedRows.value = [waitingRow({ id: 'd2', from: inDays(-3), until: inDays(20), holds: true })]
+    const wrapper = mountTask()
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('#sheet-until').setValue(inDays(-1))
+    expect(footer(wrapper)[0]).toBe('Für bestimmte Tage veröffentlichen')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect([ops.saveEntry.mock.calls.length, document.activeElement?.id, wrapper.text().includes('Der Tag darf nicht vor heute liegen.')]).toEqual([0, 'sheet-until', true])
+    await wrapper.get('#sheet-until').setValue(inDays(0))
+    expect(footer(wrapper)[0]).toBe('Bis heute veröffentlichen')
+    wrapper.unmount()
+  })
+
+  // Row "second language shown". Wrong behaviour caught: the day fields show in the English view (where they are not
+  // saved), or a save from there drops them.
+  test('the second language view hides both day fields and the save keeps them', async () => {
+    const both = serializeSchema(defineSite({
+      site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      pages: { home: { de: '/', en: '/en' } },
+      bricks: { items: collection({ label: 'Karte', max: 50, order: 'manual', listing: { title: 'name' }, fields: { name: f.text('Name'), price: f.money('Preis') }, tasks: [{ id: 'offer', label: 'Aktionspreis', kind: 'edit', fields: ['name', 'price'], pick: true, when: { from: 'ask', until: 'ask' } }] }) },
+    }))
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick: both.bricks.items!, task: both.bricks.items!.tasks![0]!, main: 'de', locales: ['de', 'en'], schema: both, entry: { ...stored, data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    answer({ data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } })
+    await flushPromises()
+    await wrapper.get('input[name="price"]').setValue('990')
+    await wrapper.get('#sheet-starts-on').setValue(inDays(2))
+    await wrapper.get('#sheet-until').setValue(inDays(9))
+    await wrapper.findAll('[role="group"] button, [role="radio"]').find((b) => b.text().startsWith('Englisch'))!.trigger('click')
+    await flushPromises()
+    expect([wrapper.find('#sheet-starts-on').exists(), wrapper.find('#sheet-until').exists()]).toEqual([false, false])
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until])).toEqual([[inDays(2), inDays(9)]])
+    wrapper.unmount()
+  })
+
+  // "Task with '@today' and set only" and decision 2. Wrong behaviour caught: a today-only task shows fields or a day, or
+  // goes online with the pick alone, without a press on a labelled button.
+  test('a today-only task shows the entry, one sentence and one button, and sends today with no field', async () => {
+    const wrapper = mountTask(1)
+    answer({ data: {} })
+    await flushPromises()
+    expect(ops.saveEntry).not.toHaveBeenCalled()
+    expect([wrapper.text().includes('Suppe'), wrapper.get('[data-test="today-only"]').text(), wrapper.findAll('[data-test="sheet-fields"] input').length, wrapper.find('#sheet-starts-on').exists()])
+      .toEqual([true, catalog.dated.todayOnly, 0, false])
+    expect(footer(wrapper)).toEqual(['Für heute veröffentlichen', 'Abbrechen'])
+    // Round L14: the fixed values read "Aus: ja", not "Aus Ja".
+    expect(wrapper.get('[data-test="today-values"]').text()).toBe('Nur heute: Aus: ja')
+    await press(wrapper, 'Für heute veröffentlichen')
+    await flushPromises()
+    expect(sent().map((s) => [s.fields, s.from, s.until])).toEqual([[{}, inDays(0), inDays(0)]])
+    wrapper.unmount()
+  })
+
+  // Round L8. Wrong behaviour caught: a press that changed nothing (the dish is off today already) kept the sheet open
+  // with no word why: the "nothing changed" sentence sat under a day field the sheet does not show.
+  test('a today-only press that changes nothing says so by the button and keeps the sheet open', async () => {
+    ops.saveEntry.mockResolvedValueOnce({ rev: 4, unchanged: true } as never)
+    const wrapper = mountTask(1)
+    answer({ data: {} })
+    await flushPromises()
+    await press(wrapper, 'Für heute veröffentlichen')
+    await flushPromises()
+    const line = wrapper.get('#sheet-unchanged')
+    expect([line.text(), line.attributes('role'), wrapper.get('#sheet-primary').attributes('aria-describedby'), document.activeElement?.id, wrapper.emitted('close')])
+      .toEqual([catalog.dated.nothingChanged, 'status', 'sheet-unchanged', 'sheet-primary', undefined])
+    wrapper.unmount()
+  })
+
+  // Keep: a task that asks one day still has one day field and its labels (as built).
+  test('a task that asks one day keeps one day field', async () => {
+    const wrapper = mountTask(2)
+    await ready(wrapper)
+    expect([wrapper.find('#sheet-starts-on').exists(), wrapper.find('#sheet-until').exists()]).toEqual([true, false])
+    wrapper.unmount()
+  })
+})
+
+describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slice 4)', () => {
+  const seasons = serializeSchema(defineSite({
+    site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    pages: { home: { de: '/' } },
+    bricks: {
+      items: collection({
+        label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' }, timeline: { public: ['price'] },
+        fields: { title: f.text('Titel', { translate: false }), price: f.money('Preis'), onMenu: f.boolean('Auf der Karte') },
+        tasks: [
+          { id: 'season', label: 'Saisonpreis', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' } },
+          { id: 'named', label: 'Betriebsurlaub', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask', until: 'ask', name: 'ask' } },
+          { id: 'offer', label: 'Aktionspreis', kind: 'edit', fields: ['price'], pick: true, when: { from: 'ask', until: 'ask' } },
+          // The demo's "Saisongericht": no field to type, its fixed value is the change.
+          { id: 'dish', label: 'Saisongericht', kind: 'edit', fields: [], set: { onMenu: true }, pick: true, when: { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' } },
+        ],
+      }),
+    },
+  }))
+  const brick = seasons.bricks.items!
+  const stored = { _id: 'i1', brick: 'items', kind: 'item', order: 1, rev: 4, lifeRev: 1, fieldRevs: {}, prints: {}, data: { title: 'Suppe', price: { amount: 1290 } } }
+  const mountTask = (task = 0, over: { approval?: boolean } = {}) => mount(TaskSheet, {
+    props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![task]!, main: 'de', locales: ['de'], schema: seasons, entry: stored as never, ...(over.approval ? { approval: true } : {}) },
+    global: { stubs: { GinkoField: FieldStub } },
+    attachTo: document.body,
+  })
+  type Wrapper = ReturnType<typeof mountTask>
+  const footer = (wrapper: Wrapper) => wrapper.get('footer').findAll('button').map((b) => b.text())
+  const press = (wrapper: Wrapper, label: string) => wrapper.get('footer').findAll('button').find((b) => b.text() === label)!.trigger('click')
+  const inDays = (n: number) => addDays(todayIn('Europe/Vienna'), n)
+  const fmt = (day: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('de-AT', { ...o, timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  const short = (day: string) => fmt(day, { day: 'numeric', month: 'short' })
+  const value = (wrapper: Wrapper, id: string) => (wrapper.get(id).element as HTMLInputElement).value
+  const checked = (wrapper: Wrapper) => wrapper.get('#sheet-yearly').attributes('aria-checked')
+  type Sent = { fields: Record<string, unknown>; from?: string; until?: string; yearly?: true; name?: string; change?: string }
+  const sent = (): Sent[] => ops.saveEntry.mock.calls.map((c) => (c as unknown as [Sent])[0])
+  const ready = async (wrapper: Wrapper, price = '9,90') => {
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.get('input[name="price"]').setValue(price)
+  }
+  /** Both days, the switch on, and a name. */
+  const typeSeason = async (wrapper: Wrapper, from: string, until: string, name = 'Sommer') => {
+    await wrapper.get('#sheet-starts-on').setValue(from)
+    await wrapper.get('#sheet-until').setValue(until)
+    await wrapper.get('#sheet-yearly').trigger('click')
+    await wrapper.get('#sheet-name').setValue(name)
+  }
+  const row = (over: Record<string, unknown> = {}) => ({ id: 'd1', from: inDays(10), until: inDays(40), yearly: true, name: 'Sommer', fields: ['price'], values: { price: { amount: 990 } }, normal: { price: { amount: 1290 } }, by: null, at: 0, changedSince: [], mayCancel: true, mayMove: true, ...over })
+  afterEach(() => { datedRows.value = [] })
+
+  // Paper, the Studio: the switch and the name sit under "Gilt bis", in that order. Wrong behaviour caught: a task shows a
+  // key it does not ask for (the server refuses it), the order differs, or the labels and the hint are missing.
+  test('the switch and the name sit under "Gilt bis", in that order; a task shows only the keys it asks for', async () => {
+    const wrapper = mountTask(0)
+    await ready(wrapper)
+    const ids = [...wrapper.element.querySelectorAll('#sheet-until, #sheet-yearly, #sheet-name')].map((e) => e.id)
+    expect(ids).toEqual(['sheet-until', 'sheet-yearly', 'sheet-name'])
+    expect([wrapper.get('#sheet-yearly').attributes('role'), checked(wrapper), wrapper.text().includes('Jedes Jahr wiederholen'), wrapper.get('label[for="sheet-name"]').text(), wrapper.text().includes('Zum Beispiel: Sommer')])
+      .toEqual(['switch', 'false', true, 'Name (optional)', true])
+    wrapper.unmount()
+    const named = mountTask(1)
+    await ready(named)
+    expect([named.find('#sheet-yearly').exists(), named.find('#sheet-name').exists()]).toEqual([false, true])
+    named.unmount()
+    const offer = mountTask(2)
+    await ready(offer)
+    expect([offer.find('#sheet-yearly').exists(), offer.find('#sheet-name').exists()]).toEqual([false, false])
+    offer.unmount()
+  })
+
+  // Row "save, yearly on, days ahead" and "the primary button says what is sent". Wrong behaviour caught: the button names
+  // a year (a season holds every year), or claims a one-off change; the save drops yearly or sends the name untrimmed.
+  test.each([
+    ['publishes', false, 'veröffentlichen'],
+    ['needs a yes', true, 'zur Prüfung senden'],
+  ] as const)('yearly on (%s): the button names the days without a year; the save sends yearly and the trimmed name', async (_case, approval, verb) => {
+    const wrapper = mountTask(0, { approval })
+    await ready(wrapper)
+    const [from, until] = [inDays(10), inDays(60)]
+    await typeSeason(wrapper, from, until, '  Sommer ')
+    expect(footer(wrapper)[0]).toBe(`Jedes Jahr ${short(from)} bis ${short(until)} ${verb}`)
+    // Round N8: one day is named once.
+    await wrapper.get('#sheet-until').setValue(from)
+    expect(footer(wrapper)[0]).toBe(`Jedes Jahr am ${short(from)} ${verb}`)
+    await wrapper.get('#sheet-until').setValue(until)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.yearly, s.name])).toEqual([[from, until, true, 'Sommer']])
+    wrapper.unmount()
+  })
+
+  // Row "save, yearly on, today inside the days (from in the past)" and decision 3. Wrong behaviour caught: with the
+  // switch on, a "Gilt ab" in the past is refused (the owner would wait a year or type wrong days); with it off, it passes.
+  test('yearly on: "Gilt ab" may lie in the past, with its hint; switched off, the past is refused as before', async () => {
+    const wrapper = mountTask(0)
+    await ready(wrapper)
+    await typeSeason(wrapper, inDays(-20), inDays(20))
+    expect(wrapper.text()).toContain('Gilt jedes Jahr an diesen Tagen.')
+    await wrapper.get('#sheet-yearly').trigger('click')
+    expect(footer(wrapper)[0]).toBe('Für bestimmte Tage veröffentlichen')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect([ops.saveEntry.mock.calls.length, document.activeElement?.id]).toEqual([0, 'sheet-starts-on'])
+    await wrapper.get('#sheet-yearly').trigger('click')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.yearly])).toEqual([[inDays(-20), inDays(20), true]])
+    wrapper.unmount()
+  })
+
+  // Rows "switch on, days one year or longer" and "name longer than 60", and the server's limit of a year back. Wrong
+  // behaviour caught: the save goes to the server and fails after the press, or the focus stays on the button, or the
+  // sentence sits elsewhere than under the field it is about.
+  test.each([
+    ['one year or longer', 1, 366, 'Sommer', 'sheet-until', catalog.dated.yearlyTooLong],
+    ['"Gilt ab" more than a year back', -400, 20, 'Sommer', 'sheet-starts-on', catalog.dated.startsTooFarBack],
+    ['a name longer than 60', 1, 30, 'x'.repeat(61), 'sheet-name', catalog.dated.nameTooLong.replace('{max}', '60')],
+    // Round N2: on a day in late 2027, so 29 February 2028 lies inside the year ahead.
+    ['29 February alone', '2028-02-29', '2028-02-29', 'Schalttag', 'sheet-until', catalog.dated.yearlyLeapDay],
+  ] as const)('%s: nothing is saved; the field has the focus and says why', async (_case, from, until, name, focus, message) => {
+    if (typeof from === 'string') {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2027-11-25T10:00:00Z'))
+    }
+    try {
+      const day = (d: number | string) => typeof d === 'string' ? d : inDays(d)
+      const wrapper = mountTask(0)
+      await ready(wrapper)
+      await typeSeason(wrapper, day(from), day(until), name)
+      await press(wrapper, footer(wrapper)[0]!)
+      await flushPromises()
+      const described = document.getElementById(focus)?.getAttribute('aria-describedby') ?? ''
+      expect([ops.saveEntry.mock.calls.length, document.activeElement?.id, described.split(' ').some((id) => document.getElementById(id)?.textContent?.includes(message))]).toEqual([0, focus, true])
+      wrapper.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // Row "someone else saved meanwhile" and browser test 5. Wrong behaviour caught: the conflict answer saved, or lost the
+  // switch or the name.
+  test('a conflict answer saves nothing; the days, the switch and the name stay', async () => {
+    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data: { title: 'Suppe', price: { amount: 1390 } }, rev: 5, conflicts: ['price'] } } })
+    const wrapper = mountTask(0)
+    await ready(wrapper)
+    const [from, until] = [inDays(10), inDays(60)]
+    await typeSeason(wrapper, from, until)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Meine Eingaben behalten')!.trigger('click')
+    await flushPromises()
+    expect([ops.saveEntry.mock.calls.length, value(wrapper, '#sheet-starts-on'), value(wrapper, '#sheet-until'), checked(wrapper), value(wrapper, '#sheet-name')]).toEqual([1, from, until, 'true', 'Sommer'])
+    wrapper.unmount()
+  })
+
+  // Row "restored local copy". Wrong behaviour caught: a reload brings the days back without the switch or the name, so
+  // the next press makes a one-off change.
+  test('the local copy brings the switch and the name back with the days', async () => {
+    localStorage.clear()
+    const [from, until] = [inDays(10), inDays(60)]
+    const first = mountTask(0)
+    await ready(first)
+    await typeSeason(first, from, until)
+    first.unmount()
+    const second = mountTask(0)
+    answer({ data: {} })
+    await flushPromises()
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    expect([value(second, '#sheet-starts-on'), value(second, '#sheet-until'), checked(second), value(second, '#sheet-name')]).toEqual([from, until, 'true', 'Sommer'])
+    second.unmount()
+    localStorage.clear()
+  })
+
+  // Round N4: one "typed" flag (a changed field, a typed day, the switch, the name). Wrong behaviour caught: the input of
+  // a sheet without fields to change ("Saisongericht") is lost on a reload, or closing drops it without asking first.
+  test('days, the switch and the name alone are input: the local copy brings them back', async () => {
+    localStorage.clear()
+    const [from, until] = [inDays(10), inDays(60)]
+    const first = mountTask(3)
+    answer({ data: {} })
+    await flushPromises()
+    await typeSeason(first, from, until)
+    first.unmount()
+    const second = mountTask(3)
+    answer({ data: {} })
+    await flushPromises()
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    expect([value(second, '#sheet-starts-on'), value(second, '#sheet-until'), checked(second), value(second, '#sheet-name')]).toEqual([from, until, 'true', 'Sommer'])
+    second.unmount()
+    localStorage.clear()
+  })
+  test.each([
+    ['only a day typed', true, [true, 0]],
+    ['nothing typed', false, [false, 1]],
+  ] as const)('closing with %s: "Änderungen verwerfen?" only for input', async (_, typeDay, expected) => {
+    const wrapper = mountTask(3)
+    answer({ data: {} })
+    await flushPromises()
+    if (typeDay) await wrapper.get('#sheet-until').setValue(inDays(20))
+    await wrapper.get('button[aria-label="Schließen"]').trigger('click')
+    await flushPromises()
+    expect([wrapper.text().includes('Änderungen verwerfen?'), wrapper.emitted('close')?.length ?? 0]).toEqual(expected)
+    wrapper.unmount()
+    localStorage.clear()
+  })
+
+  // Row "same start again", holds. Wrong behaviour caught: the switch of a holding season can be switched off (the paper
+  // keeps it: no "only this year"), with no word why; or the save sends a one-off change.
+  test('"Bearbeiten" on a holding season: the switch stays on, a sentence says why; the save keeps yearly', async () => {
+    datedRows.value = [row({ id: 'd2', from: inDays(-5), until: inDays(20), holds: true })]
+    const wrapper = mountTask(0)
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    expect([checked(wrapper), wrapper.get('#sheet-yearly').attributes('disabled') !== undefined, wrapper.text().includes(catalog.dated.yearlyWhileHolding), value(wrapper, '#sheet-name')]).toEqual(['true', true, true, 'Sommer'])
+    await wrapper.get('#sheet-until').setValue(inDays(30))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.yearly, s.name, s.change])).toEqual([[inDays(-5), inDays(30), true, 'Sommer', 'd2']])
+    wrapper.unmount()
+  })
+
+  // Row "same start again", waits. Wrong behaviour caught: "Bearbeiten" fills the days but not the switch or the name.
+  test('"Bearbeiten" on a waiting season fills the days, the switch and the name', async () => {
+    datedRows.value = [row()]
+    const wrapper = mountTask(0)
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    expect([value(wrapper, '#sheet-starts-on'), value(wrapper, '#sheet-until'), checked(wrapper), value(wrapper, '#sheet-name')]).toEqual([inDays(10), inDays(40), 'true', 'Sommer'])
+    wrapper.unmount()
+  })
+
+  // Round N1, the sheet's half. Wrong behaviour caught: a sheet whose task cannot make a season offers "Bearbeiten" on one
+  // (the server refuses the save); or the switch of a holding one-off change can be switched on (the server refuses that
+  // too: `yearly` does not change while a row holds).
+  test('no "Bearbeiten" on a season through a task without yearly; the switch of a holding one-off change is disabled', async () => {
+    datedRows.value = [row()]
+    const offer = mountTask(2)
+    answer({ data: {} })
+    await flushPromises()
+    expect(offer.findAll('button').some((b) => b.text() === 'Bearbeiten')).toBe(false)
+    offer.unmount()
+    datedRows.value = [row({ id: 'd2', from: inDays(-5), until: inDays(20), holds: true, yearly: undefined, name: undefined })]
+    const season = mountTask(0)
+    answer({ data: {} })
+    await flushPromises()
+    await season.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    // The lead's N1 follow-up: a sentence says why the switch cannot be turned on now.
+    expect([checked(season), season.get('#sheet-yearly').attributes('disabled') !== undefined, season.text().includes(catalog.dated.yearlyOnWhileHolding)]).toEqual(['false', true, true])
+    season.unmount()
+  })
+
+  // A task whose change is only its fixed values (`set`, the demo's "Saisongericht"), found by the browser test. Wrong
+  // behaviour caught: with no field to change the sheet says "Es ist noch nichts geändert" and never saves the days.
+  test('a task with only fixed values saves its days: one save, no "nothing changed"', async () => {
+    const wrapper = mountTask(3)
+    answer({ data: {} })
+    await flushPromises()
+    await typeSeason(wrapper, inDays(10), inDays(40))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect([wrapper.text().includes(catalog.dated.nothingChanged), sent().map((s) => [s.fields, s.from, s.until, s.yearly, s.name])])
+      .toEqual([false, [[{}, inDays(10), inDays(40), true, 'Sommer']]])
+    wrapper.unmount()
+  })
+
+  // Round N3. A task's notices are about the fields it shows and the ones it sets. Wrong behaviour caught: the
+  // "Saisongericht" sheet hides its own holding season (it shows no field), so nobody sees it and a second one is planned.
+  test('a task with only fixed values shows its holding season; "Bearbeiten" fills the days, the switch and the name', async () => {
+    datedRows.value = [row({ id: 'd2', from: inDays(-5), until: inDays(20), holds: true, fields: ['onMenu'], values: { onMenu: true }, normal: { onMenu: false } })]
+    const wrapper = mountTask(3)
+    answer({ data: {} })
+    await flushPromises()
+    expect(['Sommer', 'Kommt jedes Jahr wieder'].map((part) => wrapper.text().includes(part))).toEqual([true, true])
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    // A holding season keeps its start: "Gilt ab" is fixed text (decision 4).
+    expect([wrapper.find('[data-test="fixed-from"]').exists(), value(wrapper, '#sheet-until'), checked(wrapper), value(wrapper, '#sheet-name')]).toEqual([true, inDays(20), 'true', 'Sommer'])
+    wrapper.unmount()
+  })
+
+  // Lead's cell 1, the sheet's half (the server's: dated-yearly.test.ts "a later year"). The list gives a season the days
+  // of its current or next time, which in a later year are not its stored first days. Wrong behaviour caught: "Bearbeiten"
+  // and a new value only read as a second change on other days ("Es gibt schon eine Änderung ab …"), or the save goes
+  // without the row's id, so the server would make a second season.
+  test('"Bearbeiten" on a season and only a value changed: no second-change line; one save with the row\'s id', async () => {
+    datedRows.value = [row()]
+    const wrapper = mountTask(0)
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('input[name="price"]').setValue('9,50')
+    expect(wrapper.find('#sheet-starts-on-status').exists()).toBe(false)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.yearly, s.name, s.change])).toEqual([[inDays(10), inDays(40), true, 'Sommer', 'd1']])
+    wrapper.unmount()
+  })
+
+  // Lead's cell 2, row "a one-off change inside the yearly days". Wrong behaviour caught: the line under the one-off change
+  // names other days than the ones of this year's time of the season (the list's days), so it says the wrong days hold both.
+  test('a one-off change inside a holding season: the line names the days of this year\'s time', async () => {
+    datedRows.value = [
+      row({ id: 'd1', from: inDays(-5), until: inDays(20), holds: true }),
+      row({ id: 'd2', from: inDays(5), until: inDays(10), yearly: undefined, name: 'Betriebsurlaub', values: { price: { amount: 500 } } }),
+    ]
+    const wrapper = mountTask(0)
+    await ready(wrapper, '12,90')
+    expect(wrapper.get('[data-test="dated-overlap"]').text()).toBe(`Von ${short(inDays(5))} bis ${short(inDays(10))} gelten beide. Die Website zeigt die Änderung ab ${short(inDays(5))}.`)
+    wrapper.unmount()
+  })
+
+  // Row "second language shown". Wrong behaviour caught: the switch or the name shows in the English view (where they are
+  // not saved), or a save from there drops them.
+  test('the second language view hides the switch and the name; the save keeps them', async () => {
+    const both = serializeSchema(defineSite({
+      site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      pages: { home: { de: '/', en: '/en' } },
+      bricks: { items: collection({ label: 'Karte', max: 50, order: 'manual', listing: { title: 'name' }, fields: { name: f.text('Name'), price: f.money('Preis') }, tasks: [{ id: 'season', label: 'Saison', kind: 'edit', fields: ['name', 'price'], pick: true, when: { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' } }] }) },
+    }))
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick: both.bricks.items!, task: both.bricks.items!.tasks![0]!, main: 'de', locales: ['de', 'en'], schema: both, entry: { ...stored, data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    answer({ data: { name: { de: 'Suppe', en: 'Soup' }, price: { amount: 900 } } })
+    await flushPromises()
+    await wrapper.get('input[name="price"]').setValue('990')
+    await typeSeason(wrapper, inDays(10), inDays(60))
+    await wrapper.findAll('[role="group"] button, [role="radio"]').find((b) => b.text().startsWith('Englisch'))!.trigger('click')
+    await flushPromises()
+    expect([wrapper.find('#sheet-yearly').exists(), wrapper.find('#sheet-name').exists()]).toEqual([false, false])
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.yearly, s.name])).toEqual([[inDays(10), inDays(60), true, 'Sommer']])
+    wrapper.unmount()
+  })
+
+  // Rows "save" (notices, sheet) and "a name only". Wrong behaviour caught: the sheet's notice of a season reads like a
+  // one-off change, or the name does not lead.
+  test('the sheet\'s notices lead with the name and say a season comes back every year', async () => {
+    datedRows.value = [row({ id: 'd1' }), row({ id: 'd2', from: inDays(-5), until: inDays(20), holds: true, name: undefined })]
+    const wrapper = mountTask(0)
+    await ready(wrapper, '12,90')
+    expect(wrapper.findAll('[data-test="dated-waiting"]').map((n) => n.text().replace(/\s/g, ' '))).toEqual([
+      `Sommer: jedes Jahr von ${short(inDays(10))} bis ${short(inDays(40))}: Preis 9,90 €`,
+      `Bis ${fmt(inDays(20), { weekday: 'short', day: 'numeric', month: 'short' })} zeigt die Website: Preis 9,90 € (sonst 12,90 €). Kommt jedes Jahr wieder.`,
+    ])
     wrapper.unmount()
   })
 })

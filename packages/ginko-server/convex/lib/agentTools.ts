@@ -2,7 +2,7 @@
 // for a person, how the model is told about them, and the pure helpers some of them use (search text).
 // A tool is listed only when the person may use it; agent.ts checks the same list again at call time.
 import type { Brick, Json, Task } from '@lupinum/ginko'
-import { labelOf, type Schema } from '@lupinum/ginko/internal'
+import { labelOf, taskEnds, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import { createdBy, type Actor } from './access'
 
@@ -25,6 +25,12 @@ export function taskTools(actor: Actor): TaskTool[] {
   }
   return out
 }
+
+/**
+ * The task tools the agent door offers and runs: a task with an end (`when.until`) is left out, because the door cannot
+ * ask its days yet (checkpoint 5) and a save through it needs both days.
+ */
+export const doorTools = (actor: Actor): TaskTool[] => taskTools(actor).filter((t) => !(t.task.kind === 'edit' && taskEnds(t.task)))
 
 /** The tool description of a task: the labels are the site's own words (main language), the rest is for the model. */
 export function describeTask(brick: Brick, task: Task, main: string): string {
@@ -58,6 +64,13 @@ export function draftBricks(actor: Actor): string[] {
     .filter(([key, def]) => def.kind === 'collection' && !def.retired && (actor.role !== 'staff' || taskFor(actor, key, 'create') !== undefined))
     .map(([key]) => key)
 }
+
+/** A dated change (D125): the day the values start, for an entry that is online. */
+export const FROM = {
+  type: 'string',
+  format: 'date',
+  description: 'A day (YYYY-MM-DD) after today, at most a year ahead: the values start on that day as a planned change of an entry that is online; until then the website keeps the values it has. Not together with publish.',
+} as const
 
 /**
  * `publish` on every tool that creates or changes content (SPEC 15): a new entry is a draft and a change to a published
@@ -109,7 +122,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
     },
     {
       name: 'ginko_read',
-      description: 'Reads the published content of a brick as the website shows it. Collections include the entry IDs. Drafts are not in it. '
+      description: 'Reads the published content of a brick as the website shows it. Collections include the entry IDs. Drafts and entries that ended (their end date passed) are not in it; ginko_search finds them. '
         + 'For another language, "fallback" lists the texts shown in the main language because their translation is missing; "stale" lists outdated translations, which the website still shows until they are translated again or confirmed. '
         + 'By default, an entry with its own page is left out of a language until its required texts are translated there; read the main language to find it.',
       inputSchema: object({ brick: { type: 'string', description: 'Key of the brick (from ginko_overview)' }, locale: { type: 'string', description: `Language; default is the main language (${main})` } }, ['brick']),
@@ -244,8 +257,8 @@ export function builderTools(actor: Actor): ToolDef[] {
     {
       name: 'ginko_write',
       description: `Changes fields of an entry, or of a single brick, in the main language (${main}). Fields you leave out stay as they are; null removes an optional value. `
-        + `${values} Foreign languages go through ginko_translate. The change waits unpublished until the person publishes it in the platform, unless publish is true.`,
-      inputSchema: object({ brick, entry, fields, publish: PUBLISH, propose: PROPOSE, request_id: REQUEST_ID }, ['brick', 'fields']),
+        + `${values} Foreign languages go through ginko_translate. The change waits unpublished until the person publishes it in the platform, unless publish is true; with from it starts on that day by itself.`,
+      inputSchema: object({ brick, entry, fields, publish: PUBLISH, from: FROM, propose: PROPOSE, request_id: REQUEST_ID }, ['brick', 'fields']),
       annotations: WRITES,
     },
     {

@@ -4,7 +4,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { expect, test, vi } from 'vitest'
-import { collection, defineSite, f } from '@lupinum/ginko'
+import { collection, defineSite, f } from '@lupinum/ginko/internal'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { ConvexError } from 'convex/values'
 import { normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
@@ -16,16 +16,17 @@ const { computed, defineComponent, h, onBeforeUnmount, ref, Suspense, toValue, w
 Object.entries({ computed, onBeforeUnmount, ref, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const schema = serializeSchema(defineSite({
-  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
-  bricks: { dishes: collection({ label: 'Gerichte', max: 500, order: 'manual', fields: { title: f.text('Name') } }) },
+  bricks: { dishes: collection({ listing: { title: 'title', detail: 'price' }, label: 'Gerichte', max: 500, order: 'manual', showUntil: { field: 'until' }, fields: { title: f.text('Name'), price: f.money('Preis', { optional: true }), until: f.date('Bis', { optional: true }) } }) },
 }))
 const brick = schema.bricks.dishes!
 
 vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
 vi.stubGlobal('useRoute', () => ({ params: { site: 'restaurant', brick: 'dishes' }, query: {} }))
-vi.stubGlobal('useStudioSite', () => ({ shown: (label: string) => label }))
+// The site's currency as layouts/site.vue provides it: this site is in Swiss francs.
+vi.stubGlobal('useStudioSite', () => ({ shown: (label: string) => label, currency: () => 'CHF' }))
 vi.stubGlobal('useOps', () => ({}))
 vi.stubGlobal('useSiteData', async () => ({
   slug: ref('restaurant'), schema: ref(schema), site: ref({ slug: 'restaurant' }), main: ref('de'), today: ref('2026-10-15'), isManager: ref(true),
@@ -50,7 +51,7 @@ vi.stubGlobal('useConvexQuery', (fn: string, args: () => unknown, options?: { ke
   }, { immediate: true })
   return list
 })
-const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: []; pending?: boolean }[]; total: number }) => {
+const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: []; pending?: { since: number }; changes?: { from: string; fields: string[] }[] }[]; total: number }) => {
   list.data.value = page
   list.pending.value = false
   list.isStale.value = false
@@ -155,7 +156,7 @@ test('a live entry with unpublished changes is marked but not greyed out like a 
   list.error.value = undefined
   answer({ rows: [
     { _id: 'e1', title: 'Saibling', state: 'draft', dates: {}, gaps: [] },
-    { _id: 'e2', title: 'Forelle', state: 'live', dates: {}, gaps: [], pending: true },
+    { _id: 'e2', title: 'Forelle', state: 'live', dates: {}, gaps: [], pending: { since: 1 } },
   ], total: 2 })
   await flushPromises()
   const rows = wrapper.findAll('li[class*="group/row"]')
@@ -163,4 +164,76 @@ test('a live entry with unpublished changes is marked but not greyed out like a 
     [true, false, 'true'],
     [false, true, undefined],
   ])
+})
+
+// Wrong behaviour caught (D131): a row with a change waiting for a later day reads like any online row, so nobody sees
+// in the list that the price changes on that day; or unpublished changes, which need a step, hide behind it.
+test('a change for a later day names its day; unpublished changes come first', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
+    global: { mocks: { shownLabel }, stubs },
+  })
+  await flushPromises()
+  list.error.value = undefined
+  answer({ rows: [
+    { _id: 'e1', title: 'Saibling', state: 'live', dates: {}, gaps: [], changes: [{ from: '2099-04-01', fields: ['title'] }, { from: '2099-03-05', fields: ['title'] }] },
+    { _id: 'e2', title: 'Forelle', state: 'live', dates: {}, gaps: [], pending: { since: 1 }, changes: [{ from: '2099-03-05', fields: ['title'] }] },
+  ], total: 2 })
+  await flushPromises()
+  const rows = wrapper.findAll('li[class*="group/row"]')
+  expect(rows.map((r) => [r.text().includes('Änderungen online ab Do., 5. März'), r.text().includes('Unveröffentlichte Änderungen'), r.attributes('data-dim')])).toEqual([
+    [true, false, undefined],
+    [false, true, undefined],
+  ])
+})
+
+// Wrong behaviour caught (D113): an entry whose date passed with saved changes said "Unveröffentlichte Änderungen" and
+// was not greyed out, while the website no longer shows it; the row's one text follows what visitors see now.
+test('an entry that ended with unpublished changes shows that it ended', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
+    global: { mocks: { shownLabel }, stubs },
+  })
+  await flushPromises()
+  list.error.value = undefined
+  answer({ rows: [
+    { _id: 'e1', title: 'Saibling', state: 'live', dates: { until: '2026-10-14' }, gaps: [] },
+    { _id: 'e2', title: 'Forelle', state: 'live', dates: { until: '2026-10-14' }, gaps: [], pending: { since: 1 } },
+    { _id: 'e3', title: 'Hecht', state: 'live', dates: { until: '2026-10-15' }, gaps: [], pending: { since: 1 } },
+  ], total: 3 })
+  await flushPromises()
+  const rows = wrapper.findAll('li[class*="group/row"]')
+  expect(rows.map((r) => [r.text().includes('abgelaufen am'), r.text().includes('Unveröffentlichte Änderungen'), r.attributes('data-dim')])).toEqual([
+    [true, false, 'true'],
+    [true, false, 'true'],
+    [false, true, undefined],
+  ])
+})
+
+// Wrong behaviour caught: a price in a list row shows in euros on a site in Swiss francs (the money field of the form
+// shows francs).
+test('a price in a list row shows in the site\'s currency', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
+    global: { mocks: { shownLabel }, stubs },
+  })
+  await flushPromises()
+  list.error.value = undefined
+  answer({ rows: [{ _id: 'e1', title: 'Rösti', state: 'live', dates: { price: { amount: 1450 } }, gaps: [] }], total: 1 })
+  await flushPromises()
+  expect(wrapper.get('li[class*="group/row"]').text()).toContain('14,50\u00a0CHF')
+})
+
+// Wrong behaviour caught (design V2 guess 5): the line under an entry's name shows the first date or price of the brick,
+// or nothing, instead of the value of the field `listing.detail` names; a row without that value gets an empty line.
+test('the line under the title of a list row is the value of listing.detail', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
+    global: { mocks: { shownLabel }, stubs },
+  })
+  await flushPromises()
+  list.error.value = undefined
+  answer({ rows: [
+    { _id: 'e1', title: 'Rösti', state: 'live', dates: { price: { amount: 900 } }, gaps: [] },
+    { _id: 'e2', title: 'Suppe', state: 'live', dates: {}, gaps: [] },
+  ], total: 2 })
+  await flushPromises()
+  const lines = wrapper.findAll('li[class*="group/row"]').map((row) => row.findAll('div.min-w-0 > span').map((span) => span.text()))
+  expect(lines).toEqual([['9,00 CHF'], []])
 })

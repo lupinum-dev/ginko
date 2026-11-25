@@ -2,10 +2,18 @@
 // create/publish/unpublish/publishDue, the bundle, revisions, rights, and the readers that must treat a draft apart
 // (retention, backup).
 import type { Schema } from '@lupinum/ginko/internal'
+import { ConvexError } from 'convex/values'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, setup, upload } from './setup'
+import { errorOf, opId, people, setup, upload } from './setup'
+
+// Mail is the one thing mocked: `mail.throws` makes queueing throw it, as a broken mail setup would.
+const mail = vi.hoisted(() => ({ throws: undefined as unknown }))
+vi.mock('../convex/mail', async (original) => {
+  const real = await original<typeof import('../convex/mail')>()
+  return { ...real, queueMail: (...args: Parameters<typeof real.queueMail>) => (mail.throws !== undefined ? Promise.reject(mail.throws) : real.queueMail(...args)) }
+})
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
 const HOUR = 60 * 60 * 1000
@@ -39,6 +47,15 @@ async function draftSetup() {
 }
 
 const idsOf = (bundle: Bundle) => bundle.bricks.events!.items!.map((i) => i.id)
+
+/**
+ * Takes the required description out of a stored draft, as an import keeps it (it checks only the shape), so the draft
+ * fails the full check; `false` puts it back.
+ */
+const breakDraft = (s: Awaited<ReturnType<typeof draftSetup>>, id: string, broken = true) => s.t.run(async (ctx) => {
+  const { description: _, ...data } = (await ctx.db.get(id as Id<'entries'>))!.data as Record<string, unknown>
+  await ctx.db.patch(id as Id<'entries'>, { data: broken ? data : { ...data, description: { de: 'Test' } } })
+})
 
 afterEach(() => vi.useRealTimers())
 
@@ -117,6 +134,27 @@ describe('scheduled publishing', () => {
     expect(changes.map((c) => [c.kind, c.actor])).toEqual([['create', 'u-wirtin'], ['publish', 'system']])
   })
 
+  // Wrong behaviour caught: an error that is not a refusal (here a stored choice field without its options) makes the
+  // job fail silently; the draft then stays planned for a run that never comes again.
+  it('an error of the run stops the plan with "failed" and logs only the class', async () => {
+    const s = await draftSetup()
+    const at = NOW + 2 * HOUR
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish('Geplant'), publish: { at } })
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      delete (schema.bricks.menu!.fields.veg as { options?: unknown }).options
+      await ctx.db.patch(s.site, { schema })
+    })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await s.advanceTo(at + 1000)
+    expect(await s.row(draft.entry)).toMatchObject({ state: 'draft', stopped: { at, reason: { code: 'failed' } } })
+    expect((await s.row(draft.entry))!.publishAt).toBeUndefined()
+    expect(log.mock.calls).toEqual([[`Plan ${draft.entry} failed (TypeError).`]])
+    const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect())
+    expect(changes.at(-1)).toMatchObject({ kind: 'publishStopped', msg: { key: 'history.publishStoppedFailed' } })
+    log.mockRestore()
+  })
+
   it('a rescheduled job does not publish at the old time', async () => {
     const s = await draftSetup()
     const first = NOW + 2 * HOUR
@@ -174,6 +212,384 @@ describe('scheduled publishing', () => {
   })
 })
 
+describe('the full check where a draft goes online (D101)', () => {
+  const paths = (error: { details?: unknown }) => (error.details as { errors: { path: string }[] }).errors.map((e) => e.path)
+
+  // Wrong behaviour caught: a draft that misses a required field goes online half-filled, now or by a plan.
+  it('publish now and publish with a time refuse a draft that fails the full check, with the field errors', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Halb')
+    await breakDraft(s, draft.entry)
+    for (const at of [undefined, NOW + 2 * HOUR]) {
+      const error = await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 1, ...(at ? { at } : {}) }))
+      expect(error.code).toBe('INVALID')
+      expect(paths(error)).toEqual(['description'])
+    }
+    expect(await s.row(draft.entry)).toMatchObject({ state: 'draft', lifeRev: 1 })
+    expect((await s.row(draft.entry))!.publishAt).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: the job at the time publishes what changed under the plan without checking it again.
+  it('the job at the time stops a planned draft that fails the full check: it stays a draft and the history says why', async () => {
+    const s = await draftSetup()
+    const at = NOW + 2 * HOUR
+    const draft = await s.createDraft('Geplant halb', { at })
+    await breakDraft(s, draft.entry)
+    await s.advanceTo(at + 1000)
+    const row = (await s.row(draft.entry))!
+    expect(row).toMatchObject({ state: 'draft' })
+    expect(row.publishAt).toBeUndefined()
+    expect(idsOf(await s.bundle())).not.toContain(draft.entry)
+    const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect())
+    expect(changes.at(-1)).toMatchObject({ kind: 'publishStopped', actor: 'system', msg: { key: 'history.publishStoppedInvalid', params: { count: 1, fields: { de: 'Beschreibung', en: 'Description' } } } })
+    // Wrong behaviour caught (D103): the failed plan leaves no trace on the entry, so nobody sees it.
+    expect(row.stopped).toEqual({ at, by: 'u-wirtin', reason: { code: 'invalid', fields: ['description'] } })
+  })
+
+  // Wrong behaviour caught: a save of a planned draft passes on the changed field alone and the plan stops at its time.
+  it('a save of a planned draft that leaves it failing the full check is refused; a draft without a time saves', async () => {
+    const s = await draftSetup()
+    const planned = await s.createDraft('Geplant', { at: NOW + 2 * HOUR })
+    const plain = await s.createDraft('Ohne Zeit')
+    for (const id of [planned.entry, plain.entry]) await breakDraft(s, id)
+    const retitle = (id: string, baseRev: number) =>
+      s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: id, baseRev, fields: { title: { de: 'Neu' } }, sentence: 'Titel' })
+    const error = await errorOf(retitle(planned.entry, 1))
+    expect(error.code).toBe('INVALID')
+    expect(paths(error)).toEqual(['description'])
+    expect(await retitle(plain.entry, 1)).toMatchObject({ rev: 2 })
+  })
+})
+
+describe('a draft may be incomplete (D115)', () => {
+  const { description: _, ...halfEvent } = event('Halb')
+  const codes = (issues: unknown) => (issues as { path: string; code: string }[]).map((i) => [i.path, i.code])
+
+  // Wrong behaviour caught: a half-filled draft is refused (the person loses the input), or the draft check lets an
+  // unknown field, a wrong type or a badly formed date in, or an entry that goes online or gets a time skips the full check.
+  it('a create without a time is checked as a draft and returns what is missing; online, planned or badly formed it is refused', async () => {
+    const s = await draftSetup()
+    const create = (data: Record<string, unknown>, publish?: { at?: number }) =>
+      s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data, ...(publish ? { publish } : {}) })
+    const draft = await create(halfEvent)
+    expect(draft).toMatchObject({ state: 'draft' })
+    expect(codes((draft as { warnings: unknown }).warnings)).toEqual([['description', 'REQUIRED']])
+    expect((await s.row(draft.entry))!.data).not.toHaveProperty('description')
+    for (const publish of [{}, { at: NOW + 2 * HOUR }]) {
+      const error = await errorOf(create(halfEvent, publish))
+      expect([error.code, codes((error.details as { errors: unknown }).errors)]).toEqual(['INVALID', [['description', 'REQUIRED']]])
+    }
+    expect(await errorOf(create({ ...halfEvent, nope: 'x' }))).toMatchObject({ code: 'INVALID', key: 'errors.fieldNoLongerExists' })
+    const wrongType = await errorOf(create({ ...halfEvent, title: 7 }))
+    expect([wrongType.code, codes((wrongType.details as { errors: unknown }).errors)]).toEqual(['INVALID', [['title', 'NOT_LOCALIZED']]])
+    // A value must be well formed to be stored: a "date" that is a number is no draft content (D115, mode `draft`).
+    const badDay = await errorOf(create({ ...halfEvent, when: 42 }))
+    expect([badDay.code, codes((badDay.details as { errors: unknown }).errors)]).toEqual(['INVALID', [['when', 'DATE']]])
+  })
+
+  // Wrong behaviour caught: clearing a required field of a draft, copying the draft or undoing a save of it is refused,
+  // or a save that changes nothing or an undo answers that nothing is missing.
+  it('a draft without a time saves, copies and undoes with a required field empty', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Voll')
+    const cleared = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 1, fields: { description: null }, sentence: 'Beschreibung' })
+    expect(cleared).toMatchObject({ rev: 2 })
+    expect(codes((cleared as { warnings: unknown }).warnings)).toEqual([['description', 'REQUIRED']])
+    // Saved again unchanged: nothing is written, and it still says what is missing (the form keeps its notes).
+    const again = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 2, fields: { description: null }, sentence: 'Beschreibung' })
+    expect([(again as { rev: number }).rev, codes((again as { warnings: unknown }).warnings)]).toEqual([2, [['description', 'REQUIRED']]])
+    const copy = await s.as.owner.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), entry: draft.entry })
+    expect((await s.row(copy.entry))).toMatchObject({ state: 'draft' })
+    // Filled again, then undone: the undo empties the field once more.
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 2, fields: { description: { de: 'Wieder da' } }, sentence: 'Beschreibung' })
+    const change = await s.t.run(async (ctx) => (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect()).at(-1)!)
+    const undone = await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id })
+    expect((await s.row(draft.entry))!.data).not.toHaveProperty('description')
+    expect(codes((undone as { warnings: unknown }).warnings)).toEqual([['description', 'REQUIRED']])
+  })
+
+  // The assumptions about a complete draft (inventory-platform D) that an incomplete one could break.
+  // Wrong behaviour caught (1-4): a draft without a title crashes the name, takes no address, or shows an empty label in
+  // the history and in the search.
+  it('a draft without a title is named and addressed by the brick key, and the history and search call it by the brick', async () => {
+    const s = await draftSetup()
+    const bare = { when: { from: '2026-11-20', to: '2026-11-20' }, description: { de: 'Zauberwort' } }
+    const create = () => s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: bare })
+    const ids = [(await create()).entry, (await create()).entry]
+    expect(await Promise.all(ids.map(async (id) => (await s.row(id))!.name))).toEqual(['events', 'events-2'])
+    const slugs = await s.t.run(async (ctx) => (await ctx.db.query('slugs').collect()).filter((r) => r.entry === ids[0]).map((r) => [r.locale, r.slug]))
+    expect(slugs.sort()).toEqual([['de', 'events'], ['en', 'events']])
+    const change = await s.t.run(async (ctx) => (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', ids[0] as Id<'entries'>)).collect())[0]!)
+    expect(change.msg).toMatchObject({ key: 'history.draftCreated', params: { title: 'Veranstaltungen' } })
+    const found = await s.as.owner.query(api.search.studio, { site: 'restaurant', query: 'zauberwort' })
+    expect(found.entries.map((e) => [e.entry, e.label, e.state])).toEqual(expect.arrayContaining(ids.map((id) => [id, 'Veranstaltungen', 'draft'])))
+    expect(found.entries).toHaveLength(2)
+  })
+
+  // Wrong behaviour caught (11): a draft without its week skips the one-plan-per-week rule for good, so a later save
+  // puts a second plan on a week that has one.
+  it('a week plan draft without its week saves; giving it a planned week is refused', async () => {
+    const s = await draftSetup()
+    const planned = await s.t.run(async (ctx) => (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'lunchPlans')).first())!)
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'lunchPlans', data: {} })
+    expect(draft).toMatchObject({ state: 'draft' })
+    const error = await errorOf(s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 1, fields: { weekOf: (planned.data as { weekOf: string }).weekOf } }))
+    expect(error).toMatchObject({ code: 'INVALID', details: { errors: [{ path: 'weekOf', key: 'errors.weekAlreadyPlanned' }] } })
+  })
+
+  // Wrong behaviour caught: one half-filled draft blocks every release that rechecks its brick, or a release lets an
+  // incomplete online or planned entry through.
+  it('a release checks a draft without a time as a draft; online and planned entries stay strict', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Halb')
+    await breakDraft(s, draft.entry)
+    let n = 0
+    const release = async () => {
+      n += 1
+      const site = (await s.siteRow())!
+      const schema = site.schema as Schema
+      const events = schema.bricks.events!
+      // A new label on a field changes the brick's fields, so the release checks every entry of the brick again.
+      const next = { ...schema, bricks: { ...schema.bricks, events: { ...events, fields: { ...events.fields, description: { ...events.fields.description!, label: { de: `Text ${n}`, en: `Text ${n}` } } } } } }
+      return s.t.mutation(internal.release.release, {
+        site: s.site, actor: 'pushkey:test', commit: crypto.randomUUID().replaceAll('-', ''),
+        expectedSchemaRev: site.schemaRev, expectedContentRev: site.contentRev, schema: next as Schema, writes: [],
+      })
+    }
+    await release()
+    const planned = await s.createDraft('Geplant', { at: NOW + 2 * HOUR })
+    await breakDraft(s, planned.entry)
+    expect(await errorOf(release())).toMatchObject({ code: 'INVALID', details: { entry: planned.entry } })
+  })
+})
+
+describe('the planner of a draft (D102)', () => {
+  // Wrong behaviour caught: a plan that stops cannot say whom to tell, or an ended plan still names a planner.
+  it('the planner is written with the time and cleared with it: publish now, cancel, remove and the job', async () => {
+    const s = await draftSetup()
+    const at = NOW + 2 * HOUR
+    const by = async (id: string) => (await s.row(id))!.publishBy
+    const call = (fn: typeof api.entries.publish | typeof api.entries.unpublish | typeof api.entries.remove, id: string, extra: object = {}) =>
+      s.as.owner.mutation(fn, { site: 'restaurant', opId: opId(), entry: id, lifeRev: 1, ...extra } as never)
+    const created = await s.createDraft('Erstellt geplant', { at })
+    const published = await s.createDraft('Veröffentlicht')
+    const cancelled = await s.createDraft('Abgesagt')
+    const removed = await s.createDraft('Entfernt', { at })
+    await call(api.entries.publish, published.entry, { at })
+    await call(api.entries.publish, cancelled.entry, { at })
+    for (const id of [created.entry, published.entry, cancelled.entry, removed.entry]) expect(await by(id)).toBe('u-wirtin')
+
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: published.entry, lifeRev: 2 })
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: cancelled.entry, lifeRev: 2 })
+    await call(api.entries.remove, removed.entry)
+    await s.advanceTo(at + 1000)
+    for (const id of [created.entry, published.entry, cancelled.entry, removed.entry]) expect(await by(id)).toBeUndefined()
+    expect(await s.row(created.entry)).toMatchObject({ state: 'live' })
+  })
+})
+
+describe('a stopped plan (D103)', () => {
+  afterEach(() => vi.unstubAllEnvs())
+  // Wrong behaviour caught: an entry is planned and stopped at once, or a stopped plan outlives the write that ends it.
+  it('planned and stopped are never both set, and a new plan, a publish, cancel and remove clear stopped', async () => {
+    const s = await draftSetup()
+    let time = NOW
+    const life = async (id: string) => (await s.row(id))!.lifeRev
+    const both = async () => (await s.t.run((ctx) => ctx.db.query('entries').collect())).filter((r) => r.publishAt !== undefined && r.stopped !== undefined)
+    const plan = async (id: string) => {
+      time += HOUR
+      await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: id, lifeRev: await life(id), at: time })
+    }
+    /** Plans the draft, breaks it and lets the job run: the plan stops. Then the draft is whole again. */
+    const stop = async (id: string) => {
+      await plan(id)
+      expect(await both()).toEqual([])
+      await breakDraft(s, id)
+      await s.advanceTo(time + 1000)
+      await breakDraft(s, id, false)
+      const row = (await s.row(id))!
+      expect(row.stopped).toMatchObject({ at: time, by: 'u-wirtin' })
+      expect(row.publishAt).toBeUndefined()
+    }
+    const shape = async (id: string) => {
+      const row = (await s.row(id))!
+      return { state: row.state ?? 'live', planned: row.publishAt !== undefined, stopped: row.stopped !== undefined }
+    }
+    const a = await s.createDraft('Stopp A')
+    const b = await s.createDraft('Stopp B')
+
+    await stop(a.entry)
+    await plan(a.entry)
+    expect(await shape(a.entry)).toEqual({ state: 'draft', planned: true, stopped: false })
+
+    await breakDraft(s, a.entry)
+    await s.advanceTo(time + 1000)
+    await breakDraft(s, a.entry, false)
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: a.entry, lifeRev: await life(a.entry) })
+    expect(await shape(a.entry)).toEqual({ state: 'draft', planned: false, stopped: false })
+
+    await stop(a.entry)
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: a.entry, lifeRev: await life(a.entry) })
+    expect(await shape(a.entry)).toEqual({ state: 'live', planned: false, stopped: false })
+
+    await stop(b.entry)
+    const removed = await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: b.entry, lifeRev: await life(b.entry) })
+    expect(await shape(b.entry)).toEqual({ state: 'draft', planned: false, stopped: false })
+    await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: b.entry, lifeRev: (removed as { lifeRev: number }).lifeRev })
+    expect(await shape(b.entry)).toEqual({ state: 'draft', planned: false, stopped: false })
+    expect(await both()).toEqual([])
+
+    // Copy, undo and revert, of a stopped draft and of a planned one: a copy is a new draft with neither; an undo or a
+    // revert of its content keeps what it was.
+    const c = await s.createDraft('Stopp C')
+    const d = await s.createDraft('Geplant D')
+    await stop(c.entry)
+    await plan(d.entry)
+    for (const [id, was] of [[c.entry, { planned: false, stopped: true }], [d.entry, { planned: true, stopped: false }]] as const) {
+      const copy = await s.as.owner.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), entry: id })
+      expect(await shape((copy as { entry: string }).entry)).toEqual({ state: 'draft', planned: false, stopped: false })
+      const first = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', id as Id<'entries'>)).first())
+      const saved = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: id, baseRev: (await s.row(id))!.rev, fields: { title: { de: 'Anders' } }, sentence: 'Titel' })
+      await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: saved.change as string })
+      expect(await shape(id)).toEqual({ state: 'draft', ...was })
+      await s.as.owner.mutation(api.entries.revert, { site: 'restaurant', opId: opId(), entry: id, change: first!._id })
+      expect(await shape(id)).toEqual({ state: 'draft', ...was })
+    }
+
+    // An import that carries a plan to come and a stop keeps the plan only.
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const data = { title: { de: 'Import' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi' } }
+    const { ids } = await s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [], entries: [{ id: 'both', brick: 'events', kind: 'item', order: 1, prints: {}, rev: 1, state: 'draft', data, publishAt: time + HOUR, stopped: { at: NOW, reason: { code: 'late' } } }],
+    })
+    expect(await shape(ids[0]![1])).toEqual({ state: 'draft', planned: true, stopped: false })
+    expect(await both()).toEqual([])
+  })
+
+  it('a plain draft still has nothing to cancel', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Nichts geplant')
+    expect(await errorOf(s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 1 }))).toMatchObject({ code: 'INVALID', key: 'errors.entryAlreadyDraft' })
+  })
+})
+
+describe('people are told when a plan stops (D104)', () => {
+  /** A draft planned by the owner, handed to `planner`, that fails the full check at its time. */
+  async function stoppedBy(planner: string, mail = true, ownerLocale?: string) {
+    if (mail) {
+      vi.stubEnv('GINKO_MAIL', 'outbox')
+      vi.stubEnv('SITE_URL', 'https://ginko.test')
+    }
+    const s = await draftSetup()
+    if (ownerLocale) await s.t.run((ctx) => ctx.db.insert('userSettings', { user: people.owner, remindByMail: false, locale: ownerLocale }))
+    const at = Date.parse('2026-10-08T12:30:00Z')
+    const draft = await s.createDraft('Herbstfest', { at })
+    await s.t.run((ctx) => ctx.db.patch(draft.entry as Id<'entries'>, { publishBy: planner }))
+    await breakDraft(s, draft.entry)
+    await s.advanceTo(at + 1000)
+    return { ...s, draft, at }
+  }
+  afterEach(() => vi.unstubAllEnvs())
+  const outbox = (s: Awaited<ReturnType<typeof draftSetup>>) => s.t.run((ctx) => ctx.db.query('outbox').collect())
+
+  // Wrong behaviour caught: a plan stops at night and nobody hears of it, or a person who left the site still gets mail.
+  it('mails the planner while a member and every owner, each once, in their language, with the entry\'s link', async () => {
+    const s = await stoppedBy(people.cook)
+    const mails = await outbox(s)
+    expect(mails.map((m) => m.to).sort()).toEqual(['koch@example.com', 'wirtin@example.com'])
+    expect(mails[0]).toMatchObject({
+      subject: '„Herbstfest“ ging nicht online',
+      text: `Hallo,\n\ndein Eintrag war für Donnerstag, 8. Oktober, 14:30 Uhr geplant. Er ging nicht online, weil „Beschreibung“ fehlt oder ungültig ist.\n\nDem Eintrag ist nichts passiert. Korrigiere ihn, dann veröffentliche ihn oder gib ihm einen neuen Tag.\n\nEintrag öffnen: https://ginko.test/s/restaurant/all/events/${s.draft.entry}\n`,
+    })
+
+    const left = await stoppedBy('u-weg')
+    expect((await outbox(left)).map((m) => m.to)).toEqual(['wirtin@example.com'])
+  })
+
+  it('the owner gets one mail when she planned it herself, in her language', async () => {
+    const s = await stoppedBy(people.owner, true, 'en')
+    expect(await outbox(s)).toMatchObject([{
+      to: 'wirtin@example.com',
+      subject: '“Herbstfest” did not go online',
+      text: `Hello,\n\nyour entry was planned for Thursday, October 8, 14:30. It did not go online, because “Description” is missing or not valid.\n\nThe entry is safe. Fix it, then publish it or give it a new day.\n\nOpen the entry: https://ginko.test/s/restaurant/all/events/${s.draft.entry}\n`,
+    }])
+  })
+
+  // Wrong behaviour caught: a mail step that threw inside the job rolled the job back: the entry stayed planned for
+  // ever with a finished job, no stopped state, no history, nobody told. Also when the error is a ConvexError without
+  // data, which the log line read a code from.
+  it.each([
+    ['a TypeError', new TypeError('mail down'), 'TypeError'],
+    ['a ConvexError without data', new ConvexError(null), 'undefined'],
+  ])('a mail step that throws %s leaves the entry stopped, with its history row', async (_, thrown, kind) => {
+    mail.throws = thrown
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const s = await stoppedBy(people.cook).finally(() => { mail.throws = undefined })
+    expect(error.mock.calls.map((call) => String(call[0]))).toEqual([`Mail stopped ${s.draft.entry} not queued (${kind}).`])
+    error.mockRestore()
+    const row = (await s.row(s.draft.entry))!
+    expect(row).toMatchObject({ state: 'draft', stopped: { at: s.at, reason: { code: 'invalid' } } })
+    expect(row.publishAt).toBeUndefined()
+    const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', s.draft.entry as Id<'entries'>)).collect())
+    expect(changes.map((c) => c.kind)).toContain('publishStopped')
+    expect(await outbox(s)).toEqual([])
+  })
+
+  // Wrong behaviour caught: with mail on and no SITE_URL (no link for the mail), the mail step threw inside the job, so
+  // the job rolled back: the entry stayed planned for ever, with no stopped state and no history.
+  it('mail on without SITE_URL: the entry is stopped with its history row, and no mail is queued', async () => {
+    vi.stubEnv('GINKO_MAIL', 'outbox')
+    vi.stubEnv('SITE_URL', '')
+    const s = await stoppedBy(people.cook, false)
+    const row = (await s.row(s.draft.entry))!
+    expect(row).toMatchObject({ state: 'draft', stopped: { at: s.at, reason: { code: 'invalid' } } })
+    const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', s.draft.entry as Id<'entries'>)).collect())
+    expect(changes.map((c) => c.kind)).toContain('publishStopped')
+    expect(await outbox(s)).toEqual([])
+  })
+
+  // Wrong behaviour caught: a stopped plan is not on Today, or staff see the plans of others.
+  it('Today lists a stopped plan for the owners and for its planner, with the cause as second line', async () => {
+    const s = await stoppedBy(people.cook, false)
+    const row = { entry: s.draft.entry, brick: 'events', at: s.at, titleText: '„Herbstfest“ ging nicht online', causeText: '„Beschreibung“ fehlt oder ist ungültig.' }
+    expect(await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })).toMatchObject([row])
+    expect(await s.as.cook.query(api.entries.stoppedPlans, { site: 'restaurant' })).toMatchObject([row])
+    await s.t.run((ctx) => ctx.db.patch(s.draft.entry as Id<'entries'>, { stopped: { at: s.at, by: people.owner, reason: { code: 'late' } } }))
+    expect(await s.as.cook.query(api.entries.stoppedPlans, { site: 'restaurant' })).toEqual([])
+    // Cancelling the plan takes it off Today.
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: s.draft.entry, lifeRev: (await s.row(s.draft.entry))!.lifeRev })
+    expect(await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })).toEqual([])
+  })
+
+  // Wrong behaviour caught: a staff member's own plans were filtered after the 50 newest rows were read, so 50 newer
+  // stopped plans of others hid theirs.
+  it('newer stopped plans of others never hide a staff member\'s own', async () => {
+    const s = await stoppedBy(people.cook, false)
+    await s.t.run(async (ctx) => {
+      const { _id: _, _creationTime: __, ...row } = (await ctx.db.get(s.draft.entry as Id<'entries'>))!
+      for (let i = 1; i <= 50; i++) await ctx.db.insert('entries', { ...row, stopped: { at: s.at + i, by: people.owner, reason: { code: 'late' } } })
+    })
+    expect((await s.as.cook.query(api.entries.stoppedPlans, { site: 'restaurant' })).map((r) => r.entry)).toEqual([s.draft.entry])
+  })
+})
+
+describe('a plan takes the entry as the person saw it (D105)', () => {
+  // Wrong behaviour caught: a person plans a draft that someone else changed since they opened it, and the other
+  // text goes online unseen; or a move of the entry in the list refuses a plan although no content changed.
+  it('content saved after the form\'s rev refuses the plan, naming who changed what; a move does not', async () => {
+    const s = await draftSetup()
+    const at = NOW + 2 * HOUR
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish('Vorgemerkt') })
+    const plan = (rev: number) => s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 1, at, rev })
+    await s.as.admin.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 1, fields: { name: { de: 'Geändert' } }, sentence: 'Name' })
+    expect(await errorOf(plan(1))).toMatchObject({ code: 'CHANGED_SINCE', key: 'errors.someoneChangedMeanwhile', details: { conflicts: ['name'], by: { name: expect.not.objectContaining({ self: true }) } } })
+
+    await s.as.owner.mutation(api.entries.move, { site: 'restaurant', opId: opId(), entry: draft.entry, direction: 'down' })
+    expect((await s.row(draft.entry))!.rev).toBe(3)
+    expect(await plan(2)).toMatchObject({ state: 'draft', publishAt: at })
+  })
+})
+
 describe('revisions and slugs of a draft', () => {
   it('editing a draft bumps rev and fieldRevs but not contentRev; publishing a live entry\'s saved changes bumps all three', async () => {
     const s = await draftSetup()
@@ -222,6 +638,189 @@ describe('revisions and slugs of a draft', () => {
     }
     const full = s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: { text: { de: 'Zu viel' }, until: '2026-12-31' } })
     expect(await errorOf(full)).toMatchObject({ code: 'INVALID' })
+  })
+})
+
+describe('entry names (D96)', () => {
+  const nameOf = async (s: Awaited<ReturnType<typeof draftSetup>>, id: string) => {
+    const row = (await s.row(id))!
+    return { name: row.name, nameFixed: row.nameFixed, slug: (row.data as { slug?: Record<string, string> }).slug?.de }
+  }
+  const slugRows = (s: Awaited<ReturnType<typeof draftSetup>>, id: string) =>
+    s.t.run(async (ctx) => (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', id as Id<'entries'>)).collect()).filter((r) => r.locale === 'de').map((r) => ({ slug: r.slug, old: r.old })))
+  const retitle = (s: Awaited<ReturnType<typeof draftSetup>>, id: string, baseRev: number, title: string) =>
+    s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: id, baseRev, fields: { title: { de: title } }, sentence: 'Titel' })
+
+  // Wrong behaviour caught: two entries get one name, so a link or an export by name points at the wrong one.
+  it('the same title twice gives x and x-2, as name and main slug together', async () => {
+    const s = await draftSetup()
+    const first = await s.createDraft('Martinsfest')
+    const second = await s.createDraft('Martinsfest', {})
+    expect(await nameOf(s, first.entry)).toEqual({ name: 'martinsfest', nameFixed: undefined, slug: 'martinsfest' })
+    // Created online, the name is fixed at once.
+    expect(await nameOf(s, second.entry)).toEqual({ name: 'martinsfest-2', nameFixed: true, slug: 'martinsfest-2' })
+  })
+
+  // Wrong behaviour caught: restoring the removed entry would give two entries one name.
+  it('a name in the trash stays taken', async () => {
+    const s = await draftSetup()
+    const removed = await s.createDraft('Kürbisabend')
+    await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: removed.entry, lifeRev: 1 })
+    const next = await s.createDraft('Kürbisabend')
+    expect((await nameOf(s, next.entry)).name).toBe('kuerbisabend-2')
+  })
+
+  // Wrong behaviour caught: a draft keeps the name of its first rough title, or its old address stays reserved as a
+  // forward that nobody ever saw.
+  it('a draft\'s title change makes the name and the main slug again and leaves no old row', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    await retitle(s, draft.entry, 1, 'Herbstball')
+    expect(await nameOf(s, draft.entry)).toEqual({ name: 'herbstball', nameFixed: undefined, slug: 'herbstball' })
+    expect(await slugRows(s, draft.entry)).toEqual([{ slug: 'herbstball', old: undefined }])
+  })
+
+  /** The name, the slug in `data` and the current slug rows, per language: the two must agree after every write. */
+  const addressOf = async (s: Awaited<ReturnType<typeof draftSetup>>, id: string) => {
+    const row = (await s.row(id))!
+    const rows = await s.t.run(async (ctx) => (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', id as Id<'entries'>)).collect()).filter((r) => !r.old))
+    return { name: row.name, data: (row.data as { slug?: Record<string, string> }).slug, rows: Object.fromEntries(rows.map((r) => [r.locale, r.slug])) }
+  }
+
+  // Wrong behaviour caught: the English address keeps the first rough title after the draft's title changed, and goes
+  // online with it; or an English address made from the English title is thrown away.
+  it.each([
+    { case: 'copied from the main slug follows it', english: undefined, en: 'herbstball' },
+    { case: 'made from its own text stays', english: 'Autumn ball', en: 'autumn-ball' },
+  ])('a foreign slug $case', async ({ english, en }) => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    let rev = 1
+    if (english) rev = (await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: rev, locale: 'en', fields: { title: { en: english } }, sentence: 'Titel' })).rev
+    await retitle(s, draft.entry, rev, 'Herbstball')
+    const slugs = { de: 'herbstball', en }
+    expect(await addressOf(s, draft.entry)).toEqual({ name: 'herbstball', data: slugs, rows: slugs })
+  })
+
+  // Wrong behaviour caught: a followed slug is missing from the change row and its revision, so the history does not
+  // show it and another open form does not see the conflict.
+  it('a followed slug is part of the change: its revision rises and the change row holds it', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    const renamed = await retitle(s, draft.entry, 1, 'Herbstball')
+    if (!('change' in renamed)) throw new Error('the title change wrote nothing')
+    const change = await s.t.run((ctx) => ctx.db.get(renamed.change))
+    expect(change).toMatchObject({ fields: ['title', 'slug'], before: { slug: { de: 'erster-titel', en: 'erster-titel' } }, after: { slug: { de: 'herbstball', en: 'herbstball' } } })
+    expect((await s.row(draft.entry))!.fieldRevs.slug).toBe(renamed.rev)
+  })
+
+  // Wrong behaviour caught: the undo of a title change the slug followed puts the old slug into the data while the
+  // slug rows keep the new one.
+  it('the undo of a title change brings back name, slugs and slug rows', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    const renamed = await retitle(s, draft.entry, 1, 'Herbstball')
+    if (!('change' in renamed)) throw new Error('the title change wrote nothing')
+    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: renamed.change })
+    const first = { de: 'erster-titel', en: 'erster-titel' }
+    expect(await addressOf(s, draft.entry)).toEqual({ name: 'erster-titel', data: first, rows: first })
+  })
+
+  // Wrong behaviour caught: undoing an address change puts the old slug into the data while the slug rows keep the
+  // new one, so the website's page and the reserved address differ.
+  it('an unfixed draft: changeSlug, a title change, then undo of the changeSlug keeps data and slug rows equal', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    const moved = await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: draft.entry, locale: 'de', slug: 'handgemacht' })
+    const step1 = { de: 'handgemacht', en: 'erster-titel' }
+    expect(await addressOf(s, draft.entry)).toEqual({ name: 'erster-titel', data: step1, rows: step1 })
+    await retitle(s, draft.entry, moved.rev, 'Herbstball')
+    // A slug set by hand stays; the English one was copied from the old main slug, which was not "handgemacht".
+    expect(await addressOf(s, draft.entry)).toEqual({ name: 'herbstball', data: step1, rows: step1 })
+    const change = await s.t.run(async (ctx) => (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect()).find((c) => c.fields?.length === 1 && c.fields[0] === 'slug')!)
+    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id })
+    const step3 = { de: 'erster-titel', en: 'erster-titel' }
+    expect(await addressOf(s, draft.entry)).toEqual({ name: 'herbstball', data: step3, rows: step3 })
+  })
+
+  // Wrong behaviour caught: the undo takes an address another entry holds now, so two pages share one URL.
+  it('the undo of an address change is refused when the old slug is taken now', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Erster Titel')
+    const moved = await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: draft.entry, locale: 'de', slug: 'handgemacht' })
+    const other = await s.createDraft('Anderes')
+    await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: other.entry, locale: 'de', slug: 'erster-titel' })
+    const change = await s.t.run(async (ctx) => (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect()).at(-1)!)
+    expect(change.entryRev).toBe(moved.rev)
+    expect(await errorOf(s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id }))).toMatchObject({ code: 'NOT_UNDOABLE', key: 'errors.undoAddressTaken' })
+  })
+
+  // Wrong behaviour caught: a name that links and the export already use changes once the entry was planned or online.
+  // The entry is a draft again when its title changes, so only `nameFixed` (set by the publish or the plan) keeps it.
+  it.each([
+    { case: 'published and taken offline', at: undefined },
+    { case: 'planned and the plan cancelled', at: NOW + DAY },
+  ])('after it was $case, a title change leaves the name', async ({ at }) => {
+    const s = await draftSetup()
+    const entry = await s.createDraft('Sommerfest')
+    const published = await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: entry.entry, lifeRev: 1, ...(at ? { at } : {}) })
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: entry.entry, lifeRev: published.lifeRev })
+    const draft = (await s.row(entry.entry))!
+    expect([draft.state, draft.publishAt]).toEqual(['draft', undefined])
+    await retitle(s, entry.entry, draft.rev, 'Sommernachtsfest')
+    expect(await nameOf(s, entry.entry)).toEqual({ name: 'sommerfest', nameFixed: true, slug: 'sommerfest' })
+  })
+
+  // Wrong behaviour caught: a new address renames the entry, so its links by name break.
+  it('changeSlug leaves the name of a draft', async () => {
+    const s = await draftSetup()
+    const entry = await s.createDraft('Gansl-Essen')
+    await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: entry.entry, locale: 'de', slug: 'gansl-im-november' })
+    expect(await nameOf(s, entry.entry)).toEqual({ name: 'gansl-essen', nameFixed: undefined, slug: 'gansl-im-november' })
+  })
+
+  // Wrong behaviour caught: a title change gives a draft the name another entry holds, or a slug only an old forwarding
+  // row holds, so two entries share a name or a forward points at the wrong page; or name and slug get different ends.
+  it('a title change to a taken name, or to a slug an old forwarding row holds, gives -2 to name and slug together', async () => {
+    const s = await draftSetup()
+    await s.createDraft('Herbstball')
+    // "markt-a" is held only by an old row: the live market moved on to "markt-b", and no entry has that name.
+    const market = await s.createDraft('Wintermarkt', {})
+    for (const slug of ['markt-a', 'markt-b']) await s.as.owner.mutation(api.entries.changeSlug, { site: 'restaurant', opId: opId(), entry: market.entry, locale: 'de', slug })
+    const first = await s.createDraft('Erster Titel')
+    const second = await s.createDraft('Zweiter Titel')
+    await retitle(s, first.entry, 1, 'Herbstball')
+    await retitle(s, second.entry, 1, 'Markt A')
+    expect(await nameOf(s, first.entry)).toEqual({ name: 'herbstball-2', nameFixed: undefined, slug: 'herbstball-2' })
+    expect(await nameOf(s, second.entry)).toEqual({ name: 'markt-a-2', nameFixed: undefined, slug: 'markt-a-2' })
+  })
+
+  // Wrong behaviour caught: a copy takes the name of the entry it copies, or a name that is not made from its title.
+  it('a copy is named after its marked title', async () => {
+    const s = await draftSetup()
+    const original = await s.createDraft('Martinsfest')
+    const copy = await s.as.owner.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), entry: original.entry })
+    expect(await nameOf(s, copy.entry)).toEqual({ name: 'martinsfest-kopie', nameFixed: undefined, slug: 'martinsfest-kopie' })
+  })
+
+  // Wrong behaviour caught: a live entry removed before its name was fixed comes back with a name that follows its
+  // title, so an unpublish and a title change rename an entry that was online.
+  it('a restored live entry has a fixed name', async () => {
+    const s = await draftSetup()
+    const entry = await s.createDraft('Adventmarkt', {})
+    await s.t.run((ctx) => ctx.db.patch(entry.entry as Id<'entries'>, { nameFixed: undefined }))
+    await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: entry.entry, lifeRev: 1 })
+    await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: entry.entry, lifeRev: 2 })
+    expect((await nameOf(s, entry.entry)).nameFixed).toBe(true)
+  })
+
+  // Wrong behaviour caught: a title without letters gives an empty name, or a German word in an English site.
+  it('a title without letters or digits gives the brick key as name', async () => {
+    const s = await draftSetup()
+    const create = () => s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: { text: { de: '…' }, until: '2026-12-31' } })
+    const first = await create()
+    const second = await create()
+    expect([(await s.row(first.entry))!.name, (await s.row(second.entry))!.name]).toEqual(['notices', 'notices-2'])
   })
 })
 
@@ -310,7 +909,7 @@ describe('readers that treat a draft apart', () => {
     const at = NOW + HOUR
     const draft = await s.createDraft('Gesichert', { at })
     const snapshot = await s.t.query(internal.backup.snapshot, { site: s.site })
-    expect(snapshot.entries.find((e) => e.id === draft.entry)).toMatchObject({ state: 'draft', publishAt: at })
+    expect(snapshot.entries.find((e) => e.id === draft.entry)).toMatchObject({ state: 'draft', publishAt: at, name: 'gesichert', nameFixed: true })
     expect(snapshot.entries.find((e) => e.id === s.entries.weinabend)).not.toHaveProperty('state')
 
     expect(await s.as.cook.query(api.entries.get, { site: 'restaurant', entry: draft.entry })).toMatchObject({ state: 'draft', publishAt: at })
@@ -344,7 +943,7 @@ describe('unpublished changes of a live entry (save without publishing)', () => 
     expect(read).toMatchObject({ rev: 2, data: { title: { de: 'Weinabend neu' }, description: { de: '**Neu** mit [Link](https://example.com)' } }, pending: { fields: expect.arrayContaining(['title', 'description']), own: true } })
     expect(read.pending!.since).toBeGreaterThanOrEqual(NOW)
     // The list marks it, with the website's title.
-    expect((await s.as.owner.query(api.entries.list, { site: 'restaurant', brick: 'events' })).rows.find((r) => r._id === entry)).toMatchObject({ pending: true, title: 'Weinabend' })
+    expect((await s.as.owner.query(api.entries.list, { site: 'restaurant', brick: 'events' })).rows.find((r) => r._id === entry)).toMatchObject({ pending: { since: expect.any(Number) }, title: 'Weinabend' })
     // The preview builds the site from the same read, so it shows the saved version too.
     expect((await s.as.owner.query(api.entries.ofBricks, { site: 'restaurant', bricks: ['events'] })).find((e) => e._id === entry)).toMatchObject({ data: { title: { de: 'Weinabend neu' } } })
   })
@@ -401,32 +1000,6 @@ describe('unpublished changes of a live entry (save without publishing)', () => 
     })
     expect(await errorOf(publish(s, entry))).toMatchObject({ code: 'CHANGED_SINCE', key: 'errors.liveChangedMeanwhile', details: { conflicts: ['title'] } })
     expect(await liveTitle(s, entry)).toBe('Online geändert')
-  })
-
-  // Wrong behaviour caught: "publish later" puts the changes live at once, or never; a removal leaves them behind.
-  it('a scheduled publish applies them at the time; until then the website keeps the live version', async () => {
-    const s = await draftSetup()
-    const entry = await liveEvent(s)
-    const live = await liveTitle(s, entry)
-    await save(s, entry, 1, { title: { de: 'Ab morgen' } })
-    expect(await publish(s, entry, { at: NOW + 2 * HOUR })).toMatchObject({ state: 'live', publishAt: NOW + 2 * HOUR })
-    expect(await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })).toMatchObject({ pending: { publishAt: NOW + 2 * HOUR } })
-    await s.advanceTo(NOW + HOUR)
-    expect(await liveTitle(s, entry)).toEqual(live)
-    await s.advanceTo(NOW + 2 * HOUR + 1)
-    expect(await liveTitle(s, entry)).toBe('Ab morgen')
-    expect(await pendingRows(s)).toEqual([])
-
-    // Unpublish of a planned publish takes back only the time; the entry stays online with its changes saved.
-    await save(s, entry, 3, { title: { de: 'Noch später' } })
-    await publish(s, entry, { at: NOW + 4 * HOUR })
-    expect(await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })).toMatchObject({ state: 'live' })
-    expect((await pendingRows(s))[0]).not.toHaveProperty('publishAt')
-    const row = (await s.row(entry))!
-    await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: row.lifeRev })
-    expect(await pendingRows(s)).toEqual([])
-    await s.advanceTo(NOW + 5 * HOUR)
-    expect((await s.row(entry))!.data.title).toEqual({ de: 'Ab morgen' })
   })
 
   // Wrong behaviour caught: with needsApproval the save goes to review, or the publish skips it; an approval puts live a newer save.
@@ -589,5 +1162,101 @@ describe('unpublished changes of a live entry (save without publishing)', () => 
     await s.as.owner.mutation(api.entries.revert, { site: 'restaurant', opId: opId(), entry, change: first!._id })
     expect(await s.as.owner.query(api.entries.get, { site: 'restaurant', entry })).toMatchObject({ data: { title: { de: 'Weinabend' } } })
     expect(await pendingRows(s)).toEqual([])
+  })
+})
+
+describe('the day it went online (D108)', () => {
+  // Wrong behaviour caught: a required `publishedOn` date refused every draft and plan that left it for Ginko to fill,
+  // and a post went online with no date (or a date typed by hand was overwritten). Rule 9: empty means "the day it goes
+  // online", whether that is now or at its time; a typed date stays.
+  async function postedSetup() {
+    const s = await draftSetup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      const events = schema.bricks.events!
+      if (events.kind !== 'collection') throw new Error('events is a collection')
+      await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, events: { ...events, publishedOn: 'postedOn', fields: { ...events.fields, postedOn: { type: 'date', label: { de: 'Veröffentlicht am' } } } } } } })
+    })
+    const create = (title: string, extra: object, publish?: { at?: number }) =>
+      s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: { ...event(title), ...extra }, ...(publish ? { publish } : {}) })
+    const publish = async (id: string, at?: number) => {
+      const row = (await s.row(id))!
+      return s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: id, lifeRev: row.lifeRev, ...(at === undefined ? {} : { at, rev: row.rev }) })
+    }
+    const posted = async (id: string) => {
+      const row = (await s.row(id))!
+      const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', row._id)).collect())
+      const published = changes.find((c) => c.kind === 'publish' || (c.kind === 'create' && row.state === undefined))
+      return { postedOn: (row.data as { postedOn?: string }).postedOn, rev: row.fieldRevs.postedOn === row.rev, change: published && { fields: published.fields, after: published.after } }
+    }
+    return { ...s, create, publish, posted }
+  }
+
+  it.each([
+    ['published now with the field empty', async (s: Awaited<ReturnType<typeof postedSetup>>) => {
+      const { entry } = await s.create('Leer', {})
+      await s.publish(entry)
+      return entry
+    }, { postedOn: '2026-10-08', rev: true, change: { fields: ['postedOn'], after: { postedOn: '2026-10-08' } } }],
+    ['published now with a typed date', async (s: Awaited<ReturnType<typeof postedSetup>>) => {
+      const { entry } = await s.create('Getippt', { postedOn: '2026-09-01' })
+      await s.publish(entry)
+      return entry
+    }, { postedOn: '2026-09-01', rev: false, change: { fields: undefined, after: undefined } }],
+    ['created online with the field empty', async (s: Awaited<ReturnType<typeof postedSetup>>) => (await s.create('Sofort', {}, {})).entry,
+      { postedOn: '2026-10-08', rev: true, change: { fields: undefined, after: expect.objectContaining({ postedOn: '2026-10-08' }) } }],
+    ['planned with the field empty: the day of its time, not of the plan', async (s: Awaited<ReturnType<typeof postedSetup>>) => {
+      const { entry } = await s.create('Geplant', {})
+      await s.publish(entry, NOW + 20 * HOUR)
+      await s.advanceTo(NOW + 20 * HOUR)
+      return entry
+    }, { postedOn: '2026-10-09', rev: true, change: { fields: ['postedOn'], after: { postedOn: '2026-10-09' } } }],
+  ])('%s', async (_, act, expected) => {
+    const s = await postedSetup()
+    expect(await s.posted(await act(s))).toEqual(expected)
+  })
+
+  it('a planned draft with the field empty may be saved, and a typed date may be taken out again', async () => {
+    const s = await postedSetup()
+    const { entry } = await s.create('Geplant', { postedOn: '2026-09-01' }, { at: NOW + 3 * HOUR })
+    const row = (await s.row(entry))!
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: row.rev, fields: { postedOn: null }, sentence: 'Datum' })
+    expect((await s.row(entry))!.publishAt).toBe(NOW + 3 * HOUR)
+  })
+
+  // Wrong behaviour caught: a release that rechecks the brick refuses a planned draft whose date waits for its day,
+  // though the plan fills it; or the fill lets an online entry (also one in the trash) through without a date.
+  it('a release fills the date of a planned draft by its day; online entries stay strict', async () => {
+    const s = await postedSetup()
+    let n = 0
+    const release = async () => {
+      n += 1
+      const site = (await s.siteRow())!
+      const schema = site.schema as Schema
+      const events = schema.bricks.events!
+      // A new label on a field changes the brick's fields, so the release checks every entry of the brick again.
+      const next = { ...schema, bricks: { ...schema.bricks, events: { ...events, fields: { ...events.fields, description: { ...events.fields.description!, label: { de: `Text ${n}`, en: `Text ${n}` } } } } } }
+      return s.t.mutation(internal.release.release, {
+        site: s.site, actor: 'pushkey:test', commit: crypto.randomUUID().replaceAll('-', ''),
+        expectedSchemaRev: site.schemaRev, expectedContentRev: site.contentRev, schema: next as Schema, writes: [],
+      })
+    }
+    // The seeded events went online before the brick had the date: give them one, as their publish would have.
+    await s.t.run(async (ctx) => {
+      for (const row of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'events')).collect()) {
+        await ctx.db.patch(row._id, { data: { ...(row.data as object), postedOn: '2026-09-01' } })
+      }
+    })
+    await s.create('Geplant', {}, { at: NOW + 3 * HOUR })
+    await release()
+    const { entry } = await s.create('Online', {}, {})
+    const clear = (patch: object) => s.t.run(async (ctx) => {
+      const { postedOn: _, ...data } = (await ctx.db.get(entry as Id<'entries'>))!.data as Record<string, unknown>
+      await ctx.db.patch(entry as Id<'entries'>, { data, ...patch })
+    })
+    await clear({})
+    expect(await errorOf(release())).toMatchObject({ code: 'INVALID', details: { entry } })
+    await clear({ deletedAt: NOW })
+    expect(await errorOf(release())).toMatchObject({ code: 'INVALID', details: { entry } })
   })
 })

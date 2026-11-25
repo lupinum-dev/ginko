@@ -64,9 +64,9 @@ cards are written to `.output/public/`; upload that folder. A static site needs 
 
 - Every change goes live with the next build, so let your host build on every push (Vercel, Netlify and Cloudflare
   Pages do this by default).
-- A release dated after the build day appears with the first build on or after that date, so a site with scheduled
-  releases needs a daily rebuild (for example a Vercel cron job or a scheduled GitHub Action that triggers the build).
-  `draft: true` in a release file holds that release back until you remove it. Nothing else goes stale between
+- A release with `$publishAt` (a day, or a day and time) appears with the first build at or after that time, so a
+  site with planned releases needs a daily rebuild (for example a Vercel cron job or a scheduled GitHub Action that triggers the build).
+  `$draft: true` in a release file holds that release back until you remove it. Nothing else goes stale between
   builds. If you add a banner (`docs.banner` in `app/app.config.ts`), it changes with the next build as well.
 - The MCP endpoint for AI agents (`POST /__ginko/docs-mcp`) needs the server; a static site has none. Agents can
   still read `llms.txt` and the `.md` version of every page.
@@ -203,7 +203,7 @@ prefix.
   `x.de.md` becomes `x.md` (it keeps its German `slug`) and the old `x.md` becomes `x.en.md` with
   `slug: <its old name>` (for example `slug: introduction`). A page with only an English file, such as
   `7.upgrading-to-v2.md`, needs a German `x.md` first; then rename the English one to `x.en.md`. Each page now has new
-  addresses, so list the old ones under `redirectFrom` in the German file. A new site: `npm create ginko@latest
+  addresses, so list the old ones under `$redirectFrom` in the German file. A new site: `npm create ginko@latest
   my-docs -- --template docs --locales de,en`.
 - **Add one** (for example French): add `'fr'` to `locales` (`pages.home` follows the list), add
   `content/**/*.fr.md` translations (pages without one stay in English, see "A page without a translation") and
@@ -215,8 +215,8 @@ prefix.
 
 | Feature | Delete |
 |---|---|
-| Start page | `content/home*.md`, `home: homePages(…)` and `home: docsHome()` in `ginko.config.ts` with their imports; `/` then opens the first docs page |
-| Changelog | `content/changelog/`, `changelog: changelogCollection()` and `changelog: changelogPages(…)` in `ginko.config.ts` with their imports, the `$page.changelog` links in `content/docs/1.introduction*.md` and the changelog card in `content/home*.md` |
+| Start page | `content/home*.md`, `home: '/'` in `pages` and `home: docsHome()` in `ginko.config.ts` with their imports; `/` then opens the first docs page |
+| Changelog | `content/changelog/`, `changelog: changelogCollection()` and `changelog: '/changelog'` in `pages` of `ginko.config.ts` with their imports, the `$page.changelog` links in `content/docs/1.introduction*.md` and the changelog card in `content/home*.md` |
 | German | see "Add or remove a language" |
 | "Edit this page" | `docs.repository` in `app/app.config.ts` (keep the `repository` constant: the footer `source` link uses it) |
 | "Copy page" and its menu | set `markdownActions: { copy: false, openIn: [] }` in `app/app.config.ts` |
@@ -236,7 +236,7 @@ prefix.
 Ginko Studio is the editor of the Ginko platform: people who do not use Git change pages and changelog entries in the
 browser, and see which translations are behind under **Inhalte > Übersetzungen**. You host the platform yourself: see
 [Host the platform](https://ginko.lupinum.com/docs/host-the-platform). The bricks of `ginko.config.ts` then switch
-from files to the Studio (`source: 'platform'` in `docsHome`, `docsCollection` and `changelogCollection`); the pages
+from files to the Studio (name them in `studio.bricks`: `home`, `docs` and `changelog`); the pages
 and their code stay the same, and the search box finds a page from the Studio within a minute of its publication.
 Until you move, everything here works without it.
 

@@ -18,7 +18,7 @@ You cannot do more than they can, and everything you change is shown in their hi
 ## Read before you write
 
 - `ginko_read({ brick, locale? })` shows the published content, with the entry IDs.
-  Drafts are not in it.
+  Drafts and entries that ended (their end date passed) are not in it; `ginko_search` finds them.
 - `ginko_search({ query })` finds entries by words in their texts (also drafts). Umlauts do not matter.
 - Never guess an entry ID. Take it from `ginko_read` or `ginko_search`.
 - `ginko_history` lists the latest changes. `ginko_version_at({ entry, change })` shows an older state.
@@ -55,7 +55,7 @@ Owners and admins see five more tools. They write any field, as the Studio does,
 
 ## Facts (values that appear in many texts)
 
-- `ginko_overview` may list `facts`: values the site keeps in one place, such as a price, the opening days or the phone
+- `ginko_overview` may list `facts`: values the site keeps in one place, such as a price, the address or the phone
   number. Each has a `quote`, a `label`, what the website `shows` today and, when a change is planned, `next`.
 - In a Markdown text, write the quote where the value belongs, for example
   `Eine Sitzung kostet :fact{name="practice.price"}.` The page shows the value in effect today, and the text stays

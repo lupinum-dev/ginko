@@ -1,4 +1,4 @@
-// The blog feature on the built template (gate 3): drafts and scheduled posts never go online, the feed of each
+// The blog feature on the built template (gate 3): drafts and planned posts never go online, the feed of each
 // language lists the posts of its news page, a tag has a page with its posts and JSON-LD, a post shows its reading
 // time and links its author's page with that author's posts, and a post links the older one. Tag pages stay out of the
 // sitemap and llms.txt on purpose: thin archives, reached through the rel="tag" links of the posts.
@@ -15,8 +15,8 @@ const files = existsSync(dir)
     })
   : []
 const today = site.now.slice(0, 10)
-/** Drafts (`draft: true`) and scheduled posts (dated after the test day): neither may be online. */
-const hidden = files.filter(({ text }) => /^draft:\s*true\s*$/m.test(text) || (/^date:\s*(\S+)/m.exec(text)?.[1] ?? '') > today)
+/** Drafts (`$draft: true`) and planned posts (`$publishAt` after the test day): neither may be online. */
+const hidden = files.filter(({ text }) => /^\$draft:\s*true\s*$/m.test(text) || (/^\$publishAt:\s*['"]?([\dT:-]+)/m.exec(text)?.[1] ?? '') > today)
 
 /** The news page of the main language: the first link of the header or footer that leads to a page with a feed and
  *  posts on their own pages. A changelog has a feed too, but its entries are anchors on its own page. */
@@ -33,9 +33,9 @@ async function newsPage(page: import('@playwright/test').Page) {
   throw new Error('no page in the header or footer has a news feed and posts')
 }
 
-test('a draft or scheduled post has no page and is in no list, feed, sitemap or llms.txt', async ({ page, request }) => {
+test('a draft or planned post has no page and is in no list, feed, sitemap or llms.txt', async ({ page, request }) => {
   // Wrong behaviour caught: an unchecked text, or a post before its day, online because the build kept it.
-  test.skip(hidden.length === 0, 'the template has no draft or scheduled sample')
+  test.skip(hidden.length === 0, 'the template has no draft or planned sample')
   const news = await newsPage(page)
   const feed = await (await request.get(`${news}/rss.xml`)).text()
   const sitemap = await (await request.get('/sitemap.xml')).text()

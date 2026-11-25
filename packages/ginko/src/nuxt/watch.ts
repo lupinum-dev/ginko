@@ -3,6 +3,7 @@ import { existsSync, readFileSync, watch } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { checkSite, type SiteInput } from '../core/index.ts'
+import { statusRules } from '../patterns/rules.ts'
 
 const CONFIG_NAMES = new Set(['ts', 'mts', 'js', 'mjs'].map((ext) => `ginko.config.${ext}`))
 
@@ -101,7 +102,7 @@ async function configProblem(file: string): Promise<string | undefined> {
     const module = await import(`${pathToFileURL(file).href}?ginko=${randomUUID()}`) as { default?: SiteInput }
     const site = module.default
     if (!site?.site || !site.bricks) return 'the default export must be the result of defineSite().'
-    const problems = checkSite(site)
+    const problems = checkSite(site, statusRules)
     return problems.length ? problems.join(' ') : undefined
   } catch (error) {
     return error instanceof Error ? error.message.split('\n')[0]! : String(error)

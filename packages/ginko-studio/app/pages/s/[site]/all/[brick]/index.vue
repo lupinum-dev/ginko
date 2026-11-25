@@ -2,8 +2,8 @@
 <script setup lang="ts">
 import { ChevronDownIcon, ChevronUpIcon, PlusIcon } from '@lucide/vue'
 import { api } from '#convex/api'
-import { isNavTree, visibleUntil } from '@lupinum/ginko/internal'
-import { formatDay, languageName, relevantDate } from '../../../../../utils/content'
+import { shownUntil, statusOf, treeOf, type EntryStatus } from '@lupinum/ginko/internal'
+import { formatDay, languageName, listingDetail } from '../../../../../utils/content'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
 import { opErrorOf } from '../../../../../composables/useOps'
@@ -20,7 +20,7 @@ const key = computed(() => String(route.params.brick))
 const brick = computed(() => s.schema.value?.bricks[key.value])
 const access = computed(() => (brick.value ? tasksFor(key.value, brick.value) : undefined))
 const allowed = computed(() => editable.value.some(([k]) => k === key.value))
-const { shown } = useStudioSite()
+const { shown, currency } = useStudioSite()
 const { t, format, locale: uiLocale } = useI18n()
 useHead(() => ({ title: t('site.title.area', { area: brick.value ? shown(brick.value.label) : t('site.fallback.area') }) }))
 // A single's form (EntryEditor) replaces these crumbs with its own.
@@ -58,23 +58,50 @@ type Row = (typeof rows.value)[number]
 const single = useConvexQuery(api.entries.single, () => (brick.value?.kind === 'single' && allowed.value ? { site: s.slug.value, brick: key.value } : 'skip'))
 const manual = computed(() => brick.value?.kind === 'collection' && brick.value.order === 'manual')
 // A docs-like collection shows its navigation as the website does; a search or sort shows the plain list.
-const tree = computed(() => !!brick.value && isNavTree(key.value, brick.value) && !narrowed.value)
+const tree = computed(() => !!brick.value && !!treeOf(brick.value) && !narrowed.value)
 // The tree's titles and headings follow the Studio's language when the site has it (headings are renamed in it).
 const treeLanguage = computed(() => s.schema.value?.locales.find((l) => l === uiLocale.value) ?? s.main.value)
 const canCreate = computed(() => !!access.value && (access.value.all || !!access.value.create))
 
 const rowTitle = (row: Row) => row.title ?? (brick.value ? shown(brick.value.label) : '')
 
-/** "Draft" / "Online from …" for drafts; "Unpublished changes" for a live entry with saved changes; "expired on …" / "ended" (daterange) / "" for an entry of a timed collection. */
-function status(row: Row): string {
+/** The one status of a row (D113), on the site's day: the same `statusOf` the server's readers ask. */
+function rowStatus(row: Row): EntryStatus | undefined {
   const b = brick.value
-  // A draft is not on the website, whatever its dates say (SPEC 15).
-  if (row.state === 'draft') return row.publishAt ? t('site.status.onlineFrom', { when: whenText(row.publishAt, s.schema.value?.timeZone ?? 'Europe/Vienna', format) }) : t('site.status.draft')
-  if (row.pending) return t('entry.status.changes')
-  if (!b || b.kind !== 'collection' || !b.visible || b.visible.mode === 'always') return ''
-  const until = visibleUntil(b, row.dates)
-  if (until === undefined || until >= s.today.value) return ''
-  return b.fields[b.visible.field]?.type === 'daterange' ? t('site.status.ended') : t('site.status.expired', { date: formatDay(until, format) })
+  if (!b) return undefined
+  return statusOf(b, {
+    data: row.dates,
+    state: row.state ?? 'live',
+    ...(row.publishAt === undefined ? {} : { publishAt: row.publishAt }),
+    ...(row.pending ? { unpublished: row.pending } : {}),
+    ...(row.changes ? { changes: row.changes } : {}),
+  }, s.today.value)
+}
+
+/**
+ * One text per row, from what visitors see now (`now`): "Draft" / "Online from …" for drafts; "expired on …" / "ended"
+ * (daterange) for an entry that ended, also one with saved changes; "Unpublished changes" for an online entry with
+ * saved changes; "Changes online from {day}" for one with a change waiting for a later day (the first; D131); "" for
+ * an online entry. A row is grey when it is not online.
+ */
+function status(row: Row): string {
+  const site = s.schema.value
+  const b = brick.value
+  const st = rowStatus(row)
+  // The brick comes with the site's model, and the model with the site's zone, so "Online from" is never in another
+  // zone (D114).
+  if (!site || !b || !st) return ''
+  if (st.now === 'draft') {
+    const planned = st.waiting.find((w) => w.kind === 'planned')
+    return planned ? t('site.status.onlineFrom', { when: whenText(planned.at, site.timeZone, format) }) : t('site.status.draft')
+  }
+  if (st.now === 'ended') {
+    const until = shownUntil(b, row.dates)
+    return b.kind === 'collection' && b.showUntil && b.fields[b.showUntil.field]?.type === 'daterange' ? t('site.status.ended') : t('site.status.expired', { date: formatDay(until ?? '', format) })
+  }
+  if (st.waiting.some((w) => w.kind === 'unpublished')) return t('entry.status.changes')
+  const next = st.waiting.find((w) => w.kind === 'change')
+  return next?.kind === 'change' ? t('entry.status.changesFrom', { when: format.date(next.from, { weekday: 'short', day: 'numeric', month: 'short' }) }) : ''
 }
 
 const moving = ref(false)
@@ -108,7 +135,7 @@ const ops = useOps(s.slug)
     <div v-else class="max-w-[1200px] pb-10 min-[900px]:pb-12">
       <!-- The title row of StudioPage (AllShell already pads the cell). -->
       <header class="mb-5 flex flex-wrap items-start gap-x-4 gap-y-3">
-        <h1 class="min-w-0 flex-1 text-[1.375rem] font-semibold tracking-tight">{{ shownLabel(brick.label, s.main.value) }}</h1>
+        <h1 class="min-w-0 flex-1">{{ shownLabel(brick.label, s.main.value) }}</h1>
         <Button v-if="canCreate" as-child><NuxtLink :to="`/s/${s.slug.value}/all/${key}/new`"><PlusIcon aria-hidden="true" />{{ t('site.all.new') }}</NuxtLink></Button>
       </header>
       <!-- While the shown page is not the answer to the current arguments (loading, or that answer failed), it can be an
@@ -131,10 +158,10 @@ const ops = useOps(s.slug)
       <template v-else>
         <ol class="m-0 list-none divide-y overflow-hidden rounded-xl border bg-card p-0 transition-opacity aria-busy:opacity-60" :aria-busy="loading || undefined">
           <!-- The title is the row's one link (its name is the title) and covers the row; badges and arrows sit above it. -->
-          <li v-for="(e, i) in rows" :key="e._id" class="group/row relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 min-[900px]:min-h-13 min-[900px]:py-2.5 hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03] sm:flex-nowrap" :data-dim="(!!status(e) && !e.pending) || undefined">
+          <li v-for="(e, i) in rows" :key="e._id" class="group/row relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 min-[900px]:min-h-13 min-[900px]:py-2.5 hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03] sm:flex-nowrap" :data-dim="(rowStatus(e)?.now ?? 'online') !== 'online' || undefined">
             <div class="min-w-0 flex-1">
               <NuxtLink :to="`/s/${s.slug.value}/all/${key}/${e._id}`" class="line-clamp-2 font-medium text-foreground no-underline outline-none after:absolute after:inset-0 focus-visible:after:ring-3 focus-visible:after:ring-ring/80 focus-visible:after:ring-inset group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground min-[900px]:text-sm">{{ rowTitle(e) }}</NuxtLink>
-              <span v-if="relevantDate(brick, e.dates, { t, format })" class="block text-[13px] text-muted-foreground tabular-nums">{{ relevantDate(brick, e.dates, { t, format }) }}</span>
+              <span v-if="listingDetail(brick, e.dates, s.main.value, { t, format, currency: currency() })" class="block text-[13px] text-muted-foreground tabular-nums">{{ listingDetail(brick, e.dates, s.main.value, { t, format, currency: currency() }) }}</span>
             </div>
             <!-- Phones: badges move under the title so the name keeps the full width. -->
             <div class="relative flex flex-wrap items-center gap-1.5 max-sm:order-last max-sm:basis-full sm:justify-end">

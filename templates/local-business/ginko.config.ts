@@ -1,17 +1,16 @@
 // Local business template: a physiotherapy practice in Graz with its opening hours (closures, public holidays, hours
 // from a date), treatments with price and duration, the therapists, questions and answers, photos of the practice and
-// how to book and find it, in English (main) and German. Every brick reads Markdown from content/ (source: 'files'),
-// so the site runs without an account. To let the practice change a brick in Ginko Studio later, remove
-// `source: 'files'` from it (README, "Move to the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
-import { faq, gallery, hourPlans, hours, legal, notices, people, site } from '@lupinum/ginko/basics'
+// how to book and find it, in English (main) and German. Every brick reads Markdown from content/, so the site runs
+// without an account. To let the practice change a brick in Ginko Studio later, name it in `studio.bricks`
+// (README, "Move to the Studio").
+import { defineSite, extend, f, single } from '@lupinum/ginko'
+import { faq, gallery, hourPlans, hours, legal, notices, people, site } from '@lupinum/ginko/patterns'
 import { pages } from './app/bricks/pages.ts'
 import { services } from './app/bricks/services.ts'
 import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'
 
 export default defineSite({
-  site: 'local-business',
   name: 'Hofer Physio',
   // `color` fills the share cards: the light `--brand` of app/assets/css/main.css.
   seo: {
@@ -26,6 +25,10 @@ export default defineSite({
   languages: { en: 'en-GB', de: 'de-AT' },
   // Prices of the treatments.
   currency: 'EUR',
+  // The site's week: the opening hours start on this day.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
+  // The site's id on a Ginko platform, and the bricks the team edits in Ginko Studio: none yet, every brick is in files.
+  studio: { id: 'local-business', bricks: [] },
   pages: {
     home: localized('/'),
     services: localized('/services'),
@@ -33,26 +36,31 @@ export default defineSite({
     faq: localized('/faq'),
     contact: localized('/contact'),
   },
+  // The page of one entry, by brick.
+  entries: {
+    services: localized('/services/[slug]'),
+    pages: localized('/[slug]'),
+    legal: localized('/legal/[slug]'),
+  },
   bricks: {
     // In the order of the Studio's Today page: the hours, the notices, the treatments and the team first.
     // The usual week, closures such as the Christmas break, and closed on public holidays (content/hours.md). In the
     // Studio, Today shows today's hours, and "Closed today" is one task.
-    hours: hours({ source: 'files', plans: 'hourPlans' }),
+    hours: hours({ plans: 'hourPlans' }),
     // Short lines at the top of every page ("The courtyard is closed for building work"), each until a date
     // (content/notices/).
-    notices: notices({ source: 'files' }),
+    notices: notices(),
     // Treatments with their price (or "on request", as an explicit choice) and duration (content/services/).
-    services: services({ source: 'files', route: localized('/services/[slug]') }),
+    services: services(),
     // The therapists and the front desk, with their qualifications (content/people/). No photos: the site shows initials.
-    people: people({ source: 'files' }),
+    people: people(),
     // Other weekly hours for a date range, such as shorter summer hours that repeat every year (content/hourPlans/).
-    hourPlans: hourPlans({ source: 'files' }),
+    hourPlans: hourPlans(),
     // How to book and how to get here (content/visit.md): when the phone is answered, an online booking page if the
     // practice uses one, and access, parking and public transport. The contact page and the home page show it; the
     // address, phone and email come from content/site.md.
     visit: single({
       label: { de: 'Termine und Anfahrt', en: 'Appointments and directions' },
-      source: 'files',
       fields: {
         phoneHours: f.text({ de: 'Telefonisch erreichbar', en: 'Phone hours' }, {
           max: 80,
@@ -69,18 +77,17 @@ export default defineSite({
         transit: f.longtext({ de: 'Öffentliche Verkehrsmittel', en: 'Public transport' }, { max: 300, optional: true }),
       },
       tasks: [
-        { id: 'phone', kind: 'edit', fields: ['phoneHours', 'bookingUrl'], label: { de: 'Telefonzeiten ändern', en: 'Change the phone hours' } },
-        { id: 'directions', kind: 'edit', fields: ['access', 'parking', 'transit'], label: { de: 'Anfahrt ändern', en: 'Change the directions' } },
+        { id: 'phone', fields: ['phoneHours', 'bookingUrl'], label: { de: 'Telefonzeiten ändern', en: 'Change the phone hours' } },
+        { id: 'directions', fields: ['access', 'parking', 'transit'], label: { de: 'Anfahrt ändern', en: 'Change the directions' } },
       ],
     }),
     // Questions and answers: prescription and insurance, what to bring, cancelling (content/faq/).
-    faq: faq({ source: 'files' }),
+    faq: extend(faq(), { preview: 'faq' }),
     // Photos of the practice on the contact page (content/gallery.md).
-    gallery: gallery({ source: 'files' }),
+    gallery: gallery(),
     // The first screen of the home page: the practice's name, one line about it and an optional photo (content/home.md).
     home: single({
       label: { de: 'Startseite', en: 'Home page' },
-      source: 'files',
       fields: {
         title: f.text({ de: 'Titel', en: 'Title' }, { max: 80, default: 'Welcome' }),
         lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 200, default: 'A short introduction: who you are and what you offer.' }),
@@ -88,11 +95,11 @@ export default defineSite({
       },
     }),
     // About the practice and any other page (content/pages/).
-    pages: pages({ route: localized('/[slug]'), source: 'files' }),
+    pages,
     // Legal name, address, phone and email for the footer, the imprint, the call and email buttons and the
     // Physiotherapy JSON-LD (content/site.md). The country comes from `country` above.
-    site: site({ source: 'files' }),
+    site: site(),
     // Privacy policy, payment and cancellation terms, imprint: one file per text in content/legal/.
-    legal: legal({ source: 'files', route: localized('/legal/[slug]') }),
+    legal: legal(),
   },
 })

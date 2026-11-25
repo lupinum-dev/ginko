@@ -14,6 +14,7 @@ import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
 import { rebuildOnContentChange, restartOnConfigChange } from './watch.ts'
 import { checkSite, siteForContent, coreMessage, entryRedirects, fileMarkdownRef, redirectProblems, serializeSchema, withMarkdownRefs, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
+import { statusRules } from '../patterns/rules.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
@@ -45,7 +46,7 @@ export default defineNuxtModule<SiteInput>({
     const site: SiteInput = siteForContent(options, process.env.GINKO_CONTENT)
     // The serialized schema is the site's own contract: checked at build (the same check as `ginko check`), used at runtime for defaults.
     const schema = serializeSchema(site)
-    const problems = checkSite(site, schema)
+    const problems = checkSite(site, statusRules, schema)
     if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
     // Dev: a saved ginko.config.ts restarts the dev server when it passes the checks above, and reports its error when it
     // does not (watch.ts). Texts in i18n/*.json reload by themselves (ginko-i18n).
@@ -83,7 +84,7 @@ export default defineNuxtModule<SiteInput>({
       // The language tag per locale (`languages`, else the code): numbers, money and dates of facts.
       languages: Object.fromEntries(schema.locales.map((code) => [code, site.languages?.[code] ?? code])),
       timeZone: schema.timeZone,
-      // ISO country code or ''; the hours rules of the basics take it as `country`, JSON-LD as `addressCountry`.
+      // ISO country code or ''; the hours rules of the patterns take it as `country`, JSON-LD as `addressCountry`.
       country: site.country ?? '',
       // The resolved holiday calendar (`schema.holidays`) or '': `custom` means the site passes its own `calendar`.
       holidays: schema.holidays ?? '',
@@ -103,7 +104,7 @@ export default defineNuxtModule<SiteInput>({
     // The server routes (sitemap hreflang, redirects, Markdown) read the config ginko-i18n resolved, with
     // its strategy, exclude and userLocale, so they never disagree with the module's own routes.
     addServerTemplate({ filename: '#ginko/locales', getContents: () => `export { config as default } from '#ginko-i18n/config.mjs'` })
-    // Redirect rules of the site config (patterns); entries add theirs from `redirectFrom` in the middleware.
+    // Redirect rules of the site config (patterns); file entries add theirs from `$redirectFrom` (bundle `oldUrls`) in the middleware.
     const redirects = site.redirects ?? []
     const redirectIssues = redirectProblems(redirects)
     if (redirectIssues.length) {
@@ -288,6 +289,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     const report = result.errors.map((e) => `- ${content.errorLine(e)}`).join('\n')
     if (result.errors.length && !nuxt.options.dev) throw new Error(`[ginko] Errors in content/:\n${report}`)
     if (result.errors.length) console.error(`[ginko] Errors in content/ (these files are missing from the site):\n${report}`)
+    if (result.warnings.length) console.warn(`[ginko] Warnings in content/:\n${result.warnings.map((w) => `- ${content.errorLine(w)}`).join('\n')}`)
     // Link check (CONTENT.md): errors fail the build, warnings are printed. External links (opt-in) ask other servers,
     // so only on build / generate, never in dev.
     const links = await fileLinkIssues({ bundles: Object.values(result.bundles) as Bundle[], schema, site, publicDir, root: nuxt.options.rootDir, log: console.log, external: !nuxt.options.dev })
@@ -297,9 +299,8 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     images = result.images
     writeImages(result.imageFiles)
     trees = new Map()
-    // What is served to everyone: no expired entries, no repo paths (kept only for the docs layer's "Edit this page" link).
-    const now = new Date()
-    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, withMarkdownRefs(content.publicBundle(bundle!, schema, now, fileOptions), schema, trees, (brick, id, field) => fileMarkdownRef(locale, brick, id, field))]))
+    // What is served to everyone: no repo paths (kept only for the docs layer's "Edit this page" link).
+    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, withMarkdownRefs(content.publicBundle(bundle!, fileOptions), schema, trees, (brick, id, field) => fileMarkdownRef(locale, brick, id, field))]))
     searches = Object.fromEntries(await Promise.all(Object.entries(bundles).map(async ([locale, bundle]) => [locale, await content.searchIndex(bundle!, trees, schema)])))
   }
   await build()

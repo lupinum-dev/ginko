@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import site from '../../../../sites/restaurant/ginko.config.ts'
-import { f, serializeSchema, single, slugify, uniqueSlug, validate, type Issue, type ValidateOptions } from '../../src/core/index.ts'
+import { collection, f, isEntryName, namesOf, serializeSchema, single, slugify, uniqueSlug, validate, type Issue, type Schema, type ValidateOptions } from '../../src/core/index.ts'
 
 // Schema of the restaurant acceptance config (SPEC 13), plus a small extra brick
 // for the email and tel formats the restaurant does not use.
@@ -21,17 +21,16 @@ const withContact = serializeSchema({
 })
 
 const weekdays = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const
-const week = () => weekdays.map((day) => ({
-  _id: `wk${day}000000`,
-  day,
+// The weekly hours: a rows field, one row per day by its key.
+const week = (): Record<string, Record<string, unknown>> => Object.fromEntries(weekdays.map((day) => [day, {
   closed: day === 'mo',
   ...(day === 'mo' ? {} : { from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00' }),
-}))
+}]))
 const hours = (over: Record<string, unknown> = {}) => ({ week: week(), exceptions: [], holidayNoticeDays: 14, ...over })
 
 const lunch = (over: Record<string, unknown> = {}) => ({
   weekOf: '2026-10-05',
-  days: weekdays.slice(0, 5).map((day) => ({ _id: `ld${day}000000`, day, dish: { de: 'Gulasch' }, allergens: [] })),
+  days: Object.fromEntries(weekdays.slice(0, 5).map((day) => [day, { dish: { de: 'Gulasch' }, allergens: [] }])),
   ...over,
 })
 
@@ -78,10 +77,11 @@ describe('unknown keys (SPEC 2.3)', () => {
     expect(pairs((await validate(schema, 'hours', data, check('create'))).errors)).toEqual([[key, 'UNKNOWN_FIELD']])
   })
 
-  // Wrong behaviour caught: an unknown key inside a list row is accepted and stored.
-  it('rejects an unknown key inside a list row', async () => {
-    const rows = week().map((row, i) => (i === 0 ? { ...row, color: 'red' } : row))
-    expect(pairs((await validate(schema, 'hours', hours({ week: rows }), check('create'))).errors)).toEqual([['week.wkmo000000.color', 'UNKNOWN_FIELD']])
+  // Wrong behaviour caught: an unknown key inside a row is accepted and stored.
+  it('rejects an unknown key inside a row', async () => {
+    const rows = week()
+    rows.mo = { ...rows.mo, color: 'red' }
+    expect(pairs((await validate(schema, 'hours', hours({ week: rows }), check('create'))).errors)).toEqual([['week.mo.color', 'UNKNOWN_FIELD']])
   })
 
   // Wrong behaviour caught: a request for a brick that does not exist returns something other than UNKNOWN_BRICK.
@@ -113,11 +113,12 @@ describe('calendar dates, times and ranges (SPEC 2.2, 2.3)', () => {
   it.each([
     ['00:00', []],
     ['23:59', []],
-    ['24:00', [['week.wktu000000.from1', 'TIME']]],
-    ['9:00', [['week.wktu000000.from1', 'TIME']]],
-    ['12:60', [['week.wktu000000.from1', 'TIME']]],
+    ['24:00', [['week.tu.from1', 'TIME']]],
+    ['9:00', [['week.tu.from1', 'TIME']]],
+    ['12:60', [['week.tu.from1', 'TIME']]],
   ] as const)('opening time %s', async (value, expected) => {
-    const rows = week().map((row) => (row.day === 'tu' ? { ...row, from1: value } : row))
+    const rows = week()
+    rows.tu = { ...rows.tu, from1: value }
     expect(pairs((await validate(schema, 'hours', hours({ week: rows }), check('create'))).errors)).toEqual(expected)
   })
 
@@ -133,7 +134,7 @@ describe('calendar dates, times and ranges (SPEC 2.2, 2.3)', () => {
 })
 
 describe('a week start (lunch.weekOf, lunchPlans.weekOf)', () => {
-  const sundayFirst = { ...schema, week: { firstDay: 7 as const, weekend: [6, 7] } }
+  const sundayFirst: Schema = { ...schema, week: { firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] } }
   // Wrong behaviour caught: a lunch week saved as a Thursday is stored and never shows, because the site looks for the
   // week that starts on the week's first day.
   it.each([
@@ -144,39 +145,15 @@ describe('a week start (lunch.weekOf, lunchPlans.weekOf)', () => {
     ['lunchPlans', 'a Sunday on a Sunday-first site', sundayFirst, '2026-10-11', []],
     ['lunchPlans', 'a Monday on a Sunday-first site', sundayFirst, '2026-10-12', [['weekOf', 'NOT_WEEK_START']]],
   ] as const)('%s: %s', async (brick, _name, s, weekOf, expected) => {
-    expect(pairs((await validate(s, brick, lunch({ weekOf }), check('create'))).errors)).toEqual(expected)
+    // The six workdays of a Sunday-first site are Sunday to Friday: the lunch week has a row for each.
+    const days = s === sundayFirst ? { su: { dish: { de: 'Gulasch' }, allergens: [] }, ...(lunch().days as object) } : lunch().days
+    expect(pairs((await validate(s, brick, lunch({ weekOf, days }), check('create'))).errors)).toEqual(expected)
   })
 
   // Wrong behaviour caught: an old week stored mid-week blocks every later save that does not touch the week.
   it('a save of the days only warns about a stored mid-week start', async () => {
     const result = await validate(schema, 'lunch', lunch({ weekOf: '2026-10-15' }), check('patch', new Set(['days'])))
     expect([pairs(result.errors), pairs(result.warnings)]).toEqual([[], [['weekOf', 'NOT_WEEK_START']]])
-  })
-})
-
-describe('a planned price (menu, `planned`)', () => {
-  const plan = { nextPrice: { amount: 1390 }, priceFrom: '2026-11-01' }
-  // Wrong behaviour caught: a planned price without its date is stored and never applies, and nobody is told; or a
-  // date without a price is kept as if a change were planned.
-  it.each([
-    ['price and date', plan, []],
-    ['no plan', {}, []],
-    ['a price without a date', { nextPrice: plan.nextPrice }, [['priceFrom', 'REQUIRED']]],
-    ['a date without a price', { priceFrom: plan.priceFrom }, [['nextPrice', 'REQUIRED']]],
-  ] as const)('%s', async (_name, over, expected) => {
-    expect(pairs((await validate(schema, 'menu', menuEntry(over), check('create'))).errors)).toEqual(expected)
-  })
-
-  // Wrong behaviour caught: a plan stored by halves before the rule blocks every later save of the dish or a release;
-  // or a save that sets half a plan gets through because only the other half is missing.
-  it.each([
-    ['patch of the plan', check('patch', new Set(['nextPrice'])), [['priceFrom', 'REQUIRED']], []],
-    ['patch of the name only', check('patch', new Set(['name'])), [], [['priceFrom', 'REQUIRED']]],
-    ['release of stored data', check('release'), [], [['priceFrom', 'REQUIRED']]],
-  ] as const)('%s', async (_name, opts, errors, warnings) => {
-    const result = await validate(schema, 'menu', menuEntry({ nextPrice: plan.nextPrice }), opts)
-    expect(pairs(result.errors)).toEqual(errors)
-    expect(pairs(result.warnings)).toEqual(warnings)
   })
 })
 
@@ -267,54 +244,77 @@ describe('localized text (SPEC 2.2)', () => {
 })
 
 describe('list rows (SPEC 2.2, 2.3)', () => {
+  const exception = (id: string) => ({ _id: id, when: { from: '2026-01-01', to: '2026-01-02' }, reason: { de: 'Urlaub' }, closed: true })
   // Wrong behaviour caught: a row id that is not 10 safe characters is stored.
   it.each([
-    ['too short', 'wkmo0000'],
-    ['contains a space', 'wk mo00000'],
-    ['too long', 'wkmo0000000'],
+    ['too short', 'ex000000'],
+    ['contains a space', 'ex 0000000'],
+    ['too long', 'ex000000000'],
   ])('row id is %s', async (_name, id) => {
-    const rows = week().map((row, i) => (i === 0 ? { ...row, _id: id } : row))
-    expect(pairs((await validate(schema, 'hours', hours({ week: rows }), check('create'))).errors)).toEqual([['week.0', 'ROW_ID']])
+    expect(pairs((await validate(schema, 'hours', hours({ exceptions: [exception(id)] }), check('create'))).errors)).toEqual([['exceptions.0', 'ROW_ID']])
   })
 
   // Wrong behaviour caught: two rows of one list share an id, so edits hit the wrong row.
   it('rejects a duplicate row id', async () => {
-    const rows = week().map((row, i) => (i === 1 ? { ...row, _id: 'wkmo000000' } : row))
-    expect(pairs((await validate(schema, 'hours', hours({ week: rows }), check('create'))).errors)).toEqual([['week.wkmo000000', 'ROW_ID']])
+    const exceptions = [exception('ex00000001'), exception('ex00000001')]
+    expect(pairs((await validate(schema, 'hours', hours({ exceptions }), check('create'))).errors)).toEqual([['exceptions.ex00000001', 'ROW_ID']])
   })
 
-  // Wrong behaviour caught: the weekly plan can have six rows, or the exception list can exceed its max of 20.
+  // Wrong behaviour caught: the exception list exceeds its max of 20.
+  it('rejects exceptions with 21 rows', async () => {
+    const exceptions = Array.from({ length: 21 }, (_, i) => exception(`ex${String(i).padStart(8, '0')}`))
+    expect(pairs((await validate(schema, 'hours', hours({ exceptions }), check('create'))).errors)).toEqual([['exceptions', 'TOO_MANY']])
+  })
+})
+
+describe('rows fields (f.rows)', () => {
+  // Wrong behaviour caught: a weekly plan without a day, or with a day the field does not have, is stored, and the
+  // owner reads a sentence that does not name the row.
   it.each([
-    ['week with 6 rows', hours({ week: week().slice(0, 6) }), [['week', 'TOO_FEW']]],
-    ['exceptions with 21 rows', hours({
-      exceptions: Array.from({ length: 21 }, (_, i) => ({
-        _id: `ex${String(i).padStart(8, '0')}`,
-        when: { from: '2026-01-01', to: '2026-01-02' },
-        reason: { de: 'Urlaub' },
-        closed: true,
-      })),
-    }), [['exceptions', 'TOO_MANY']]],
-  ] as const)('%s', async (_name, data, expected) => {
-    expect(pairs((await validate(schema, 'hours', data, check('create'))).errors)).toEqual(expected)
+    ['a missing day', 'hours', hours({ week: (({ su: _su, ...rest }) => rest)(week()) }), ['week.su', 'REQUIRED', '„Wochenplan“: Die Zeile „su“ fehlt.']],
+    ['a day the field does not have', 'hours', hours({ week: { ...week(), xx: { closed: true } } }), ['week.xx', 'UNKNOWN_ROW', '„Wochenplan“: Eine Zeile „xx“ gibt es nicht.']],
+    ['a workday missing in the lunch week', 'lunch', lunch({ days: (({ fr: _fr, ...rest }) => rest)(lunch().days as Record<string, unknown>) }), ['days.fr', 'REQUIRED', '„Tage“: Die Zeile „fr“ fehlt.']],
+    ['the weekend in the lunch week of a Monday-to-Friday site', 'lunch', lunch({ days: { ...(lunch().days as Record<string, unknown>), sa: { dish: { de: 'Gulasch' }, allergens: [] } } }), ['days.sa', 'UNKNOWN_ROW', '„Tage“: Eine Zeile „sa“ gibt es nicht.']],
+  ] as const)('rejects %s', async (_name, brick, data, expected) => {
+    const { errors } = await validate(schema, brick, data, check('create'))
+    expect(errors.map((e) => [e.path, e.code, e.message])).toEqual([expected])
   })
 
-  // Wrong behaviour caught: the weekly plan lists Monday twice and nothing says so.
-  it('rejects a unique column that repeats (hours.week Monday twice)', async () => {
-    const rows = week().map((row) => (row.day === 'su' ? { ...row, _id: 'wkmo111111', day: 'mo' as const } : row))
-    expect(pairs((await validate(schema, 'hours', hours({ week: rows }), check('create'))).errors)).toEqual([['week', 'DUPLICATE']])
+  // Wrong behaviour caught: inside a row, `showWhen` and `after` read another row's values (or none), so a closed day
+  // still needs its times, an open one may lack them, or an end before its start is stored.
+  describe('after and showWhen inside a row', () => {
+    const open = { field: 'closed', not: true } as const
+    const slots = serializeSchema({
+      ...site,
+      bricks: {
+        ...site.bricks,
+        slots: single({ label: 'Zeiten', fields: { days: f.rows('Tage', { rows: [{ key: 'mo', label: 'Montag' }, { key: 'tu', label: 'Dienstag' }], fields: {
+          closed: f.boolean('Geschlossen', { default: false }),
+          from: f.time('Von', { showWhen: open }),
+          to: f.time('Bis', { after: 'from', showWhen: open }),
+        } }) } }),
+      },
+    })
+    it.each([
+      ['a closed day without times and an open day with them', { closed: false, from: '10:00', to: '12:00' }, []],
+      ['an open day without its start', { closed: false, to: '12:00' }, [['days.tu.from', 'REQUIRED']]],
+      ['an open day that ends before it starts', { closed: false, from: '10:00', to: '09:00' }, [['days.tu.to', 'TIME_ORDER']]],
+    ] as const)('%s', async (_name, tu, expected) => {
+      const { errors } = await validate(slots, 'slots', { days: { mo: { closed: true }, tu } }, check('create'))
+      expect(pairs(errors)).toEqual(expected)
+    })
   })
 
-  // Wrong behaviour caught: lunch is saved with only four of its five days.
-  it('rejects lunch with four days, min 5', async () => {
-    const data = lunch({ days: lunch().days.slice(0, 4) })
-    expect(pairs((await validate(schema, 'lunch', data, check('create'))).errors)).toEqual([['days', 'TOO_FEW']])
+  // Wrong behaviour caught: the old stored shape (a list of rows with a day column) is read as valid rows.
+  it('rejects a list where a rows field needs one object per row', async () => {
+    const asList = Object.entries(week()).map(([day, row], i) => ({ _id: `wk${day}00000${i}`, day, ...row }))
+    expect(pairs((await validate(schema, 'hours', hours({ week: asList }), check('create'))).errors)).toEqual([['week', 'TYPE']])
   })
 })
 
 describe('choice and choices (SPEC 2.2, 2.3)', () => {
   // Wrong behaviour caught: values the choice does not offer are stored, or a single value is accepted as a list.
   it.each([
-    ['hours', hours({ week: week().map((row, i) => (i === 0 ? { ...row, day: 'xx' } : row)) }), [['week.wkmo000000.day', 'CHOICE']]],
     ['menu', menuEntry({ veg: 'sometimes' }), [['veg', 'CHOICE']]],
     ['menu', menuEntry({ allergens: ['Z'] }), [['allergens', 'CHOICE']]],
     ['menu', menuEntry({ allergens: 'A' }), [['allergens', 'CHOICE']]],
@@ -440,7 +440,10 @@ describe('slugify and uniqueSlug (SPEC 2.2)', () => {
     ['Straße', 'strasse'],
     ['Über uns & Team', 'ueber-uns-team'],
     ['Café', 'cafe'],
-    ['***', 'eintrag'],
+    ['***', ''],
+    // Wrong behaviour caught: the hyphens at the ends stay, also where the cut at 80 ends on one (K2, no regex there).
+    ['  -Hallo, Welt!- ', 'hallo-welt'],
+    [`${'a'.repeat(79)} bc`, 'a'.repeat(79)],
   ])('slugify(%j) is %j', (input, expected) => {
     expect(slugify(input)).toBe(expected)
   })
@@ -454,6 +457,18 @@ describe('slugify and uniqueSlug (SPEC 2.2)', () => {
     [['jazz'], 'konzert'],
   ])('uniqueSlug with taken %j', (taken, expected) => {
     expect(uniqueSlug('konzert', (slug) => taken.includes(slug))).toBe(expected)
+  })
+})
+
+describe('namesOf (D96)', () => {
+  // Wrong behaviour caught: the double of a 100-character slug set by hand gets a 102-character name, which the file
+  // reader, the import and the export then refuse.
+  it('cuts the base so that a name with its -2 end stays an entry name', () => {
+    const brick = collection({ label: 'Seiten', max: 10, order: 'manual', listing: { title: 'title' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } })
+    const long = `${'a'.repeat(97)}-bc`
+    const names = namesOf('pages', brick, 'de', [{ slug: { de: long } }, { slug: { de: long } }])
+    expect(names).toEqual([long, `${'a'.repeat(97)}-2`])
+    expect(names.every(isEntryName)).toBe(true)
   })
 })
 
@@ -486,5 +501,94 @@ describe('ref field (SPEC 2.2, 2.3)', () => {
 
   it('does not look IDs up without a refs callback', async () => {
     expect((await validate(refSchema, 'menu', menuEntry({ side: 'gone' }), check('create'))).errors).toEqual([])
+  })
+})
+
+describe('the draft check (D115): well formed to be stored, not complete', () => {
+  const kit = serializeSchema({
+    ...site,
+    bricks: {
+      ...site.bricks,
+      kit: collection({
+        label: 'Kit', max: 50, order: 'manual', listing: { title: 'name' },
+        fields: {
+          name: f.text('Name', { max: 20 }),
+          slug: f.slug('Adresse', { from: 'name' }),
+          day: f.date('Tag', { optional: true }),
+          at: f.time('Uhrzeit', { optional: true }),
+          until: f.time('Bis', { optional: true, after: 'at' }),
+          span: f.daterange('Zeitraum', { optional: true }),
+          count: f.number('Anzahl', { min: 0, max: 10, step: 1, optional: true }),
+          kind: f.choice('Art', { options: ['a', 'b'], optional: true }),
+          tags: f.choices('Tags', { options: ['a', 'b'], optional: true }),
+          friends: f.refs('Freunde', { to: 'kit', optional: true }),
+          rows: f.list('Zeilen', { itemLabel: 'Zeile', max: 2, unique: 'label', optional: true, fields: { label: f.text('Bezeichnung', { translate: false }) } }),
+          few: f.list('Wenige', { itemLabel: 'Zeile', min: 2, max: 3, optional: true, fields: { label: f.text('Bezeichnung', { translate: false }) } }),
+          body: f.markdown('Text', { profile: 'page', optional: true }),
+        },
+      }),
+    },
+  })
+  const base = { name: { de: 'Kiste', en: 'Box' }, slug: { de: 'kiste', en: 'box' } }
+  const draft = (data: Record<string, unknown>, brick = 'kit') =>
+    validate(kit, brick, data, { mode: 'draft', refs: (_b, id) => id === 'there', uploads: (id) => (id === 'pdf1' ? 'file' : id === 'img1' ? 'image' : undefined), fileAlt: () => ({ de: 'Bild' }) })
+  const row = (id: string, label: string) => ({ _id: id, label })
+
+  // One row per code the validator gives. Wrong behaviour caught: (refused) a draft stores a value the site and the
+  // Studio cannot read as what it claims to be (a date that is a number or a phrase, a time 25:99, two rows with one
+  // `_id`), so `statusOf`, the date texts and the editor's row keys break on it; (warns) a half-filled draft is refused
+  // for what it lacks or for content not yet good enough, so the person loses the input. A code that is not listed as a
+  // warning is refused (the check fails closed).
+  it.each([
+    ['TYPE: a number that is text', 'refuses', 'kit', { ...base, count: 'drei' }, ['count', 'TYPE']],
+    ['NOT_OBJECT: an entry that is no object', 'refuses', 'kit', 'Kiste', ['', 'NOT_OBJECT']],
+    ['NOT_LOCALIZED: a translatable text as a plain string', 'refuses', 'kit', { ...base, name: 'Kiste' }, ['name', 'NOT_LOCALIZED']],
+    ['UNKNOWN_FIELD', 'refuses', 'kit', { ...base, nope: 1 }, ['nope', 'UNKNOWN_FIELD']],
+    ['UNKNOWN_LOCALE', 'refuses', 'kit', { ...base, name: { de: 'Kiste', xx: 'Kist' } }, ['name.xx', 'UNKNOWN_LOCALE']],
+    ['UNKNOWN_BRICK', 'refuses', 'nope', base, ['', 'UNKNOWN_BRICK']],
+    ['UNKNOWN_ROW', 'refuses', 'hours', hours({ week: { ...week(), xx: { closed: true } } }), ['week.xx', 'UNKNOWN_ROW']],
+    ['DATE: a number', 'refuses', 'kit', { ...base, day: 42 }, ['day', 'DATE']],
+    ['DATE: a phrase', 'refuses', 'kit', { ...base, day: 'next friday' }, ['day', 'DATE']],
+    ['DATE: a range of phrases', 'refuses', 'kit', { ...base, span: { from: 'heute', to: 'morgen' } }, ['span', 'DATE']],
+    ['DATE: a period with one side that is no date', 'refuses', 'kit', { ...base, span: { from: '2026-10-09', to: '' } }, ['span', 'DATE']],
+    ['TIME: 25:99', 'refuses', 'kit', { ...base, at: '25:99' }, ['at', 'TIME']],
+    ['ROW_ID: a row without a proper id', 'refuses', 'kit', { ...base, rows: [row('kurz', 'A')] }, ['rows.0', 'ROW_ID']],
+    ['ROW_ID: two rows with one id', 'refuses', 'kit', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('aaaaaaaaaa', 'B')] }, ['rows.aaaaaaaaaa', 'ROW_ID']],
+    ['SLUG: an address that is no address', 'refuses', 'kit', { ...base, slug: { de: 'Kiste mit Leerzeichen', en: 'box' } }, ['slug.de', 'SLUG']],
+    ['FILE_REF_NOT_IMAGE: a PDF as a picture', 'refuses', 'kit', { ...base, body: { de: '![Karte]($file.pdf1)' } }, ['body.de', 'FILE_REF_NOT_IMAGE']],
+    ['DUPLICATE: one option twice', 'refuses', 'kit', { ...base, tags: ['a', 'a'] }, ['tags', 'DUPLICATE']],
+    ['DUPLICATE: one entry twice', 'refuses', 'kit', { ...base, friends: ['there', 'there'] }, ['friends', 'DUPLICATE']],
+    ['REQUIRED', 'warns', 'kit', { slug: base.slug }, ['name', 'REQUIRED']],
+    ['TOO_LONG', 'warns', 'kit', { ...base, name: { de: 'K'.repeat(21), en: 'Box' } }, ['name.de', 'TOO_LONG']],
+    ['FORMAT: a control character', 'warns', 'kit', { ...base, name: { de: 'Ki\u0000ste', en: 'Box' } }, ['name.de', 'FORMAT']],
+    ['TOO_MANY', 'warns', 'kit', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('bbbbbbbbbb', 'B'), row('cccccccccc', 'C')] }, ['rows', 'TOO_MANY']],
+    ['TOO_FEW', 'warns', 'kit', { ...base, few: [row('aaaaaaaaaa', 'A')] }, ['few', 'TOO_FEW']],
+    ['RANGE', 'warns', 'kit', { ...base, count: 11 }, ['count', 'RANGE']],
+    ['STEP', 'warns', 'kit', { ...base, count: 1.5 }, ['count', 'STEP']],
+    ['CHOICE', 'warns', 'kit', { ...base, kind: 'c' }, ['kind', 'CHOICE']],
+    // I2.5: stored data that passed before (a choice key as a number, a multiple choice as one string) stays a warning,
+    // so a restore and a save of such a draft are not refused.
+    ['CHOICE: a choice stored as a number', 'warns', 'kit', { ...base, kind: 1 }, ['kind', 'CHOICE']],
+    ['CHOICE: a multiple choice stored as one string', 'warns', 'kit', { ...base, tags: 'a' }, ['tags', 'CHOICE']],
+    ['DATE_ORDER', 'warns', 'kit', { ...base, span: { from: '2026-10-09', to: '2026-10-08' } }, ['span', 'DATE_ORDER']],
+    ['REQUIRED: a period without its end', 'warns', 'kit', { ...base, span: { from: '2026-10-09' } }, ['span', 'REQUIRED']],
+    ['REQUIRED: a period without its start', 'warns', 'kit', { ...base, span: { to: '2026-10-09' } }, ['span', 'REQUIRED']],
+    ['REF_MISSING', 'warns', 'kit', { ...base, friends: ['gone'] }, ['friends', 'REF_MISSING']],
+    ['FILE_REF_MISSING', 'warns', 'kit', { ...base, body: { de: '![Karte]($file.lost1)' } }, ['body.de', 'FILE_REF_MISSING']],
+    ['ALT_REQUIRED: a web picture without description', 'warns', 'kit', { ...base, body: { de: '![](https://bilder.example/a.jpg)' } }, ['body.de', 'ALT_REQUIRED']],
+    ['MARKDOWN', 'warns', 'kit', { ...base, body: { de: '::nope' } }, ['body.de', 'MARKDOWN']],
+    ['DUPLICATE: a doubled value in a unique column', 'warns', 'kit', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('bbbbbbbbbb', 'A')] }, ['rows', 'DUPLICATE']],
+    ['TIME_ORDER (a rule across fields)', 'warns', 'kit', { ...base, at: '14:00', until: '11:30' }, ['until', 'TIME_ORDER']],
+    ['NOT_WEEK_START (a rule across fields)', 'warns', 'lunch', lunch({ weekOf: '2026-10-15' }), ['weekOf', 'NOT_WEEK_START']],
+  ] as const)('%s: %s', async (_name, verdict, brick, data, issue) => {
+    const { errors, warnings } = await draft(data as Record<string, unknown>, brick)
+    if (verdict === 'refuses') expect(pairs(errors)).toContainEqual(issue)
+    else expect([pairs(errors), pairs(warnings)]).toEqual([[], expect.arrayContaining([issue])])
+  })
+
+  // Wrong behaviour caught: a half-filled period goes online, and the site shows an end without a start (F13).
+  it('refuses a period with one side missing when it goes online', async () => {
+    const { errors } = await validate(kit, 'kit', { ...base, span: { from: '2026-10-09' } }, check('create'))
+    expect(errors).toEqual([expect.objectContaining({ path: 'span', code: 'REQUIRED', key: 'issues.dateRangeToMissing' })])
   })
 })

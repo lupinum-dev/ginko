@@ -1,5 +1,5 @@
-<!-- A list as row cards (UI.md 5). Fixed lists (min = max with a unique choice column, e.g. the
-     weekdays) show that column as the row title and allow no add/remove/move. When a text in a row
+<!-- A list as row cards (UI.md 5). A table with fixed rows, such as the days of the week, is a rows field
+     (GinkoFieldRows), never a list. When a text in a row
      changed but its choices (with `askAgainWhen`) did not, the choices must be confirmed ("Noch richtig?").
      In a foreign language the list shows only the columns to translate: rows are added, removed and
      moved in the main language, where a new row gets its required texts.
@@ -9,12 +9,13 @@
 import { computed, inject, nextTick, onBeforeUnmount, provide, reactive, ref, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, ordered } from '@lupinum/ginko/internal'
+import { isShown, ordered } from '@lupinum/ginko/internal'
 import { hasTranslation } from '../../utils/content'
 import GinkoField from './GinkoField.vue'
 import GinkoFieldImage, { LIST_ALT_HINT } from './GinkoFieldImage.vue'
 import { messageOf } from '@studio/utils/messageOf'
-import { BLOCKERS, GINKO_ASSETS, TRANSLATION, issuesUnder, ownIssues, type Issue, newRowId, textIn } from '@lupinum/ginko-editor'
+import { BLOCKERS, GINKO_ASSETS, TRANSLATION, issuesUnder, ownIssues, newRowId, textIn } from '@lupinum/ginko-editor'
+import type { FieldIssue } from '@studio/composables/useEntryForm'
 import { ArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, EllipsisIcon, PlusIcon, Trash2Icon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
@@ -32,7 +33,8 @@ const props = defineProps<{
   path: string
   locale: Locale
   locales: readonly Locale[]
-  issues: readonly Issue[]
+  /** Errors, and with `note` what a draft still lacks (D116), shown muted. */
+  issues: readonly FieldIssue[]
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 const blockers = inject(BLOCKERS, undefined)
@@ -46,12 +48,7 @@ const { t } = useI18n()
 const rows = computed(() => (Array.isArray(props.modelValue) ? (props.modelValue as Row[]) : []))
 const max = computed(() => props.field.max ?? 50)
 const min = computed(() => props.field.min ?? 0)
-const fixed = computed(() => min.value === max.value)
-const uniqueKey = computed(() => props.field.unique)
-const uniqueField = computed(() => (uniqueKey.value ? props.field.of[uniqueKey.value] : undefined))
-/** In a fixed list the unique choice names the row and is not edited. */
-const titleKey = computed(() => (fixed.value && uniqueField.value?.type === 'choice' ? uniqueKey.value : undefined))
-const live = computed(() => ordered(props.field.of).filter(([k, f]) => k !== titleKey.value && !f.retired))
+const live = computed(() => ordered(props.field.of).filter(([, f]) => !f.retired))
 const main = computed(() => props.locales[0] ?? props.locale)
 const foreign = computed(() => props.locale !== main.value)
 /** The columns shown: in a foreign language only those with text to translate. */
@@ -66,7 +63,7 @@ const COMPACT_TYPES: ReadonlySet<Field['type']> = new Set(['time', 'date', 'numb
  * A list of one such column (Uhrzeiten): each row is the input and its buttons, without a card and without the
  * column's label repeated per row. In another language the rows stay cards, with the translation view.
  */
-const compact = computed(() => !foreign.value && !fixed.value && columns.value.length === 1 && COMPACT_TYPES.has(columns.value[0]![1].type))
+const compact = computed(() => !foreign.value && columns.value.length === 1 && COMPACT_TYPES.has(columns.value[0]![1].type))
 const shortColumn = computed(() => ['number', 'money', 'time'].includes(columns.value[0]?.[1].type ?? ''))
 /** The column's hint, printed once under a compact list (the rows leave it out). */
 const compactHint = computed(() => { const hint = compact.value ? columns.value[0]![1].hint : undefined; return hint === undefined ? undefined : labelText(hint) })
@@ -95,15 +92,12 @@ const hintId = computed(() => `${props.id}-alt-hint`)
 if (imageKey.value) provide(LIST_ALT_HINT, hintId.value)
 /** The id GinkoField gives a cell (`f-` and its path): the tiles keep it, so the description is `#…-alt` as in a row card. */
 const cellId = (row: Row, key: string) => `f-${`${props.path}.${row._id}.${key}`.replace(/[^a-zA-Z0-9_-]/g, '-')}`
-const cellErrors = (row: Row, key: string) => ownIssues(props.issues, `${props.path}.${row._id}.${key}`, props.locales)
-const tileErrors = (row: Row) => [...rowIssues(row), ...cellErrors(row, imageKey.value!)]
+// A tile shows errors only: its notes (D116) show when the row is opened.
+const cellErrors = (row: Row, key: string) => ownIssues(props.issues, `${props.path}.${row._id}.${key}`, props.locales).filter((i) => !i.note)
+const tileErrors = (row: Row) => [...rowIssues(row).filter((i) => !i.note), ...cellErrors(row, imageKey.value!)]
 
 function rowTitle(row: Row, index: number): string {
-  if (titleKey.value && uniqueField.value?.type === 'choice') {
-    const label = uniqueField.value.options.find((o) => o.value === row[titleKey.value!])?.label
-    return label === undefined ? `${labelText(props.field.itemLabel)} ${index + 1}` : labelText(label)
-  }
-  // Any other row is named by its first text, so "Betriebsurlaub" is found without opening anything.
+  // A row is named by its first text, so "Betriebsurlaub" is found without opening anything.
   for (const [key, sub] of ordered(props.field.of)) {
     if (sub.retired || (sub.type !== 'text' && sub.type !== 'longtext')) continue
     const text = (textIn(row[key], props.locale) || textIn(row[key], props.locales[0]!)).trim()
@@ -154,7 +148,9 @@ function restoreRow(row: Row, index: number) {
   next.splice(Math.min(index, next.length), 0, row)
   update(next)
 }
-function addRow() { update([...rows.value, { ...defaultsFor(props.field.of), _id: newRowId() } as Row]) }
+/** A new row starts with the columns' defaults. A column is never a rows field (`checkSchema`), so no week is needed. */
+const columnDefaults = () => Object.fromEntries(Object.entries(props.field.of).flatMap(([name, c]) => (!c.retired && c.default !== undefined ? [[name, c.default]] : [])))
+function addRow() { update([...rows.value, { ...columnDefaults(), _id: newRowId() } as Row]) }
 
 // "Noch richtig?": a choices column with `askAgainWhen` next to its changed text column. Only a change in the main
 // language asks: a translation does not change the dish. In a foreign language the choices are not shown, so the
@@ -220,7 +216,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
 
 <template>
   <div ref="root" class="grid gap-3" role="group" :aria-labelledby="`${id}-label`">
-    <p v-for="e in listIssues" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
+    <p v-for="e in listIssues" :key="e.message" :class="['text-sm', e.note ? 'text-muted-foreground' : 'font-medium text-destructive']" :role="e.note ? undefined : 'alert'">{{ messageOf(e) }}</p>
 
     <!-- A gallery: one tile per photo, its description below, its moves on hover and focus (always on touch). -->
     <div v-if="photoGrid" class="@container">
@@ -241,14 +237,14 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
             <p v-for="e in tileErrors(row)" :key="e.message" class="text-[13px] font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
           </div>
           <div
-            v-if="!fixed" class="absolute top-1.5 right-1.5 flex gap-0.5 rounded-md bg-background/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover/tile:opacity-100 group-focus-within/tile:opacity-100 pointer-coarse:hidden"
+            class="absolute top-1.5 right-1.5 flex gap-0.5 rounded-md bg-background/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover/tile:opacity-100 group-focus-within/tile:opacity-100 pointer-coarse:hidden"
           >
             <Button type="button" variant="ghost" size="icon-sm" :disabled="index === 0" :aria-label="t('fields.list.moveEarlier', { title: rowTitle(row, index) })" @click="move(index, -1)"><ArrowLeftIcon aria-hidden="true" /></Button>
             <Button type="button" variant="ghost" size="icon-sm" :disabled="index === rows.length - 1" :aria-label="t('fields.list.moveLater', { title: rowTitle(row, index) })" @click="move(index, 1)"><ArrowRightIcon aria-hidden="true" /></Button>
             <Button type="button" variant="ghost" size="icon-sm" class="hover:text-destructive" data-remove :disabled="rows.length <= min" :aria-label="t('fields.list.remove', { title: rowTitle(row, index) })" @click="removeRow(index)"><Trash2Icon aria-hidden="true" /></Button>
           </div>
           <!-- Touch: one menu instead of five buttons on the photo, so the photo stays visible. -->
-          <DropdownMenu v-if="!fixed">
+          <DropdownMenu>
             <DropdownMenuTrigger as-child>
               <Button
                 type="button" variant="secondary" size="icon" class="absolute top-1.5 right-1.5 hidden size-11 bg-background/90 shadow-sm backdrop-blur-sm pointer-coarse:inline-flex"
@@ -268,7 +264,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
             </DropdownMenuContent>
           </DropdownMenu>
         </li>
-        <li v-if="!fixed && rows.length < max">
+        <li v-if="rows.length < max">
           <button
             type="button" data-add
             class="flex aspect-[4/3] w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed text-sm font-medium text-muted-foreground transition-colors outline-none hover:bg-foreground/[0.03] hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/80"
@@ -284,7 +280,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
       <!-- A short value (time, number, money) keeps its buttons right beside it; a text takes the width the row has. -->
       <li v-for="(row, index) in rows" :key="row._id" class="flex items-start gap-1" :data-row="row._id">
         <div class="grid min-w-0 gap-1" :class="!shortColumn && 'flex-1'">
-          <p v-for="e in rowIssues(row)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
+          <p v-for="e in rowIssues(row)" :key="e.message" :class="['text-sm', e.note ? 'text-muted-foreground' : 'font-medium text-destructive']" :role="e.note ? undefined : 'alert'">{{ messageOf(e) }}</p>
           <GinkoField
             :field="columns[0]![1]" :model-value="row[columns[0]![0]]" :path="`${path}.${row._id}.${columns[0]![0]}`" :locale="locale" :locales="locales" :issues="issues"
             :cell-label="`${labelText(field.itemLabel)} ${index + 1}`" :hint-id="compactHint ? compactHintId : undefined" @update:model-value="setCell(index, columns[0]![0], $event)"
@@ -304,13 +300,13 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
         <div class="grid items-center gap-3" :class="thumbOf(row) ? 'grid-cols-[auto_minmax(0,1fr)_auto]' : 'grid-cols-[minmax(0,1fr)_auto]'">
           <img v-if="thumbOf(row)" :src="thumbOf(row)" alt="" class="size-12 rounded-md border object-cover">
           <h3 class="m-0 truncate text-sm font-semibold">{{ rowTitle(row, index) }}</h3>
-          <div v-if="!fixed && !foreign" class="-my-1 -mr-2 flex shrink-0">
+          <div v-if="!foreign" class="-my-1 -mr-2 flex shrink-0">
             <Button type="button" variant="ghost" size="icon" :disabled="index === 0" :aria-label="t('fields.list.up', { title: rowTitle(row, index) })" @click="move(index, -1)"><ArrowUpIcon aria-hidden="true" /></Button>
             <Button type="button" variant="ghost" size="icon" :disabled="index === rows.length - 1" :aria-label="t('fields.list.down', { title: rowTitle(row, index) })" @click="move(index, 1)"><ArrowDownIcon aria-hidden="true" /></Button>
             <Button type="button" variant="ghost" size="icon" class="hover:text-destructive" data-remove :disabled="rows.length <= min" :aria-label="t('fields.list.remove', { title: rowTitle(row, index) })" @click="removeRow(index)"><Trash2Icon aria-hidden="true" /></Button>
           </div>
         </div>
-        <p v-for="e in rowIssues(row)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
+        <p v-for="e in rowIssues(row)" :key="e.message" :class="['text-sm', e.note ? 'text-muted-foreground' : 'font-medium text-destructive']" :role="e.note ? undefined : 'alert'">{{ messageOf(e) }}</p>
         <div class="grid gap-4">
           <template v-for="[key, sub] in columns" :key="key">
             <div v-if="shown(row, sub)" :class="{ 'rounded-md bg-warning/10 p-3': needsCheck(row, key) }" @focusin="selectPlaceholder(row, key, $event)" @mouseup="holdSelection" @focusout="keepSelection = false">
@@ -327,7 +323,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
     <p v-if="compactHint && rows.length" :id="compactHintId" class="text-[13px] text-muted-foreground">{{ compactHint }}</p>
     <p v-if="imageKey && rows.length" :id="hintId" class="text-[13px] text-muted-foreground">{{ t('fields.list.photoHint') }}</p>
     <p v-if="photoGrid && columnHint && rows.length" class="text-[13px] text-muted-foreground">{{ columnHint }}</p>
-    <template v-if="!fixed && rows.length < max && !photoGrid">
+    <template v-if="rows.length < max && !photoGrid">
       <p v-if="foreignTab" class="text-sm text-muted-foreground">{{ t('fields.list.addInMain', { name: translation!.mainName() }) }}</p>
       <Button v-else-if="!foreign" type="button" variant="outline" class="justify-self-start" data-add @click="addRow"><PlusIcon aria-hidden="true" />{{ t('fields.list.add', { item: labelText(field.itemLabel) }) }}</Button>
     </template>

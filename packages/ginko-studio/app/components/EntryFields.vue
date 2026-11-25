@@ -13,6 +13,7 @@ import { Button } from '@studio/components/ui/button'
 import GinkoField from './fields/GinkoField.vue'
 import FactUses from './FactUses.vue'
 import { FACT_USES } from '../utils/facts'
+import { COVERED, coveredId } from '../utils/datedLines'
 import type { WeekOffset } from '../utils/content'
 import { useStillRight } from '../composables/useStillRight'
 import { useStudioSite } from '../utils/labels'
@@ -38,6 +39,9 @@ const blockers = inject(BLOCKERS, undefined)
 const factUses = inject(FACT_USES, undefined)
 /** The texts that quote this field when it is a fact; none for every other field. */
 const quotesOf = (key: string) => factUses?.quotes()?.[key]
+const covered = inject(COVERED, undefined)
+/** What the website shows instead while an exception covers this field (datedLines); empty for every other field. */
+const hintOf = (key: string) => covered?.(key) ?? ''
 const stillRight = useStillRight()
 const main = computed(() => props.locales[0] ?? props.locale)
 const blockerKey = (key: string) => `${key}.askAgain`
@@ -56,6 +60,7 @@ const askedLabel = (field: Field) => labelText(props.all[askedKey(field)!]!.labe
 const fieldProps = (key: string, field: Field) => ({
   field, modelValue: props.draft[key], baseline: props.baseline[key], path: key,
   locale: props.locale, locales: props.locales, issues: props.issues, route: props.route, weeks: props.weeks?.(key),
+  hintId: hintOf(key) ? coveredId(key) : undefined,
 })
 /** The columns a field takes on the 6-column grid. A week date has three shortcuts, so it takes the whole row. */
 function span(key: string, field: Field) {
@@ -83,15 +88,18 @@ onBeforeUnmount(() => { if (blockers) for (const [key] of props.entries) blocker
     <template v-for="[key, field] in entries" :key="key">
       <div v-if="askedKey(field) !== undefined" v-show="isShown(field, draft)" :class="[span(key, field), { 'rounded-lg bg-warning/10 p-3': showAsk(key) }]">
         <GinkoField v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
+        <p v-if="hintOf(key)" :id="coveredId(key)" class="mt-1.5 text-sm font-medium text-muted-foreground" data-test="covered-hint">{{ hintOf(key) }}</p>
         <div v-if="showAsk(key)" class="check mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-warning">
           <p>{{ t('fields.list.changed', { changed: askedLabel(field), label: labelText(field.label) }) }}</p>
           <Button type="button" variant="outline" size="sm" @click="confirm(key, field)">{{ t('fields.list.confirm') }}</Button>
         </div>
       </div>
-      <!-- A fact field keeps this wrapper while its uses load or change, so the field is not mounted again (focus, input). -->
-      <div v-else-if="factUses?.fields().has(key)" v-show="isShown(field, draft)" :class="['grid gap-1.5', span(key, field)]">
+      <!-- A fact field keeps this wrapper while its uses load or change, so the field is not mounted again (focus, input).
+           A field an exception covers gets it too: the form edits the normal value, the hint says what visitors see. -->
+      <div v-else-if="factUses?.fields().has(key) || hintOf(key)" v-show="isShown(field, draft)" :class="['grid gap-1.5', span(key, field)]">
         <GinkoField v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
-        <FactUses v-if="quotesOf(key)?.length" :slug="factUses.slug()" :quotes="quotesOf(key)!" />
+        <p v-if="hintOf(key)" :id="coveredId(key)" class="text-sm font-medium text-muted-foreground" data-test="covered-hint">{{ hintOf(key) }}</p>
+        <FactUses v-if="factUses && quotesOf(key)?.length" :slug="factUses.slug()" :quotes="quotesOf(key)!" />
       </div>
       <GinkoField v-else v-show="isShown(field, draft)" :class="span(key, field)" v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
     </template>

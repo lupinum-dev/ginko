@@ -3,12 +3,12 @@ import type { InjectionKey } from 'vue'
 export interface Issue { path: string; message: string; code?: string }
 
 /** Issues that belong exactly to this field (its own path, its locale leaf, an image's alt text), not to its list rows. */
-export function ownIssues(issues: readonly Issue[], path: string, locales: readonly string[]): Issue[] {
+export function ownIssues<T extends Issue>(issues: readonly T[], path: string, locales: readonly string[]): T[] {
   return issues.filter((i) => i.path === path || i.path === `${path}.alt` || locales.some((l) => i.path === `${path}.${l}`))
 }
 
 /** Issues under a path, for lists that show row problems. */
-export function issuesUnder(issues: readonly Issue[], path: string): Issue[] {
+export function issuesUnder<T extends Issue>(issues: readonly T[], path: string): T[] {
   return issues.filter((i) => i.path === path || i.path.startsWith(`${path}.`))
 }
 

@@ -2,7 +2,7 @@
 // the HTTP routes in routes/release.ts, which resolve the push key to its site first; the
 // internal functions here trust that site id. Owners and admins use the public mutations.
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { byteSize, checkSchema, defaultsFor, entryBytes, fitsBudget, diffSchema, recheckAll, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, checkSchema, defaultsFor, entryBytes, fitsBudget, diffSchema, recheckAll, releaseData, planDay, sha256, stableJson, validate, withPublishedOn, type MigrationDescriptor, type Schema, type SiteWeek } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -16,6 +16,7 @@ import { putTrees } from './lib/trees'
 import { BUDGET, checkNewFiles, checkNewLinks, entryUses, overBudget, same, sizeText, syncEntryRefs } from './lib/write'
 import { labelOf } from './entries'
 import { droppedFactsInUse } from './facts'
+import { statusRules } from '@lupinum/ginko/patterns'
 
 const scope = v.union(v.literal('release'), v.literal('pull'), v.literal('check'), v.literal('export'))
 
@@ -55,8 +56,8 @@ interface NewSingle {
   bytes: number
 }
 
-export async function newSingle(brick: string, fields: Fields, main: Locale): Promise<NewSingle> {
-  const data = defaultsFor(fields)
+export async function newSingle(brick: string, fields: Fields, main: Locale, week: SiteWeek): Promise<NewSingle> {
+  const data = defaultsFor(fields, week)
   const prints = nextPrints({ fields, roots: Object.keys(data), before: {}, after: data, prints: {}, main, confirm: undefined })
   return { brick, data, prints, fields, trees: await treesOf(fields, data), bytes: entryBytes(data, prints) }
 }
@@ -176,7 +177,8 @@ export const state = internalQuery({
       schemaRev: site.schemaRev,
       contentRev: site.contentRev,
       migrations: migrations.map((m) => ({ id: m.id, brick: m.brick, fills: m.fills, fingerprint: m.fingerprint, schemaRev: m.schemaRev })),
-      entries: entries.map((e) => ({ id: e._id, brick: e.brick, kind: e.kind, order: e.order, data: e.data as Json, deletedAt: e.deletedAt ?? null })),
+      // `state` and `publishAt` let the CLI check a draft without a time in mode `draft`, as below (D115).
+      entries: entries.map((e) => ({ id: e._id, brick: e.brick, kind: e.kind, order: e.order, data: e.data as Json, deletedAt: e.deletedAt ?? null, ...(e.state ? { state: e.state } : {}), ...(e.publishAt === undefined ? {} : { publishAt: e.publishAt }) })),
     }
   },
 })
@@ -211,7 +213,7 @@ export const release = internalMutation({
 
     const stored = site.schema as Schema
     const next = args.schema as Schema
-    const problems = checkSchema(next)
+    const problems = checkSchema(next, statusRules)
     if (problems.length) fail('INVALID', 'errors.schemaInvalid', undefined, { problems: problems as unknown as Json })
     // The key names the site; its config may not speak for another one. (checkSchema already requires an
     // http(s) URL: it is where "Update website now" sends the site's refresh token.)
@@ -280,7 +282,7 @@ export const release = internalMutation({
       const all = recheckAll(stored, next, key)
       for (const entry of entries.filter((e) => e.brick === key)) {
         const before = entry.data as Record<string, Json>
-        const { data, roots } = releaseData(stored.bricks[key]!.fields, brick.fields, before, writesOf.get(entry._id) ?? {})
+        const { data, roots } = releaseData(stored.bricks[key]!.fields, brick.fields, before, writesOf.get(entry._id) ?? {}, [stored.week, next.week])
         const prints = nextPrints({ fields: brick.fields, roots, before, after: data, prints: entry.prints, main, confirm: undefined })
         const changed = roots.filter((r) => !same(data[r], before[r]) || !same(printsOf(prints, r), printsOf(entry.prints, r)))
         // The trash keeps no trees.
@@ -293,13 +295,17 @@ export const release = internalMutation({
     const created: NewSingle[] = []
     for (const [key, brick] of Object.entries(next.bricks)) {
       if (Object.hasOwn(stored.bricks, key) || brick.kind !== 'single') continue
-      created.push(await newSingle(key, brick.fields, main))
+      created.push(await newSingle(key, brick.fields, main, next.week))
     }
 
     // Every entry of a brick whose fields changed, not only the written ones (break-it 9): a lowered
     // min off the step grid or a migration that returned nothing must not be stored as valid.
+    // A draft without a time may be incomplete, not badly formed (D115, mode `draft`); online and planned entries in full,
+    // a planned one with its empty `publishedOn` filled by the plan's day, as the plan checks it (rule 9, D108).
     for (const c of checked) {
-      const result = await validate(next, c.entry.brick, c.data, { mode: 'release' })
+      const { state, publishAt } = c.entry
+      const data = state === 'draft' && publishAt !== undefined ? withPublishedOn(next, c.entry.brick, c.data, planDay(next, publishAt)) : c.data
+      const result = await validate(next, c.entry.brick, data, { mode: state === 'draft' && publishAt === undefined ? 'draft' : 'release' })
       if (result.errors.length) fail('INVALID', 'errors.entryNoLongerFitsAfterRelease', undefined, { entry: c.entry._id, errors: result.errors as unknown as Json })
     }
     for (const c of created) {
@@ -389,7 +395,7 @@ export const devPush = internalMutation({
   handler: async (ctx, args) => {
     if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.devPushLocalOnly')
     const next = args.schema as Schema
-    const problems = checkSchema(next)
+    const problems = checkSchema(next, statusRules)
     if (problems.length) fail('INVALID', 'errors.schemaInvalid', undefined, { problems: problems as unknown as Json })
     if (next.site !== args.site) fail('INVALID', 'errors.siteNameMismatchInSchema')
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
@@ -420,7 +426,7 @@ async function createMissingSingles(ctx: MutationCtx, site: Doc<'sites'>, schema
   const main = schema.locales[0]!
   const created: NewSingle[] = []
   for (const [key, brick] of Object.entries(schema.bricks)) {
-    if (brick.kind === 'single' && !brick.retired && !filled.has(key)) created.push(await newSingle(key, brick.fields, main))
+    if (brick.kind === 'single' && !brick.retired && !filled.has(key)) created.push(await newSingle(key, brick.fields, main, schema.week))
   }
 
   for (const single of created) await insertSingle(ctx, site._id, single, schema.locales)

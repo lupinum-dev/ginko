@@ -5,11 +5,13 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { describe, expect, test, vi } from 'vitest'
-import { collection, defineSite, f, single } from '@lupinum/ginko'
+import { ConvexError } from 'convex/values'
+import { collection, defineSite, f, single } from '@lupinum/ginko/internal'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { useEntryForm } from '../app/composables/useEntryForm'
+import { localDraftKey, writeLocalDraft } from '../app/composables/useLocalDraft'
 import { allAccess } from '../app/composables/useAll'
 import EntryEditor from '../app/components/EntryEditor.vue'
 import PreviewPane from '../app/components/PreviewPane.vue'
@@ -30,9 +32,9 @@ vi.stubGlobal('useConvexConnectionState', () => ({ isConnected: ref(true) }))
 vi.stubGlobal('useOps', () => ({}))
 
 const schema = serializeSchema(defineSite({
-  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
-  bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }), story: f.markdown('Geschichte', { optional: true }) } }) },
+  bricks: { blog: collection({ untranslated: 'fallback', label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }), story: f.markdown('Geschichte', { optional: true }) } }) },
 }))
 
 // Wrong behaviour caught: a new draft is asked about by a generic name (the old "Neuer Eintrag" heading), or by its brick label "Blog" while empty.
@@ -47,6 +49,18 @@ test('a never saved draft is asked about by the title typed so far', async () =>
   wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Herbstfest' })
   await flushPromises()
   expect(wrapper.get('#publish-title').text()).toBe('Wann soll „Herbstfest“ online gehen?')
+})
+
+// Wrong behaviour caught (E4): an entry taken offline keeps its planned changes, which go into the draft on their day,
+// but the draft's editor showed none of them, so nobody could see, move or cancel them.
+test('a draft shows its planned changes', () => {
+  const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 0, data: { title: { de: 'Herbstfest' } }, rev: 3, fieldRevs: {}, lifeRev: 2, prints: {}, state: 'draft' } as const
+  const wrapper = mount(EntryEditor, {
+    props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false },
+    global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true, DatedNotices: true } },
+  })
+  expect(wrapper.findComponent({ name: 'DatedNotices' }).exists()).toBe(true)
+  wrapper.unmount()
 })
 
 // Wrong behaviour caught: opened by a move within the Studio, the panel bar is already shown when the form sets up, and
@@ -134,15 +148,15 @@ function answering(name: string, data: vue.Ref<unknown>, asked: unknown[] = []) 
 
 // Wrong behaviour caught (J9, romi-13): Alles bearbeiten opened a new post empty and titled "Neuer Eintrag", while the
 // task sheet started with today's date, so the first save failed on the required date. A late prefill must not wipe
-// what the person typed meanwhile, and with several create tasks the general one counts: else every new notice of the
-// gastro preset opened as "Heute ausgebucht" with that day's date.
+// what the person typed meanwhile, and with several create tasks the standard one counts (id `add`, design V2 guess 11),
+// not the first one or the one without prefill: else every new notice of the gastro preset opened as "Heute ausgebucht".
 test('a new entry starts like its create task: the task title and the prefill the server resolves', async () => {
   const blog = (tasks: NonNullable<Parameters<typeof collection>[0]['tasks']>) => serializeSchema(defineSite({
-    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/' } },
-    bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', tasks, fields: { title: f.text('Titel'), date: f.date('Datum') } }) },
+    bricks: { blog: collection({ untranslated: 'fallback', label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, tasks, fields: { title: f.text('Titel'), date: f.date('Datum') } }) },
   }))
-  const posts = blog([{ id: 'write', label: 'Beitrag schreiben', kind: 'create', prefill: { date: '@today' } }])
+  const posts = blog([{ id: 'add', label: 'Beitrag schreiben', kind: 'create', prefill: { date: '@today' } }])
   const open = (schema: ReturnType<typeof blog>) => mount(EntryEditor, {
     props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, canRemove: false },
     global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
@@ -153,7 +167,7 @@ test('a new entry starts like its create task: the task title and the prefill th
   try {
     const wrapper = open(posts)
     expect(wrapper.get('h1').text()).toBe('Beitrag schreiben')
-    expect(asked).toEqual([{ site: 'restaurant', task: 'blog.write' }])
+    expect(asked).toEqual([{ site: 'restaurant', task: 'blog.add' }])
     // The answer arrives after the form opened.
     prefill.value = { date: '2026-10-15' }
     await flushPromises()
@@ -169,11 +183,11 @@ test('a new entry starts like its create task: the task title and the prefill th
 
     asked.length = 0
     const several = open(blog([
-      { id: 'soldOut', label: 'Heute ausgebucht', kind: 'create', prefill: { title: 'Heute ausgebucht', date: '@today' } },
-      { id: 'write', label: 'Beitrag schreiben', kind: 'create' },
+      { id: 'soldOut', label: 'Heute ausgebucht', kind: 'create' },
+      { id: 'add', label: 'Beitrag schreiben', kind: 'create', prefill: { date: '@today' } },
     ]))
     expect(several.get('h1').text()).toBe('Beitrag schreiben')
-    expect(asked).toEqual([{ site: 'restaurant', task: 'blog.write' }])
+    expect(asked).toEqual([{ site: 'restaurant', task: 'blog.add' }])
   } finally {
     vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
   }
@@ -216,7 +230,7 @@ test('closing the remove question returns the focus to "Mehr"', async () => {
 // and the save named a text that no longer exists, which the server refuses (leafNotTranslatable): nothing saved.
 test('a confirmed translation of a row removed meanwhile is left out of the save', async () => {
   const bilingual = serializeSchema(defineSite({
-    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/', en: '/en' } },
     bricks: { lunch: single({ label: 'Mittagsmenü', fields: { days: f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht') } }) } }) },
   }))
@@ -312,6 +326,46 @@ test('Ctrl+S in the form saves a change once, and an unchanged form not at all',
   }
 })
 
+// Wrong behaviour caught (H1.3): a copy typed in a task sheet for a later day was offered here without its day, so a
+// restore and Speichern made a value for a later day an unpublished change of now, unnoticed.
+test('the offer of a local copy planned for a day names the day', async () => {
+  localStorage.clear()
+  writeLocalDraft(localDraftKey('restaurant', 'u1', 'e1'), { v: 1, savedAt: Date.now(), baseRev: 1, locale: 'de', fields: { title: { de: 'Neu' } }, from: '2099-12-06' })
+  const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 0, data: { title: { de: 'Alt' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' } as const
+  const wrapper = mount(EntryEditor, {
+    props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false },
+    global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+  })
+  await flushPromises()
+  expect(wrapper.get('[data-test="local-planned-from"]').text()).toBe('Die Eingaben waren ab Sonntag, 6. Dezember geplant. Den Tag musst du hier neu wählen.')
+  wrapper.unmount()
+  localStorage.clear()
+})
+
+// Wrong behaviour caught (H1 guard): once the form's conflict answer only merges, "Meine Eingaben speichern" here merged
+// and saved nothing, or saved on the old base.
+test('the conflict answer saves the input again on the new base', async () => {
+  const saveEntry = vi.fn(async () => ({ rev: 6 }))
+  saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data: { title: { de: 'Fremd' } }, rev: 5, conflicts: ['title'] } } })
+  vi.stubGlobal('useOps', () => ({ opId: () => `op${saveEntry.mock.calls.length}`, saveEntry }))
+  try {
+    const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 0, data: { title: { de: 'Alt' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' } as const
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false },
+      global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    })
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Neu' })
+    await flushPromises()
+    wrapper.get('form').element.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }))
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Meine Eingaben speichern')!.trigger('click')
+    await flushPromises()
+    expect(saveEntry.mock.calls.map((c) => (c as unknown as [{ baseRev: number; fields: unknown }])[0]).map((c) => [c.baseRev, c.fields])).toEqual([[1, { title: { de: 'Neu' } }], [5, { title: { de: 'Neu' } }]])
+  } finally {
+    vi.stubGlobal('useOps', () => ({}))
+  }
+})
+
 // Wrong behaviour caught: the toast after a save ("Gespeichert … Rückgängig") sat on top of the save bar, so the bar
 // showed only "G…"; or it stayed up there after the editor closed.
 test('while the editor is open the toast sits above its save bar, and goes back down when it closes', async () => {
@@ -353,9 +407,9 @@ test('the preview of a new entry shows its own page once the title is typed, and
   vi.useFakeTimers()
   try {
     const routed = serializeSchema(defineSite({
-      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
       pages: { about: { de: '/ueber-uns' } },
-      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+      bricks: { blog: collection({ untranslated: 'hide', label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/blog/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
     vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
     const wrapper = mount(EntryEditor, {
@@ -416,16 +470,16 @@ test.each([
 // Wrong behaviour caught: the preview of an entry not translated into the language shown fell back to the site's first
 // page (/en/about-us) without a word, so the person saw an unrelated page (romi-10, J7 in another language).
 test.each([
-  ['hidden', undefined, 'Noch nicht auf Englisch übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.'],
+  ['hidden', 'hide' as const, 'Noch nicht auf Englisch übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.'],
   ['listed in the main language', 'fallback' as const, 'Noch nicht auf Englisch übersetzt. Bis dahin hat der Eintrag in dieser Sprache keine eigene Seite. Listen zeigen ihn auf Deutsch.'],
 ])('the English preview of an untranslated new entry says it is %s there, and shows its page once translated', async (_name, untranslated, text) => {
   vi.useFakeTimers()
   vi.stubGlobal('useRoute', () => ({ query: { lang: 'en' } }))
   try {
     const routed = serializeSchema(defineSite({
-      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
       pages: { about: { de: '/ueber-uns', en: '/en/about-us' } },
-      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]', en: '/en/blog/[slug]' }, ...(untranslated ? { untranslated } : {}), fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/blog/[slug]', en: '/en/blog/[slug]' }, untranslated, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
     vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
     const wrapper = mount(EntryEditor, {
@@ -539,9 +593,9 @@ test('Alles bearbeiten on the English tab says a cleared title takes the entry o
   vi.stubGlobal('useRoute', () => ({ query: { lang: 'en' } }))
   try {
     const routed = serializeSchema(defineSite({
-      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
       pages: { home: { de: '/', en: '/en' } },
-      bricks: { events: collection({ label: 'Events', max: 50, order: 'manual', route: { de: '/events/[slug]', en: '/en/events/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+      bricks: { events: collection({ untranslated: 'hide', label: 'Events', max: 50, order: 'manual', listing: { title: 'title' }, route: { de: '/events/[slug]', en: '/en/events/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
     }))
     const entry = { _id: 'e1', brick: 'events', kind: 'item', order: 0, data: { title: { de: 'Kürbisabend', en: 'Pumpkin night' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live', translation: { en: { page: 'shown', blocking: [], missing: [], outdated: [] } } } as const
     // The fields: the note under the title, as GinkoField reads it from the translation view.
@@ -568,7 +622,7 @@ test('Alles bearbeiten on the English tab says a cleared title takes the entry o
 // Save without publishing (D60): on every live entry and single, Speichern keeps the changes unpublished.
 describe('the footer of a live entry with unpublished changes', () => {
   const withSingle = serializeSchema(defineSite({
-    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/' } },
     bricks: { contact: single({ label: 'Kontakt', fields: { title: f.text('Titel') } }) },
   }))
@@ -587,7 +641,7 @@ describe('the footer of a live entry with unpublished changes', () => {
   test.each([
     { name: 'live, nothing waiting', key: 'blog', entry: entryOf(), status: 'Online', save: 'Speichern', publish: false, discard: false, unpublish: true },
     { name: 'live with unpublished changes', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true, unpublish: true },
-    { name: 'unpublished changes planned', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'], publishAt: at } }), status: 'Änderungen online ab', save: 'Speichern', publish: 'Zeitplan ändern …', discard: true, unpublish: true },
+    { name: 'a change waiting for a later day', key: 'blog', entry: entryOf({ changes: [{ from: '2099-03-05', fields: ['title'] }] }), status: 'Änderungen online ab Do., 5. März', save: 'Speichern', publish: false, discard: false, unpublish: true },
     { name: 'a draft', key: 'blog', entry: entryOf({ state: 'draft' }), status: 'Entwurf', save: 'Entwurf speichern', publish: 'Veröffentlichen …', discard: false, unpublish: false },
     { name: 'a single, nothing waiting', key: 'contact', entry: entryOf({ brick: 'contact', kind: 'single' }), status: 'Online', save: 'Speichern', publish: false, discard: false, unpublish: false },
     { name: 'a single with unpublished changes', key: 'contact', entry: entryOf({ brick: 'contact', kind: 'single', pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true, unpublish: false },
@@ -601,6 +655,25 @@ describe('the footer of a live entry with unpublished changes', () => {
     else expect(buttons(wrapper).some((b) => b.startsWith('Veröffentlichen') || b.startsWith('Zeitplan'))).toBe(false)
     expect(buttons(wrapper).includes('Änderungen verwerfen …')).toBe(discard)
     expect(buttons(wrapper).includes('Zurückziehen')).toBe(unpublish)
+  })
+
+  // Wrong behaviour caught (D116): a publish of a draft refused for an empty required field says so only in the panel,
+  // and the field itself stays without its error (or keeps it as a note).
+  test('a publish refused for the fields marks them as errors', async () => {
+    const errors = [{ path: 'title.de', code: 'REQUIRED', key: 'issues.fieldMissing', params: { label: 'Titel' }, message: '„Titel“ fehlt.' }]
+    const publishEntry = vi.fn(async () => { throw new ConvexError({ code: 'INVALID', key: 'errors.pleaseCheckMarkedFields', message: 'Bitte prüfe die markierten Felder.', details: { errors } }) })
+    vi.stubGlobal('useOps', () => ({ publishEntry }))
+    try {
+      const wrapper = mount(EntryEditor, { props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry: entryOf({ state: 'draft', data: {} }), canRemove: false }, global: { stubs } })
+      await flushPromises()
+      const click = async (text: string) => { await wrapper.findAll('button').find((b) => b.text() === text)!.trigger('click'); await flushPromises() }
+      await click('Veröffentlichen …')
+      await click('Jetzt veröffentlichen')
+      expect(publishEntry).toHaveBeenCalled()
+      expect(wrapper.findComponent({ name: 'EntryFields' }).props('issues')).toEqual(errors)
+    } finally {
+      vi.stubGlobal('useOps', () => ({}))
+    }
   })
 
   // Wrong behaviour caught: Veröffentlichen takes the page offline (the draft path) or puts live a version the person
@@ -619,7 +692,7 @@ describe('the footer of a live entry with unpublished changes', () => {
       await click('Veröffentlichen …')
       expect(wrapper.get('#publish-title').text()).toBe('Wann sollen die Änderungen an „Herbstfest“ online gehen?')
       await click('Jetzt veröffentlichen')
-      expect(publishChanges).toHaveBeenCalledWith('e1', 1, 3, expect.objectContaining({ at: undefined }))
+      expect(publishChanges).toHaveBeenCalledWith('e1', 1, 3, expect.objectContaining({ from: undefined }))
       expect(publishEntry).not.toHaveBeenCalled()
 
       await click('Änderungen verwerfen …')
@@ -631,4 +704,78 @@ describe('the footer of a live entry with unpublished changes', () => {
       vi.stubGlobal('useOps', () => ({}))
     }
   })
+
+  // Wrong behaviour caught (D131): an online entry's changes still ask for a time (the server refuses it), a day of
+  // today or no day goes to the server, or the day is lost on the way.
+  test('publishing the changes later asks for a day and sends it as from', async () => {
+    const publishChanges = vi.fn(async () => ({}))
+    vi.stubGlobal('useOps', () => ({ publishChanges }))
+    try {
+      const entry = entryOf({ pending: { since: at, at, fields: ['title'] } })
+      const wrapper = mount(EntryEditor, { props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false }, global: { stubs } })
+      await flushPromises()
+      const click = async (text: string) => { await wrapper.findAll('button').find((b) => b.text() === text)!.trigger('click'); await flushPromises() }
+      await click('Veröffentlichen …')
+      await wrapper.get('#publish-later').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('#publish-at').exists()).toBe(false)
+      expect(wrapper.get('label[for="publish-day"]').text()).toContain('Gilt ab')
+      await click('Planen')
+      expect(wrapper.text()).toContain('Bitte einen Tag wählen.')
+      await wrapper.get('#publish-day').setValue('2020-01-01')
+      await click('Planen')
+      expect(wrapper.text()).toContain('Der Tag muss nach heute liegen.')
+      expect(publishChanges).not.toHaveBeenCalled()
+      const day = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+      await wrapper.get('#publish-day').setValue(day)
+      await click('Planen')
+      expect(publishChanges).toHaveBeenCalledWith('e1', 1, 3, expect.objectContaining({ from: day }))
+    } finally {
+      vi.stubGlobal('useOps', () => ({}))
+    }
+  })
+
+  // Wrong behaviour caught (H1.10): under approval the day's button said "Planen", so staff could not tell the changes
+  // go to review, not online on that day.
+  test('under approval the day\'s button names review and the day', async () => {
+    const tasks = { save: 'blog.edit', held: [{ id: 'edit', label: 'Bearbeiten', kind: 'edit' as const, needsApproval: true }] }
+    const wrapper = mount(EntryEditor, { props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry: entryOf({ pending: { since: at, at, fields: ['title'] } }), canRemove: false, tasks }, global: { stubs } })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Veröffentlichen …')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('#publish-later').trigger('click')
+    await flushPromises()
+    expect(buttons(wrapper)).toContain('Planen')
+    await wrapper.get('#publish-day').setValue(new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
+    expect(buttons(wrapper).filter((b) => /^Ab .+ zur Prüfung senden$/.test(b))).toHaveLength(1)
+  })
+})
+
+// Round L11, the rule "the form always edits the normal value". Wrong behaviour caught: in Alles bearbeiten the price
+// field under a holding offer looked like what the website shows (only the task sheet said otherwise), or the hint
+// was not read with the field.
+test('a field a holding offer covers says what the website shows until when, read with the field', async () => {
+  const offers = serializeSchema(defineSite({
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
+    pages: { home: { de: '/' } },
+    bricks: { menu: collection({ label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' }, timeline: { public: ['price'] }, fields: { title: f.text('Titel', { translate: false }), price: f.money('Preis') } }) },
+  }))
+  const until = '2099-12-31'
+  const rows = [{ id: 'd1', from: '2026-11-01', until, holds: true, fields: ['price'], values: { price: { amount: 990 } }, normal: { price: { amount: 1290 } }, by: null, at: 0, changedSince: [], mayCancel: true, mayMove: true }]
+  vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: ref(String(fn) === 'datedChanges.list' ? rows : undefined), error: ref(undefined) }))
+  try {
+    const entry = { _id: 'e1', brick: 'menu', kind: 'item' as const, order: 1, data: { title: 'Suppe', price: { amount: 1290 } }, rev: 3, fieldRevs: {}, lifeRev: 1, prints: {} }
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema: offers, brickKey: 'menu', brick: offers.bricks.menu!, entry, canRemove: false },
+      global: { stubs: { PreviewPane: true, NuxtLink: true, DatedNotices: true } },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    const hint = wrapper.get('[data-test="covered-hint"]')
+    const short = new Intl.DateTimeFormat('de-AT', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${until}T12:00:00Z`))
+    expect([hint.text().replace(/\s/g, ' '), wrapper.get('#f-price').attributes('aria-describedby')?.split(' ')]).toEqual([`Die Website zeigt bis ${short} 9,90 €.`, expect.arrayContaining([hint.attributes('id')])])
+    wrapper.unmount()
+  } finally {
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
+  }
 })

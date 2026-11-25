@@ -3,7 +3,7 @@
 import { entryTitle, type Bundle } from './bundle.ts'
 import { factResolver } from './facts.ts'
 import { textBlocks, type MarkdownTree } from './markdown.ts'
-import { isVisible } from './resolve.ts'
+import { shownOn } from './resolve.ts'
 import type { SearchRecord } from './search.ts'
 import type { Schema } from './types.ts'
 
@@ -12,7 +12,7 @@ export interface SearchSectionsOptions {
   schema: Pick<Schema, 'bricks'>
   /** The trees behind `{ ref }` markdown values (withMarkdownRefs); not needed when the bundle holds the trees. */
   trees?: ReadonlyMap<string, MarkdownTree>
-  /** The site's day (`todayIn`): entries past their `visible` date are left out, as on the pages. Unset at build time, where the day is not known. */
+  /** The site's day (`todayIn`): entries that ended (`showUntil`) are left out, as on the pages. Unset at build time, where the day is not known. */
   today?: string
   /** BCP 47 tag for the text of facts (numbers, money, dates); default: the bundle's locale. */
   language?: string
@@ -32,7 +32,13 @@ const excerptOf = (text: string) => {
   return flat.length <= EXCERPT ? flat : `${flat.slice(0, flat.lastIndexOf(' ', EXCERPT) + 1 || EXCERPT).trimEnd()}…`
 }
 
-const collapse = (text: string) => text.replace(/[ \t]*\n[ \t\n]*/g, '\n').replace(/[ \t]+/g, ' ').trim()
+/**
+ * Spaces and tabs in a row become one space; a line break with the spaces, tabs and empty lines around it becomes one
+ * line break. Line by line, not with one regex for "spaces, a line break, more whitespace": that regex backtracks on a
+ * long run of spaces without a line break (polynomial time on a page someone else wrote).
+ */
+const squeeze = (line: string) => line.split(/[ \t]/).filter(Boolean).join(' ')
+export const collapse = (text: string) => text.split('\n').map(squeeze).filter((line, i) => i === 0 || line !== '').join('\n').trim()
 
 /**
  * The search records of one locale's bundle: for every collection item with a URL in that locale, one record
@@ -41,7 +47,7 @@ const collapse = (text: string) => text.replace(/[ \t]*\n[ \t\n]*/g, '\n').repla
 export function searchSections(bundle: Bundle, options: SearchSectionsOptions): SearchRecord[] {
   const records: SearchRecord[] = []
   // A fact in a text is found by its value ("98 €"), as the page shows it.
-  const resolve = factResolver({ bricks: options.schema.bricks, data: bundle.bricks, locale: bundle.locale, mainLocale: bundle.mainLocale, language: options.language ?? bundle.locale, ...(options.today ? { today: options.today } : {}) })
+  const resolve = factResolver({ bricks: options.schema.bricks, data: bundle.bricks, locale: bundle.locale, mainLocale: bundle.mainLocale, language: options.language ?? bundle.locale })
   for (const [brick, entry] of Object.entries(bundle.bricks)) {
     if (entry.kind !== 'collection') continue
     const def = options.schema.bricks[brick]
@@ -49,8 +55,8 @@ export function searchSections(bundle: Bundle, options: SearchSectionsOptions): 
     for (const item of entry.items) {
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      if (def && options.today && !isVisible(def, item.data, options.today)) continue
-      const title = entryTitle(item, def?.fields)
+      if (def && options.today && !shownOn(def, item.data, options.today)) continue
+      const title = entryTitle(item, def)
       const intro: string[] = []
       for (const [name, field] of fields) {
         const value = item.data[name]

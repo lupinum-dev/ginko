@@ -107,15 +107,16 @@ const mountRow = (proposal: ProposalRow, detail?: { diff: DiffField[] }, inRelea
 const actions = (wrapper: ReturnType<typeof mountRow>) => wrapper.findAll('button').map((b) => b.text()).slice(1)
 
 describe('ReviewRow actions', () => {
-  test('an open proposal of someone else can be approved, approved for later or rejected', () => {
-    expect(actions(mountRow(row()))).toEqual(['Freigeben', 'Für später freigeben…', 'Ablehnen…'])
+  // Wrong behaviour caught (D130): a yes still offers a time, which the server no longer takes.
+  test('an open proposal of someone else can be approved or rejected', () => {
+    expect(actions(mountRow(row()))).toEqual(['Freigeben', 'Ablehnen…'])
   })
 
   // Wrong behaviour caught: on a slow connection the owner approved a change before its diff had loaded, unseen.
   test('Approve and Reject wait for the diff', () => {
     const enabled = (wrapper: ReturnType<typeof mountRow>) => wrapper.findAll('button').slice(1).map((b) => b.attributes('disabled') === undefined)
-    expect(enabled(mountRow(row()))).toEqual([false, false, false])
-    expect(enabled(mountRow(row(), { diff }))).toEqual([true, true, true])
+    expect(enabled(mountRow(row()))).toEqual([false, false])
+    expect(enabled(mountRow(row(), { diff }))).toEqual([true, true])
   })
 
   test('a release member is decided with the release: only Reject', () => {

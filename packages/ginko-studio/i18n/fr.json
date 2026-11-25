@@ -1,5 +1,6 @@
 {
   "nav": {
+    "claim": "Gardez votre site à jour.",
     "quick": "Aujourd’hui",
     "all": "Contenu",
     "review": "Relecture",
@@ -178,6 +179,10 @@
       "keepMine": "Enregistrer mes modifications",
       "takeTheirs": "Utiliser la nouvelle version",
       "keepBoth": "Garder les deux",
+      "keepInput": "Garder mes saisies",
+      "inForm": "Vos saisies sont dans le formulaire. Elles ne sont pas encore enregistrées.",
+      "nowOnline": "L’entrée est désormais en ligne.",
+      "nowOffline": "L’entrée est désormais hors ligne.",
       "someone": "Quelqu’un",
       "row": {
         "youAdded": "Vous avez ajouté « {row} »",
@@ -216,7 +221,8 @@
       "review": "Envoyer pour relecture",
       "asDraft": "Enregistrer comme brouillon",
       "laterOpen": "Publier plus tard",
-      "changesWhen": "Quand les modifications de « {title} » doivent-elles passer en ligne ?"
+      "changesWhen": "Quand les modifications de « {title} » doivent-elles passer en ligne ?",
+      "laterDay": "À partir d’un jour ultérieur"
     },
     "unpublish": {
       "button": "Mettre hors ligne",
@@ -269,6 +275,7 @@
       "noRights": "Vos modifications restent sur cet appareil. Demandez au propriétaire de restaurer l’entrée, puis rouvrez-la."
     },
     "localDraft": {
+      "plannedFrom": "Ces saisies étaient planifiées à partir du {day}. Choisissez à nouveau le jour ici.",
       "offer": "Restaurer vos modifications non enregistrées de {time} ?",
       "restore": "Restaurer",
       "discard": "Ne pas restaurer",
@@ -308,10 +315,98 @@
       "draftNote": "Pas encore sur le site. Publiez-le quand il est prêt.",
       "scheduledNote": "Il sera mis en ligne automatiquement à ce moment-là.",
       "liveNote": "Enregistrer ne change pas encore le site. Seul « Publier… » le fait.",
-      "changesNote": "Enregistré, mais pas encore sur le site. Il montre la version précédente jusqu’à ce que vous publiiez.",
-      "changesScheduledNote": "Les modifications passent en ligne d’elles-mêmes à ce moment-là."
+      "changesNote": "Enregistré, mais pas encore sur le site. Il montre la version précédente jusqu’à ce que vous publiiez."
     },
     "savedNotLive": "Enregistré, pas encore en ligne"
+  },
+  "dated": {
+    "startsOn": "En vigueur le",
+    "startsOnHint": "Vide : dès maintenant",
+    "publishFrom": "Publier à partir du {day}",
+    "reviewFrom": "Envoyer pour relecture, à partir du {day}",
+    "sentFrom": "Envoyé pour relecture. Prévu à partir du {day}.",
+    "waiting": "À partir du {day} : {changes}.",
+    "stopped": "Le changement prévu pour le {day} n’a pas été appliqué : {changes}.",
+    "stoppedYearly": "Le changement annuel du {day} au {until} n’a pas été appliqué : {changes}. Il ne revient pas de lui-même : choisissez à nouveau les jours (« Modifier les jours ») ou annulez-le.",
+    "changedSince": "Modifié depuis la planification : {fields}. À partir du jour prévu, la valeur prévue s’applique quand même.",
+    "cancel": "Annuler le changement",
+    "cancelQuestion": "Annuler ce changement prévu ? C’est irréversible.",
+    "keep": "Garder",
+    "changeDay": "Changer de jour",
+    "edit": "Modifier",
+    "saveDay": "Enregistrer le jour",
+    "dayRequired": "Choisissez un jour.",
+    "notADate": "Ce n’est pas une date. Choisissez un jour ou videz le champ.",
+    "nothingChanged": "Rien n’est encore modifié. Modifiez d’abord une valeur.",
+    "secondChange": "Le changement planifié à partir du {day} reste en place. Ceci sera un deuxième changement.",
+    "cancelled": "Changement prévu annulé.",
+    "moved": "Le changement commence désormais le {day}.",
+    "until": "Jusqu’au",
+    "untilBeforeFrom": "« Jusqu’au » doit tomber le même jour que « En vigueur le » ou après.",
+    "publishFromUntil": "Publier du {day} au {until}",
+    "publishUntil": "Publier jusqu’au {until}",
+    "publishToday": "Publier pour aujourd’hui",
+    "reviewFromUntil": "Envoyer en relecture, du {day} au {until}",
+    "reviewUntil": "Envoyer en relecture, jusqu’au {until}",
+    "reviewToday": "Envoyer en relecture, pour aujourd’hui",
+    "publishUntilToday": "Publier jusqu’à aujourd’hui",
+    "reviewUntilToday": "Envoyer en relecture, jusqu’à aujourd’hui",
+    "publishDays": "Publier pour certains jours",
+    "reviewDays": "Envoyer en relecture, pour certains jours",
+    "startsOnHintToday": "Vide : aujourd’hui",
+    "sentFromUntil": "Envoyé en relecture. Prévu du {day} au {until}.",
+    "sentToday": "Envoyé en relecture. Prévu pour aujourd’hui.",
+    "sentOn": "Envoyé en relecture. Prévu pour le {day}.",
+    "liveFromUntil": "Sur le site du {date} au {until}.",
+    "liveToday": "Sur le site aujourd’hui.",
+    "liveOn": "Sur le site le {date}.",
+    "waitingUntil": "Du {day} au {until} : {changes}",
+    "holding": "Jusqu’au {until}, le site affiche : {changes} (sinon {normal})",
+    "holdingPlain": "Jusqu’au {until}, le site affiche : {changes}",
+    "covered": "Jusqu’au {until}, le site affiche {value}.",
+    "coveredOther": "Jusqu’au {until}, le site affiche une autre valeur.",
+    "overlap": "Du {from} au {until}, les deux s’appliquent. Le site affiche la modification du {from}.",
+    "afterEnd": "S’applique dès la fin de la modification temporaire",
+    "fromFixed": "Cette modification s’applique déjà : seuls sa fin et ses valeurs peuvent changer.",
+    "todayOnlyValues": "Aujourd’hui seulement : {changes}",
+    "todayOnly": "Dès demain, le site affiche de nouveau l’état normal.",
+    "changeDays": "Modifier les jours",
+    "saveDays": "Enregistrer les jours",
+    "movedUntil": "La modification s’applique désormais du {day} au {until}.",
+    "movedYearly": "Le changement s’applique désormais chaque année du {day} au {until}.",
+    "endNow": "Terminer maintenant",
+    "endQuestion": "Terminer cette modification maintenant ? Le site affichera de nouveau la valeur normale. C’est irréversible.",
+    "yearly": "Répéter chaque année",
+    "yearlyHint": "S’applique chaque année à ces dates.",
+    "yearlyWhileHolding": "Ce changement s’applique en ce moment et revient chaque année. Cela ne peut pas être désactivé maintenant ; vous pouvez l’annuler.",
+    "yearlyOnWhileHolding": "Ce changement s’applique en ce moment. S’il revient chaque année ne peut être modifié qu’une fois qu’il est terminé.",
+    "yearlyTooLong": "Un changement qui revient chaque année doit durer moins d’un an.",
+    "yearlyLeapDay": "Le 29 février n’existe pas chaque année. Ajoutez d’autres jours ou désactivez « Répéter chaque année ».",
+    "startsTooFarBack": "« En vigueur le » peut remonter au plus à un an.",
+    "name": "Nom",
+    "nameHint": "Par exemple : Été",
+    "nameTooLong": "Le nom peut compter au plus {max} caractères.",
+    "publishYearly": "Publier chaque année du {day} au {until}",
+    "reviewYearly": "Envoyer en relecture, chaque année du {day} au {until}",
+    "waitingYearly": "Chaque année du {day} au {until} : {changes}",
+    "waitingYearlyNamed": "{name} : chaque année du {day} au {until} : {changes}",
+    "waitingUntilNamed": "{name} : du {day} au {until} : {changes}",
+    "holdingNamed": "{name} : jusqu’au {until}, le site affiche : {changes} (sinon {normal})",
+    "holdingPlainNamed": "{name} : jusqu’au {until}, le site affiche : {changes}",
+    "comesBack": "{text}. Revient chaque année.",
+    "cancelYearlyQuestion": "Annuler ce changement ? Il ne reviendra pas non plus l’an prochain.",
+    "publishYearlyOn": "Publier chaque année le {day}",
+    "reviewYearlyOn": "Envoyer en relecture, chaque année le {day}",
+    "waitingOn": "Le {day} : {changes}",
+    "waitingOnNamed": "{name} : le {day} : {changes}",
+    "waitingYearlyOn": "Chaque année le {day} : {changes}",
+    "waitingYearlyOnNamed": "{name} : chaque année le {day} : {changes}",
+    "liveYearlyOn": "Sur le site chaque année le {day}, à partir du {first}.",
+    "liveYearlyOnToday": "Sur le site chaque année le {day}, à partir d’aujourd’hui.",
+    "sentYearlyOn": "Envoyé en relecture. Prévu chaque année le {day}.",
+    "liveYearly": "Sur le site chaque année du {day} au {until}, à partir du {first}.",
+    "liveYearlyToday": "Sur le site chaque année du {day} au {until}, à partir d’aujourd’hui.",
+    "sentYearly": "Envoyé en relecture. Prévu chaque année du {day} au {until}."
   },
   "site": {
     "zoneNote": "Toutes les heures sont dans le fuseau horaire du site web ({zone}).",
@@ -647,8 +742,7 @@
       "since": "Brouillon depuis le {date}",
       "goesLive": "En ligne le {date}",
       "all": "Tous les brouillons dans Contenu",
-      "changesSince": "Modifications non publiées depuis {date}",
-      "changesGoLive": "Les modifications passent en ligne {date}"
+      "changesSince": "Modifications non publiées depuis {date}"
     }
   },
   "editor": {
@@ -1012,6 +1106,7 @@
       "no": "Non",
       "none": "aucun",
       "changed": "modifié",
+      "flag": "{label} : {on, select, yes {oui} other {non}}",
       "items": "{count, plural, one {# entrée} other {# entrées}}"
     },
     "upload": {
@@ -1030,7 +1125,6 @@
     "savedLikeLive": "Enregistré. Cela correspond de nouveau à la version du site.",
     "changesPublished": "Modifications publiées.",
     "changesScheduled": "Programmé : modifications en ligne à partir du {time}.",
-    "changesScheduleCleared": "Programmation annulée. Les modifications restent enregistrées, mais pas encore en ligne.",
     "changesDiscarded": "Modifications abandonnées. La version du site s’applique de nouveau."
   },
   "review": {
@@ -1044,7 +1138,6 @@
     "removeFromRelease": "Retirer de la mise à jour",
     "releaseApproved": "Mise à jour approuvée. Sur le site web dans environ une minute.",
     "approve": "Approuver",
-    "approveLater": "Approuver pour plus tard…",
     "reject": "Refuser…",
     "rejectConfirm": "Refuser",
     "reason": "Pourquoi ? La personne qui a proposé la modification le verra.",
@@ -1331,7 +1424,8 @@
     "waiting": {
       "label": "Vous attend",
       "more": "{count} de plus",
-      "inHistory": "Voir dans l’historique"
+      "inHistory": "Voir dans l’historique",
+      "open": "Ouvrir"
     },
     "due": {
       "badge": "À faire"

@@ -42,7 +42,7 @@ const tabs = computed(() => navTabs(tree.value))
 const activeTab = ref<string | undefined>()
 const shownTab = computed(() => tabs.value.find((x) => x.title === activeTab.value) ?? tabs.value[0]!)
 
-const titleOf = (id: string) => { const p = byId.value.get(id); return p?.navTitle || p?.title || '' }
+const titleOf = (id: string) => { const p = byId.value.get(id); return p?.label || p?.title || '' }
 /** A heading's text in the language shown, from the page that holds it (the rules compare the main language). */
 const labelOf = (key: 'section' | 'tab', text: string | undefined) => {
   if (!text) return ''
@@ -72,7 +72,7 @@ const rowsOf = (roots: OutlineNode[]) => visible.value.filter((v) => roots.some(
 function warningOf(p: Page): { short: string; text: string } | undefined {
   if (p.parent && !byId.value.has(p.parent) && p.state === 'live') return { short: t('site.tree.elsewhere'), text: t('site.tree.trashParent') }
   const parent = p.parent ? byId.value.get(p.parent) : undefined
-  if (parent && parent.state !== 'live' && p.state === 'live') return { short: t('site.tree.elsewhere'), text: t('site.tree.draftParent', { parent: parent.navTitle || parent.title || '' }) }
+  if (parent && parent.state !== 'live' && p.state === 'live') return { short: t('site.tree.elsewhere'), text: t('site.tree.draftParent', { parent: parent.label || parent.title || '' }) }
   if (parent && p.section) return { short: t('site.tree.unusedSection'), text: t('site.tree.unusedSectionText', { section: p.sectionLabel ?? p.section }) }
   // The website does not show a draft, so a heading it starts is not there either until it is published. (A copy of
   // the next live page's heading counts: the draft leads that section, Ginko shows it there.)

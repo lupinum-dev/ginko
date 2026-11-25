@@ -3,7 +3,7 @@
 // (status line, today flag, week, own proposals, timed rows) as one `View`, "Wartet auf dich" and the verdict line.
 // The sheets and the writes stay on the page. Generic: nothing here knows the restaurant.
 import type { Brick, CollectionBrick, Field, Json } from '@lupinum/ginko'
-import { plannedWeeks, plansThisWeek, staleOf, visibleUntil, weeklyTask, workWeekOf, type StatusLine } from '@lupinum/ginko/internal'
+import { plannedWeeks, plansThisWeek, staleOf, shownUntil, weekInfo, weeklyTask, workWeekOf, type TodayLine } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { api } from '#convex/api'
 import type { Entry } from './useSiteData'
@@ -59,7 +59,8 @@ export interface Listing {
 export interface TodayFlag { task: Task; entry: Entry; date: string; field: Field }
 
 export interface View {
-  status?: { text: string; due: boolean; hours: boolean }
+  /** `open`: the hours line of an open day in two parts ("Open today" and the times), for the large time on the card. */
+  status?: { text: string; due: boolean; hours: boolean; open?: { lead: string; times: string; count: number } }
   /** sites.today is loading and this brick can have a line: a skeleton holds its place. */
   statusPending: boolean
   flag?: TodayFlag
@@ -87,7 +88,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   const { t, format, locale } = useI18n()
 
   /** A collection whose entries only show for a time: Today lists them. */
-  const isTimed = (brick: Brick) => brick.kind === 'collection' && !!brick.visible && brick.visible.mode !== 'always'
+  const isTimed = (brick: Brick) => brick.kind === 'collection' && !!brick.showUntil
   /** The bricks with tasks this person may do, in schema order. */
   const withTasks = computed(() => s.bricks.value.filter(([key, brick]) => (brick.tasks ?? []).some((t) => s.may(key, t))))
   /**
@@ -124,7 +125,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       const tasks = (brick.tasks ?? []).filter((t) => s.may(key, t))
       // Drafts are not on the website: they have their own list (TodayDrafts).
       const listed = isTimed(brick) ? entriesOf(key).filter((e) => e.state !== 'draft') : []
-      return { key, brick, tasks, remove: tasks.find((t) => t.kind === 'remove'), listed, removeOnRows: removeOnRows(brick, listed) }
+      return { key, brick, tasks, remove: tasks.find((t) => t.id === 'remove'), listed, removeOnRows: removeOnRows(brick, listed) }
     })
     const placed = new Map(cardsOf(s.schema.value!, parts).flatMap((card) => card.sections.map((x) => [x.key, { owner: x.plan ? card.key : undefined, split: x.split }] as const)))
     return parts.map((p) => ({ ...p, ...placed.get(p.key)! }))
@@ -144,11 +145,11 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   })
 
   /**
-   * What a tap on a listed entry opens: the edit task's sheet when the person has one, else the entry in Content when
-   * they may edit it there, else nothing (the row is plain text then).
+   * What a tap on a listed entry opens: the sheet of the task `edit` (by its id, never the first edit task) when the
+   * person has it, else the entry in Content when they may edit it there, else nothing (the row is plain text then).
    */
   function rowTarget(sec: Pick<Section, 'key' | 'tasks'>, entry: Entry): Row['target'] {
-    const task = sec.tasks.find((t) => t.kind === 'edit')
+    const task = sec.tasks.find((t) => t.id === 'edit')
     if (task) return { task }
     if (s.isManager.value) return { to: `/s/${s.slug.value}/all/${sec.key}/${entry._id}` }
     return undefined
@@ -170,7 +171,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     const expired = rows.filter((r) => r.timing.dim)
     const showExpired = expiredShown.has(sec.key)
     const open = showExpired || expanded.has(sec.key) || current.length <= LONG
-    const endOf = (r: Row) => visibleUntil(sec.brick, r.e.data) ?? ''
+    const endOf = (r: Row) => shownUntil(sec.brick, r.e.data) ?? ''
     const latest = new Set(expired.toSorted((a, b) => endOf(b).localeCompare(endOf(a))).slice(0, LISTED))
     const shown = current.slice(0, open ? LISTED : COLLAPSED)
     return [sec.key, {
@@ -208,13 +209,13 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
 
   /** "until 8.10." / the date range / "expired on 7.10." for a timed entry. */
   function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: boolean } {
-    const vis = brick.visible
-    if (!vis || vis.mode === 'always') return { text: '', dim: false }
+    const vis = brick.showUntil
+    if (!vis) return { text: '', dim: false }
     const today = s.today.value
-    const until = visibleUntil(brick, entry.data)
+    const until = shownUntil(brick, entry.data)
     if (!until) return { text: t('site.status.noEnd'), dim: false }
     const visible = until >= today
-    if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format }), dim: !visible }
+    if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format, currency: s.schema.value!.currency }), dim: !visible }
     return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired', { date: formatDay(until, format) }), dim: true }
   }
 
@@ -246,9 +247,9 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
    * one, it is what the website shows this week, not the single's own fields (lunchWeekOn in the gastro preset).
    */
   function plannedNow(key: string, task = weeklyTask(s.schema.value!.bricks[key]!)?.task) {
-    const schema = s.schema.value!
-    const start = workWeekOf(s.today.value, schema.week)
     if (!task) return undefined
+    const schema = s.schema.value!
+    const start = workWeekOf(s.today.value, weekInfo(schema.week))
     for (const [k, b] of Object.entries(schema.bricks)) {
       if (b.kind !== 'collection' || b.plans?.brick !== key) continue
       const entry = entriesOf(k).find((e) => e.state !== 'draft' && plansThisWeek(schema, key, task, k, e.data as Record<string, Json>, start))
@@ -266,7 +267,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       const field = s.schema.value!.bricks[plan.key]!.fields[plan.field]
       return { current: true, text: t('site.quick.plannedWeek', { label: field ? shownLabel(field.label, s.main.value) : '', date: formatDay(plan.start, format) }) }
     }
-    const state = staleOf(brick, entry.data, s.today.value, s.schema.value!.week, plannedWeeks(s.schema.value!, key, (k) => entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
+    const state = staleOf(brick, entry.data, s.today.value, weekInfo(s.schema.value!.week), plannedWeeks(s.schema.value!, key, (k) => entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
     if (!state) return undefined
     if (!state.stored) return { current: state.current, text: t('site.quick.notFilled') }
     const text = t('today.week.stored', { label: shownLabel(brick.fields[state.field]!.label, s.main.value), date: formatDay(state.stored, format) })
@@ -290,8 +291,10 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     return !!stateOf(key)?.due || weekState(key, brick)?.current === false
   }
 
+  /** A day's opening times in words: "11:30–14:30, 17:30–22:00". */
+  const timesOf = (ranges: readonly (readonly [string, string])[]) => new Intl.ListFormat(locale.value, { style: 'short', type: 'unit' }).format(ranges.map(([from, to]) => `${from}–${to}`))
   /** The words of a status line; "<n> online" only when the list is cut (`folded`), else null for a count. */
-  function statusText(brick: Brick, line: StatusLine, folded: boolean): string | null {
+  function statusText(brick: Brick, line: TodayLine, folded: boolean): string | null {
     const title = (value: string | null) => value ?? shownLabel(brick.label, s.main.value)
     switch (line.kind) {
       case 'next': return t('server.status.next', { title: title(line.title), date: formatDay(line.date, format) })
@@ -299,19 +302,31 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       case 'missing': return t('server.status.missing', { count: line.count, field: shownLabel(brick.fields[line.field]?.label ?? line.field, s.main.value) })
       case 'age': return line.weeks > 0 ? t('server.status.age', { title: title(line.title), weeks: line.weeks }) : t('server.status.ageThisWeek', { title: title(line.title) })
       case 'drafts': return t('server.status.drafts', { drafts: line.drafts, scheduled: line.scheduled })
-      case 'hours': {
+      // One renderer per rule, keyed by its name (D6).
+      case 'rule': {
+        // Only the opening-hours rule has these words; another rule gets none until it has its own.
+        if (line.rule !== 'opening-hours') return null
         const today = line.today
-        if ('ranges' in today) return t('server.status.open', { ranges: new Intl.ListFormat(locale.value, { style: 'short', type: 'unit' }).format(today.ranges.map(([from, to]) => `${from}–${to}`)) })
+        if ('ranges' in today) return t('server.status.open', { ranges: timesOf(today.ranges) })
         if ('unknown' in today) return t('server.status.hoursUnknown')
         return today.reason ? t('server.status.closedBecause', { reason: shownLabel(today.reason, s.main.value) }) : t('server.status.closed')
       }
     }
   }
   /** A section's status line: words, and whether it is due. */
-  function statusOf(sec: Section): { text: string; due: boolean; hours: boolean } | undefined {
+  function statusOf(sec: Section): View['status'] {
     const state = stateOf(sec.key)
-    const text = state?.line ? statusText(sec.brick, state.line, !!listings.value[sec.key]?.more) : null
-    return text ? { text, due: state!.due, hours: state!.line!.kind === 'hours' } : undefined
+    const line = state?.line
+    const text = line ? statusText(sec.brick, line, !!listings.value[sec.key]?.more) : null
+    if (!text) return undefined
+    const opening = line!.kind === 'rule' && line!.rule === 'opening-hours' ? line! : undefined
+    const status: NonNullable<View['status']> = { text, due: state!.due, hours: !!opening }
+    // The sentence ends with the times in every language we have; one that does not keeps the plain line.
+    if (opening && 'ranges' in opening.today) {
+      const times = timesOf(opening.today.ranges)
+      if (text.endsWith(times) && text.length > times.length) status.open = { lead: text.slice(0, -times.length).trim(), times, count: opening.today.ranges.length }
+    }
+    return status
   }
   /** A brick that can have a status line: a skeleton holds its place while sites.today loads. */
   const canHaveLine = (brick: Brick) => !!brick.status || brick.kind === 'collection' || (brick.kind === 'single' && !!weeklyTask(brick))
@@ -320,9 +335,12 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   // paint: each section says what of theirs waits for approval; a rejection is a tile with "Korrigieren" and a note in
   // the section. The server keeps a rejection only while it is the thing to fix.
   const ownRead = useConvexQuery(api.proposals.mine, () => ({ site: s.slug.value }))
-  const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone ?? 'UTC', main: s.main.value }))
+  // Plans that did not go online (D104): the person's own, every one for an owner.
+  const stoppedRead = useConvexQuery(api.entries.stoppedPlans, () => ({ site: s.slug.value }))
+  // No time text while the model loads (D114): useTextOf and ownWhen wait for the site's zone.
+  const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone, main: s.main.value }))
   const ownLine = (p: OwnRow) => textOf(p.msg, p.sentence)
-  const ownWhen = (at: number) => whenFull(at, s.schema.value?.timeZone ?? 'UTC', format)
+  const ownWhen = (at: number) => { const zone = s.schema.value?.timeZone; return zone ? whenFull(at, zone, format) : '' }
   /** A proposal made in the Studio through a task of `key` (an agent's are in Verlauf). */
   const ofSection = (key: string) => (p: OwnRow) => p.via === 'ui' && !!p.task?.startsWith(`${key}.`)
   /** Own open proposals and rejections still to fix of section `key`. */
@@ -341,9 +359,10 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     && (!sections.value.length || statusRead.data.value !== undefined)
     && (!shownBricks.value.length || shownRead.data.value !== undefined)
     && ownRead.data.value !== undefined
+    && stoppedRead.data.value !== undefined
     && (!s.isManager.value || reviewRead.data.value !== undefined))
   /** A read failed before it had data: the state is unknown (an error after data keeps the last state). */
-  const loadError = computed(() => [statusRead, shownRead, ownRead, ...(s.isManager.value ? [reviewRead] : [])].some((q) => !!q.error?.value && q.data.value === undefined))
+  const loadError = computed(() => [statusRead, shownRead, ownRead, stoppedRead, ...(s.isManager.value ? [reviewRead] : [])].some((q) => !!q.error?.value && q.data.value === undefined))
   const views = computed<Record<string, View>>(() => Object.fromEntries(sections.value.map((sec): [string, View] => {
     const status = statusOf(sec)
     const flag = sec.brick.kind === 'single' ? todayFlag(sec.key, sec.brick, sec.tasks) : undefined
@@ -378,6 +397,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       review: reviewRead.data.value,
       rejected: keyed(ownRead.data.value?.rejected).map((r) => ({ ...r, fix: fixTask(r.key, r.p) })),
       unsaved: localRows.value,
+      stopped: stoppedRead.data.value,
       notLive: keyed(ownRead.data.value?.notLive),
       now: Date.now(),
     })

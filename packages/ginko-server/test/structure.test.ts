@@ -35,7 +35,7 @@ describe('entries.create', () => {
     expect(await errorOf(as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Drei', '2026-10-30') }))).toMatchObject({ code: 'INVALID' })
   })
 
-  it('visible.deleteExpired: the expired notice is removed first, as a remove change of actor system', async () => {
+  it('showUntil.thenDelete: the expired notice is removed first, as a remove change of actor system', async () => {
     // A day on which notice-ausgebucht (until 2026-10-08) is still visible and notice-urlaub (2026-09-30) is not.
     vi.setSystemTime(new Date('2026-10-05T10:00:00Z'))
     const { t, as, entries } = await setup()
@@ -282,35 +282,15 @@ describe('tasks.prefill', () => {
     expect(values).toEqual({ ...lunch!.data, weekOf: '2026-10-12' })
   })
 
-  // Wrong behaviour caught: from the day of a planned price on, "Preis ändern" still opened on the old price, which the
-  // website no longer shows, so a change there did nothing visible; and the spent plan stayed stored.
-  it('menu.price opens on the planned price once its day has come, without the spent plan; saving it as it opened clears the plan', async () => {
-    const schnitzel = { price: { amount: 2190 }, nextPrice: { amount: 2290 }, priceFrom: '2026-10-18' }
-    vi.setSystemTime(new Date('2026-10-17T20:00:00Z'))
+  // Wrong behaviour caught: the Studio said "On the website in about a minute" for a week planned for next week,
+  // because the write did not say when it shows.
+  it('a new planned week answers from when it shows; a price saved at once does not', async () => {
     const { t, as, entries } = await setup()
-    const entry = entries['menu-schnitzel']!
-    expect(await as.cook.query(api.tasks.prefill, { site: 'restaurant', task: 'menu.price', entry })).toEqual(schnitzel)
-
-    // 22:00 UTC is already Sunday 18 October in Vienna.
-    vi.setSystemTime(new Date('2026-10-17T22:30:00Z'))
-    const due = { price: { amount: 2290 }, nextPrice: null, priceFrom: null }
-    expect(await as.cook.query(api.tasks.prefill, { site: 'restaurant', task: 'menu.price', entry })).toEqual(due)
-    await as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: due })
-    const data = (await t.run((ctx) => ctx.db.get(entry)))!.data
-    expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2290 }, undefined, undefined])
-  })
-
-  // Wrong behaviour caught: the Studio said "On the website in about a minute" for a price planned for November and a
-  // week planned for next week, because the write did not say when it shows.
-  it('a save of only the planned price and a new planned week answer from when they show', async () => {
-    const { t, as, entries } = await setup()
-    const price = await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 1, fields: { nextPrice: { amount: 2500 }, priceFrom: '2026-11-01' } })
-    expect(price).toMatchObject({ liveFrom: '2026-11-01' })
     const kw42 = (await t.run((ctx) => ctx.db.get(entries['plan-kw42']!)))!.data
     const week = await as.owner.mutation(api.entries.create, { publish: {}, site: 'restaurant', opId: opId(), task: 'lunchPlans.planNext', brick: 'lunchPlans', data: { ...kw42, weekOf: '2026-10-19' } })
     // Thursday 8 October: the week of Monday 19 shows from Saturday 17.
     expect(week).toMatchObject({ state: 'live', liveFrom: '2026-10-17' })
-    const now = await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 2, fields: { price: { amount: 2400 } } })
+    const now = await as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 2400 } } })
     expect(now).not.toHaveProperty('liveFrom')
   })
 
@@ -322,14 +302,14 @@ describe('tasks.prefill', () => {
     const plan = entries['plan-kw42']!
     const values = await as.cook.query(api.tasks.prefill, { site: 'restaurant', task: 'lunch.lunchWeek', entry: plan })
     expect(values).toMatchObject({ weekOf: '2026-10-12' })
-    const days = (values as { days: { day: string }[] }).days
-    expect(days[1]).toMatchObject({ day: 'tu', dish: { de: 'Krautfleckerl mit Speck' } })
-    const fields = { days: days.map((d) => (d.day === 'tu' ? { ...d, dish: { de: 'Kürbisgulasch' } } : d)) }
+    const days = (values as { days: Record<string, Record<string, unknown>> }).days
+    expect(days.tu).toMatchObject({ dish: { de: 'Krautfleckerl mit Speck' } })
+    const fields = { days: { ...days, tu: { ...days.tu, dish: { de: 'Kürbisgulasch' } } } }
     // The task needs approval, also on the planned week: a proposal, then live once the owner says yes.
     const proposed = await as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: plan, baseRev: 1, fields }) as { proposal: Id<'proposals'> }
     expect(proposed).toMatchObject({ status: 'open' })
     await as.owner.mutation(api.proposals.approve, { proposal: proposed.proposal })
-    expect(((await t.run((ctx) => ctx.db.get(plan)))!.data as { days: { dish: unknown }[] }).days[1]!.dish).toEqual({ de: 'Kürbisgulasch' })
+    expect(((await t.run((ctx) => ctx.db.get(plan)))!.data as { days: Record<string, { dish: unknown }> }).days.tu!.dish).toEqual({ de: 'Kürbisgulasch' })
 
     // A week ahead the same week is a later one. A fresh backend: Convex time never goes back.
     vi.setSystemTime(new Date('2026-10-06T08:00:00Z'))

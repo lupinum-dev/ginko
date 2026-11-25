@@ -1,4 +1,5 @@
 {
+  "format": 2,
   "site": "industrie",
   "name": "Brunner Präzisionstechnik GmbH",
   "url": "https://ginko-demo-industrie.vercel.app",
@@ -13,10 +14,13 @@
   },
   "currency": "EUR",
   "week": {
-    "firstDay": 1,
-    "weekend": [
-      6,
-      7
+    "firstDay": "mo",
+    "workdays": [
+      "mo",
+      "tu",
+      "we",
+      "th",
+      "fr"
     ]
   },
   "pages": {
@@ -63,135 +67,83 @@
       "label": "Empfang und Erreichbarkeit",
       "fields": {
         "week": {
-          "type": "list",
+          "type": "rows",
           "label": "Wochenplan",
-          "itemLabel": "Tag",
+          "rows": "weekdays",
           "of": {
-            "day": {
-              "type": "choice",
-              "label": "Tag",
-              "options": [
-                {
-                  "value": "mo",
-                  "label": "Montag"
-                },
-                {
-                  "value": "tu",
-                  "label": "Dienstag"
-                },
-                {
-                  "value": "we",
-                  "label": "Mittwoch"
-                },
-                {
-                  "value": "th",
-                  "label": "Donnerstag"
-                },
-                {
-                  "value": "fr",
-                  "label": "Freitag"
-                },
-                {
-                  "value": "sa",
-                  "label": "Samstag"
-                },
-                {
-                  "value": "su",
-                  "label": "Sonntag"
-                }
-              ],
-              "pos": 0
-            },
             "closed": {
               "type": "boolean",
               "label": "Geschlossen",
-              "pos": 1
+              "pos": 0
             },
             "from1": {
               "type": "time",
               "label": "Vormittag von",
               "optional": true,
-              "pos": 2
+              "pos": 1
             },
             "to1": {
               "type": "time",
               "label": "Vormittag bis",
               "optional": true,
-              "pos": 3
+              "pos": 2
             },
             "from2": {
               "type": "time",
               "label": "Nachmittag von",
               "optional": true,
-              "pos": 4
+              "pos": 3
             },
             "to2": {
               "type": "time",
               "label": "Nachmittag bis",
               "optional": true,
-              "pos": 5
+              "pos": 4
             }
           },
-          "min": 7,
-          "max": 7,
-          "unique": "day",
-          "default": [
-            {
-              "_id": "wkmo000000",
-              "day": "mo",
+          "default": {
+            "mo": {
               "closed": false,
               "from1": "07:00",
               "to1": "12:00",
               "from2": "12:30",
               "to2": "16:00"
             },
-            {
-              "_id": "wktu000000",
-              "day": "tu",
+            "tu": {
               "closed": false,
               "from1": "07:00",
               "to1": "12:00",
               "from2": "12:30",
               "to2": "16:00"
             },
-            {
-              "_id": "wkwe000000",
-              "day": "we",
+            "we": {
               "closed": false,
               "from1": "07:00",
               "to1": "12:00",
               "from2": "12:30",
               "to2": "16:00"
             },
-            {
-              "_id": "wkth000000",
-              "day": "th",
+            "th": {
               "closed": false,
               "from1": "07:00",
               "to1": "12:00",
               "from2": "12:30",
               "to2": "16:00"
             },
-            {
-              "_id": "wkfr000000",
-              "day": "fr",
+            "fr": {
               "closed": false,
               "from1": "07:00",
               "to1": "12:00",
               "from2": "12:30",
               "to2": "16:00"
             },
-            {
-              "_id": "wksa000000",
-              "day": "sa",
+            "sa": {
               "closed": true
             },
-            {
-              "_id": "wksu000000",
-              "day": "su",
+            "su": {
               "closed": true
             }
-          ],
+          },
           "pos": 0
         },
         "exceptions": {
@@ -276,13 +228,6 @@
           "pos": 1
         }
       },
-      "max": 5,
-      "order": "manual",
-      "visible": {
-        "mode": "until",
-        "field": "until",
-        "deleteExpired": true
-      },
       "tasks": [
         {
           "id": "add",
@@ -295,6 +240,17 @@
           "kind": "remove"
         }
       ],
+      "max": 5,
+      "order": "manual",
+      "listing": {
+        "title": "text",
+        "detail": "until"
+      },
+      "showUntil": {
+        "field": "until",
+        "thenDelete": true
+      },
+      "untranslated": "fallback",
       "pos": 1
     },
     "news": {
@@ -342,15 +298,6 @@
           "pos": 5
         }
       },
-      "max": 60,
-      "order": {
-        "field": "date",
-        "dir": "desc"
-      },
-      "route": {
-        "de": "/aktuelles/[slug]",
-        "en": "/en/news/[slug]"
-      },
       "tasks": [
         {
           "id": "add",
@@ -377,6 +324,20 @@
           "kind": "remove"
         }
       ],
+      "max": 60,
+      "order": {
+        "field": "date",
+        "dir": "desc"
+      },
+      "listing": {
+        "title": "title",
+        "detail": "date"
+      },
+      "untranslated": "hide",
+      "route": {
+        "de": "/aktuelles/[slug]",
+        "en": "/en/news/[slug]"
+      },
       "pos": 2
     },
     "jobs": {
@@ -469,12 +430,6 @@
           "pos": 9
         }
       },
-      "max": 40,
-      "order": "manual",
-      "visible": {
-        "mode": "until",
-        "field": "until"
-      },
       "tasks": [
         {
           "id": "add",
@@ -505,6 +460,16 @@
           "kind": "remove"
         }
       ],
+      "max": 40,
+      "order": "manual",
+      "listing": {
+        "title": "title",
+        "detail": "until"
+      },
+      "showUntil": {
+        "field": "until"
+      },
+      "untranslated": "fallback",
       "pos": 3
     },
     "events": {
@@ -538,15 +503,7 @@
           "pos": 3
         }
       },
-      "max": 40,
-      "order": {
-        "field": "when",
-        "dir": "asc"
-      },
-      "visible": {
-        "mode": "until",
-        "field": "when"
-      },
+      "preview": "events",
       "tasks": [
         {
           "id": "add",
@@ -571,6 +528,19 @@
           "kind": "remove"
         }
       ],
+      "max": 40,
+      "order": {
+        "field": "when",
+        "dir": "asc"
+      },
+      "listing": {
+        "title": "title",
+        "detail": "when"
+      },
+      "showUntil": {
+        "field": "when"
+      },
+      "untranslated": "fallback",
       "pos": 4
     },
     "products": {
@@ -648,12 +618,6 @@
           "pos": 5
         }
       },
-      "max": 80,
-      "order": "manual",
-      "route": {
-        "de": "/produkte/[slug]",
-        "en": "/en/products/[slug]"
-      },
       "tasks": [
         {
           "id": "add",
@@ -680,6 +644,16 @@
           "kind": "remove"
         }
       ],
+      "max": 80,
+      "order": "manual",
+      "listing": {
+        "title": "name"
+      },
+      "untranslated": "hide",
+      "route": {
+        "de": "/produkte/[slug]",
+        "en": "/en/products/[slug]"
+      },
       "pos": 5
     },
     "contacts": {
@@ -718,8 +692,6 @@
           "pos": 4
         }
       },
-      "max": 30,
-      "order": "manual",
       "tasks": [
         {
           "id": "add",
@@ -745,6 +717,12 @@
           "kind": "remove"
         }
       ],
+      "max": 30,
+      "order": "manual",
+      "listing": {
+        "title": "name"
+      },
+      "untranslated": "fallback",
       "pos": 6
     },
     "certificates": {
@@ -773,11 +751,7 @@
           "pos": 2
         }
       },
-      "max": 20,
-      "order": {
-        "field": "validUntil",
-        "dir": "asc"
-      },
+      "preview": "certificates",
       "tasks": [
         {
           "id": "add",
@@ -800,6 +774,16 @@
           "kind": "remove"
         }
       ],
+      "max": 20,
+      "order": {
+        "field": "validUntil",
+        "dir": "asc"
+      },
+      "listing": {
+        "title": "title",
+        "detail": "validUntil"
+      },
+      "untranslated": "fallback",
       "pos": 7
     },
     "company": {

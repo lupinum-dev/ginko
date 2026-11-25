@@ -3,6 +3,7 @@
   "site": "demo",
   "name": "Demo",
   "schema": {
+    "format": 2,
     "site": "demo",
     "name": "Demo",
     "url": "https://example.com",
@@ -13,10 +14,13 @@
     ],
     "currency": "EUR",
     "week": {
-      "firstDay": 7,
-      "weekend": [
-        6,
-        7
+      "firstDay": "mo",
+      "workdays": [
+        "mo",
+        "tu",
+        "we",
+        "th",
+        "fr"
       ]
     },
     "pages": {
@@ -72,6 +76,7 @@
             "pos": 2
           }
         },
+        "body": "body",
         "pos": 0
       },
       "pages": {
@@ -80,12 +85,6 @@
           "de": "Seiten",
           "en": "Pages",
           "fr": "Pages"
-        },
-        "max": 50,
-        "order": "manual",
-        "route": {
-          "en": "/[slug]",
-          "de": "/de/[slug]"
         },
         "fields": {
           "title": {
@@ -173,9 +172,15 @@
             "pos": 6
           }
         },
+        "body": "body",
         "tasks": [
           {
             "id": "edit",
+            "label": {
+              "de": "Seite bearbeiten",
+              "en": "Edit a page",
+              "fr": "Modifier une page"
+            },
             "kind": "edit",
             "pick": true,
             "fields": [
@@ -185,23 +190,29 @@
               "actionLabel",
               "actionUrl",
               "body"
-            ],
-            "label": {
-              "de": "Seite bearbeiten",
-              "en": "Edit a page",
-              "fr": "Modifier une page"
-            }
+            ]
           },
           {
             "id": "add",
-            "kind": "create",
             "label": {
               "de": "Seite hinzufügen",
               "en": "Add a page",
               "fr": "Ajouter une page"
-            }
+            },
+            "kind": "create"
           }
         ],
+        "max": 50,
+        "order": "manual",
+        "listing": {
+          "title": "title",
+          "image": "image"
+        },
+        "untranslated": "hide",
+        "route": {
+          "en": "/[slug]",
+          "de": "/de/[slug]"
+        },
         "pos": 1
       },
       "notices": {
@@ -234,13 +245,6 @@
             "pos": 1
           }
         },
-        "max": 5,
-        "order": "manual",
-        "visible": {
-          "mode": "until",
-          "field": "until",
-          "deleteExpired": true
-        },
         "tasks": [
           {
             "id": "add",
@@ -259,6 +263,17 @@
             "kind": "remove"
           }
         ],
+        "max": 5,
+        "order": "manual",
+        "listing": {
+          "title": "text",
+          "detail": "until"
+        },
+        "showUntil": {
+          "field": "until",
+          "thenDelete": true
+        },
+        "untranslated": "fallback",
         "pos": 2
       },
       "site": {
@@ -400,13 +415,13 @@
         "tasks": [
           {
             "id": "edit",
-            "kind": "edit",
             "label": {
               "de": "Kontaktdaten ändern",
               "en": "Change contact details",
               "es": "Cambiar los datos de contacto",
               "fr": "Modifier les coordonnées"
             },
+            "kind": "edit",
             "fields": [
               "legalName",
               "street",
@@ -430,32 +445,6 @@
           "es": "Textos legales",
           "fr": "Informations légales"
         },
-        "max": 20,
-        "order": "manual",
-        "route": {
-          "en": "/legal/[slug]",
-          "de": "/de/legal/[slug]"
-        },
-        "tasks": [
-          {
-            "id": "update",
-            "kind": "edit",
-            "pick": true,
-            "fields": [
-              "body",
-              "updatedAt"
-            ],
-            "prefill": {
-              "updatedAt": "@today"
-            },
-            "label": {
-              "de": "Rechtstext aktualisieren",
-              "en": "Update a legal text",
-              "es": "Actualizar un texto legal",
-              "fr": "Mettre à jour un texte juridique"
-            }
-          }
-        ],
         "fields": {
           "title": {
             "type": "text",
@@ -578,6 +567,38 @@
             "pos": 5
           }
         },
+        "body": "body",
+        "tasks": [
+          {
+            "id": "update",
+            "label": {
+              "de": "Rechtstext aktualisieren",
+              "en": "Update a legal text",
+              "es": "Actualizar un texto legal",
+              "fr": "Mettre à jour un texte juridique"
+            },
+            "kind": "edit",
+            "pick": true,
+            "fields": [
+              "body",
+              "updatedAt"
+            ],
+            "prefill": {
+              "updatedAt": "@today"
+            }
+          }
+        ],
+        "max": 20,
+        "order": "manual",
+        "listing": {
+          "title": "title",
+          "detail": "updatedAt"
+        },
+        "untranslated": "hide",
+        "route": {
+          "en": "/legal/[slug]",
+          "de": "/de/legal/[slug]"
+        },
         "pos": 4
       }
     },
@@ -657,7 +678,9 @@
           "de": "36aa9082495de6e4fd1583d8127b955a222ef9c947d94b3883523774da64dc7e"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "about",
+      "nameFixed": true
     },
     {
       "id": "pages/contact",
@@ -696,7 +719,9 @@
           "de": "85bdc9562acccdc94b3cfccb581e48e50aaa9e8571d3104d972b4ab96e2c9328"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "contact",
+      "nameFixed": true
     },
     {
       "id": "notices/welcome",
@@ -708,14 +733,16 @@
           "en": "New: I now also translate from French.",
           "de": "Neu: Ich übersetze jetzt auch aus dem Französischen."
         },
-        "until": "2027-01-29"
+        "until": "2027-03-12"
       },
       "prints": {
         "text": {
           "de": "7336a12dcdfc6a7ae9babd4f424cf8d53409b5ec12392e9fd5c978151a59c27a"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "welcome",
+      "nameFixed": true
     },
     {
       "id": "site",
@@ -772,7 +799,9 @@
           "de": "20869d0b0912fe5605a3169b5cb95aef6a3d8ee4894d045237f90b6c603c6c61"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "privacy",
+      "nameFixed": true
     },
     {
       "id": "legal/terms",
@@ -813,7 +842,9 @@
           "de": "2a5ac08e8b2447e22f2e8e9b72486f612734ea6c3e02136051e2fa93069a1f76"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "terms",
+      "nameFixed": true
     },
     {
       "id": "legal/imprint",
@@ -854,7 +885,9 @@
           "de": "d826724accc05cb39f13fa03b535b3dd5fb552407b67f095d42ec5390a30152b"
         }
       },
-      "rev": 1
+      "rev": 1,
+      "name": "imprint",
+      "nameFixed": true
     }
   ],
   "folders": [],

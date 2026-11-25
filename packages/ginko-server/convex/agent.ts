@@ -14,11 +14,10 @@ import { usageAs } from './files'
 import { ownAs } from './proposals'
 import { actorFor, entryOf, fail, idempotent, memberOf, type Actor } from './lib/access'
 import { searchEntries as searchAll, searchTexts } from './lib/search'
-import { builderTools, BUILDER_TOOLS, DRY_RUN, IMPORT_MAX, isBuilder, suggest, fixedTools, HISTORY_MAX, PROPOSE, PUBLISH, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
+import { builderTools, BUILDER_TOOLS, DRY_RUN, FROM, IMPORT_MAX, isBuilder, suggest, fixedTools, HISTORY_MAX, PROPOSE, PUBLISH, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, doorTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
 import type { Data } from './lib/content'
 import { leafStatus } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
-import { same } from './lib/write'
 import { effectiveReview } from './lib/policy'
 import { secret } from './release'
 import { normalizeEmail } from './members'
@@ -141,7 +140,7 @@ async function inputSchemaOf(ctx: QueryCtx, actor: Actor, tool: TaskTool): Promi
   // An edit of a single offers what it would write there now; a picked entry is known only at the call.
   const single = tool.task.kind === 'edit' ? await singleOf(ctx, actor, tool.brick) : undefined
   const prefill = await prefillOf(ctx, actor, tool, single?._id)
-  return taskInputSchema(schema.bricks[tool.brick]!, tool.task, { mainLocale: schema.locales[0]!, currency: schema.currency, prefill })
+  return taskInputSchema(schema.bricks[tool.brick]!, tool.task, { mainLocale: schema.locales[0]!, currency: schema.currency, week: schema.week, prefill })
 }
 
 /** tools/list: the fixed tools and one tool per task the person may run; every task tool may carry `propose` and `request_id`, a create or edit task `publish`. */
@@ -151,11 +150,11 @@ export const tools = internalQuery({
     const actor = await actorOrFail(ctx, key)
     const schema = actor.site.schema as Schema
     const out: ToolDef[] = [...fixedTools(actor), ...builderTools(actor)]
-    for (const tool of taskTools(actor)) {
+    for (const tool of doorTools(actor)) {
       const input = await inputSchemaOf(ctx, actor, tool)
       out.push({
         name: tool.name, description: describeTask(schema.bricks[tool.brick]!, tool.task, schema.locales[0]!),
-        inputSchema: { ...input, properties: { ...input.properties, ...(tool.task.kind === 'remove' ? {} : { publish: PUBLISH }), propose: PROPOSE, request_id: REQUEST_ID } } as unknown as Json, annotations: taskHints(tool.task),
+        inputSchema: { ...input, properties: { ...input.properties, ...(tool.task.kind === 'remove' ? {} : { publish: PUBLISH }), ...(datesTask(tool) ? { from: FROM } : {}), propose: PROPOSE, request_id: REQUEST_ID } } as unknown as Json, annotations: taskHints(tool.task),
       })
     }
     return out
@@ -168,7 +167,7 @@ export const overview = internalQuery({
   handler: async (ctx, { key }) => {
     const actor = await actorOrFail(ctx, key)
     const schema = actor.site.schema as Schema
-    const allowed = taskTools(actor)
+    const allowed = doorTools(actor)
     const review = effectiveReview(await ctx.db.get(key), actor.site)
     // Values the site keeps in one place; texts quote them (`:fact{name="…"}`) instead of copying them.
     const facts = (await factsOf(ctx, actor.site)).map((fact) => ({
@@ -273,7 +272,8 @@ async function checkSiteLinks(ctx: QueryCtx, actor: Actor, input: Record<string,
   const schema = actor.site.schema as Schema
   const only = typeof input.brick === 'string' ? input.brick : undefined
   if (only !== undefined && !Object.hasOwn(schema.bricks, only)) fail('INVALID', 'errors.brickNotFoundSeeOverview', { only })
-  const bundles = await Promise.all(schema.locales.map((locale) => bundleOf(ctx, actor.site, locale)))
+  // Every live entry, also one that ended: its links go online again when its end date moves (D111).
+  const bundles = await Promise.all(schema.locales.map((locale) => bundleOf(ctx, actor.site, locale, { keepEnded: true })))
   // The platform knows no files of the site's public folder, so a path that matches no entry or page is reported.
   const issues = checkLinks(bundles, schema, { files: () => false })
   const out = new Map<string, { entry: string | null; brick: string; label: string; field: string; link: string; reason: string; severity: string; locales: string[] }>()
@@ -379,13 +379,33 @@ export const stale = internalQuery({
   },
 })
 
-/** When a write shows on the website: in about a minute, or from the day of a week planned ahead or a planned price (`liveFrom`). */
+/** A task tool whose form asks from which day its values hold (`when: { from: 'ask' }`, D123). */
+const datesTask = (tool: TaskTool) => tool.task.kind === 'edit' && tool.task.when?.from === 'ask'
+
+/** `from` of a write tool: absent or a day; the operation checks the day itself. */
+function fromArg(value: Json | undefined): string | undefined {
+  if (value !== undefined && typeof value !== 'string') fail('INVALID', 'errors.dayInvalid')
+  return value
+}
+
+/** When a write shows on the website: in about a minute, or from the first day of a week planned ahead (`liveFrom`). */
 const liveText = (liveFrom: string | undefined) => (liveFrom ? `On the website from ${liveFrom}.` : 'Live on the website in about a minute.')
 
-/** The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. */
-function savedAs(result: Json, label: string): { text: string; result: Json } {
+/**
+ * The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. `draft`: the
+ * entry is a draft, so the sentence names what it still lacks (`lacksText`).
+ */
+function savedAs(result: Json, label: string, draft = false): { text: string; result: Json } {
   if (proposed(result)) return { text: PROPOSED, result }
-  const { change, liveFrom, pending } = result as { change?: string; liveFrom?: string; pending?: boolean }
+  if (draft) {
+    const saved = savedAs(result, label)
+    return { ...saved, text: `${saved.text}${lacksText(result)}` }
+  }
+  const { change, liveFrom, pending, from, dated } = result as { change?: string; liveFrom?: string; pending?: boolean; from?: string; dated?: string | null }
+  // A dated change (D125): nothing changes on the website before its day. Values the entry has on that day anyway
+  // take the change of that day away (`dated: null`).
+  if (from !== undefined && change && dated === null) return { text: `Removed the planned change from ${from}: ${label} has these values on that day anyway, so nothing waits for that day any more.`, result }
+  if (from !== undefined && change) return { text: `Planned: ${label}. On the website from ${from}; until then it keeps the values it has. The person can move or cancel the change in the platform.`, result }
   // A save of a published entry waits as unpublished changes unless `publish` (lib/pending.ts).
   if (pending !== undefined) {
     return {
@@ -397,6 +417,16 @@ function savedAs(result: Json, label: string): { text: string; result: Json } {
     text: change ? `Done: ${label}. ${liveText(liveFrom)} To undo: ginko_undo with change ${change}.` : 'Nothing changed: the values were already like this.',
     result,
   }
+}
+
+/**
+ * What a draft still lacks before it can go online, as one sentence after its create or save: the fields of its warnings
+ * (D115, D116), so the assistant tells the person instead of calling the draft done. '' when it lacks nothing.
+ */
+function lacksText(result: Json): string {
+  const warnings = (result as { warnings?: { path: string }[] }).warnings ?? []
+  const fields = [...new Set(warnings.map((w) => w.path.split('.')[0] || 'the entry'))]
+  return fields.length ? ` Before it can go online, these fields still need a value or a fix: ${fields.join(', ')}.` : ''
 }
 
 /** The tool arguments as an object of the allowed shape; anything else is the assistant's mistake. */
@@ -451,13 +481,14 @@ async function callOnce(ctx: MutationCtx, person: Actor, name: string, args: Rec
 async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
   const schema = actor.site.schema as Schema
   const site = actor.site.slug
-  const tool = taskTools(actor).find((t) => t.name === name)
+  const tool = doorTools(actor).find((t) => t.name === name)
   if (!tool) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name })
   const brick = schema.bricks[tool.brick]!
   const offered = await inputSchemaOf(ctx, actor, tool)
-  const unknown = Object.keys(input).filter((k) => !Object.hasOwn(offered.properties, k) && !(k === 'publish' && tool.task.kind !== 'remove'))
+  const unknown = Object.keys(input).filter((k) => !Object.hasOwn(offered.properties, k) && !(k === 'publish' && tool.task.kind !== 'remove') && !(k === 'from' && datesTask(tool)))
   if (unknown.length) fail('INVALID', 'errors.unknownOption', { unknown: unknown.join(', ') })
-  const { entry: picked, confirm, publish: rawPublish, ...values } = input
+  const { entry: picked, confirm, publish: rawPublish, from: rawFrom, ...values } = input
+  const from = fromArg(rawFrom)
   const publish = publishArg(rawPublish)
   const main = schema.locales[0]!
   // Prefilled values count when the assistant leaves a field out: the tool offers them as defaults.
@@ -469,7 +500,8 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
     // Without `publish` the new entry is a draft (SPEC 15); publishing it stays with the person in the platform.
     const where = state === 'draft' ? 'Saved as a draft, not on the website yet. The person publishes it in the platform.' : liveText(liveFrom)
     const change = await lastChangeOf(ctx, id)
-    return notingCopies(ctx, actor, brick.fields, values, { text: `Done: ${labelIn(tool.task.label, main, main)}. New entry ${id}. ${where} To undo: ginko_undo with change ${change?._id}.`, result: { ...(result as object), change: change?._id ?? null } })
+    const lacks = state === 'draft' ? lacksText(result) : ''
+    return notingCopies(ctx, actor, brick.fields, values, { text: `Done: ${labelIn(tool.task.label, main, main)}. New entry ${id}. ${where}${lacks} To undo: ginko_undo with change ${change?._id}.`, result: { ...(result as object), change: change?._id ?? null } })
   }
 
   const entry = await targetOf(ctx, actor, tool.brick, picked)
@@ -486,17 +518,16 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   const taskFields = tool.task.fields
   const stored = entry.data as Record<string, Json>
   // The task opens on the entry as the Studio's sheet does: its presets resolved on the entry (`prefill`, so a closure
-  // day already set stays), and a planned change whose day has come is the value in effect with its spent plan cleared
-  // (`opened`, from `prefillAs`), so a new value does not hide behind it.
+  // day already set stays).
   const prefill = await prefillOf(ctx, actor, tool, entry._id)
-  const opened = await prefillAs(ctx, actor, { site, task: tool.ref, entry: entry._id }) as Record<string, Json>
   const fields = {
-    ...Object.fromEntries(Object.entries(opened).filter(([k, value]) => taskFields.includes(k) && (Object.hasOwn(prefill, k) || !same(value, stored[k])))),
+    ...Object.fromEntries(Object.entries(prefill).filter(([k]) => taskFields.includes(k))),
     ...fromToolInput(Object.fromEntries(taskFields.map((f) => [f, brick.fields[f]!])), values, { mainLocale: main, currency: schema.currency, stored, newRowId }),
   }
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
   // The assistant acts on the state it just read, so the current revision is its base.
-  return notingCopies(ctx, actor, brick.fields, values, savedAs(await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publish ? { publish: true as const } : {}) }), labelIn(tool.task.label, main, main)))
+  const result = await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publish ? { publish: true as const } : {}), ...(from !== undefined ? { from } : {}) })
+  return notingCopies(ctx, actor, brick.fields, values, savedAs(result, labelIn(tool.task.label, main, main), entry.state === 'draft'))
 }
 
 /** `publish` of a write tool: absent or a boolean. */
@@ -570,7 +601,7 @@ async function draftThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<st
   const { entry: id } = result as { entry: Id<'entries'> }
   const change = await lastChangeOf(ctx, id)
   return {
-    text: `Saved as a draft, not on the website yet. New entry ${id}. The person publishes it in the platform. To undo: ginko_undo with change ${change?._id}.`,
+    text: `Saved as a draft, not on the website yet. New entry ${id}. The person publishes it in the platform.${lacksText(result)} To undo: ginko_undo with change ${change?._id}.`,
     result: { ...(result as object), change: change?._id ?? null },
   }
 }
@@ -648,6 +679,7 @@ function checkFields(actor: Actor, key: string, def: Schema['bricks'][string], v
       const path = `${at}${name}`
       if (field) {
         if (field.type === 'list' && Array.isArray(value)) value.forEach((row, i) => { if (typeof row === 'object' && row !== null && !Array.isArray(row)) check(field.of, row, `${path}[${i}].`) })
+        if (field.type === 'rows' && typeof value === 'object' && value !== null && !Array.isArray(value)) for (const [row, cells] of Object.entries(value)) { if (typeof cells === 'object' && cells !== null && !Array.isArray(cells)) check(field.of, cells, `${path}.${row}.`) }
         continue
       }
       const near = suggest(name, writable.map(([k, f]) => ({ key: k, label: labelIn(f.label, main, main) })))
@@ -673,25 +705,26 @@ function schemaOf(actor: Actor, only: Json | undefined) {
     return {
       brick: key, kind: def.kind, label: labelIn(def.label, main, main),
       ...(def.kind === 'collection' && def.route ? { route: def.route } : {}),
-      input: fieldsInputSchema(def.fields, { mainLocale: main, currency: schema.currency }),
+      input: fieldsInputSchema(def.fields, { mainLocale: main, currency: schema.currency, week: schema.week }),
     }
   })
 }
 
 /** ginko_write: any fields of an entry or single, in the main language, as the Studio saves them (no task). */
 async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string, batch?: CopyBatch): Promise<{ text: string; result: Json }> {
-  onlyKeys(input, ['brick', 'entry', 'fields', 'publish'])
+  onlyKeys(input, ['brick', 'entry', 'fields', 'publish', 'from'])
   const schema = actor.site.schema as Schema
   const main = schema.locales[0]!
+  const from = fromArg(input.from)
   const { key, def } = brickOf(actor, input.brick)
   const values = objectArg(input.fields, 'fields')
   checkFields(actor, key, def, values)
   const entry = await targetOf(ctx, actor, key, input.entry)
   const fields = fromToolInput(def.fields, values, { mainLocale: main, currency: schema.currency, stored: entry.data as Record<string, Json>, newRowId })
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
-  const result = await saveAs(ctx, actor, { site: actor.site.slug, opId, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publishArg(input.publish) ? { publish: true as const } : {}) })
+  const result = await saveAs(ctx, actor, { site: actor.site.slug, opId, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publishArg(input.publish) ? { publish: true as const } : {}), ...(from !== undefined ? { from } : {}) })
   const studio = studioLink(actor, key, def.kind === 'single' ? undefined : entry._id)
-  const saved = savedAs(result, `${labelOf(schema, key, entry.data as Data)}: ${Object.keys(fields).join(', ')}`)
+  const saved = savedAs(result, `${labelOf(schema, key, entry.data as Data)}: ${Object.keys(fields).join(', ')}`, entry.state === 'draft')
   return notingCopies(ctx, actor, def.fields, values, { text: saved.text, result: { ...(result as object), entry: entry._id, ...(studio ? { studio } : {}) } }, batch)
 }
 
@@ -709,7 +742,7 @@ async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
   const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
   const change = await lastChangeOf(ctx, id)
   const studio = studioLink(actor, key, id)
-  const where = state === 'draft' ? 'Saved as a draft, not on the website yet.' : liveText(liveFrom)
+  const where = state === 'draft' ? `Saved as a draft, not on the website yet.${lacksText(result)}` : liveText(liveFrom)
   return notingCopies(ctx, actor, def.fields, values, {
     text: `Created entry ${id} in “${key}”. ${where} To undo: ginko_undo with change ${change?._id}.`,
     result: { ...(result as object), change: change?._id ?? null, ...(studio ? { studio } : {}) },

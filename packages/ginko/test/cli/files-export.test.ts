@@ -12,17 +12,20 @@ import { collection, defineSite, f, printOf } from '../../src/core/index.ts'
 // `blog` is a platform brick (no `source`): files-export reads content/<key>/ for every brick anyway.
 const config = defineSite({
   site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: { home: '/' },
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: '/' },
   bricks: {
-    blog: collection({
+    blog: collection({ body: 'body',
+      listing: { title: 'title' },
       label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]', en: '/en/blog/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') },
     }),
     faq: collection({
+      listing: { title: 'question' },
       label: 'FAQ', source: 'files', max: 50, order: 'manual',
-      fields: { question: f.text('Frage'), answer: f.longtext('Antwort') },
+      fields: { question: f.text('Frage'), answer: f.longtext('Antwort'), price: f.money('Preis', { optional: true }) },
     }),
-    authors: collection({
+    authors: collection({ body: 'bio',
+      listing: { title: 'name' },
       label: 'Autorinnen', max: 20, order: 'manual',
       fields: { name: f.text('Name'), avatar: f.image('Bild', { optional: true }), bio: f.markdown('Über mich', { profile: 'rich', optional: true }) },
     }),
@@ -53,6 +56,14 @@ function site(extra: Record<string, string | Uint8Array> = {}) {
 }
 
 describe('local:files-export', () => {
+  // Wrong behaviour caught: a dated change in a file is lost on the way to the platform, or a passed one stays a change.
+  it('carries the changes still ahead and writes a passed one into the values', async () => {
+    const s = site({ 'content/faq/2.kurs.yml': 'question: Was kostet der Kurs?\nanswer: Siehe Preis.\nprice: 90\n$changes:\n  - from: 2020-01-01\n    set: { price: 95 }\n  - from: 2099-01-01\n    set: { price: 99 }\n' })
+    expect((await run(['files-export', '--config', s.config, s.out])).code).toBe(0)
+    const exported = parseExport(JSON.parse(readFileSync(join(s.out, 'export.json'), 'utf8')), 'path', 'invalid')
+    expect(exported.entries.find((e) => e.id === 'faq/kurs')).toMatchObject({ data: { price: { amount: 9500 } }, changes: [{ from: '2099-01-01', set: { price: { amount: 9900 } } }] })
+  })
+
   it('turns content files into an export that parseExport accepts, translations included', async () => {
     const s = site()
     const { code, json } = await run(['files-export', '--config', s.config, s.out])
@@ -64,7 +75,8 @@ describe('local:files-export', () => {
     expect(exported.schema.bricks.faq).not.toHaveProperty('source')
 
     const [hallo, zweiter, preis] = exported.entries
-    expect(hallo).toMatchObject({ id: 'blog/hallo', brick: 'blog', kind: 'item', order: 0, rev: 1 })
+    // The name is the file name, fixed: an import keeps it (D96).
+    expect(hallo).toMatchObject({ id: 'blog/hallo', brick: 'blog', kind: 'item', order: 0, rev: 1, name: 'hallo', nameFixed: true })
     expect(hallo!.data.title).toEqual({ de: 'Hallo Welt', en: 'Hello world' })
     expect(hallo!.data.slug).toEqual({ de: 'hallo', en: 'hallo' })
     // The platform stores and the Studio edits Markdown as text, not as the site's parsed tree.
@@ -75,15 +87,23 @@ describe('local:files-export', () => {
     expect(preis).toMatchObject({ id: 'faq/preis', order: 0, data: { question: { de: 'Was kostet es?' }, answer: { de: 'Das kommt darauf an.' } } })
   })
 
-  it('leaves out a file marked draft: true, as the build does', async () => {
-    // Wrong behaviour caught: the draft goes into the export with `draft` as a field, and the import refuses all of it.
-    const s = site({ 'content/blog/3.entwurf.md': '---\ntitle: Entwurf\ndraft: true\n---\n\nNoch nicht fertig.\n' })
+  it('leaves out a file marked $draft: true, as the build does', async () => {
+    // Wrong behaviour caught: the draft goes into the export as an online entry.
+    const s = site({ 'content/blog/3.entwurf.md': '---\ntitle: Entwurf\n$draft: true\n---\n\nNoch nicht fertig.\n' })
     const logs: string[] = []
     const { code, json } = await run(['files-export', '--config', s.config, s.out], logs)
     expect(code).toBe(0)
     expect(json).toMatchObject({ entries: 3, bricks: { blog: 2, faq: 1 } })
     // Wrong behaviour caught: the draft vanishes without a word.
     expect(logs).toContain('Warning: 1 entry stays out of the export as drafts, scheduled for later or part of a draft (blog/entwurf); add them in the Studio.')
+  })
+
+  // Wrong behaviour caught: the old paths of `$redirectFrom` vanish without a word when the content moves to the platform.
+  it('names each entry whose $redirectFrom the export does not carry', async () => {
+    const s = site({ 'content/blog/3.umzug.md': '---\ntitle: Umzug\n$redirectFrom: [/alt, /noch-aelter]\n---\n\nText.\n' })
+    const logs: string[] = []
+    expect((await run(['files-export', '--config', s.config, s.out], logs)).code).toBe(0)
+    expect(logs).toContain('Warning: “blog/umzug” has $redirectFrom (/alt, /noch-aelter), which the export does not carry. Add these paths to `redirects` in ginko.config.ts, or they stop forwarding once the entry lives on the platform.')
   })
 
   // Wrong behaviour caught: a self-hoster without the repository cannot export, or `ginko files-export` writes another

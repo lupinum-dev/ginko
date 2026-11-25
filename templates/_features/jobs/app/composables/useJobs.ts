@@ -1,7 +1,7 @@
 import { plainText, safeHref, type MarkdownTree } from '@lupinum/ginko'
-import { jobJsonLd } from '@lupinum/ginko/basics'
+import { jobJsonLd } from '@lupinum/ginko/patterns'
 
-/** What the jobs feature reads of an entry of the `jobs` brick (`jobs()` of `@lupinum/ginko/basics`). */
+/** What the jobs feature reads of an entry of the `jobs` brick (`jobs()` of `@lupinum/ginko/patterns`). */
 export interface JobFacts {
   title: string
   location: string

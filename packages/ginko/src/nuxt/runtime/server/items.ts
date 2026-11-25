@@ -3,7 +3,7 @@
 // server, for file bricks and platform bricks alike.
 import { createError, useRuntimeConfig, type RequestEvent } from 'nuxt/server'
 import schema from '#ginko/schema'
-import { isVisible, todayIn, type Brick, type BundleItem, type Locale } from '../../../internal.ts'
+import type { Brick, BundleItem, Locale } from '../../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from '../shared.ts'
 import { loadServerBundles } from './bundles.ts'
 
@@ -12,7 +12,7 @@ export type GinkoServerItem = BundleItem & { url?: string }
 
 /**
  * The visible entries of collection `brick` in `locale` (default: the main language), in the collection's order, as
- * `useGinko(brick).items` has them on a page: drafts and entries past their `visible` date are left out. Throws a 404
+ * `useGinko(brick).items` has them on a page: drafts and entries that ended are left out. Throws a 404
  * for a language the site does not have or a key that is no collection, and a 503 when the platform cannot be reached.
  */
 export async function getGinkoItems(event: RequestEvent, brick: string, locale?: string): Promise<GinkoServerItem[]> {
@@ -23,7 +23,5 @@ export async function getGinkoItems(event: RequestEvent, brick: string, locale?:
   const bundle = (await loadServerBundles(event, config, [code]))[code]
   const value = bundle?.bricks[brick]
   if (!bundle || value?.kind !== 'collection') return []
-  const today = todayIn(config.timeZone)
-  const items = value.items.filter((item) => isVisible(def, item.data, today))
-  return def.route ? withUrl(items, bundle.locale, bundle.mainLocale) : items
+  return def.route ? withUrl(value.items, bundle.locale, bundle.mainLocale) : value.items
 }

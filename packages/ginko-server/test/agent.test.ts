@@ -93,6 +93,30 @@ describe('agent door', () => {
     expect((await s.t.run((ctx) => ctx.db.get(s.entries['menu-schnitzel']!)))!.data.price).toEqual({ amount: 2190 })
   })
 
+  // Wrong behaviour caught: an assistant asked for "from 1 November" puts the price online at once, or the day is
+  // offered on a task whose form does not ask one.
+  it('a task that asks a day takes from: the price waits as a dated change and the answer says from when', async () => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      for (const task of schema.bricks.menu!.tasks ?? []) if (task.id === 'price') (task as { when?: { from: 'ask' } }).when = { from: 'ask' }
+      await ctx.db.patch(s.site, { schema })
+    })
+    const key = await keyOf(s, 'owner')
+    const tools = (await rpc(s, key, 'tools/list')).body.result.tools as { name: string; inputSchema: { properties: Record<string, unknown> } }[]
+    expect(Object.keys(tools.find((t) => t.name === 'task_menu_price')!.inputSchema.properties)).toContain('from')
+    expect(Object.keys(tools.find((t) => t.name === 'task_menu_edit')!.inputSchema.properties)).not.toContain('from')
+    const done = await call(s, key, 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 25, from: '2026-11-01' })
+    expect(done.text).toContain('On the website from 2026-11-01')
+    expect((await s.t.run((ctx) => ctx.db.get(s.entries['menu-schnitzel']!)))!.data.price).toEqual({ amount: 2190 })
+    const dated = await s.t.run((ctx) => ctx.db.query('datedChanges').collect())
+    expect(dated).toMatchObject([{ from: '2026-11-01', fields: { price: { amount: 2500 } } }])
+    // Wrong behaviour caught: the online price for that day takes the change away, but the answer said "Planned".
+    const removed = await call(s, key, 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 21.9, from: '2026-11-01' })
+    expect(removed.text).toContain('Removed the planned change from 2026-11-01')
+    expect(await s.t.run((ctx) => ctx.db.query('datedChanges').collect())).toEqual([])
+  })
+
   it('a price in euros is stored in cents and the change names the key', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
@@ -108,17 +132,6 @@ describe('agent door', () => {
     expect(listed.page[0]).toMatchObject({ who: { self: true }, agent: 'Claude Code' })
   })
 
-  // Wrong behaviour caught: from the day of a planned price on, the assistant's new price was stored next to the spent
-  // plan, so the website kept showing the planned price while the answer said the new one was live.
-  it('a price set on or after the day of a planned price replaces the spent plan', async () => {
-    vi.setSystemTime(new Date('2026-10-18T10:00:00Z'))
-    const s = await setup()
-    const done = await call(s, await keyOf(s, 'owner'), 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 23.5, publish: true })
-    expect(done.text).toContain('Live on the website in about a minute.')
-    const data = (await entryRow(s, s.entries['menu-schnitzel']!))!.data
-    expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2350 }, undefined, undefined])
-  })
-
   // Wrong behaviour caught: the door put today over a closure set for tomorrow when the assistant changed only the
   // reason, so the site closed today and tomorrow's closure was gone; the tool also offered today as the default.
   it('"Heute geschlossen" with only a reason keeps a closure set for tomorrow', async () => {
@@ -130,6 +143,18 @@ describe('agent door', () => {
     expect(tools.find((t) => t.name === 'task_hours_closedToday')!.inputSchema.properties.closedOn!.default).toBe('2026-10-09')
     expect((await call(s, key, 'task_hours_closedToday', { publish: true, closedNote: 'Wegen einer Hochzeit' })).isError).toBe(false)
     expect((await s.t.run((ctx) => ctx.db.get(s.entries.hours!)))!.data).toMatchObject({ closedOn: '2026-10-09' })
+  })
+
+  // Wrong behaviour caught: an assistant sends only the day it changed ({ mo: … }), and the lunch week is stored without
+  // the other days, or the answer does not say which row is missing.
+  it('a lunch week with only Monday is refused with the missing-row sentence, and nothing is stored', async () => {
+    const s = await setup()
+    const before = (await s.t.run((ctx) => ctx.db.get(s.entries.lunch!)))!
+    const refused = await call(s, await keyOf(s, 'owner'), 'task_lunch_lunchWeek', { publish: true, days: { mo: { dish: 'Kürbissuppe', allergens: [] } } })
+    expect(refused.isError).toBe(true)
+    expect(refused.text).toContain('days.tu: “Tage”: the row “tu” is missing.')
+    const after = (await s.t.run((ctx) => ctx.db.get(s.entries.lunch!)))!
+    expect([after.rev, after.data]).toEqual([before.rev, before.data])
   })
 
   it('the cook\'s key sees only the menu and lunch tasks and cannot run another task', async () => {
@@ -337,6 +362,22 @@ describe('agent door: tool catalog', () => {
     expect(bundle.bricks.events.items.map((i) => i.id)).not.toContain(done.data.entry)
   })
 
+  // Wrong behaviour caught (D116): an assistant creates or changes a half-filled draft and tells the person it is done,
+  // because the answer does not say what the draft still lacks before it can go online.
+  it('a draft created or written with a field missing: the answer names the field', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    const lacks = 'Before it can go online, these fields still need a value or a fix: description.'
+    const made = await call(s, key, 'ginko_draft', { brick: 'events', fields: { title: 'Erntedank', when: { from: '2026-11-20', to: '2026-11-20' } } })
+    expect(made.text).toContain(lacks)
+    const written = await call(s, key, 'ginko_write', { brick: 'events', entry: made.data.entry, fields: { title: 'Erntedankfest' } })
+    expect(written.text).toContain(lacks)
+    const created = await call(s, key, 'ginko_create', { brick: 'events', fields: { title: 'Herbst', when: { from: '2026-11-21', to: '2026-11-21' } } })
+    expect(created.text).toContain(lacks)
+    const filled = await call(s, key, 'ginko_write', { brick: 'events', entry: made.data.entry, fields: { description: 'Mit Musik.' } })
+    expect(filled.text).not.toContain('Before it can go online')
+  })
+
   it('ginko_file_usage names the entry that shows the image', async () => {
     const s = await setup()
     const file = await upload(s, { type: 'image/jpeg', content: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]), name: 'foto.jpg', ready: false })
@@ -498,8 +539,9 @@ describe('agent door: builder tools (owners and admins)', () => {
     ['ginko_write', { brick: 'menu', entry: 'x', fields: { descripton: 'x' } }, '“descripton” is not a field of “menu”. Did you mean “description”?'],
     ['ginko_create', { brick: 'notice', fields: { text: 'x' } }, 'There is no brick “notice”. Did you mean “notices”?'],
     ['ginko_create', { brick: 'menu', fields: { zzz: 1 } }, '“zzz” is not a field of “menu”. The fields are listed in ginko_schema.'],
-    // Inside a list row too: the row's unknown name was dropped and the save reported success.
-    ['ginko_write', { brick: 'lunch', fields: { days: [{ day: 'mon', gericht: 'Suppe' }] } }, '“days[0].gericht” is not a field of “lunch”. Did you mean “dish”?'],
+    // Inside a row too: the row's unknown name was dropped and the save reported success.
+    ['ginko_write', { brick: 'lunch', fields: { days: { mo: { gericht: 'Suppe' } } } }, '“days.mo.gericht” is not a field of “lunch”. Did you mean “dish”?'],
+    ['ginko_write', { brick: 'hours', fields: { exceptions: [{ grund: 'Urlaub' }] } }, '“exceptions[0].grund” is not a field of “hours”. Did you mean “reason”?'],
   ])('%s %j names the closest key', async (tool, args, text) => {
     const s = await setup()
     expect(await call(s, await keyOf(s, 'owner'), tool, args)).toMatchObject({ isError: true, text })
@@ -752,5 +794,38 @@ describe('sites.create: site settings', () => {
     const schemaOf = async (slug: string) => (await s.t.run((ctx) => ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()))!.schema as Schema
     expect(await schemaOf('schweiz')).toMatchObject({ timeZone: 'Europe/Zurich', locales: ['en', 'de'], currency: 'CHF' })
     expect(await schemaOf('standard')).toMatchObject({ timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR' })
+  })
+})
+
+// Round L1: a task with an end (`when.until`) lies over the entry for its days only. The door cannot ask the days yet
+// (checkpoint 5), so it offers no such task. Wrong behaviour caught: an assistant calls it without days and writes its
+// values into the entry for good.
+describe('a task with an end through the door', () => {
+  async function withTaskWithEnd() {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.menu!.tasks as unknown[]).push(
+        { id: 'offer', label: 'Aktionspreis', kind: 'edit', pick: true, fields: ['price'], when: { from: 'ask', until: 'ask' } },
+        { id: 'offToday', label: 'Heute nicht auf der Karte', kind: 'edit', pick: true, fields: [], when: { from: '@today', until: '@today' }, set: { onMenu: false } },
+      )
+      await ctx.db.patch(s.site, { schema })
+    })
+    return s
+  }
+
+  it('is not offered as a tool', async () => {
+    const s = await withTaskWithEnd()
+    const listed = await names(s, await keyOf(s, 'owner'))
+    expect([listed.includes('task_menu_offer'), listed.includes('task_menu_offToday'), listed.includes('task_menu_price')]).toEqual([false, false, true])
+  })
+
+  it('cannot be called; the entry stays', async () => {
+    const s = await withTaskWithEnd()
+    const entry = s.entries['menu-saibling']!
+    const before = (await entryRow(s, entry))!.data
+    const answer = await call(s, await keyOf(s, 'owner'), 'task_menu_offer', { entry, price: 9.9, publish: true })
+    expect(answer.isError).toBe(true)
+    expect((await entryRow(s, entry))!.data).toEqual(before)
   })
 })

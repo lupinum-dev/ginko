@@ -1,10 +1,10 @@
 // Company template: a mid-sized German maker of industrial pumps and pumping stations with its products and services,
 // open jobs, news, sales and service contacts, customers and references, product sheets to download and the trade
-// fairs where it shows, in English (main) and German. Every brick reads Markdown from content/ (source: 'files'), so
-// the site runs without an account. To let the team change a brick in Ginko Studio later, remove `source: 'files'`
-// from it (README, "Move to the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
-import { downloads, events, jobs, legal, notices, people, posts, site } from '@lupinum/ginko/basics'
+// fairs where it shows, in English (main) and German. Every brick reads Markdown from content/, so the site runs
+// without an account. To let the team change a brick in Ginko Studio later, name it in `studio.bricks`
+// (README, "Move to the Studio").
+import { defineSite, extend, f, single } from '@lupinum/ginko'
+import { downloads, events, jobs, legal, notices, people, posts, site } from '@lupinum/ginko/patterns'
 import { logos, quotes } from './app/bricks/logos-quotes.ts'
 import { pages } from './app/bricks/pages.ts'
 import { services } from './app/bricks/services.ts'
@@ -12,7 +12,6 @@ import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'
 
 export default defineSite({
-  site: 'company',
   name: 'Halden Pumps',
   // `color` fills the share cards: the light `--brand` of app/assets/css/main.css.
   seo: {
@@ -21,12 +20,17 @@ export default defineSite({
   },
   url: siteUrl('https://example.com'),
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   // German public holidays, and `addressCountry` in the Organization and JobPosting JSON-LD.
   country: 'DE',
   locales,
   languages: { en: 'en-GB', de: 'de-DE' },
   // Prices of products and services.
   currency: 'EUR',
+  // The site's id on a Ginko platform, and the bricks the team edits in Ginko Studio: none yet, every brick is in files.
+  studio: { id: 'company', bricks: [] },
+  // The fixed pages. `localized` gives the path in each language with the words of app/routes.ts; Ginko adds `/de`.
   pages: {
     home: localized('/'),
     services: localized('/services'),
@@ -36,11 +40,19 @@ export default defineSite({
     team: localized('/contact'),
     downloads: localized('/downloads'),
   },
+  // The page of one entry, by brick.
+  entries: {
+    legal: localized('/legal/[slug]'),
+    services: localized('/services/[slug]'),
+    jobs: localized('/jobs/[slug]'),
+    posts: localized('/news/[slug]'),
+    events: localized('/events/[slug]'),
+    pages: localized('/[slug]'),
+  },
   bricks: {
     // The first screen of the home page: what the company makes in one sentence, a lead and the photo (content/home.md).
     home: single({
       label: { de: 'Startseite', en: 'Home page' },
-      source: 'files',
       fields: {
         title: f.text({ de: 'Titel', en: 'Title' }, { max: 100, default: 'Welcome' }),
         lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
@@ -51,7 +63,6 @@ export default defineSite({
     // when (content/serviceLine.md). The home page shows it in the first screen, the contact page above the people.
     serviceLine: single({
       label: { de: 'Service-Nummer', en: 'Service line' },
-      source: 'files',
       fields: {
         contact: f.ref({ de: 'Wer antwortet', en: 'Who answers' }, { to: 'people', optional: true }),
         hours: f.text({ de: 'Erreichbar', en: 'Hours' }, {
@@ -63,36 +74,35 @@ export default defineSite({
     }),
     // Legal name, address, register entry, VAT number, phone and email for the footer, the imprint, the enquiry and
     // application emails and the Organization JSON-LD (content/site.md).
-    site: site({ source: 'files' }),
+    site: site(),
     // Privacy policy, terms of sale and imprint: one file per text in content/legal/.
-    legal: legal({ source: 'files', route: localized('/legal/[slug]') }),
+    legal: legal(),
     // Short lines at the top of every page ("Meet us at the Municipal Water Forum"), each until a date (content/notices/).
-    notices: notices({ source: 'files' }),
+    notices: notices(),
     // Products and services, each with a fixed price or "on request", key facts and a product sheet (content/services/).
-    services: services({ source: 'files', route: localized('/services/[slug]'), downloads: 'downloads' }),
+    services: services({ downloads: 'downloads' }),
     // Open jobs (content/jobs/). Each needs `validUntil`: the day after it the job leaves the list, its page, the
     // sitemap and search engines by itself. In the Studio, Today lists jobs that end within 7 days.
-    jobs: { ...jobs({ source: 'files', route: localized('/jobs/[slug]') }), status: { count: true } },
-    // News, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never goes
+    jobs: jobs(),
+    // News, newest first (content/posts/). `authors` names entries of `people`. A file with `$draft: true` never goes
     // online; in the Studio, Today shows how old the newest post is and has a button to write one.
-    posts: {
-      ...posts({ source: 'files', authors: 'people', route: localized('/news/[slug]') }),
-      status: { age: 'date' },
-      tasks: [{ id: 'write', kind: 'create', label: { en: 'Write a news post', de: 'Neuigkeit schreiben' } }],
-    },
+    posts: extend(posts({ authors: 'people' }), {
+      status: { show: 'newest', field: 'date' },
+      tasks: [{ id: 'write', kind: 'add', label: { en: 'Write a news post', de: 'Neuigkeit schreiben' } }],
+    }),
     // Sales, service and the other contacts, with phone and email (content/people/). No photos: the site shows initials.
-    people: people({ source: 'files' }),
+    people: people(),
     // Trade fairs where the company shows (content/events/): hall and stand as the place. A fair leaves the site after
     // its last day; the home page shows the next one, and so does Today.
-    events: { ...events({ source: 'files', route: localized('/events/[slug]') }), status: { next: 'when' } },
+    events: events(),
     // Product sheets and other PDFs, newest first (content/downloads/, the files in public/sheets/). A product names
     // its sheet with `sheet`.
-    downloads: downloads({ source: 'files' }),
+    downloads: extend(downloads(), { preview: 'downloads' }),
     // Customer logos on the home page (content/logos/, the files in public/logos/).
-    logos: logos({ source: 'files' }),
+    logos,
     // What customers say, on the home page (content/quotes/), with their permission.
-    quotes: quotes({ source: 'files' }),
+    quotes,
     // About us and any other page (content/pages/).
-    pages: pages({ route: localized('/[slug]'), source: 'files' }),
+    pages,
   },
 })

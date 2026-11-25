@@ -215,6 +215,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“: „von“ liegt nach „bis“."
    ],
+   "dateRangeFromMissing": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Der Tag „von“ fehlt."
+   ],
+   "dateRangeToMissing": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Der Tag „bis“ fehlt."
+   ],
    "timeOrder": [
     "„",
     [
@@ -352,6 +368,40 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“ kommt mehrfach vor."
    ],
+   "notRows": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“ braucht ein Objekt mit einer Zeile je Zeilenschlüssel."
+   ],
+   "rowMissing": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Die Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ fehlt."
+   ],
+   "unknownRow": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Eine Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ gibt es nicht."
+   ],
    "badRowId": [
     "„",
     [
@@ -421,6 +471,111 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "“ ist keine gültige Datei."
+   ],
+   "changesList": "„$changes“ ist eine Liste von Änderungen, jede mit „from“ und „set“.",
+   "changeShape": "Eine Änderung ist ein Objekt mit „from“ und „set“.",
+   "changeDay": [
+    "„",
+    [
+     "a",
+     "value"
+    ],
+    "“ ist kein Tag. Schreibe „from“ als JJJJ-MM-TT, zum Beispiel 2026-11-01."
+   ],
+   "changeEmpty": "Eine Änderung braucht in „set“ mindestens ein Feld.",
+   "changeKey": [
+    "„",
+    [
+     "a",
+     "key"
+    ],
+    "“ gibt es in einer Änderung nicht: sie hat nur „from“, „until“, „yearly“, „name“ und „set“."
+   ],
+   "changeYearly": "„yearly“ hat nur den Wert true und braucht ein Ende (until).",
+   "changeName": "Der Name einer Änderung hat 1 bis 60 Zeichen und braucht ein Ende (until).",
+   "changeYearlyLong": [
+    "Eine Änderung, die jedes Jahr wiederkommt, dauert weniger als ein Jahr: „until“ (",
+    [
+     "a",
+     "until"
+    ],
+    ") liegt zu weit nach „from“ (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeYearlyLeapDay": "Den 29. Februar gibt es nicht jedes Jahr: Eine Änderung, die jedes Jahr wiederkommt, braucht weitere Tage dazu, oder „yearly“ fällt weg.",
+   "changeTwice": [
+    "Zwei Änderungen haben den Tag ",
+    [
+     "a",
+     "day"
+    ],
+    ". Schreibe sie als eine Änderung."
+   ],
+   "changeUntilDay": [
+    "„",
+    [
+     "a",
+     "value"
+    ],
+    "“ ist kein Tag. Schreibe „until“ als JJJJ-MM-TT, zum Beispiel 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "Das Ende einer Änderung (",
+    [
+     "a",
+     "until"
+    ],
+    ") liegt vor ihrem Beginn (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "Zwei Änderungen mit Ende beginnen am ",
+    [
+     "a",
+     "day"
+    ],
+    " und setzen beide „",
+    [
+     "a",
+     "label"
+    ],
+    "“. Gib einer einen anderen Beginn oder schreibe sie als eine."
+   ],
+   "changeFixed": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“ kann nicht ab einem Tag gelten: das Feld bestimmt, wann oder wo der Eintrag erscheint."
+   ],
+   "changeTranslated": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“ hat Text pro Sprache. Für ein solches Feld ist eine Änderung ab einem Tag noch nicht möglich."
+   ],
+   "changeValue": [
+    "Änderung ab ",
+    [
+     "a",
+     "day"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -1253,6 +1408,58 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“: unique entfällt."
    ],
+   "rowAdded": [
+    "Neue Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ in „",
+    [
+     "a",
+     "at"
+    ],
+    "“, gefüllt mit den default-Werten der Spalten."
+   ],
+   "rowWithoutDefault": [
+    "Neue Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ in „",
+    [
+     "a",
+     "at"
+    ],
+    "“: Eine Pflichtspalte hat kein default."
+   ],
+   "rowRemoved": [
+    "„",
+    [
+     "a",
+     "at"
+    ],
+    "“: Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ fehlt."
+   ],
+   "rowRetired": [
+    "„",
+    [
+     "a",
+     "at"
+    ],
+    "“: Zeile „",
+    [
+     "a",
+     "row"
+    ],
+    "“ ist stillgelegt; das Release entfernt sie aus allen gespeicherten Einträgen."
+   ],
    "fix": {
     "newField": "Neues Feld anlegen, mit einer Migration füllen und das alte Feld unter `retired` eintragen.",
     "newFieldOnly": "Ein neues Feld anlegen.",
@@ -1277,6 +1484,15 @@ export const compiled: Record<string, MessageTree> = {
     "minOnGrid": "min so senken, dass der Unterschied ein Vielfaches von step ist.",
     "keepOption": "Option behalten; sie kann umbenannt (label) werden.",
     "newList": "Neue Liste anlegen und mit einer Migration füllen.",
+    "retireRow": [
+     "Zeile behalten, oder ",
+     [
+      "a",
+      "line"
+     ],
+     " schreiben: Dann entfernt das Release sie aus allen gespeicherten Einträgen."
+    ],
+    "rowDefaults": "Gib jeder Pflichtspalte ein default oder mach sie optional.",
     "factInUse": "Nimm die Angabe zuerst aus diesen Texten oder lass sie in `facts`."
    },
    "factInUse": [
@@ -1530,6 +1746,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: “from” is after “to”."
    ],
+   "dateRangeFromMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: the “from” day is missing."
+   ],
+   "dateRangeToMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: the “to” day is missing."
+   ],
    "timeOrder": [
     "“",
     [
@@ -1667,6 +1899,40 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "” appears more than once."
    ],
+   "notRows": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” needs an object with one row per row key."
+   ],
+   "rowMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: the row “",
+    [
+     "a",
+     "row"
+    ],
+    "” is missing."
+   ],
+   "unknownRow": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: there is no row “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
+   ],
    "badRowId": [
     "“",
     [
@@ -1736,6 +2002,111 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "” is not a valid file."
+   ],
+   "changesList": "“$changes” is a list of changes, each with “from” and “set”.",
+   "changeShape": "A change is an object with “from” and “set”.",
+   "changeDay": [
+    "“",
+    [
+     "a",
+     "value"
+    ],
+    "” is not a day. Write “from” as YYYY-MM-DD, for example 2026-11-01."
+   ],
+   "changeEmpty": "A change needs at least one field in “set”.",
+   "changeKey": [
+    "A change has no “",
+    [
+     "a",
+     "key"
+    ],
+    "”: it has only “from”, “until”, “yearly”, “name” and “set”."
+   ],
+   "changeYearly": "“yearly” takes only true and needs an end (until).",
+   "changeName": "The name of a change has 1 to 60 characters and needs an end (until).",
+   "changeYearlyLong": [
+    "A change that comes back every year lasts less than a year: “until” (",
+    [
+     "a",
+     "until"
+    ],
+    ") is too far after “from” (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeYearlyLeapDay": "29 February does not exist every year: a change that comes back every year needs more days, or no “yearly”.",
+   "changeTwice": [
+    "Two changes have the day ",
+    [
+     "a",
+     "day"
+    ],
+    ". Write them as one change."
+   ],
+   "changeUntilDay": [
+    "“",
+    [
+     "a",
+     "value"
+    ],
+    "” is not a day. Write “until” as YYYY-MM-DD, for example 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "The end of a change (",
+    [
+     "a",
+     "until"
+    ],
+    ") is before its start (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "Two changes with an end start on ",
+    [
+     "a",
+     "day"
+    ],
+    " and both set “",
+    [
+     "a",
+     "label"
+    ],
+    "”. Give one of them another start, or write them as one."
+   ],
+   "changeFixed": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” cannot start on a day: it decides when or where the entry shows."
+   ],
+   "changeTranslated": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” has text per language. A change from a day is not possible for such a field yet."
+   ],
+   "changeValue": [
+    "Change from ",
+    [
+     "a",
+     "day"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -2568,6 +2939,58 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: unique removed."
    ],
+   "rowAdded": [
+    "New row “",
+    [
+     "a",
+     "row"
+    ],
+    "” in “",
+    [
+     "a",
+     "at"
+    ],
+    "”, filled with the defaults of the columns."
+   ],
+   "rowWithoutDefault": [
+    "New row “",
+    [
+     "a",
+     "row"
+    ],
+    "” in “",
+    [
+     "a",
+     "at"
+    ],
+    "”: a required column has no default."
+   ],
+   "rowRemoved": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: row “",
+    [
+     "a",
+     "row"
+    ],
+    "” is missing."
+   ],
+   "rowRetired": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: row “",
+    [
+     "a",
+     "row"
+    ],
+    "” is retired; the release removes it from every stored entry."
+   ],
    "fix": {
     "newField": "Add a new field, fill it with a migration and list the old field under `retired`.",
     "newFieldOnly": "Add a new field.",
@@ -2592,6 +3015,15 @@ export const compiled: Record<string, MessageTree> = {
     "minOnGrid": "Lower min so that the difference is a multiple of step.",
     "keepOption": "Keep the option; it can be renamed (label).",
     "newList": "Add a new list and fill it with a migration.",
+    "retireRow": [
+     "Keep the row, or write ",
+     [
+      "a",
+      "line"
+     ],
+     ": the release then removes it from every stored entry."
+    ],
+    "rowDefaults": "Give every required column a default, or make it optional.",
     "factInUse": "Take the fact out of these texts first, or keep it in `facts`."
    },
    "factInUse": [
@@ -2845,6 +3277,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: “desde” es posterior a “hasta”."
    ],
+   "dateRangeFromMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: falta el día “desde”."
+   ],
+   "dateRangeToMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: falta el día “hasta”."
+   ],
    "timeOrder": [
     "“",
     [
@@ -2982,6 +3430,40 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "” aparece más de una vez."
    ],
+   "notRows": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” necesita un objeto con una fila por clave de fila."
+   ],
+   "rowMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: falta la fila “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
+   ],
+   "unknownRow": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: no existe la fila “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
+   ],
    "badRowId": [
     "“",
     [
@@ -3051,6 +3533,111 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "” no es un archivo válido."
+   ],
+   "changesList": "«$changes» es una lista de cambios, cada uno con «from» y «set».",
+   "changeShape": "Un cambio es un objeto con «from» y «set».",
+   "changeDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» no es un día. Escribe «from» como AAAA-MM-DD, por ejemplo 2026-11-01."
+   ],
+   "changeEmpty": "Un cambio necesita al menos un campo en «set».",
+   "changeKey": [
+    "Un cambio no tiene «",
+    [
+     "a",
+     "key"
+    ],
+    "»: solo tiene «from», «until», «yearly», «name» y «set»."
+   ],
+   "changeYearly": "«yearly» solo admite true y necesita un final (until).",
+   "changeName": "El nombre de un cambio tiene de 1 a 60 caracteres y necesita un final (until).",
+   "changeYearlyLong": [
+    "Un cambio que vuelve cada año dura menos de un año: «until» (",
+    [
+     "a",
+     "until"
+    ],
+    ") está demasiado lejos de «from» (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeYearlyLeapDay": "El 29 de febrero no existe todos los años: un cambio que vuelve cada año necesita más días, o quitar «yearly».",
+   "changeTwice": [
+    "Dos cambios tienen el día ",
+    [
+     "a",
+     "day"
+    ],
+    ". Escríbelos como un solo cambio."
+   ],
+   "changeUntilDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» no es un día. Escribe «until» como AAAA-MM-DD, por ejemplo 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "El final de un cambio (",
+    [
+     "a",
+     "until"
+    ],
+    ") es anterior a su inicio (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "Dos cambios con final empiezan el ",
+    [
+     "a",
+     "day"
+    ],
+    " y los dos fijan «",
+    [
+     "a",
+     "label"
+    ],
+    "». Da a uno otro inicio o escríbelos como uno solo."
+   ],
+   "changeFixed": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» no puede empezar un día concreto: decide cuándo o dónde aparece la entrada."
+   ],
+   "changeTranslated": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» tiene texto por idioma. Un cambio desde un día todavía no es posible para un campo así."
+   ],
+   "changeValue": [
+    "Cambio desde el ",
+    [
+     "a",
+     "day"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -3885,6 +4472,58 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: unique eliminado."
    ],
+   "rowAdded": [
+    "Fila nueva “",
+    [
+     "a",
+     "row"
+    ],
+    "” en “",
+    [
+     "a",
+     "at"
+    ],
+    "”, rellenada con los valores predeterminados de las columnas."
+   ],
+   "rowWithoutDefault": [
+    "Fila nueva “",
+    [
+     "a",
+     "row"
+    ],
+    "” en “",
+    [
+     "a",
+     "at"
+    ],
+    "”: una columna obligatoria no tiene valor predeterminado."
+   ],
+   "rowRemoved": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: falta la fila “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
+   ],
+   "rowRetired": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: la fila “",
+    [
+     "a",
+     "row"
+    ],
+    "” está retirada; la publicación la quita de todas las entradas guardadas."
+   ],
    "fix": {
     "newField": "Añade un campo nuevo, rellénalo con una migración y lista el campo anterior en `retired`.",
     "newFieldOnly": "Añade un campo nuevo.",
@@ -3909,6 +4548,15 @@ export const compiled: Record<string, MessageTree> = {
     "minOnGrid": "Reduce min para que la diferencia sea un múltiplo de step.",
     "keepOption": "Conserva la opción; se puede renombrar (label).",
     "newList": "Añade una lista nueva y rellénala con una migración.",
+    "retireRow": [
+     "Conserva la fila, o escribe ",
+     [
+      "a",
+      "line"
+     ],
+     ": la publicación la quita entonces de todas las entradas guardadas."
+    ],
+    "rowDefaults": "Da a cada columna obligatoria un valor predeterminado o hazla opcional.",
     "factInUse": "Quita primero el dato de esos textos o déjalo en `facts`."
    },
    "factInUse": [
@@ -4162,6 +4810,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " » : « du » est après « au »."
    ],
+   "dateRangeFromMissing": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : le jour « du » manque."
+   ],
+   "dateRangeToMissing": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : le jour « au » manque."
+   ],
    "timeOrder": [
     "« ",
     [
@@ -4299,6 +4963,40 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " » apparaît plusieurs fois."
    ],
+   "notRows": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » exige un objet avec une ligne par clé de ligne."
+   ],
+   "rowMissing": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : la ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " » est manquante."
+   ],
+   "unknownRow": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : il n’existe pas de ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " »."
+   ],
    "badRowId": [
     "« ",
     [
@@ -4368,6 +5066,111 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     " » n’est pas un fichier valide."
+   ],
+   "changesList": "« $changes » est une liste de modifications, chacune avec « from » et « set ».",
+   "changeShape": "Une modification est un objet avec « from » et « set ».",
+   "changeDay": [
+    "« ",
+    [
+     "a",
+     "value"
+    ],
+    " » n’est pas un jour. Écris « from » sous la forme AAAA-MM-JJ, par exemple 2026-11-01."
+   ],
+   "changeEmpty": "Une modification a besoin d’au moins un champ dans « set ».",
+   "changeKey": [
+    "Une modification n’a pas de « ",
+    [
+     "a",
+     "key"
+    ],
+    " » : elle n’a que « from », « until », « yearly », « name » et « set »."
+   ],
+   "changeYearly": "« yearly » ne prend que true et a besoin d’une fin (until).",
+   "changeName": "Le nom d’une modification a de 1 à 60 caractères et a besoin d’une fin (until).",
+   "changeYearlyLong": [
+    "Une modification qui revient chaque année dure moins d’un an : « until » (",
+    [
+     "a",
+     "until"
+    ],
+    ") est trop loin après « from » (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeYearlyLeapDay": "Le 29 février n’existe pas chaque année : une modification qui revient chaque année a besoin d’autres jours, ou pas de « yearly ».",
+   "changeTwice": [
+    "Deux modifications ont le jour ",
+    [
+     "a",
+     "day"
+    ],
+    ". Écris-les comme une seule modification."
+   ],
+   "changeUntilDay": [
+    "« ",
+    [
+     "a",
+     "value"
+    ],
+    " » n’est pas un jour. Écris « until » sous la forme AAAA-MM-JJ, par exemple 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "La fin d’une modification (",
+    [
+     "a",
+     "until"
+    ],
+    ") est avant son début (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "Deux modifications avec une fin commencent le ",
+    [
+     "a",
+     "day"
+    ],
+    " et fixent toutes deux « ",
+    [
+     "a",
+     "label"
+    ],
+    " ». Donne à l’une un autre début, ou écris-les comme une seule."
+   ],
+   "changeFixed": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » ne peut pas commencer à un jour donné : ce champ décide quand ou où l’entrée apparaît."
+   ],
+   "changeTranslated": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » a un texte par langue. Une modification à partir d’un jour n’est pas encore possible pour un tel champ."
+   ],
+   "changeValue": [
+    "Modification à partir du ",
+    [
+     "a",
+     "day"
+    ],
+    " : ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -5201,6 +6004,58 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " » : unique a été retiré."
    ],
+   "rowAdded": [
+    "Nouvelle ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " » dans « ",
+    [
+     "a",
+     "at"
+    ],
+    " », remplie avec les valeurs par défaut des colonnes."
+   ],
+   "rowWithoutDefault": [
+    "Nouvelle ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " » dans « ",
+    [
+     "a",
+     "at"
+    ],
+    " » : une colonne obligatoire n’a pas de valeur par défaut."
+   ],
+   "rowRemoved": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : la ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " » est manquante."
+   ],
+   "rowRetired": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : la ligne « ",
+    [
+     "a",
+     "row"
+    ],
+    " » est retirée ; la publication la supprime de toutes les entrées enregistrées."
+   ],
    "fix": {
     "newField": "Ajoutez un nouveau champ, remplissez-le avec une migration et listez l’ancien champ sous `retired`.",
     "newFieldOnly": "Ajoutez un nouveau champ.",
@@ -5225,6 +6080,15 @@ export const compiled: Record<string, MessageTree> = {
     "minOnGrid": "Abaissez min pour que la différence soit un multiple de step.",
     "keepOption": "Conservez l’option ; elle peut être renommée (label).",
     "newList": "Ajoutez une nouvelle liste et remplissez-la avec une migration.",
+    "retireRow": [
+     "Conservez la ligne, ou écrivez ",
+     [
+      "a",
+      "line"
+     ],
+     " : la publication la supprime alors de toutes les entrées enregistrées."
+    ],
+    "rowDefaults": "Donnez une valeur par défaut à chaque colonne obligatoire, ou rendez-la facultative.",
     "factInUse": "Retirez d’abord la donnée de ces textes ou gardez-la dans `facts`."
    },
    "factInUse": [
@@ -5478,6 +6342,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: “dal” viene dopo “al”."
    ],
+   "dateRangeFromMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: manca il giorno “dal”."
+   ],
+   "dateRangeToMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: manca il giorno “al”."
+   ],
    "timeOrder": [
     "“",
     [
@@ -5615,6 +6495,40 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "” compare più di una volta."
    ],
+   "notRows": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” richiede un oggetto con una riga per chiave di riga."
+   ],
+   "rowMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: manca la riga “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
+   ],
+   "unknownRow": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: non esiste una riga “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
+   ],
    "badRowId": [
     "“",
     [
@@ -5684,6 +6598,111 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "” non è un file valido."
+   ],
+   "changesList": "«$changes» è un elenco di modifiche, ciascuna con «from» e «set».",
+   "changeShape": "Una modifica è un oggetto con «from» e «set».",
+   "changeDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» non è un giorno. Scrivi «from» come AAAA-MM-GG, per esempio 2026-11-01."
+   ],
+   "changeEmpty": "Una modifica ha bisogno di almeno un campo in «set».",
+   "changeKey": [
+    "Una modifica non ha «",
+    [
+     "a",
+     "key"
+    ],
+    "»: ha solo «from», «until», «yearly», «name» e «set»."
+   ],
+   "changeYearly": "«yearly» accetta solo true e richiede una fine (until).",
+   "changeName": "Il nome di una modifica ha da 1 a 60 caratteri e richiede una fine (until).",
+   "changeYearlyLong": [
+    "Una modifica che torna ogni anno dura meno di un anno: «until» (",
+    [
+     "a",
+     "until"
+    ],
+    ") è troppo lontano da «from» (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeYearlyLeapDay": "Il 29 febbraio non esiste ogni anno: una modifica che torna ogni anno ha bisogno di altri giorni, oppure senza «yearly».",
+   "changeTwice": [
+    "Due modifiche hanno il giorno ",
+    [
+     "a",
+     "day"
+    ],
+    ". Scrivile come una sola modifica."
+   ],
+   "changeUntilDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» non è un giorno. Scrivi «until» come AAAA-MM-GG, per esempio 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "La fine di una modifica (",
+    [
+     "a",
+     "until"
+    ],
+    ") è prima del suo inizio (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "Due modifiche con una fine iniziano il ",
+    [
+     "a",
+     "day"
+    ],
+    " e impostano entrambe «",
+    [
+     "a",
+     "label"
+    ],
+    "». Dai a una un altro inizio o scrivile come una sola."
+   ],
+   "changeFixed": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» non può iniziare da un giorno: decide quando o dove appare la voce."
+   ],
+   "changeTranslated": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» ha un testo per lingua. Una modifica da un giorno non è ancora disponibile per un campo così."
+   ],
+   "changeValue": [
+    "Modifica dal ",
+    [
+     "a",
+     "day"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -6518,6 +7537,58 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: unique è stato rimosso."
    ],
+   "rowAdded": [
+    "Nuova riga “",
+    [
+     "a",
+     "row"
+    ],
+    "” in “",
+    [
+     "a",
+     "at"
+    ],
+    "”, riempita con i valori predefiniti delle colonne."
+   ],
+   "rowWithoutDefault": [
+    "Nuova riga “",
+    [
+     "a",
+     "row"
+    ],
+    "” in “",
+    [
+     "a",
+     "at"
+    ],
+    "”: una colonna obbligatoria non ha un valore predefinito."
+   ],
+   "rowRemoved": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: manca la riga “",
+    [
+     "a",
+     "row"
+    ],
+    "”."
+   ],
+   "rowRetired": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: la riga “",
+    [
+     "a",
+     "row"
+    ],
+    "” è ritirata; la pubblicazione la rimuove da tutte le voci salvate."
+   ],
    "fix": {
     "newField": "Aggiungi un nuovo campo, riempilo con una migrazione ed elenca il vecchio campo sotto `retired`.",
     "newFieldOnly": "Aggiungi un nuovo campo.",
@@ -6542,6 +7613,15 @@ export const compiled: Record<string, MessageTree> = {
     "minOnGrid": "Abbassa min in modo che la differenza sia un multiplo di step.",
     "keepOption": "Mantieni l’opzione; può essere rinominata (label).",
     "newList": "Aggiungi un nuovo elenco e riempilo con una migrazione.",
+    "retireRow": [
+     "Mantieni la riga, oppure scrivi ",
+     [
+      "a",
+      "line"
+     ],
+     ": la pubblicazione la rimuove allora da tutte le voci salvate."
+    ],
+    "rowDefaults": "Dai a ogni colonna obbligatoria un valore predefinito o rendila facoltativa.",
     "factInUse": "Togli prima il dato da questi testi o lascialo in `facts`."
    },
    "factInUse": [
@@ -6829,6 +7909,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "»: تاريخ «من» بعد تاريخ «إلى»."
    ],
+   "dateRangeFromMissing": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: تاريخ «من» مفقود."
+   ],
+   "dateRangeToMissing": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: تاريخ «إلى» مفقود."
+   ],
    "timeOrder": [
     "يجب أن يكون «",
     [
@@ -7000,6 +8096,40 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "» تتكرّر أكثر من مرة."
    ],
+   "notRows": [
+    "يحتاج «",
+    [
+     "a",
+     "label"
+    ],
+    "» إلى كائن فيه صف لكل مفتاح صف."
+   ],
+   "rowMissing": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: الصف «",
+    [
+     "a",
+     "row"
+    ],
+    "» مفقود."
+   ],
+   "unknownRow": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: لا يوجد صف «",
+    [
+     "a",
+     "row"
+    ],
+    "»."
+   ],
    "badRowId": [
     "«",
     [
@@ -7069,6 +8199,111 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "» ليس ملفًّا صالحًا."
+   ],
+   "changesList": "«$changes» قائمة تغييرات، لكل منها «from» و«set».",
+   "changeShape": "التغيير كائن فيه «from» و«set».",
+   "changeDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» ليس يومًا. اكتب «from» بالشكل YYYY-MM-DD، مثل 2026-11-01."
+   ],
+   "changeEmpty": "يحتاج التغيير إلى حقل واحد على الأقل في «set».",
+   "changeKey": [
+    "لا يوجد «",
+    [
+     "a",
+     "key"
+    ],
+    "» في التغيير: فيه «from» و«until» و«yearly» و«name» و«set» فقط."
+   ],
+   "changeYearly": "«yearly» يقبل القيمة true فقط ويحتاج إلى نهاية (until).",
+   "changeName": "اسم التغيير من 1 إلى 60 حرفًا ويحتاج إلى نهاية (until).",
+   "changeYearlyLong": [
+    "التغيير الذي يتكرر كل عام يستمر أقل من عام: «until» (",
+    [
+     "a",
+     "until"
+    ],
+    ") بعيد جدًا عن «from» (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeYearlyLeapDay": "يوم 29 فبراير لا يوجد كل عام: التغيير الذي يتكرر كل عام يحتاج إلى أيام أخرى، أو بدون «yearly».",
+   "changeTwice": [
+    "تغييران لهما اليوم ",
+    [
+     "a",
+     "day"
+    ],
+    ". اكتبهما كتغيير واحد."
+   ],
+   "changeUntilDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» ليس يومًا. اكتب «until» بالشكل YYYY-MM-DD، مثل 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "نهاية التغيير (",
+    [
+     "a",
+     "until"
+    ],
+    ") تسبق بدايته (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "تغييران لهما نهاية يبدآن في ",
+    [
+     "a",
+     "day"
+    ],
+    " ويحدد كلاهما «",
+    [
+     "a",
+     "label"
+    ],
+    "». اجعل لأحدهما بداية أخرى أو اكتبهما كتغيير واحد."
+   ],
+   "changeFixed": [
+    "لا يمكن أن يبدأ «",
+    [
+     "a",
+     "label"
+    ],
+    "» من يوم معيّن: فهو يحدد متى أو أين يظهر الإدخال."
+   ],
+   "changeTranslated": [
+    "في «",
+    [
+     "a",
+     "label"
+    ],
+    "» نص لكل لغة. التغيير من يوم معيّن غير متاح بعد لمثل هذا الحقل."
+   ],
+   "changeValue": [
+    "التغيير من ",
+    [
+     "a",
+     "day"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -8020,6 +9255,58 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "»: تمت إزالة unique."
    ],
+   "rowAdded": [
+    "صف جديد «",
+    [
+     "a",
+     "row"
+    ],
+    "» في «",
+    [
+     "a",
+     "at"
+    ],
+    "»، مملوء بالقيم الافتراضية للأعمدة."
+   ],
+   "rowWithoutDefault": [
+    "صف جديد «",
+    [
+     "a",
+     "row"
+    ],
+    "» في «",
+    [
+     "a",
+     "at"
+    ],
+    "»: عمود مطلوب بلا قيمة افتراضية."
+   ],
+   "rowRemoved": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: الصف «",
+    [
+     "a",
+     "row"
+    ],
+    "» مفقود."
+   ],
+   "rowRetired": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: الصف «",
+    [
+     "a",
+     "row"
+    ],
+    "» متقاعد؛ يزيله الإصدار من كل الإدخالات المحفوظة."
+   ],
    "fix": {
     "newField": "أضِف حقلًا جديدًا، واملأه بترحيل، وأدرج الحقل القديم تحت `retired`.",
     "newFieldOnly": "أضِف حقلًا جديدًا.",
@@ -8044,6 +9331,15 @@ export const compiled: Record<string, MessageTree> = {
     "minOnGrid": "اخفض min بحيث يكون الفرق مضاعفًا لـ step.",
     "keepOption": "أبقِ الخيار؛ يمكن إعادة تسميته (label).",
     "newList": "أضِف قائمة جديدة واملأها بترحيل.",
+    "retireRow": [
+     "أبقِ الصف، أو اكتب ",
+     [
+      "a",
+      "line"
+     ],
+     ": عندها يزيله الإصدار من كل الإدخالات المحفوظة."
+    ],
+    "rowDefaults": "أعطِ كل عمود مطلوب قيمة افتراضية أو اجعله اختياريًا.",
     "factInUse": "احذف المعلومة من هذه النصوص أولًا، أو أبقِها في `facts`."
    },
    "factInUse": [

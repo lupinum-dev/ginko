@@ -47,8 +47,15 @@ Rules for a new migration:
    entry that points at it.
 6. It stays in the list, with its step, until the next major version: self-hosted platforms can skip versions, so
    "it ran on every deployment" can never be known. The major's release notes say "update to the last version before
-   it first and wait until `ops:status` shows no pending migration"; contract steps ship with that major.
+   it first and wait until `ops:status` shows no pending migration and `migrations.skipped` is empty"; contract steps
+   ship with that major, and their gate is the same: no pending migration and no skipped site.
 7. An entry in this file, and a test that runs it through `migrations:runPending`.
+8. A step that changes sites reads the stored model as it is (raw shapes, never through the new `checkSchema`), leaves
+   a site without the old things as it is, and converts each site in its own transaction (`eachSite`, a nested
+   mutation that throws `notConverted`): a site it cannot convert is logged and listed by slug in `ops:status`
+   (`migrations.skipped`, with the site's id and the error's class or code), and the other sites go on. The site step
+   is an internal mutation that takes `{ site }`, so a fixed site can be run again by hand; when it succeeds, the site
+   leaves `migrations.skipped` (`clearSkipped`). A test for each of the three, and one for the rerun.
 
 ## Entry storage: trees in `entryTrees`, text-only budget, separate trash (`2026-10-14-entry-storage`)
 
@@ -128,24 +135,6 @@ Rules for a new migration:
   because an import still fills it later.
 - **Tracking issue:** none yet.
 
-## Hour plans found by shape (`hourPlanKeys` in `convex/lib/status.ts`)
-
-- **Why:** the hours single now names its hour plans in the stored schema (`status: { hours: { plans: '<key>' } }`,
-  basics and gastro `hours({ plans })`), and the server reads the plans of that key only. A schema stored before the
-  link has `status: { hours: true }` and no key; for it the server still takes every live collection shaped like
-  `hourPlans()` (a list `week`, a date `from`, a switch `yearly`), as it did before.
-- **Introduced:** 16 October 2026.
-- **Compatibility code:** the `{ hours: true }` branch of `hourPlanKeys` in `packages/ginko-server/convex/lib/status.ts`.
-  `{ hours: true }` itself stays valid: a site without hour plans keeps it.
-- **Dependents:** sites whose config has `hours()` and `hourPlans()` but no `plans` option: the templates with opening
-  hours (restaurant, local-business) until they pass `hours({ plans: 'hourPlans' })`, and every hosted or local site
-  whose last pushed schema predates its config's `plans` (nothing changes for it until its next push).
-- **Removal condition:** every template and site in this repository that has `hourPlans()` passes `plans` to
-  `hours()`, and a query over hosted production (and local backends that keep their data) finds no site whose stored
-  schema has `status: { hours: true }` together with a live collection of the hour-plan shape. Then the branch returns
-  no keys for `{ hours: true }`; delete it, this entry and the shape lookup's mention in the doc comment.
-- **Tracking issue:** none yet.
-
 ## The figure's edge choice `focus` (retired prop and its CSS)
 
 - **Why:** a figure now keeps the focus point of its library picture in view (D57), so the editor no longer offers
@@ -188,3 +177,54 @@ Rules for a new migration:
   `/docs/languages` and `/docs/platform-and-cli`.
 - **Remove when:** together with the German redirects above, and a release after 0.17.0 has the new README
   links on npm.
+
+## Older plans become dated changes (`2026-11-25-dated-changes`)
+
+- **Why:** D129 and D130 remove `planned`, a time on unpublished changes and a yes for a time on a single request. Rows
+  written before hold them: `pendingChanges.publishAt` with a `publishJob`, proposals with status `scheduled` (no
+  release) and a `job`, and stored schemas with `planned` and its two fields in the entries.
+- **Introduced:** 25 November 2026.
+- **Compatibility code:**
+  - `convex/schema.ts`: `pendingChanges.publishAt`, `pendingChanges.publishJob` and `proposals.job` stay optional; no
+    code writes them.
+  - `convex/entries.ts` `publishDue`: returns at once for an online entry, so an old run that fires before the
+    migration changes nothing.
+  - `convex/datedChanges.ts` `migrateOlderWays` reads `planned` from a stored schema (the core no longer knows the key;
+    `checkSchema` refuses it with the way to move).
+  - `convex/proposals.ts` `timeGone`: an open request from before D130 to take a planned time off (`op: 'unpublish'`,
+    `after.state === 'live'`) is stale (`history.staleTimeGone`) in `applyNow` and `staleReason`; a yes would take the
+    entry offline. Such requests are open until someone decides them, so the rule stays until the contract step.
+- **Dependents:** every deployment with a time on unpublished changes, a request approved for a time, or a site whose
+  stored schema has `planned` (the restaurant demo and sites made from the gastro preset).
+- **Steps:**
+  1. Deploy this code. The step runs one site per page: see `migrateOlderWays` for the exact rules.
+  2. Check: `ops:status` shows it done. A site's next `ginko release` with the new gastro preset finds the stored
+     schema as the config writes it (no `planned`, `timeline: { public: ['price'] }`); a config that still has
+     `planned` is refused with the way to move.
+  3. If `ops:status` lists a site under `migrations.skipped`, read its `kind` (the error's class or code) and the log
+     line of that site, fix its stored rows by hand or with a follow-up migration, and run that site again with its
+     `id` from `ops:status`:
+     `npx convex run datedChanges:migrateOneSite '{"site":"<id>"}'` (add `--prod` for production). When it succeeds,
+     the site leaves `migrations.skipped`; when it fails again, it stays, and the error names the kind.
+  4. Contract step (next major, rule 6): remove `pendingChanges.publishAt`, `pendingChanges.publishJob` and
+     `proposals.job` from the schema, the online branch of `publishDue`, `migrateOlderWays` with its list entry, and
+     `timeGone` with its key `history.staleTimeGone` (first mark every open request it finds as stale, in the same
+     major's migration).
+- **One site, one transaction (R4 review), and its bound.** Convex's limits per mutation
+  (docs.convex.dev/production/state/limits, read 26 November 2026; nested `runMutation` is not on that page, so the
+  nested site and row mutations count as part of the step): 32,000 documents scanned, 16 MiB read, 16,000 documents
+  written, 16 MiB written, 4,096 index ranges (`db.get` and `db.query` calls), 1,000 scheduled functions, 1 s of user
+  code. A site has at most 2,000 entries and 4 MiB of text plus 4 MiB in the trash (core `SITE_BUDGET`), so reading
+  all of it stays far below the document and byte limits. The tight limits are per planned value or timed change. A
+  planned value takes a few index ranges and, for a later day, one scheduled run. A timed change costs far more than
+  that: it goes through the full write path (the dated plan, the links and file references, the address), so it
+  takes many index ranges, and its number is not measured. So the bound per site is not known; the rehearsal on a
+  restored copy of production at checkpoint 6 measures it. A brick holds at most 500 entries; the gastro menu has at
+  most 150 dishes. A site above the limits fails as a whole, is left as it was and listed in `migrations.skipped`; it
+  then needs a paged follow-up migration, not a rerun.
+- **A passed time whose old job failed (accepted).** A time that passed long ago, whose old job failed then, is
+  published now through the normal checks, as any passed time is.
+- **Conditions (R3 review), each with a test in `test/migrations.test.ts`:** it works on a stored model in the older
+  format, which the new `checkSchema` refuses; a site without these things is left as it is (same schema, `schemaRev`,
+  `contentRev`, no history row); a site it cannot convert is reported by its slug, nothing of it is half written, and
+  the other sites are converted.

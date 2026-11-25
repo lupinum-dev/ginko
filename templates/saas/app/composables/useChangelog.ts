@@ -1,6 +1,6 @@
 // Synced from templates/_features/changelog/app/composables/useChangelog.ts by `pnpm templates sync`. Edit the source, not this copy.
 import type { MarkdownValue } from '@lupinum/ginko'
-import { releaseAnchor } from '@lupinum/ginko/basics'
+import { releaseAnchor } from '@lupinum/ginko/patterns'
 
 /** A release as the changelog shows it. */
 export interface Release {
@@ -13,7 +13,7 @@ export interface Release {
   body: MarkdownValue
 }
 
-/** The releases of the `changelog` brick (basics `changelog()`) in the current language, newest first. */
+/** The releases of the `changelog` brick (the `changelog()` pattern) in the current language, newest first. */
 export function useReleases() {
   const changelog = useGinko('changelog')
   return computed<Release[]>(() => changelog.value.items.map((entry) => ({

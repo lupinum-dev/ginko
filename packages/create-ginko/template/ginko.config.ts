@@ -1,13 +1,15 @@
-// What content this site has. Bricks with `source: 'files'` read Markdown from content/.
-// To let an owner edit a brick on the Ginko platform instead, remove `source`; f.markdown then stores the text on the platform.
+// What content this site has. Every brick reads Markdown from content/.
+// To let an owner edit a brick on the Ginko platform instead, name it in `studio.bricks` (`bricks: ['start']`); f.markdown then stores the text on the platform.
 // Then give the single's required fields a `default` or make them optional (`f.markdown`, `f.image` and `f.file` cannot have a default, so set `optional: true` on them).
 import { defineSite, f, single } from '@lupinum/ginko'
 
 export default defineSite({
-  site: '{{SITE}}',
   name: '{{SITE}}',
+  studio: { id: '{{SITE}}', bricks: [] }, // the site's id on a Ginko platform; no brick is edited there yet
   url: 'https://example.com',
   timeZone: 'Europe/Vienna', // change for your country
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales: ['en'],
   currency: 'EUR', // change for your country
   pages: { home: '/' },
@@ -17,7 +19,7 @@ export default defineSite({
   bricks: {
     start: single({
       label: 'Start page',
-      source: 'files',
+      body: 'body',
       fields: { title: f.text('Title'), body: f.markdown('Text', { profile: 'basic' }) },
     }),
   },

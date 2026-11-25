@@ -77,19 +77,19 @@ describe('sites.today', () => {
   // Wrong behaviour caught: the owner reads "open" on a day the site is closed (a closure, a public holiday of the
   // stored calendar), the reason is lost, a day with no hours entered is not due, or the line ignores the stored
   // `holidays` and counts Austrian holidays for a site that set none, or a calendar in code makes entered hours due. 2026-10-26 is the Austrian National Day (a Monday).
-  const week = (days: string[]) => ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'].filter((d) => days.includes(d)).map((day) => ({ _id: day, day, closed: false, from1: '11:30', to1: '14:30' }))
+  const week = (days: string[]) => Object.fromEntries(['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'].filter((d) => days.includes(d)).map((day) => [day, { closed: false, from1: '11:30', to1: '14:30' }]))
   const allWeek = week(['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'])
   it.each<[string, { now?: string; holidays?: string; data: Record<string, Json> }, { line: unknown; due: boolean } | undefined]>([
-    ['open today', { data: { week: allWeek, exceptions: [] } }, { line: { kind: 'hours', today: { ranges: [['11:30', '14:30']] } }, due: false }],
-    ['closed today with the owner\'s reason', { data: { week: allWeek, exceptions: [], closedOn: '2026-10-08', closedNote: 'Wasserrohrbruch' } }, { line: { kind: 'hours', today: { closed: true, reason: 'Wasserrohrbruch' } }, due: false }],
+    ['open today', { data: { week: allWeek, exceptions: [] } }, { line: { kind: 'rule', rule: 'opening-hours', today: { ranges: [['11:30', '14:30']] } }, due: false }],
+    ['closed today with the owner\'s reason', { data: { week: allWeek, exceptions: [], closedOn: '2026-10-08', closedNote: 'Wasserrohrbruch' } }, { line: { kind: 'rule', rule: 'opening-hours', today: { closed: true, reason: 'Wasserrohrbruch' } }, due: false }],
     ['closed on a public holiday of the stored calendar', { now: '2026-10-26T10:00:00Z', data: { week: allWeek, exceptions: [], holidays: 'closed' } },
-      { line: { kind: 'hours', today: { closed: true, reason: { de: 'Nationalfeiertag', en: 'Austrian National Day' } } }, due: false }],
+      { line: { kind: 'rule', rule: 'opening-hours', today: { closed: true, reason: { de: 'Nationalfeiertag', en: 'Austrian National Day' } } }, due: false }],
     ['open on that day when the site stores no holidays', { now: '2026-10-26T10:00:00Z', holidays: 'none', data: { week: allWeek, exceptions: [], holidays: 'closed' } },
-      { line: { kind: 'hours', today: { ranges: [['11:30', '14:30']] } }, due: false }],
-    ['no hours entered for today is due', { data: { week: week(['mo', 'tu']), exceptions: [] } }, { line: { kind: 'hours', today: { unknown: true } }, due: true }],
+      { line: { kind: 'rule', rule: 'opening-hours', today: { ranges: [['11:30', '14:30']] } }, due: false }],
+    ['no hours entered for today is due', { data: { week: week(['mo', 'tu']), exceptions: [] } }, { line: { kind: 'rule', rule: 'opening-hours', today: { unknown: true } }, due: true }],
     // The site's calendar is code the server cannot run; the week is entered, so there is nothing to do.
     ['a full week with a calendar in code is not due', { holidays: 'custom', data: { week: allWeek, exceptions: [] } }, undefined],
-    ['no hours entered for today with a calendar in code is due', { holidays: 'custom', data: { week: week(['mo', 'tu']), exceptions: [] } }, { line: { kind: 'hours', today: { unknown: true } }, due: true }],
+    ['no hours entered for today with a calendar in code is due', { holidays: 'custom', data: { week: week(['mo', 'tu']), exceptions: [] } }, { line: { kind: 'rule', rule: 'opening-hours', today: { unknown: true } }, due: true }],
   ])('hours: %s', async (_name, given, expected) => {
     if (given.now) vi.setSystemTime(Date.parse(given.now))
     const s = await setup()
@@ -106,21 +106,28 @@ describe('sites.today', () => {
   })
 
   // Wrong behaviour caught: the hours line reads a collection that only looks like hour plans (a second set of weeks,
-  // say for the terrace) instead of the plans the hours name, and tells the owner the restaurant is closed today.
-  it('hours: follows the hour plans the status names, not another collection of the same shape', async () => {
+  // say for the terrace) instead of the plans the hours name, and tells the owner the restaurant is closed today; or it
+  // reads no plans at all and misses the closed week the owner planned.
+  it.each([
+    { name: 'a closed week in another collection of the same shape does not count', closedIn: 'terracePlans', today: { ranges: [['11:30', '14:30']] } },
+    { name: 'a closed week in the plans the status names counts', closedIn: 'hourPlans', today: { closed: true } },
+    { name: 'plans of a retired collection do not count', closedIn: 'hourPlans', retired: true, today: { ranges: [['11:30', '14:30']] } },
+  ])('hours: follows the hour plans the status names: $name', async ({ closedIn, retired, today }) => {
     const s = await setup()
     await s.t.run(async (ctx) => {
       const schema = structuredClone((await ctx.db.get(s.site))!.schema) as Schema
       schema.bricks.terracePlans = structuredClone(schema.bricks.hourPlans!)
-      schema.bricks.hours!.status = { hours: { plans: 'hourPlans' } }
+      schema.bricks.hours!.status = { rule: 'opening-hours', plans: 'hourPlans' }
+      if (retired) schema.bricks.hourPlans!.retired = true
       await ctx.db.patch(s.site, { schema })
     })
-    const closedWeek = allWeek.map((day) => ({ ...day, closed: true }))
+    const closedWeek = Object.fromEntries(Object.entries(allWeek).map(([key, day]) => [key, { ...day, closed: true }]))
+    const plan = (label: string, week: object) => ({ data: { label, from: '2026-01-01', yearly: false, week } })
     await replaceEntries(s, 'hours', [{ data: { week: allWeek, exceptions: [] } }])
-    await replaceEntries(s, 'hourPlans', [])
-    await replaceEntries(s, 'terracePlans', [{ data: { label: 'Terrasse geschlossen', from: '2026-01-01', yearly: false, week: closedWeek } }])
+    await replaceEntries(s, 'hourPlans', closedIn === 'hourPlans' ? [plan('Geschlossen', closedWeek)] : [])
+    await replaceEntries(s, 'terracePlans', [closedIn === 'terracePlans' ? plan('Terrasse geschlossen', closedWeek) : plan('Terrasse offen', allWeek)])
     const states = await s.as.owner.query(api.sites.today, { site: 'restaurant' })
-    expect(states.find((x) => x.brick === 'hours')).toEqual({ brick: 'hours', line: { kind: 'hours', today: { ranges: [['11:30', '14:30']] } }, due: false })
+    expect(states.find((x) => x.brick === 'hours')).toEqual({ brick: 'hours', line: { kind: 'rule', rule: 'opening-hours', today }, due: false })
   })
 
   // Wrong behaviour caught: staff see the state of areas they have no task on, or other people's drafts.

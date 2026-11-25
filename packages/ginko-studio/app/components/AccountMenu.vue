@@ -5,7 +5,8 @@ import { api } from '#convex/api'
 import { LayoutGridIcon, LogOutIcon, MonitorSmartphoneIcon, RefreshCwIcon, UserRoundCogIcon } from '@lucide/vue'
 import { useSignOut } from '../composables/useSignOut'
 
-const props = defineProps<{ manager: boolean, lastRefresh?: number | null, updating: boolean, side?: 'top' | 'right' | 'bottom' }>()
+/** `canvas`: the button stands on the canvas (the rail), so it takes the canvas colours. */
+const props = defineProps<{ manager: boolean, lastRefresh?: number | null, updating: boolean, side?: 'top' | 'right' | 'bottom', canvas?: boolean }>()
 const emit = defineEmits<{ update: [] }>()
 const { user } = useConvexAuth()
 const { t, format } = useI18n()
@@ -23,7 +24,9 @@ const { busy, signOut, signOutOthers } = useSignOut()
     <DropdownMenuTrigger as-child>
       <button
         type="button" :aria-label="t('nav.account')" :title="name ?? user?.email ?? undefined"
-        class="grid size-9 place-items-center rounded-full border border-primary/25 bg-accent text-sm font-semibold text-accent-foreground outline-none hover:ring-2 hover:ring-primary/30 focus-visible:ring-3 focus-visible:ring-ring/80 pointer-coarse:size-11"
+        :class="['grid place-items-center rounded-full text-sm font-semibold outline-none focus-visible:ring-3 pointer-coarse:size-11', canvas
+          ? 'size-10 border border-canvas-foreground/25 text-canvas-foreground hover:bg-canvas-foreground/10 focus-visible:ring-canvas-foreground/80'
+          : 'size-9 bg-accent text-accent-foreground hover:ring-2 hover:ring-ring/40 focus-visible:ring-ring/80']"
       >{{ initial }}</button>
     </DropdownMenuTrigger>
     <DropdownMenuContent :side="props.side ?? 'right'" align="end" class="w-64">

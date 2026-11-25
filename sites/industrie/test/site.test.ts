@@ -1,13 +1,13 @@
 // The pure helpers behind what visitors read: a wrong certificate status, salary line or "open today" is a public mistake.
 import { describe, expect, it } from 'vitest'
-import { certStatus, exceptionsAhead, excerpt, formatSize, initials, salaryText, todayState, type DayHours, type Exception } from '../app/utils/site.ts'
+import { certStatus, exceptionsAhead, excerpt, formatSize, initials, salaryText, todayState, type Exception, type WeekHours } from '../app/utils/site.ts'
 
-const week: DayHours[] = [
-  { day: 'mo', closed: false, from1: '07:00', to1: '12:00', from2: '12:30', to2: '16:00' },
-  { day: 'fr', closed: false, from1: '07:00', to1: '12:00' },
-  { day: 'sa', closed: true },
-  { day: 'su', closed: true },
-]
+const week: WeekHours = {
+  mo: { closed: false, from1: '07:00', to1: '12:00', from2: '12:30', to2: '16:00' },
+  fr: { closed: false, from1: '07:00', to1: '12:00' },
+  sa: { closed: true },
+  su: { closed: true },
+}
 const holiday: Exception = { _id: 'x1', when: { from: '2026-10-26', to: '2026-10-26' }, reason: 'Nationalfeiertag', closed: true }
 const winter: Exception = { _id: 'x2', when: { from: '2026-12-24', to: '2027-01-01' }, reason: 'Betriebsferien', closed: true }
 
@@ -30,7 +30,7 @@ describe('todayState', () => {
     ['Saturday is the weekend', { week, exceptions: [] }, '2026-10-10', { kind: 'weekend' }],
     ['the "closed today" switch beats the weekly plan', { week, exceptions: [], closedOn: '2026-10-05', closedNote: 'Betriebsversammlung' }, '2026-10-05', { kind: 'closed', reason: 'Betriebsversammlung', field: 'closedNote' }],
     ['a switch set for yesterday no longer counts', { week, exceptions: [], closedOn: '2026-10-04' }, '2026-10-05', { kind: 'open', times: '07:00–12:00 und 12:30–16:00' }],
-    ['a closure over New Year covers 31 December', { week: [...week, { day: 'th', closed: false, from1: '07:00', to1: '12:00' }], exceptions: [winter] }, '2026-12-31', { kind: 'closed', reason: 'Betriebsferien', field: 'exceptions.x2.reason' }],
+    ['a closure over New Year covers 31 December', { week: { ...week, th: { closed: false, from1: '07:00', to1: '12:00' } }, exceptions: [winter] }, '2026-12-31', { kind: 'closed', reason: 'Betriebsferien', field: 'exceptions.x2.reason' }],
   ] as const)('%s', (_name, hours, today, expected) => {
     expect(todayState(hours as never, today, 'und')).toEqual(expected)
   })

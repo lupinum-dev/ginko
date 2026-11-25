@@ -153,7 +153,8 @@ test.describe('Dateien', () => {
     await open(page, '/s/restaurant/files')
     await page.getByRole('button', { name: pdf }).click()
     const panel = details(page)
-    await expect(panel.getByRole('link', { name: /^Alle Gerichte inklusive/ })).toBeVisible()
+    // A single is named by its brick's label (D82).
+    await expect(panel.getByRole('link', { name: 'Mittagsmenü', exact: true })).toBeVisible()
     const download = panel.getByRole('link', { name: 'Herunterladen' })
     await expect(download).toHaveAttribute('href', oldUrl!)
     await panel.locator('input[type=file]').setInputFiles({ name: `ersatz-${pdf}`, mimeType: 'application/pdf', buffer: pdfBytes(`neu ${pdf}`) })
@@ -185,7 +186,7 @@ test.describe('Dateien', () => {
     await details(page).getByRole('button', { name: 'Entfernen …' }).click()
     const dialog = page.getByRole('dialog', { name: 'Entfernen …' })
     await expect(dialog.getByText(`${photo} wird an 1 Stelle verwendet.`)).toBeVisible()
-    await expect(dialog.getByRole('link', { name: 'Gasthaus zur Linde, Salzburg' })).toBeVisible()
+    await expect(dialog.getByRole('link', { name: 'Suchmaschinen', exact: true })).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Entfernen', exact: true })).toHaveCount(0)
     await dialog.locator('[data-slot=dialog-footer]').getByRole('button', { name: 'Schließen' }).click()
     await expect(dialog).toHaveCount(0)

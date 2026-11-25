@@ -1,9 +1,10 @@
 // Links between pages (CONTENT.md, "Links zwischen Seiten"): `$blog.my-post` and `$page.menu` in Markdown,
 // `::snippet{name="…"}` for reusable text, and a link check that runs on bundles before any HTML exists.
 // Pure: works on bundles and comark trees.
-import type { Bundle, BundleItem } from './bundle.ts'
+import type { Bundle, BundleItem, Holding, Upcoming } from './bundle.ts'
 import { msg, type CoreKey, type Msg } from './messages.ts'
 import { entryRedirects, matchRedirect, type Redirect } from './redirects.ts'
+import { isTable, rowsIn, slugKeyOf } from './fields.ts'
 import type { Fields, Json, Schema } from './types.ts'
 
 export type LinkLevel = 'error' | 'warn' | 'off'
@@ -28,7 +29,7 @@ export interface CheckLinksOptions {
   files?: (path: string) => boolean
   /** Severities; default: broken `error`, anchors and redirected `warn`. Callers pass the site's `linkCheck`. */
   linkCheck?: LinkConfig
-  /** The site's redirect rules (config); entry rules (`redirectFrom`) are read from the bundles. */
+  /** The site's redirect rules (config); entry rules (`oldUrls`) are read from the bundles. */
   redirects?: Redirect[]
 }
 
@@ -50,16 +51,25 @@ export function mapTrees(bundle: Bundle, fn: (tree: Tree, at: { brick: string; i
     return value
   }
   const data = (d: Record<string, unknown>, brick: string, id: string) => walk(d, { brick, id }, '') as Record<string, unknown>
+  // The values a page may read ahead (`upcoming`) are trees too: their links and files resolve like those of `data`.
+  // So are the values of a holding exception and the normal values it covers (`holding`).
+  const ahead = (of: { upcoming?: Upcoming[]; holding?: Holding[] }, brick: string, id: string) => ({
+    ...(of.upcoming ? { upcoming: of.upcoming.map((u) => ({ ...u, data: walk(u.data, { brick, id }, `upcoming.${u.from}`) as Record<string, unknown> })) } : {}),
+    ...(of.holding ? { holding: of.holding.map((h) => ({ ...h, data: walk(h.data, { brick, id }, `holding.${h.from}`) as Record<string, unknown>, normal: walk(h.normal, { brick, id }, `holding.${h.from}.normal`) as Record<string, unknown> })) } : {}),
+  })
   const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, b]) => [key, b.kind === 'single'
-    ? { ...b, data: data(b.data, key, key) }
-    : { ...b, items: b.items.map((item) => ({ ...item, data: data(item.data, key, item.id) })) }]))
+    ? { ...b, data: data(b.data, key, key), ...ahead(b, key, key) }
+    : { ...b, items: b.items.map((item) => ({ ...item, data: data(item.data, key, item.id), ...ahead(item, key, item.id) })) }]))
   return { ...bundle, bricks }
 }
 
-function find(bundle: Bundle, brick: string, ref: string): BundleItem | undefined {
+/** The entry a link `$<brick>.<ref>` names: by its file ID (`<brick>/<ref>`), its ID, or its address in the bundle's locale. */
+function find(bundle: Bundle, schema: Pages, brick: string, ref: string): BundleItem | undefined {
   const b = Object.hasOwn(bundle.bricks, brick) ? bundle.bricks[brick] : undefined
   if (b?.kind !== 'collection') return undefined
-  return b.items.find((i) => i.id === `${brick}/${ref}` || i.id === ref || i.data.slug === ref)
+  const def = Object.hasOwn(schema.bricks, brick) ? schema.bricks[brick] : undefined
+  const slugKey = def ? slugKeyOf(def) : undefined
+  return b.items.find((i) => i.id === `${brick}/${ref}` || i.id === ref || (slugKey !== undefined && i.data[slugKey] === ref))
 }
 
 /** The path a `$…` link points to in the bundle's locale, or undefined. `ref` has no `$` and no `#anchor`. */
@@ -71,7 +81,7 @@ function routeTarget(bundle: Bundle, schema: Pages, ref: string, main: Bundle | 
   if (head === 'page') return Object.hasOwn(schema.pages, rest) ? schema.pages[rest]![bundle.locale] : undefined
   // An entry without its own page in this locale links to its main-language page: listed here under
   // `untranslated: 'fallback'`, or left out of this locale (only in the main-language bundle).
-  const urls = (find(bundle, head, rest) ?? (main && find(main, head, rest)))?.urls
+  const urls = (find(bundle, schema, head, rest) ?? (main && find(main, schema, head, rest)))?.urls
   return urls?.[bundle.locale] ?? urls?.[bundle.mainLocale]
 }
 
@@ -86,7 +96,7 @@ function routeTarget(bundle: Bundle, schema: Pages, ref: string, main: Bundle | 
 export function resolveRouteLinks(bundle: Bundle, schema: Pages, main?: Bundle): Bundle {
   const hasSnippets = Object.hasOwn(schema.bricks, 'snippets') && schema.bricks.snippets!.kind === 'collection'
   const snippetNodes = (name: string): Json[] | undefined => {
-    const body = hasSnippets ? find(bundle, 'snippets', name)?.data.body : undefined
+    const body = hasSnippets ? find(bundle, schema, 'snippets', name)?.data.body : undefined
     return isTree(body) ? body.nodes : undefined
   }
   const resolve = (nodes: Json[], nested: boolean): Json[] => nodes.flatMap((node): Json[] => {
@@ -259,7 +269,7 @@ export function linkTargets(fields: Fields, data: Record<string, Json>): Set<str
     for (const [name, field] of Object.entries(inner)) {
       const value = row[name]
       if (field.type === 'markdown') text(value)
-      else if (field.type === 'list' && Array.isArray(value)) for (const r of value) if (isRecord(r)) walk(field.of, r as Record<string, Json>)
+      else if (isTable(field)) for (const [, r] of rowsIn(field, value)) walk(field.of, r)
     }
   }
   walk(fields, data)

@@ -37,13 +37,16 @@ const more = computed(() => drafts.value.length > SHOWN)
 
 /** The same rule as the server's publish: any create or edit task the staff holds that needs approval sends it to review. */
 const review = computed(() => !props.isManager && props.tasks.some((task) => task.kind !== 'remove' && task.needsApproval === true))
-/** Publishing belongs to the brick's edit and create tasks (staff need one of them). */
+/**
+ * Publishing belongs to the brick's edit and create tasks: a rights search, not "the standard task". The server's
+ * publish takes any create or edit task the person holds (lib/access.ts `authorizeWriter`), so any of them will do.
+ */
 const publishTask = computed(() => props.tasks.find((task) => task.kind === 'edit') ?? props.tasks.find((task) => task.kind === 'create'))
 
+// Unpublished changes have no time of their own: for a later day they become a dated change (D130), which needs no step
+// here (Alles bearbeiten shows it, and Heute shows it when it stopped).
 const line = (e: Entry) => e.pending
-  ? e.pending.publishAt !== undefined
-    ? t('site.drafts.changesGoLive', { date: whenWeekday(e.pending.publishAt, props.timeZone, format) })
-    : t('site.drafts.changesSince', { date: whenWeekday(e.pending.since, props.timeZone, format) })
+  ? t('site.drafts.changesSince', { date: whenWeekday(e.pending.since, props.timeZone, format) })
   : e.publishAt !== undefined
   ? t('site.drafts.goesLive', { date: whenWeekday(e.publishAt, props.timeZone, format) })
   : t('site.drafts.since', { date: whenWeekday(e.since ?? 0, props.timeZone, format) })
@@ -66,10 +69,10 @@ async function advance(e: Entry) {
 
 <template>
   <div v-if="rows.length" class="grid gap-3" data-test="today-drafts">
-    <ul class="m-0 list-none overflow-hidden rounded-xl border p-0">
-      <li v-for="e in rows" :key="e._id" class="flex items-center gap-2 border-b px-4 py-3 last:border-b-0">
+    <ul class="m-0 list-none overflow-hidden rounded-[10px] border bg-card p-0">
+      <li v-for="e in rows" :key="e._id" class="flex min-h-[54px] items-center gap-3 border-b px-3 py-2 last:border-b-0">
         <span class="grid min-w-0 flex-1 gap-0.5">
-          <span class="font-medium [overflow-wrap:anywhere]">{{ titleOf(brick, e.data, main) }}</span>
+          <span class="text-sm font-medium [overflow-wrap:anywhere]">{{ titleOf(brick, e.data, main) }}</span>
           <span class="text-[13px] text-muted-foreground">{{ line(e) }}</span>
         </span>
         <Button type="button" variant="outline" size="sm" :disabled="busy.has(e._id)" :aria-label="`${review ? t('entry.publish.review') : t('entry.publish.go')}: ${titleOf(brick, e.data, main)}`" @click="advance(e)">{{ review ? t('entry.publish.review') : t('entry.publish.go') }}</Button>

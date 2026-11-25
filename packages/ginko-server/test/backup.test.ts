@@ -400,6 +400,24 @@ describe('import of a backup with the same picture twice', () => {
   })
 })
 
+describe('import of a backup made before a row was retired', () => {
+  // Wrong behaviour caught: the restore stores a Saturday the lunch week no longer has, so the entry carries a row
+  // no form shows and every later save warns about it.
+  it('drops the row with its warning and stores the rest', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    const day = (dish: string) => ({ dish: { de: dish }, allergens: [] })
+    const days = { mo: day('Suppe'), tu: day('Gulasch'), we: day('Strudel'), th: day('Knödel'), fr: day('Fisch'), sa: day('Alt') }
+    const result = await s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [], entries: [{ id: 'plan-kw50', brick: 'lunchPlans', kind: 'item', order: 2, data: { weekOf: '2026-12-07', days }, prints: {}, rev: 1 }],
+    })
+    expect([result.warnings, result.firstWarning]).toEqual([1, expect.objectContaining({ id: 'plan-kw50', path: 'days.sa', key: 'issues.unknownRow' })])
+    const [, id] = result.ids[0]!
+    const stored = await s.t.run((ctx) => ctx.db.get(id))
+    expect(Object.keys(stored!.data.days as object).sort()).toEqual(['fr', 'mo', 'th', 'tu', 'we'])
+  })
+})
+
 describe('import budget (SPEC 3)', () => {
   // Wrong behaviour caught: an import stores entries over the entry limit (the Studio then cannot save them), and the
   // CLI clears the local site before the platform refuses anything, so a refused import leaves it half-imported.
@@ -451,5 +469,41 @@ describe('local:import and local:pull refuse a target that is not the local back
     expect(await local(['pull'], deps)).toBe(2)
     expect(logs).toEqual([expect.stringMatching(/local:import stopped.*not the local backend/), expect.stringMatching(/local:pull stopped.*not the local backend/)])
     expect(requests).toEqual([])
+  })
+})
+
+describe('import and export of a plan (D107)', () => {
+  // Wrong behaviour caught: a backup restored days later made every past plan go online at once, unchecked and with
+  // nobody told; and an export lost the stopped state, so a restored stopped plan looked like a plain draft.
+  it('a past plan comes back stopped, a future one planned, a stopped one stopped; the export keeps the stop without a person', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    const now = Date.now()
+    const event = (id: string, extra: object) => ({ id, brick: 'events', kind: 'item' as const, order: 1, prints: {}, rev: 1, state: 'draft' as const, data: { title: { de: id }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi' } }, ...extra })
+    const { ids } = await s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [], entries: [
+        event('past', { publishAt: now - 60_000 }),
+        event('future', { publishAt: now + 3_600_000 }),
+        event('stopped', { stopped: { at: now - 7_200_000, reason: { code: 'link', href: '/nowhere' } } }),
+      ],
+    })
+    const rows = await s.t.run(async (ctx) => Promise.all(ids.map(async ([key, id]) => {
+      const e = (await ctx.db.get(id))!
+      return [key, { publishAt: e.publishAt, job: e.publishJob !== undefined, publishBy: e.publishBy, stopped: e.stopped }]
+    })))
+    expect(Object.fromEntries(rows)).toEqual({
+      past: { publishAt: undefined, job: false, publishBy: undefined, stopped: { at: now - 60_000, reason: { code: 'late' } } },
+      future: { publishAt: now + 3_600_000, job: true, publishBy: undefined, stopped: undefined },
+      stopped: { publishAt: undefined, job: false, publishBy: undefined, stopped: { at: now - 7_200_000, reason: { code: 'link', href: '/nowhere' } } },
+    })
+
+    await s.t.run((ctx) => ctx.db.patch(ids[2]![1], { stopped: { at: now - 7_200_000, by: 'u-wirtin', reason: { code: 'link', href: '/nowhere' } } }))
+    const { entries } = await s.t.query(internal.backup.snapshot, { site: s.site })
+    const keyOf = new Map(ids.map(([key, id]) => [String(id), key]))
+    const exported = Object.fromEntries(entries.filter((e) => e.stopped).map((e) => [keyOf.get(e.id), e.stopped]))
+    expect(exported).toEqual({
+      past: { at: now - 60_000, reason: { code: 'late' } },
+      stopped: { at: now - 7_200_000, reason: { code: 'link', href: '/nowhere' } },
+    })
   })
 })

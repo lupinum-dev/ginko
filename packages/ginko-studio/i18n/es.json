@@ -1,5 +1,6 @@
 {
   "nav": {
+    "claim": "Mantén tu web al día.",
     "quick": "Hoy",
     "all": "Contenido",
     "review": "Revisar",
@@ -178,6 +179,10 @@
       "keepMine": "Guardar mis cambios",
       "takeTheirs": "Usar la versión nueva",
       "keepBoth": "Conservar ambos",
+      "keepInput": "Conservar mis datos",
+      "inForm": "Tus datos están en el formulario. Aún no están guardados.",
+      "nowOnline": "La entrada ya está en línea.",
+      "nowOffline": "La entrada ya no está en línea.",
       "someone": "Alguien",
       "row": {
         "youAdded": "Has añadido “{row}”",
@@ -216,7 +221,8 @@
       "review": "Enviar a revisión",
       "asDraft": "Guardar como borrador",
       "laterOpen": "Publicar más tarde",
-      "changesWhen": "¿Cuándo deben publicarse los cambios en “{title}”?"
+      "changesWhen": "¿Cuándo deben publicarse los cambios en “{title}”?",
+      "laterDay": "Desde un día posterior"
     },
     "unpublish": {
       "button": "Quitar de la web",
@@ -270,6 +276,7 @@
     },
     "localDraft": {
       "offer": "¿Restaurar los cambios sin guardar de {time}?",
+      "plannedFrom": "Estos datos estaban planificados desde el {day}. Elige el día de nuevo aquí.",
       "restore": "Restaurar",
       "discard": "No restaurar",
       "restoredConflict": "Restaurado. Alguien cambió {fields} mientras tanto; decide abajo."
@@ -308,10 +315,98 @@
       "draftNote": "Todavía no está en el sitio web. Publícalo cuando esté listo.",
       "scheduledNote": "Se publica solo a esa hora.",
       "liveNote": "Guardar aún no cambia el sitio web. Solo «Publicar…» lo hace.",
-      "changesNote": "Guardado, pero aún no está en el sitio web. Muestra la versión anterior hasta que publiques.",
-      "changesScheduledNote": "Los cambios se publican solos a esa hora."
+      "changesNote": "Guardado, pero aún no está en el sitio web. Muestra la versión anterior hasta que publiques."
     },
     "savedNotLive": "Guardado, aún no publicado"
+  },
+  "dated": {
+    "startsOn": "Válido desde",
+    "startsOnHint": "Vacío: desde ahora",
+    "publishFrom": "Publicar desde el {day}",
+    "reviewFrom": "Enviar a revisión, desde el {day}",
+    "sentFrom": "Enviado a revisión. Planificado desde el {day}.",
+    "waiting": "Desde el {day}: {changes}.",
+    "stopped": "El cambio planificado para el {day} no se aplicó: {changes}.",
+    "stoppedYearly": "El cambio anual del {day} al {until} no se aplicó: {changes}. No vuelve por sí solo: elige los días de nuevo («Cambiar días») o anúlalo.",
+    "changedSince": "Cambiado desde que se planificó: {fields}. Desde el día planificado se aplica igualmente el valor planificado.",
+    "cancel": "Anular cambio",
+    "cancelQuestion": "¿Anular este cambio planificado? No se puede deshacer.",
+    "keep": "Mantener",
+    "changeDay": "Cambiar día",
+    "edit": "Editar",
+    "saveDay": "Guardar día",
+    "dayRequired": "Elige un día.",
+    "notADate": "Esto no es una fecha. Elige un día o vacía el campo.",
+    "nothingChanged": "Todavía no has cambiado nada. Cambia primero un valor.",
+    "secondChange": "El cambio planificado desde el {day} se mantiene. Esto será un segundo cambio.",
+    "cancelled": "Cambio planificado anulado.",
+    "moved": "El cambio empieza ahora el {day}.",
+    "until": "Válido hasta",
+    "untilBeforeFrom": "«Válido hasta» debe ser el mismo día o después de «Válido desde».",
+    "publishFromUntil": "Publicar del {day} al {until}",
+    "publishUntil": "Publicar hasta el {until}",
+    "publishToday": "Publicar para hoy",
+    "reviewFromUntil": "Enviar a revisión, del {day} al {until}",
+    "reviewUntil": "Enviar a revisión, hasta el {until}",
+    "reviewToday": "Enviar a revisión, para hoy",
+    "publishUntilToday": "Publicar hasta hoy",
+    "reviewUntilToday": "Enviar a revisión, hasta hoy",
+    "publishDays": "Publicar para ciertos días",
+    "reviewDays": "Enviar a revisión, para ciertos días",
+    "startsOnHintToday": "Vacío: hoy",
+    "sentFromUntil": "Enviado a revisión. Planificado del {day} al {until}.",
+    "sentToday": "Enviado a revisión. Planificado para hoy.",
+    "sentOn": "Enviado a revisión. Planificado para el {day}.",
+    "liveFromUntil": "En la web del {date} al {until}.",
+    "liveToday": "Hoy en la web.",
+    "liveOn": "En la web el {date}.",
+    "waitingUntil": "Del {day} al {until}: {changes}",
+    "holding": "Hasta el {until} la web muestra: {changes} (si no, {normal})",
+    "holdingPlain": "Hasta el {until} la web muestra: {changes}",
+    "covered": "Hasta el {until} la web muestra {value}.",
+    "coveredOther": "Hasta el {until} la web muestra otro valor.",
+    "overlap": "Del {from} al {until} valen los dos. La web muestra el cambio del {from}.",
+    "afterEnd": "Vale en cuanto termine el cambio temporal",
+    "fromFixed": "Este cambio ya está en vigor: solo se pueden cambiar su fin y sus valores.",
+    "todayOnlyValues": "Solo hoy: {changes}",
+    "todayOnly": "A partir de mañana la web vuelve a mostrar lo normal.",
+    "changeDays": "Cambiar días",
+    "saveDays": "Guardar días",
+    "movedUntil": "El cambio vale ahora del {day} al {until}.",
+    "movedYearly": "El cambio vale ahora cada año del {day} al {until}.",
+    "endNow": "Terminar ahora",
+    "endQuestion": "¿Terminar este cambio ahora? La web volverá a mostrar el valor normal. No se puede deshacer.",
+    "yearly": "Repetir cada año",
+    "yearlyHint": "Vale cada año en estos días.",
+    "yearlyWhileHolding": "Este cambio vale ahora y vuelve cada año. Eso no se puede desactivar ahora; puedes anularlo.",
+    "yearlyOnWhileHolding": "Este cambio está vigente ahora. Si vuelve cada año solo se puede cambiar cuando haya terminado.",
+    "yearlyTooLong": "Un cambio que vuelve cada año debe durar menos de un año.",
+    "yearlyLeapDay": "El 29 de febrero no existe todos los años. Añade más días o desactiva «Repetir cada año».",
+    "startsTooFarBack": "«Válido desde» puede estar como máximo un año atrás.",
+    "name": "Nombre",
+    "nameHint": "Por ejemplo: Verano",
+    "nameTooLong": "El nombre puede tener como máximo {max} caracteres.",
+    "publishYearly": "Publicar cada año del {day} al {until}",
+    "reviewYearly": "Enviar a revisión, cada año del {day} al {until}",
+    "waitingYearly": "Cada año del {day} al {until}: {changes}",
+    "waitingYearlyNamed": "{name}: cada año del {day} al {until}: {changes}",
+    "waitingUntilNamed": "{name}: del {day} al {until}: {changes}",
+    "holdingNamed": "{name}: hasta el {until} la web muestra: {changes} (si no, {normal})",
+    "holdingPlainNamed": "{name}: hasta el {until} la web muestra: {changes}",
+    "comesBack": "{text}. Vuelve cada año.",
+    "cancelYearlyQuestion": "¿Anular este cambio? Entonces tampoco volverá el próximo año.",
+    "publishYearlyOn": "Publicar cada año el {day}",
+    "reviewYearlyOn": "Enviar a revisión, cada año el {day}",
+    "waitingOn": "El {day}: {changes}",
+    "waitingOnNamed": "{name}: el {day}: {changes}",
+    "waitingYearlyOn": "Cada año el {day}: {changes}",
+    "waitingYearlyOnNamed": "{name}: cada año el {day}: {changes}",
+    "liveYearlyOn": "En la web cada año el {day}, a partir del {first}.",
+    "liveYearlyOnToday": "En la web cada año el {day}, a partir de hoy.",
+    "sentYearlyOn": "Enviado a revisión. Planificado cada año el {day}.",
+    "liveYearly": "En la web cada año del {day} al {until}, a partir del {first}.",
+    "liveYearlyToday": "En la web cada año del {day} al {until}, a partir de hoy.",
+    "sentYearly": "Enviado a revisión. Planificado cada año del {day} al {until}."
   },
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",
@@ -647,8 +742,7 @@
       "since": "Borrador desde el {date}",
       "goesLive": "Se publica el {date}",
       "all": "Todos los borradores en Contenido",
-      "changesSince": "Cambios sin publicar desde {date}",
-      "changesGoLive": "Los cambios se publican {date}"
+      "changesSince": "Cambios sin publicar desde {date}"
     }
   },
   "editor": {
@@ -1012,6 +1106,7 @@
       "no": "No",
       "none": "ninguno",
       "changed": "cambiado",
+      "flag": "{label}: {on, select, yes {sí} other {no}}",
       "items": "{count, plural, one {# entrada} other {# entradas}}"
     },
     "upload": {
@@ -1030,7 +1125,6 @@
     "savedLikeLive": "Guardado. Vuelve a coincidir con la versión del sitio web.",
     "changesPublished": "Cambios publicados.",
     "changesScheduled": "Programado: cambios en línea desde {time}.",
-    "changesScheduleCleared": "Programación cancelada. Los cambios siguen guardados, pero aún no en línea.",
     "changesDiscarded": "Cambios descartados. Vuelve a valer la versión del sitio web."
   },
   "review": {
@@ -1044,7 +1138,6 @@
     "removeFromRelease": "Quitar de la actualización",
     "releaseApproved": "Actualización aprobada. En el sitio web en aproximadamente un minuto.",
     "approve": "Aprobar",
-    "approveLater": "Aprobar para más tarde…",
     "reject": "Rechazar…",
     "rejectConfirm": "Rechazar",
     "reason": "¿Por qué? Lo verá quien propuso el cambio.",
@@ -1331,7 +1424,8 @@
     "waiting": {
       "label": "Te espera",
       "more": "{count} más",
-      "inHistory": "Ver en el historial"
+      "inHistory": "Ver en el historial",
+      "open": "Abrir"
     },
     "due": {
       "badge": "Pendiente"

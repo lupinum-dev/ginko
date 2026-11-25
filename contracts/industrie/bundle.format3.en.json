@@ -15,63 +15,49 @@
     "hours": {
       "kind": "single",
       "data": {
-        "week": [
-          {
-            "_id": "wkmo000000",
-            "day": "mo",
+        "week": {
+          "mo": {
             "closed": false,
             "from1": "07:00",
             "to1": "12:00",
             "from2": "12:30",
             "to2": "16:00"
           },
-          {
-            "_id": "wktu000000",
-            "day": "tu",
+          "tu": {
             "closed": false,
             "from1": "07:00",
             "to1": "12:00",
             "from2": "12:30",
             "to2": "16:00"
           },
-          {
-            "_id": "wkwe000000",
-            "day": "we",
+          "we": {
             "closed": false,
             "from1": "07:00",
             "to1": "12:00",
             "from2": "12:30",
             "to2": "16:00"
           },
-          {
-            "_id": "wkth000000",
-            "day": "th",
+          "th": {
             "closed": false,
             "from1": "07:00",
             "to1": "12:00",
             "from2": "12:30",
             "to2": "16:00"
           },
-          {
-            "_id": "wkfr000000",
-            "day": "fr",
+          "fr": {
             "closed": false,
             "from1": "07:00",
             "to1": "12:00",
             "from2": "12:30",
             "to2": "14:00"
           },
-          {
-            "_id": "wksa000000",
-            "day": "sa",
+          "sa": {
             "closed": true
           },
-          {
-            "_id": "wksu000000",
-            "day": "su",
+          "su": {
             "closed": true
           }
-        ],
+        },
         "exceptions": [
           {
             "_id": "exWeihn001",
@@ -102,16 +88,6 @@
           "data": {
             "text": "Wartung am Server am 9. Oktober, E-Mails können verzögert ankommen.",
             "until": "2026-10-09"
-          },
-          "fallback": [
-            "text"
-          ]
-        },
-        {
-          "id": "notice-empfang",
-          "data": {
-            "text": "Empfang bis 1. September nur vormittags besetzt.",
-            "until": "2026-09-30"
           },
           "fallback": [
             "text"
@@ -245,62 +221,12 @@
           "fallback": [
             "description"
           ]
-        },
-        {
-          "id": "job-lehre",
-          "data": {
-            "title": "Lehrstelle Werkzeugbau",
-            "kind": "apprenticeship",
-            "location": "Steyr",
-            "salary": {
-              "amount": 105000,
-              "currency": "EUR"
-            },
-            "salaryPeriod": "month",
-            "start": "2027-09-01",
-            "until": "2026-10-01",
-            "description": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Lehre zum Werkzeugmechaniker, vier Jahre."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            },
-            "applyUrl": "https://www.brunner-praezision.example/karriere/lehre"
-          },
-          "fallback": [
-            "title",
-            "description"
-          ]
         }
       ]
     },
     "events": {
       "kind": "collection",
       "items": [
-        {
-          "id": "msg-linz-2025",
-          "data": {
-            "title": "Fachmesse Linz 2025",
-            "when": {
-              "from": "2025-09-01",
-              "to": "2025-09-04"
-            },
-            "location": "Linz",
-            "booth": "A3"
-          },
-          "fallback": [
-            "title"
-          ]
-        },
         {
           "id": "msg-steyr",
           "data": {

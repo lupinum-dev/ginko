@@ -4,6 +4,7 @@
 import { ConvexError } from 'convex/values'
 import { ConvexCallError, normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import { describe, expect, test, vi } from 'vitest'
+import { todayIn } from '@lupinum/ginko/internal'
 
 const mocks = vi.hoisted(() => ({ results: new Map<string, unknown>(), toasts: [] as { text: string; action?: unknown }[], actionError: undefined as unknown }))
 vi.mock('#imports', async () => {
@@ -48,6 +49,66 @@ const paths: [string, string, unknown, () => Promise<unknown>, number][] = [
   ['revertEntry', 'entries.revert', { entry: 'e', change: 'c3' }, () => ops.revertEntry('e', 'c1'), 1],
 ]
 
+// Wrong behaviour caught (E5): a change for a later day sent for review said only "Sent for approval", so the person
+// could not tell that it is planned for a day and not meant to go online at once.
+test('a change for a later day sent for review names its day', async () => {
+  mocks.toasts.length = 0
+  mocks.results.set('entries.save', proposal)
+  await ops.saveEntry({ entry: 'e', baseRev: 1, fields: { price: { amount: 2290 } }, op: 'o', main: 'de', from: '2026-12-05' })
+  expect(mocks.toasts.map((m) => m.text)).toEqual(['Sent for review. Planned from Saturday 5 December.'])
+})
+
+// Wrong behaviour caught (E6): a save with a day said "Saved. Online from …" when the server wrote nothing, or when the
+// save emptied that day's change, so the person believed a change was planned.
+test.each([
+  ['a change waits for that day', { entry: 'e', rev: 2, change: 'c1', dated: 'd1', from: '2026-12-05' }, ['Saved. On the website from Saturday 5 December.'], undefined],
+  ['the save emptied that day', { entry: 'e', rev: 2, change: 'c1', dated: null, from: '2026-12-05' }, ['Planned change cancelled.'], undefined],
+  ['nothing was written', { entry: 'e', rev: 2, contentRev: 3, warnings: [] }, [], true],
+] as const)('a save with a day: %s', async (_case, answer, toasts, unchanged) => {
+  mocks.toasts.length = 0
+  mocks.results.set('entries.save', answer)
+  const result = await ops.saveEntry({ entry: 'e', baseRev: 1, fields: { price: { amount: 2290 } }, op: 'o', main: 'de', from: '2026-12-05' })
+  expect([mocks.toasts.map((m) => m.text), 'unchanged' in result ? result.unchanged : undefined]).toEqual([toasts, unchanged])
+})
+
+// Round L13. Wrong behaviour caught: a change for one day said "from Saturday 5 December to Saturday 5 December", and
+// one for today did not say it is on the website today.
+test.each([
+  ['saved, today', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, 'today', 'Saved. On the website today.'],
+  ['saved, another day', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, '2026-12-05', 'Saved. On the website on Saturday 5 December.'],
+  ['sent for review, today', proposal, 'today', 'Sent for review. Planned for today.'],
+  ['sent for review, another day', proposal, '2026-12-05', 'Sent for review. Planned for Saturday 5 December.'],
+] as const)('a change for one day: %s', async (_case, answer, day, toast) => {
+  mocks.toasts.length = 0
+  mocks.results.set('entries.save', answer)
+  const from = day === 'today' ? todayIn('Europe/Vienna') : day
+  await ops.saveEntry({ entry: 'e', baseRev: 1, fields: { price: { amount: 990 } }, op: 'o', main: 'de', from, until: from, timeZone: 'Europe/Vienna' })
+  expect(mocks.toasts.map((m) => m.text)).toEqual([toast])
+})
+
+// Slice 4, rows "save, yearly on" (days ahead, today inside, both days in the past), on 8 October 2027. Wrong behaviour
+// caught: a season's toast names a year or reads like a one-off change; one whose days have passed this year does not say
+// from when (or names this year's day); one that holds now does not say so.
+test.each([
+  // Round N8: the next time starts in another calendar year than today, so `first` carries its year.
+  ['days ahead', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, ['2028-06-01', '2028-08-31'], 'Saved. On the website every year from 1 Jun to 31 Aug, starting Thursday, 1 June 2028.'],
+  ['both days in the past', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, ['2027-06-01', '2027-08-31'], 'Saved. On the website every year from 1 Jun to 31 Aug, starting Thursday, 1 June 2028.'],
+  ['one day, later this year', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, ['2027-12-24', '2027-12-24'], 'Saved. On the website every year on 24 Dec, starting Friday 24 December.'],
+  ['today inside the days', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, ['2026-10-01', '2026-10-31'], 'Saved. On the website every year from 1 Oct to 31 Oct, starting today.'],
+  ['sent for review', proposal, ['2028-06-01', '2028-08-31'], 'Sent for review. Planned every year from 1 Jun to 31 Aug.'],
+] as const)('a change that comes back every year: %s', async (_case, answer, [from, until], toast) => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(Date.parse('2027-10-08T10:00:00Z'))
+  try {
+    mocks.toasts.length = 0
+    mocks.results.set('entries.save', answer)
+    await ops.saveEntry({ entry: 'e', baseRev: 1, fields: { price: { amount: 990 } }, op: 'o', main: 'de', from, until, yearly: true, timeZone: 'Europe/Vienna' })
+    expect(mocks.toasts.map((m) => m.text)).toEqual([toast])
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 describe('writes that become proposals', () => {
   test.each(paths)('%s: proposal says "Sent for approval", no Undo, no throw', async (_name, mutation, _normal, run) => {
     mocks.toasts.length = 0
@@ -88,12 +149,16 @@ describe('when it shows on the website', () => {
   test.each([
     ['a save', 'entries.save', { entry: 'e', rev: 2, change: 'c1', liveFrom: '2026-10-17' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o' }), 'Saved. On the website from Saturday 17 October.'],
     ['a new planned week', 'entries.create', { entry: 'e', state: 'live', liveFrom: '2026-10-17' }, () => ops.createEntry({ brick: 'b', data: {}, op: 'o' }), 'Created. On the website from Saturday 17 October.'],
+    // D131: a change for a later day says its day and offers no Rückgängig (it is cancelled in the editor's notice).
+    ['a save for a later day', 'entries.save', { entry: 'e', rev: 2, change: 'c1', dated: 'd1', from: '2026-10-17' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o', from: '2026-10-17' }), 'Saved. On the website from Saturday 17 October.'],
+    ['changes published for a later day', 'entries.publish', { entry: 'e', state: 'live', from: '2026-10-17' }, () => ops.publishChanges('e', 1, 2, { from: '2026-10-17', main: 'de' }), 'Scheduled: changes online from Saturday 17 October.'],
     ['a save that shows now', 'entries.save', { entry: 'e', rev: 2, change: 'c1' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o' }), 'Saved. On the website in about a minute.'],
   ])('%s', async (_name, mutation, result, run, text) => {
     mocks.toasts.length = 0
     mocks.results.set(mutation, result)
     await run()
     expect(mocks.toasts.map((t) => t.text)).toEqual([text])
+    if (_name.includes('later day')) expect(mocks.toasts[0]!.action).toBeUndefined()
   })
 })
 

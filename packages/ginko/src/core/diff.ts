@@ -1,8 +1,9 @@
-import { effectiveMax, effectiveMin, isTranslatable } from './fields.ts'
+import { effectiveMax, effectiveMin, isTranslatable, rowDefaults, rowKeysOf } from './fields.ts'
 import { BRICK_KEYS, FIELD_KEYS, SCHEMA_KEYS, mirrorProblem } from './schema.ts'
 import { sameLabel } from './labels.ts'
 import { bare, msg, type CoreKey, type Described, type Msg } from './messages.ts'
 import { stableJson } from './sha256.ts'
+import type { SiteWeek } from './time.ts'
 import type { Brick, Currency, Field, Fields, Json, Schema } from './types.ts'
 
 /** A change with its catalog key and parameters (`key`, `params`) next to the German `message`. */
@@ -37,6 +38,8 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   unknownChanges('Schema', prod, next, SCHEMA_KEYS, no)
 
   if (prod.site !== next.site) no('site', 'site', msg('diff.siteRenamed'), fx('newSite'))
+  // A release never changes the form of the stored model; the platform's upgrade does, for every site at once.
+  if (prod.format !== next.format) no('format', 'formatChanged', msg('diff.unknownChange', { at: 'Schema', prop: 'format' }), fx('keepProperty'))
   // A site without bricks has no content yet (sites.create, sites:bootstrap): its first release sets
   // currency, languages and time zone freely; from then on they are fixed (Astra 9).
   const fresh = Object.keys(prod.bricks).length === 0
@@ -67,6 +70,8 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
 
   for (const [path, rule] of Object.entries(prod.retired)) {
     const now = next.retired[path]
+    // A retired row that the field has again comes back as an added row (filled from the columns' defaults below).
+    if (!now && rowIsBack(next, path)) continue
     if (!now) no(`retired.${path}`, 'unretired', msg('diff.retiredBack', { path }), fx('newFieldOnly'))
     else if (stableJson(now) !== stableJson(rule)) no(`retired.${path}`, 'retiredChanged', msg('diff.retiredRuleChanged', { path }), fx('keepRule'))
   }
@@ -91,21 +96,38 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   for (const [key, before] of Object.entries(prod.bricks)) {
     const after = next.bricks[key]
     if (!after) { no(key, 'brickRemoved', msg('diff.brickRemoved', { key }), fx('retireBrick'), retireBrickSnippet(key)); continue }
-    diffBrick(key, before, after, newFills, newLocales, next.currency, ok, no)
+    diffBrick(key, before, after, newFills, newLocales, next.currency, { weeks: [prod.week, next.week], retired: next.retired }, ok, no)
   }
   for (const [key, brick] of Object.entries(next.bricks)) {
     if (prod.bricks[key]) continue
     ok(key, 'brickAdded', msg('diff.brickAdded', { key }))
     if (brick.kind === 'single') {
       for (const [name, field] of Object.entries(brick.fields)) {
-        if (!field.optional && field.default === undefined) no(`${key}.${name}`, 'singleWithoutDefault', msg('diff.singleWithoutDefault', { name }), fx('defaultOrOptional'))
+        if (!field.optional && !hasStart(field)) no(`${key}.${name}`, 'singleWithoutDefault', msg('diff.singleWithoutDefault', { name }), fx('defaultOrOptional'))
       }
     }
   }
   return { changes, rejected }
 }
 
+/** Whether `path` names a row (`brick.field.row`) that the rows field of `schema` has. */
+function rowIsBack(schema: Schema, path: string): boolean {
+  const parts = path.split('.')
+  if (parts.length !== 3) return false
+  const [brick, name, row] = parts as [string, string, string]
+  const field = schema.bricks[brick]?.fields[name]
+  return field?.type === 'rows' && rowKeysOf(field, schema.week).includes(row)
+}
+
 type Report = (path: string, kind: string, message: Described, fix?: Described, snippet?: string) => void
+/**
+ * What a rows field's diff reads from the two schemas: the site's week in production and in the release (the days of a
+ * rows field of weekdays or workdays come from it), and the release's `retired` (a removed row is stated there).
+ */
+interface Sides { weeks: readonly [SiteWeek, SiteWeek]; retired: Schema['retired'] }
+
+/** A value a new field starts with: its default, or for a rows field, rows its columns' defaults fill (`startValue`). */
+const hasStart = (field: Field) => field.default !== undefined || (field.type === 'rows' && rowDefaults(field.of) !== undefined)
 
 // Presentation only: texts, the config position (`pos`) and an image's frame never change stored data.
 const TEXT_KEYS = ['label', 'hint', 'unit', 'itemLabel', 'describe', 'group', 'pos', 'aspect']
@@ -129,7 +151,7 @@ function contract(field: Field, top = true): string {
   return stableJson(copy as never)
 }
 
-function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<string>, newLocales: Set<string>, currency: Currency, ok: Report, no: Report) {
+function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<string>, newLocales: Set<string>, currency: Currency, sides: Sides, ok: Report, no: Report) {
   if (before.kind !== after.kind) return no(key, 'kindChanged', msg('diff.kindChanged', { key }))
   unknownChanges(key, before, after, BRICK_KEYS, no)
   if (before.retired && !after.retired) no(key, 'unretired', msg('diff.unretired', { path: key }))
@@ -138,9 +160,13 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
   if ((before.layout ?? 'sections') !== (after.layout ?? 'sections')) ok(`${key}.layout`, 'text', msg('diff.textChanged'))
   if (stableJson(before.tasks ?? []) !== stableJson(after.tasks ?? [])) ok(`${key}.tasks`, 'tasks', msg('diff.tasksChanged'))
   // A rule on stored values, not a stored shape: no value changes when it comes, goes or names other fields.
-  if (stableJson(before.planned ?? null) !== stableJson(after.planned ?? null)) ok(`${key}.planned`, 'planned', msg('diff.valueChanged', { name: 'planned' }))
+  if (stableJson(before.timeline ?? null) !== stableJson(after.timeline ?? null)) ok(`${key}.timeline`, 'timeline', msg('diff.valueChanged', { name: 'timeline' }))
   // Presentation only, like a label: the Today page's status line reads the data, it stores nothing.
   if (stableJson(before.status ?? null) !== stableJson(after.status ?? null)) ok(`${key}.status`, 'text', msg('diff.textChanged'))
+  // Presentation only: which field names an entry in a list changes no stored value.
+  if (before.kind === 'collection' && after.kind === 'collection' && stableJson(before.listing ?? null) !== stableJson(after.listing ?? null)) ok(`${key}.listing`, 'text', msg('diff.textChanged'))
+  if (before.kind === 'collection' && after.kind === 'collection' && stableJson(before.tree ?? null) !== stableJson(after.tree ?? null)) ok(`${key}.tree`, 'text', msg('diff.textChanged'))
+  if ((before.preview ?? null) !== (after.preview ?? null)) ok(`${key}.preview`, 'text', msg('diff.textChanged'))
   if (before.kind === 'collection' && after.kind === 'collection') {
     if (after.max < before.max) no(`${key}.max`, 'maxLowered', msg('diff.maxLowered', { at: key }), fx('keepMax'))
     else if (after.max > before.max) ok(`${key}.max`, 'maxRaised', msg('diff.maxRaised'))
@@ -149,11 +175,11 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
       else if (onlyNewLocalesAdded(before.route, after.route, newLocales)) ok(`${key}.route`, 'routeAdded', msg('diff.routeAddedLocale'))
       else no(`${key}.route`, 'routeChanged', msg('diff.routeChanged', { key }), fx('keepRoute'))
     }
-    for (const k of ['order', 'visible', 'untranslated', 'plans'] as const) {
+    for (const k of ['order', 'showUntil', 'untranslated', 'publishedOn', 'plans'] as const) {
       if (stableJson(before[k] ?? null) !== stableJson(after[k] ?? null)) ok(`${key}.${k}`, k, msg('diff.valueChanged', { name: k }))
     }
   }
-  diffFields(key, before.fields, after.fields, newFills, ok, no, currency)
+  diffFields(key, before.fields, after.fields, newFills, ok, no, sides, currency)
 }
 
 /** The existing addresses stay as they are; the only difference is an address for a language that is new in this release. */
@@ -163,28 +189,31 @@ function onlyNewLocalesAdded(before: Record<string, string | undefined>, after: 
   return Object.keys(after).every((locale) => Object.hasOwn(before, locale) || newLocales.has(locale))
 }
 
-/** `currency` is set for the top-level fields of a brick, which a rejection can replace with a new field (snippets). */
-function diffFields(path: string, before: Fields, after: Fields, newFills: Set<string>, ok: Report, no: Report, currency?: Currency) {
+/**
+ * `currency` is set for the top-level fields of a brick, which a rejection can replace with a new field (snippets);
+ * `sides` for them too, since only a top-level field can be a rows field.
+ */
+function diffFields(path: string, before: Fields, after: Fields, newFills: Set<string>, ok: Report, no: Report, sides: Sides, currency?: Currency) {
   const topLevel = currency !== undefined
   for (const [name, old] of Object.entries(before)) {
     const at = `${path}.${name}`
     const next = after[name]
     if (!next) { no(at, 'fieldRemoved', msg('diff.fieldRemoved', { at }), undefined, topLevel ? replaceSnippet(path, name, old) : undefined); continue }
     // A changed data contract of a top-level field takes the way of a new field; the snippet spells it out.
-    const noField: Report = topLevel ? (p, kind, m, fix) => no(p, kind, m, fix, FIXED_DEFINITION.has(kind) ? undefined : replaceSnippet(path, name, old, next, currency)) : no
-    diffField(at, old, next, newFills, ok, noField)
+    const noField: Report = topLevel ? (p, kind, m, fix, snippet) => no(p, kind, m, fix, snippet ?? (FIXED_DEFINITION.has(kind) ? undefined : replaceSnippet(path, name, old, next, currency))) : no
+    diffField(at, old, next, newFills, ok, noField, sides)
   }
   for (const [name, field] of Object.entries(after)) {
     if (before[name]) continue
     const at = `${path}.${name}`
     if (field.optional) ok(at, 'fieldAdded', msg('diff.fieldAdded', { at }))
-    else if (field.default !== undefined) ok(at, 'fieldAdded', msg('diff.fieldAddedDefault', { at }))
+    else if (hasStart(field)) ok(at, 'fieldAdded', msg('diff.fieldAddedDefault', { at }))
     else if (topLevel && newFills.has(at)) ok(at, 'fieldAdded', msg('diff.fieldAddedMigration', { at }))
     else no(at, 'requiredWithoutDefault', msg('diff.requiredWithoutDefault', { at }), fx('defaultMigrationOrOptional'), topLevel ? fillSnippet(path, name) : undefined)
   }
 }
 
-function diffField(at: string, old: Field, next: Field, newFills: Set<string>, ok: Report, no: Report) {
+function diffField(at: string, old: Field, next: Field, newFills: Set<string>, ok: Report, no: Report, sides: Sides) {
   if (old.type !== next.type) return no(at, 'typeChanged', msg('diff.typeChanged', { at, from: old.type, to: next.type }))
   if (old.retired && !next.retired) no(at, 'unretired', msg('diff.unretired', { path: at }))
   // Rollback contract (SPEC 2.5): retiring freezes the production definition; old code reads it.
@@ -235,7 +264,32 @@ function diffField(at: string, old: Field, next: Field, newFills: Set<string>, o
       if (next.unique) no(at, 'uniqueChanged', msg('diff.uniqueChanged', { at }), fx('newList'))
       else ok(at, 'uniqueDropped', msg('diff.uniqueDropped', { at }))
     }
-    diffFields(at, old.of, next.of, newFills, ok, no)
+    diffFields(at, old.of, next.of, newFills, ok, no, sides)
+  }
+  if (old.type === 'rows' && next.type === 'rows') {
+    // The rows each side stores, by its site's week (a changed week can change the workdays). The order is presentation.
+    const [before, after] = [rowKeysOf(old, sides.weeks[0]), rowKeysOf(next, sides.weeks[1])]
+    // A removed row is stored data, like a removed field: the site states it in `retired` (`brick.field.row`, only
+    // `{ drop: true }`), and the release removes the row from every stored entry (releaseData). Without that line it is
+    // refused, so a changed week or row list never drops stored values unasked.
+    for (const row of before) {
+      if (after.includes(row)) continue
+      const path = `${at}.${row}`
+      if (Object.hasOwn(sides.retired, path)) ok(at, 'rowRetired', msg('diff.rowRetired', { at, row }))
+      else {
+        const line = `retired: { '${path}': { drop: true } }`
+        no(at, 'rowRemoved', msg('diff.rowRemoved', { at, row }), msg('diff.fix.retireRow', { line: `\`${line}\`` }), `${line},`)
+      }
+    }
+    // An added row is a new value in every stored entry, like a new required field (diffFields): the release fills it
+    // from the columns' defaults (releaseData), or it is refused.
+    for (const row of after) {
+      if (before.includes(row)) continue
+      if (rowDefaults(next.of)) ok(at, 'rowAdded', msg('diff.rowAdded', { at, row }))
+      else no(at, 'rowWithoutDefault', msg('diff.rowWithoutDefault', { at, row }), fx('rowDefaults'))
+    }
+    if (stableJson(old.rows as Json) !== stableJson(next.rows as Json) && before.every((row) => after.includes(row)) && after.every((row) => before.includes(row))) ok(at, 'text', msg('diff.textChanged'))
+    diffFields(at, old.of, next.of, newFills, ok, no, sides)
   }
 }
 

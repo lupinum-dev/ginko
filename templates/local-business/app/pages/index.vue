@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { openingHoursJsonLd } from '@lupinum/ginko/basics'
+import { openingHoursJsonLd } from '@lupinum/ginko/patterns'
 import { Accessibility, ArrowRight, MapPin } from '@lucide/vue'
 
 // The home page answers the first questions on the first screen: open today and until when, how to book (call, with

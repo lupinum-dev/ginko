@@ -9,9 +9,19 @@ import { changedRoots, changedTextLanguages, ownChangesOver, typedTitle, type Da
 import { shownLabel } from '../utils/labels'
 import { clearLocalDraft, localDraftKey, readLocalDraft, useLocalDraftWriter, writeLocalDraft, type LocalDraft } from './useLocalDraft'
 import { BLOCKERS, FLUSHERS, type Issue } from '@lupinum/ginko-editor'
-import { mergeRows, stableJson } from '@lupinum/ginko/internal'
+import { mergeKeyedRows, mergeRows, stableJson } from '@lupinum/ginko/internal'
 import type { Who } from '../utils/who'
 import { useOnline } from '@vueuse/core'
+
+/** An issue of a field: an error, or with `note` what a draft still lacks before it can go online (D116). */
+export type FieldIssue = Issue & { note?: true }
+
+/**
+ * The notes of a draft just created, by entry id, with the entry's revision they belong to: its page opens a new form for
+ * the stored entry, which takes them over once (`load`), so "save as draft" shows what is missing also on the first save
+ * of a new entry. Taken only while the entry still has that revision; a later save (also someone else's) makes them stale.
+ */
+const handedNotes = new Map<string, { rev: number; notes: Issue[] }>()
 
 /** Stored values are JSON; a JSON copy also unwraps Vue's proxies (structuredClone cannot). */
 export const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value ?? null)) ?? value
@@ -44,7 +54,21 @@ export interface EntryFormOptions {
   removed?: () => boolean
   /** Switches the form to the language of a local copy before it is restored; false when it cannot now. Without it, copies in other languages are not offered. */
   otherLocale?: (locale: Locale) => Promise<boolean>
+  /** "Gilt ab" of the form (a task sheet): the local copy keeps the day with the input and brings it back with it. */
+  day?: Ref<string>
+  /** "Gilt bis" of the form (a task that asks both days): kept and brought back with the day. */
+  until?: Ref<string>
+  /** "Jedes Jahr wiederholen" and "Name" of the form (slice 4): kept and brought back with the days. */
+  yearly?: Ref<boolean>
+  name?: Ref<string>
 }
+
+/**
+ * What a save with a day also sends (slice 3): `until`, the last day of an exception; `change`, the holding exception it
+ * edits; `empty`, a save without a changed field is still sent (a today-only task, whose values the task fixes);
+ * `yearly` and `name` of an exception (slice 4).
+ */
+export interface DatedExtra { until?: string; change?: string; empty?: boolean; yearly?: true; name?: string }
 
 export function useEntryForm(o: EntryFormOptions) {
   const ops = useOps(o.site)
@@ -57,12 +81,24 @@ export function useEntryForm(o: EntryFormOptions) {
   const baseRev = ref(0)
   const ready = ref(false)
   const issues = ref<Issue[]>([])
+  /**
+   * What a draft without a time still lacks (D116): the warnings of its last save, which the server checks for shape
+   * only (D115). The fields show them as notes, not errors; publishing or planning shows the same as errors.
+   */
+  const notes = ref<Issue[]>([])
+  /** Errors and notes, for the fields. */
+  const fieldIssues = computed<FieldIssue[]>(() => [...issues.value, ...notes.value.map((n) => ({ ...n, note: true as const }))])
   const problem = ref('')
   /** Fields someone saved after the person's base: their values, the entry's rev, and who did it when the server says. */
   const conflict = ref<{ fields: string[]; data: Data; rev: number; by?: Record<string, Who> } | null>(null)
   const busy = ref(false)
   /** The last save went to approval (SPEC 17): the input stays, nothing changed on the website, so no new rev. Cleared by the next edit. */
   const waiting = ref(false)
+  /**
+   * The last save with a day changed nothing for that day (E6): no field differed from the stored one, or the server
+   * answered that the day already holds these values. The form keeps its input and says so.
+   */
+  const unchangedDay = ref(false)
   // A save does not fail while the connection is down: Convex sends it once it is back. Until then the button says so.
   // Both signals count: Convex notices a lost network only when its socket closes, which can take up to a minute (its
   // inactivity check); the browser's own signal comes at once. A slow save on a working connection is not offline.
@@ -85,10 +121,15 @@ export function useEntryForm(o: EntryFormOptions) {
   /** Starts the form: `start` are the values shown (prefill or stored). */
   function load(start: Data) {
     const entry = o.entry()
+    // The same entry again (a language switch) keeps its notes; a just created one takes those of its create.
+    const handed = entry ? handedNotes.get(entry._id) : undefined
+    if (entry) handedNotes.delete(entry._id)
+    notes.value = entry && handed?.rev === entry.rev ? handed.notes : entry !== undefined && entry._id === loadedId.value ? notes.value : []
     loadedId.value = entry?._id
     draft.value = copy(start)
     baseline.value = entry ? copy(storedOf(entry.data)) : {}
     initial.value = copy(start)
+    settleExtras()
     baseRev.value = entry?.rev ?? 0
     issues.value = []
     problem.value = ''
@@ -100,7 +141,13 @@ export function useEntryForm(o: EntryFormOptions) {
   }
 
   const changed = computed(() => changedRoots(baseline.value, draft.value).filter((k) => keys().includes(k)))
-  const dirty = computed(() => changedRoots(initial.value, draft.value).some((k) => keys().includes(k)) || confirm.value.length > 0)
+  // The days, the switch and the name of a task sheet as the form loaded them or last handed them in. Typed over, they
+  // are input like a changed field: the one flag below decides the local copy and every "leave without saving?" (N4).
+  const extrasNow = () => stableJson([o.day?.value ?? '', o.until?.value ?? '', o.yearly?.value ?? false, o.name?.value ?? ''])
+  const extrasAtStart = ref(extrasNow())
+  const settleExtras = () => { extrasAtStart.value = extrasNow() }
+  const extrasTyped = computed(() => extrasNow() !== extrasAtStart.value)
+  const dirty = computed(() => changedRoots(initial.value, draft.value).some((k) => keys().includes(k)) || confirm.value.length > 0 || extrasTyped.value)
 
   // Leaving with unsaved input asks first: the browser's back button, a link such as "Alle Bereiche",
   // closing or reloading the tab (break-it 9). A save on its way needs no question: it goes on.
@@ -121,7 +168,9 @@ export function useEntryForm(o: EntryFormOptions) {
 
   function setField(key: string, value: Json | undefined) {
     // A fixed field drops its old error at once; the server checks again on save.
-    if (issues.value.some((i) => i.path === key || i.path.startsWith(`${key}.`))) issues.value = issues.value.filter((i) => i.path !== key && !i.path.startsWith(`${key}.`))
+    const other = (i: Issue) => i.path !== key && !i.path.startsWith(`${key}.`)
+    if (!issues.value.every(other)) issues.value = issues.value.filter(other)
+    if (!notes.value.every(other)) notes.value = notes.value.filter(other)
     waiting.value = false
     const next = { ...draft.value }
     if (value === undefined) delete next[key]
@@ -131,6 +180,7 @@ export function useEntryForm(o: EntryFormOptions) {
 
   function showError(e: OpError) {
     issues.value = []
+    notes.value = []
     problem.value = ''
     conflict.value = null
     if (e.code === 'INVALID' && e.details?.errors) {
@@ -145,17 +195,39 @@ export function useEntryForm(o: EntryFormOptions) {
     }
   }
 
-  /** What the last save asked for: the conflict answers (keepMine, mergeLists) repeat it, so Veröffentlichen stays one. */
+  /**
+   * A publish or a plan refused for its fields (D116): the fields show the server's errors, the empty required ones the
+   * notes named among them. True when the refusal was of that kind.
+   */
+  function showFieldErrors(e: OpError): boolean {
+    if (e.code !== 'INVALID' || !e.details?.errors) return false
+    issues.value = e.details.errors
+    notes.value = []
+    return true
+  }
+
+  /** What the last save asked for: `saveAgain` repeats it after a conflict answer, so Veröffentlichen stays one. */
   let asked: { at?: number } | true | undefined
   /**
    * Saves; resolves true when done (nothing to save counts as done). `publish` when creating: `{}` online now, `{ at }` scheduled; absent a draft. On a live entry `true` puts the
-   * saved fields online at once; absent, they wait as unpublished changes.
+   * saved fields online at once; absent, they wait as unpublished changes. `from` (a day after today, an online entry):
+   * the changed fields become a dated change of that day (D125); the entry stays as it is, so the form goes back to it.
+   * `send`: fields sent even when they equal the stored value, so a change of that day the form was filled from is
+   * replaced, a field put back to its stored value included (the task sheet's "Bearbeiten", E3).
    */
-  function save(rev = baseRev.value, publish?: { at?: number } | true): Promise<boolean> {
+  function save(rev = baseRev.value, publish?: { at?: number } | true, from?: string, send?: readonly string[], extra: DatedExtra = {}): Promise<boolean> {
     // A removed entry cannot take a save: the person restores it or saves the input as a new entry.
     if (o.removed?.()) return Promise.resolve(false)
     asked = publish
-    return write(rev, publish)
+    return write(rev, publish, undefined, from, send, extra)
+  }
+
+  /**
+   * The last save's publish step again, on the base a conflict answer merged onto (Alles bearbeiten). The task sheet saves
+   * through its own step instead, which reads its day field at that moment (H1).
+   */
+  function saveAgain(): Promise<boolean> {
+    return save(baseRev.value, asked)
   }
 
   /** The input of a removed entry as a new entry (EntryGoneBanner); the server makes new addresses. */
@@ -180,7 +252,7 @@ export function useEntryForm(o: EntryFormOptions) {
     await Promise.all([...flushers].map((run) => run()))
   }
 
-  async function write(rev: number, publishAs?: { at?: number } | true, asNew?: { task?: string }): Promise<boolean> {
+  async function write(rev: number, publishAs?: { at?: number } | true, asNew?: { task?: string }, from?: string, send: readonly string[] = [], extra: DatedExtra = {}): Promise<boolean> {
     if (busy.value) return false
     await flush()
     if (blockers.size) {
@@ -188,6 +260,7 @@ export function useEntryForm(o: EntryFormOptions) {
       return false
     }
     busy.value = true
+    unchangedDay.value = false
     // Read now: a sheet closed while the save waits for the connection is gone when it lands.
     const key = localKey.value
     try {
@@ -203,26 +276,54 @@ export function useEntryForm(o: EntryFormOptions) {
         const result = await ops.createEntry({ brick: o.brickKey(), data: data as Record<string, Json>, task, removeTask: o.removeTask?.(), op, label: t('ops.saved'), publish, timeZone: o.timeZone?.(), main: o.main() })
         if (result.entry === undefined) waiting.value = true
         else created.value = result.entry
+        // A new draft without a time: what it lacks shows as notes, here and on its own page (`handedNotes`).
+        notes.value = publish === undefined ? result.warnings ?? [] : []
+        if (result.entry !== undefined && result.rev !== undefined && notes.value.length) handedNotes.set(result.entry, { rev: result.rev, notes: notes.value })
         // Saved: what was sent no longer counts as open input (a second Speichern would create another).
         initial.value = submitted
+        settleExtras()
       } else {
         // Published at once, the form's fields that wait unpublished go too: the form showed them, so they are the input.
         const held = publishAs === true ? (o.entry()!.pending?.fields ?? []) : []
-        const roots = [...new Set([...changedRoots(baseline.value, submitted), ...held])].filter((k) => keys().includes(k))
-        if (!roots.length && !confirm.value.length) return true
+        const roots = [...new Set([...changedRoots(baseline.value, submitted), ...held, ...send])].filter((k) => keys().includes(k))
+        if (!roots.length && !confirm.value.length && !(extra.empty && from !== undefined)) {
+          // Nothing for that day: not done, so the sheet does not close as if a change were planned.
+          if (from === undefined) return true
+          unchangedDay.value = true
+          return false
+        }
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
         // The server checks the task against the changed fields and the confirmed ones (entries.ts saveNow).
         const task = o.task?.([...new Set([...roots, ...confirm.value.map((leaf) => leaf.split('.')[0]!)])])
-        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}), ...(publishAs === true ? { publish: true as const } : {}) }
-        const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main() })
+        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}), ...(publishAs === true ? { publish: true as const } : {}), ...(from === undefined ? {} : { from }), ...(from !== undefined && extra.until !== undefined ? { until: extra.until } : {}), ...(from !== undefined && extra.change !== undefined ? { change: extra.change } : {}), ...(from !== undefined && extra.yearly ? { yearly: extra.yearly } : {}), ...(from !== undefined && extra.name !== undefined ? { name: extra.name } : {}) }
+        const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main(), timeZone: o.timeZone?.() })
+        // A draft saved as a draft: what it lacks shows as notes. A live entry's warnings are about fields it did not
+        // change, which its form does not show.
+        notes.value = o.draft?.() && publishAs !== true ? result.warnings ?? [] : []
         if (result.rev === undefined) {
           // Nothing was written: the stored state, base and rev stay; only the input counts as handed in.
           waiting.value = true
+        } else if (from !== undefined && 'unchanged' in result) {
+          unchangedDay.value = true
+          return false
+        } else if (from !== undefined) {
+          // The input went into a change for that day: the entry is as it was, and so is the form.
+          baseRev.value = result.rev
+          draft.value = copy(baseline.value)
+          initial.value = copy(baseline.value)
+          settleExtras()
+          confirm.value = []
+          unconfirmed = undefined
+          if (key) clearLocalDraft(key)
+          issues.value = []
+          problem.value = ''
+          return true
         } else {
           baseRev.value = result.rev
           baseline.value = copy(storedOf({ ...baseline.value, ...submitted }))
         }
         initial.value = submitted
+        settleExtras()
         confirm.value = []
       }
       unconfirmed = undefined
@@ -270,9 +371,10 @@ export function useEntryForm(o: EntryFormOptions) {
 
   /**
    * The person's own changes over the current server state; untouched fields take the server's values. A changed text
-   * keeps the languages someone else changed meanwhile (a whole-value save would send the old ones back).
+   * keeps the languages someone else changed meanwhile (a whole-value save would send the old ones back). It merges and
+   * closes the conflict; the caller saves (H1). False without a conflict.
    */
-  async function keepMine() {
+  function keepMine(): boolean {
     const c = conflict.value
     if (!c) return false
     const theirs = storedOf(c.data)
@@ -281,26 +383,33 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy({ ...theirs, ...mine } as Data)
     baseRev.value = c.rev
     conflict.value = null
-    return save(c.rev, asked)
+    return true
   }
   /**
-   * Both people's rows, when every conflicting field is a list and no row was changed by both or
-   * moved (mergeRows); null otherwise. "Beides behalten" shows only then.
+   * Both people's rows, when every conflicting field is a list or a rows field and no row was changed by both or
+   * moved (mergeRows by `_id`, mergeKeyedRows by row key); null otherwise. "Beides behalten" shows only then.
    */
   const listMerge = computed<Data | null>(() => {
     const c = conflict.value
     if (!c?.fields.length) return null
     const merged: Data = {}
     for (const k of c.fields) {
-      if (o.fields()[k]?.type !== 'list') return null
+      const type = o.fields()[k]?.type
+      if (type === 'rows') {
+        const m = mergeKeyedRows(baseline.value[k], draft.value[k], c.data[k])
+        if (m.clashes.length) return null
+        merged[k] = m.rows
+        continue
+      }
+      if (type !== 'list') return null
       const m = mergeRows(baseline.value[k], draft.value[k], c.data[k])
       if (m.clashes.length || m.reordered) return null
       merged[k] = m.rows
     }
     return merged
   })
-  /** "Beides behalten": the merged lists and the person's other changes over the current server state, saved at once. */
-  async function mergeLists() {
+  /** "Beides behalten": the merged lists and the person's other changes over the current server state; the caller saves. */
+  function mergeLists(): boolean {
     const c = conflict.value
     const merged = listMerge.value
     if (!c || !merged) return false
@@ -310,7 +419,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy({ ...theirs, ...mine, ...merged } as Data)
     baseRev.value = c.rev
     conflict.value = null
-    return save(c.rev, asked)
+    return true
   }
 
   /** The stored values for the conflicting fields; the person's other changes stay in the form, unsaved. */
@@ -374,6 +483,9 @@ export function useEntryForm(o: EntryFormOptions) {
     if (!o.allLanguages && record.base && [...changedTextLanguages(o.brick().fields, record.base, record.fields)].some((l) => l !== record.locale)) return null
     const own = keys().filter((k) => Object.hasOwn(record.fields, k))
     if (own.some((k) => !same(draft.value[k], record.fields[k]))) return record
+    // Days, the switch or a name the form does not hold yet are input too (N4).
+    const extras = [[o.day, record.from], [o.until, record.until], [o.yearly, record.yearly], [o.name, record.name]] as const
+    if (extras.some(([field, kept]) => field && kept !== undefined && !same(field.value, kept))) return record
     // Nothing new in it (saved meanwhile): drop it, unless it holds fields this form does not show.
     if (own.length === Object.keys(record.fields).length) clearLocalDraft(key)
     return null
@@ -384,15 +496,21 @@ export function useEntryForm(o: EntryFormOptions) {
     // While a copy is offered, it stays as it is until the person decides.
     if (!key || localOffer.value) return
     const fields: Data = isCreate.value ? copy(draft.value) : Object.fromEntries(changed.value.map((k) => [k, copy(draft.value[k] ?? null)]))
-    if (!dirty.value || !Object.keys(fields).length) return clearLocalDraft(key)
+    if (!dirty.value || (!Object.keys(fields).length && !extrasTyped.value)) return clearLocalDraft(key)
     const base = isCreate.value ? undefined : Object.fromEntries(Object.keys(fields).map((k) => [k, copy(baseline.value[k] ?? null)]))
     // Area and title name the input on Heute; a single is named by its area.
     const brick = o.brick()
     const title = brick.kind === 'collection' ? typedTitle(brick, draft.value, o.main()) : undefined
-    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}) })
+    const from = o.day?.value
+    const until = o.until?.value
+    const name = o.name?.value
+    writeLocalDraft(key, {
+      v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}),
+      ...(from ? { from } : {}), ...(until ? { until } : {}), ...(o.yearly?.value ? { yearly: true as const } : {}), ...(name ? { name } : {}),
+    })
   }
   // Typed back to what was there: the next write removes the copy (a save removes it at once, in write()).
-  const localWriter = useLocalDraftWriter(() => draft.value, keepLocal)
+  const localWriter = useLocalDraftWriter(() => [draft.value, o.day?.value, o.until?.value, o.yearly?.value, o.name?.value], keepLocal)
 
   function forgetLocal() {
     localWriter.cancel()
@@ -424,6 +542,11 @@ export function useEntryForm(o: EntryFormOptions) {
       else next[k] = copy(value)
     }
     draft.value = next
+    // A copy without a day keeps a day already typed (H1).
+    if (o.day && record.from) o.day.value = record.from
+    if (o.until && record.until) o.until.value = record.until
+    if (o.yearly && record.yearly) o.yearly.value = true
+    if (o.name && record.name) o.name.value = record.name
     waiting.value = false
     if (!entry) return
     const clash = own.filter((k) => (entry.fieldRevs[k] ?? 0) > copyBase && !same(entry.data[k], next[k]))
@@ -444,5 +567,5 @@ export function useEntryForm(o: EntryFormOptions) {
     localOffer.value = null
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, offline, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
+  return { draft, baseline, initial, baseRev, ready, issues, notes, fieldIssues, showFieldErrors, problem, conflict, busy, offline, waiting, unchangedDay, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAgain, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
 }

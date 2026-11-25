@@ -1,7 +1,7 @@
 // Shared convex-test setup: the restaurant site from the contracts corpus, with its people.
 // Every platform test starts here, so no test writes its own seed.
 import type { Json } from '@lupinum/ginko'
-import { factComponent, serializeSchema, type Schema } from '@lupinum/ginko/internal'
+import { factComponent, namesOf, serializeSchema, type Schema } from '@lupinum/ginko/internal'
 import { convexTest } from 'convex-test'
 import type { UserIdentityAttributes } from 'convex/server'
 import restaurant from '../../../sites/restaurant/ginko.config.ts'
@@ -94,12 +94,14 @@ export async function setup() {
     let count = 0
     for (const [brick, rows] of Object.entries(corpus as Record<string, CorpusEntry[]>)) {
       const def = siteSchema.bricks[brick]!
+      const names = def.kind === 'collection' ? namesOf(brick, def, siteSchema.locales[0]!, rows.map((row) => row.data)) : []
       for (const [index, row] of rows.entries()) {
         const size = new TextEncoder().encode(JSON.stringify(row.data)).byteLength
         const fieldRevs = Object.fromEntries(Object.keys(def.fields).map((f) => [f, 1]))
         const id = await ctx.db.insert('entries', {
           site, brick, kind: def.kind === 'single' ? 'single' : 'item', order: row.order ?? index + 1,
           data: row.data, rev: 1, fieldRevs, lifeRev: 1, prints: row.prints ?? {}, bytes: size,
+          ...(def.kind === 'collection' ? { name: names[index]!, nameFixed: true as const } : {}),
         })
         entries[row.id] = id
         bytes += size
@@ -134,6 +136,20 @@ type Backend = Awaited<ReturnType<typeof setup>>['t']
 /** Ends the person's Better Auth session, as sign-out or revocation does. Their calls fail from then on. */
 export async function revokeSession(t: Backend, person: Person) {
   await t.mutation(components.betterAuth.adapter.deleteOne, { model: 'session', where: [{ field: 'id', value: sessionIdOf(people[person]) }] })
+}
+
+/**
+ * The person signs in again: a session that lives 24 hours from now, under the same id (a fake clock that jumped a year
+ * needs it; the expired row may already be gone).
+ */
+export async function renewSession(t: Backend, person: Person) {
+  const id = people[person]
+  const now = Date.now()
+  await revokeSession(t, person)
+  await t.mutation(components.betterAuth.adapter.create, {
+    model: 'session',
+    data: { id: sessionIdOf(id), token: `token-${id}-${now}`, userId: id, expiresAt: now + 24 * 60 * 60 * 1000, createdAt: now, updatedAt: now, ipAddress: null, userAgent: null },
+  })
 }
 
 /** `paginationOpts` of a paginated query's first page, as `useConvexPaginatedQuery` asks for it. */

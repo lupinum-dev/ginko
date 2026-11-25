@@ -1,5 +1,6 @@
 {
   "nav": {
+    "claim": "Halte deine Website aktuell.",
     "quick": "Heute",
     "all": "Inhalte",
     "review": "Prüfen",
@@ -178,6 +179,10 @@
       "keepMine": "Meine Eingaben speichern",
       "takeTheirs": "Neuen Stand übernehmen",
       "keepBoth": "Beides behalten",
+      "keepInput": "Meine Eingaben behalten",
+      "inForm": "Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.",
+      "nowOnline": "Der Eintrag ist inzwischen online.",
+      "nowOffline": "Der Eintrag ist inzwischen offline.",
       "someone": "Jemand",
       "row": {
         "youAdded": "Du hast „{row}“ hinzugefügt",
@@ -216,7 +221,8 @@
       "review": "Zur Prüfung senden",
       "asDraft": "Als Entwurf speichern",
       "laterOpen": "Später veröffentlichen",
-      "changesWhen": "Wann sollen die Änderungen an „{title}“ online gehen?"
+      "changesWhen": "Wann sollen die Änderungen an „{title}“ online gehen?",
+      "laterDay": "Ab einem späteren Tag"
     },
     "unpublish": {
       "button": "Zurückziehen",
@@ -270,6 +276,7 @@
     },
     "localDraft": {
       "offer": "Ungespeicherte Änderungen vom {time} wiederherstellen?",
+      "plannedFrom": "Die Eingaben waren ab {day} geplant. Den Tag musst du hier neu wählen.",
       "restore": "Wiederherstellen",
       "discard": "Nicht wiederherstellen",
       "restoredConflict": "Wiederhergestellt. Inzwischen hat jemand {fields} geändert, bitte unten entscheiden."
@@ -308,10 +315,98 @@
       "draftNote": "Noch nicht auf der Website. Veröffentliche es, wenn es fertig ist.",
       "scheduledNote": "Es geht zu diesem Zeitpunkt von selbst online.",
       "liveNote": "Speichern ändert die Website noch nicht. Das macht erst „Veröffentlichen …“.",
-      "changesNote": "Gespeichert, aber noch nicht auf der Website. Dort steht die vorige Fassung, bis du veröffentlichst.",
-      "changesScheduledNote": "Die Änderungen gehen zu diesem Zeitpunkt von selbst online."
+      "changesNote": "Gespeichert, aber noch nicht auf der Website. Dort steht die vorige Fassung, bis du veröffentlichst."
     },
     "savedNotLive": "Gespeichert, noch nicht online"
+  },
+  "dated": {
+    "startsOn": "Gilt ab",
+    "startsOnHint": "Leer: ab sofort",
+    "publishFrom": "Ab {day} veröffentlichen",
+    "reviewFrom": "Ab {day} zur Prüfung senden",
+    "sentFrom": "Zur Prüfung gesendet. Geplant ab {day}.",
+    "waiting": "Ab {day}: {changes}.",
+    "stopped": "Die geplante Änderung für {day} wurde nicht übernommen: {changes}.",
+    "stoppedYearly": "Die jährliche Änderung für {day} bis {until} wurde nicht übernommen: {changes}. Sie kommt nicht von selbst wieder: Wähle die Tage neu („Tage ändern“) oder hebe sie auf.",
+    "changedSince": "Seit der Planung geändert: {fields}. Ab dem geplanten Tag gilt trotzdem der geplante Wert.",
+    "cancel": "Änderung aufheben",
+    "cancelQuestion": "Diese geplante Änderung aufheben? Das lässt sich nicht rückgängig machen.",
+    "keep": "Behalten",
+    "changeDay": "Tag ändern",
+    "edit": "Bearbeiten",
+    "saveDay": "Tag speichern",
+    "dayRequired": "Bitte einen Tag wählen.",
+    "notADate": "Das ist kein Datum. Bitte wähle einen Tag oder leere das Feld.",
+    "nothingChanged": "Es ist noch nichts geändert. Ändere zuerst einen Wert.",
+    "secondChange": "Die geplante Änderung ab {day} bleibt bestehen. Das hier wird eine zweite Änderung.",
+    "cancelled": "Geplante Änderung aufgehoben.",
+    "moved": "Die Änderung gilt jetzt ab {day}.",
+    "until": "Gilt bis",
+    "untilBeforeFrom": "„Gilt bis“ muss am oder nach „Gilt ab“ liegen.",
+    "publishFromUntil": "Für {day} bis {until} veröffentlichen",
+    "publishUntil": "Bis {until} veröffentlichen",
+    "publishToday": "Für heute veröffentlichen",
+    "reviewFromUntil": "Für {day} bis {until} zur Prüfung senden",
+    "reviewUntil": "Bis {until} zur Prüfung senden",
+    "reviewToday": "Für heute zur Prüfung senden",
+    "publishUntilToday": "Bis heute veröffentlichen",
+    "reviewUntilToday": "Bis heute zur Prüfung senden",
+    "publishDays": "Für bestimmte Tage veröffentlichen",
+    "reviewDays": "Für bestimmte Tage zur Prüfung senden",
+    "startsOnHintToday": "Leer: heute",
+    "sentFromUntil": "Zur Prüfung gesendet. Geplant von {day} bis {until}.",
+    "sentToday": "Zur Prüfung gesendet. Geplant für heute.",
+    "sentOn": "Zur Prüfung gesendet. Geplant für {day}.",
+    "liveFromUntil": "Auf der Website von {date} bis {until}.",
+    "liveToday": "Heute auf der Website.",
+    "liveOn": "Am {date} auf der Website.",
+    "waitingUntil": "Von {day} bis {until}: {changes}",
+    "holding": "Bis {until} zeigt die Website: {changes} (sonst {normal})",
+    "holdingPlain": "Bis {until} zeigt die Website: {changes}",
+    "covered": "Die Website zeigt bis {until} {value}.",
+    "coveredOther": "Die Website zeigt bis {until} einen anderen Wert.",
+    "overlap": "Von {from} bis {until} gelten beide. Die Website zeigt die Änderung ab {from}.",
+    "afterEnd": "Gilt, sobald die befristete Änderung endet",
+    "fromFixed": "Diese Änderung gilt schon: Nur ihr Ende und ihre Werte lassen sich ändern.",
+    "todayOnlyValues": "Nur heute: {changes}",
+    "todayOnly": "Ab morgen zeigt die Website wieder den normalen Stand.",
+    "changeDays": "Tage ändern",
+    "saveDays": "Tage speichern",
+    "movedUntil": "Die Änderung gilt jetzt von {day} bis {until}.",
+    "movedYearly": "Die Änderung gilt jetzt jedes Jahr von {day} bis {until}.",
+    "endNow": "Jetzt beenden",
+    "endQuestion": "Diese Änderung jetzt beenden? Die Website zeigt dann wieder den normalen Wert. Das lässt sich nicht rückgängig machen.",
+    "yearly": "Jedes Jahr wiederholen",
+    "yearlyHint": "Gilt jedes Jahr an diesen Tagen.",
+    "yearlyWhileHolding": "Diese Änderung gilt gerade und kommt jedes Jahr wieder. Das lässt sich jetzt nicht ausschalten; du kannst sie aufheben.",
+    "yearlyOnWhileHolding": "Diese Änderung gilt gerade. Ob sie jedes Jahr wiederkommt, lässt sich erst ändern, wenn sie vorbei ist.",
+    "yearlyTooLong": "Eine Änderung, die jedes Jahr wiederkommt, muss kürzer als ein Jahr sein.",
+    "yearlyLeapDay": "Den 29. Februar gibt es nicht jedes Jahr. Wähle weitere Tage dazu oder schalte „Jedes Jahr wiederholen“ aus.",
+    "startsTooFarBack": "„Gilt ab“ darf höchstens ein Jahr zurückliegen.",
+    "name": "Name",
+    "nameHint": "Zum Beispiel: Sommer",
+    "nameTooLong": "Der Name darf höchstens {max} Zeichen haben.",
+    "publishYearly": "Jedes Jahr {day} bis {until} veröffentlichen",
+    "reviewYearly": "Jedes Jahr {day} bis {until} zur Prüfung senden",
+    "waitingYearly": "Jedes Jahr von {day} bis {until}: {changes}",
+    "waitingYearlyNamed": "{name}: jedes Jahr von {day} bis {until}: {changes}",
+    "waitingUntilNamed": "{name}: von {day} bis {until}: {changes}",
+    "holdingNamed": "{name}: bis {until} zeigt die Website: {changes} (sonst {normal})",
+    "holdingPlainNamed": "{name}: bis {until} zeigt die Website: {changes}",
+    "comesBack": "{text}. Kommt jedes Jahr wieder.",
+    "cancelYearlyQuestion": "Diese Änderung aufheben? Sie kommt dann auch nächstes Jahr nicht wieder.",
+    "publishYearlyOn": "Jedes Jahr am {day} veröffentlichen",
+    "reviewYearlyOn": "Jedes Jahr am {day} zur Prüfung senden",
+    "waitingOn": "Am {day}: {changes}",
+    "waitingOnNamed": "{name}: am {day}: {changes}",
+    "waitingYearlyOn": "Jedes Jahr am {day}: {changes}",
+    "waitingYearlyOnNamed": "{name}: jedes Jahr am {day}: {changes}",
+    "liveYearlyOn": "Jedes Jahr am {day} auf der Website, ab {first}.",
+    "liveYearlyOnToday": "Jedes Jahr am {day} auf der Website, ab heute.",
+    "sentYearlyOn": "Zur Prüfung gesendet. Geplant jedes Jahr am {day}.",
+    "liveYearly": "Jedes Jahr von {day} bis {until} auf der Website, ab {first}.",
+    "liveYearlyToday": "Jedes Jahr von {day} bis {until} auf der Website, ab heute.",
+    "sentYearly": "Zur Prüfung gesendet. Geplant jedes Jahr von {day} bis {until}."
   },
   "site": {
     "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",
@@ -647,8 +742,7 @@
       "since": "Entwurf seit {date}",
       "goesLive": "Geht online {date}",
       "all": "Alle Entwürfe in Inhalte",
-      "changesSince": "Unveröffentlichte Änderungen seit {date}",
-      "changesGoLive": "Änderungen gehen online {date}"
+      "changesSince": "Unveröffentlichte Änderungen seit {date}"
     }
   },
   "editor": {
@@ -1012,6 +1106,7 @@
       "no": "Nein",
       "none": "keine",
       "changed": "geändert",
+      "flag": "{label}: {on, select, yes {ja} other {nein}}",
       "items": "{count, plural, one {# Eintrag} other {# Einträge}}"
     },
     "upload": {
@@ -1030,7 +1125,6 @@
     "savedLikeLive": "Gespeichert. Es gleicht wieder der Fassung auf der Website.",
     "changesPublished": "Änderungen veröffentlicht.",
     "changesScheduled": "Geplant: Änderungen online ab {time}.",
-    "changesScheduleCleared": "Zeitplan aufgehoben. Die Änderungen bleiben gespeichert, aber noch nicht online.",
     "changesDiscarded": "Änderungen verworfen. Es gilt wieder die Fassung auf der Website."
   },
   "review": {
@@ -1044,7 +1138,6 @@
     "removeFromRelease": "Aus Release nehmen",
     "releaseApproved": "Release freigegeben. Auf der Website in etwa einer Minute.",
     "approve": "Freigeben",
-    "approveLater": "Für später freigeben…",
     "reject": "Ablehnen…",
     "rejectConfirm": "Ablehnen",
     "reason": "Warum? Das sieht, wer die Änderung vorgeschlagen hat.",
@@ -1331,7 +1424,8 @@
     "waiting": {
       "label": "Wartet auf dich",
       "more": "{count} weitere",
-      "inHistory": "Im Verlauf ansehen"
+      "inHistory": "Im Verlauf ansehen",
+      "open": "Öffnen"
     },
     "due": {
       "badge": "Fällig"

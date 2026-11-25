@@ -7,7 +7,7 @@ import { ref } from 'vue'
 import type { Locale } from '../src/index.ts'
 import type { Bundle, Schema } from '../src/internal.ts'
 import { agentRequest, withUrl } from '../src/nuxt/runtime/shared.ts'
-import { jobJsonLd, siteJsonLd } from '../src/basics/index.ts'
+import { jobJsonLd, siteJsonLd } from '../src/patterns/index.ts'
 import { BUNDLE_STATE, TODAY_STATE, useGinkoLang, useGinkoBreadcrumbs, useGinkoEntry, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
 import * as shim from './shims/imports.ts'
 import { i18nLocale, routePath, seoConfig, siteCountry, useState } from './shims/imports.ts'
@@ -161,7 +161,8 @@ describe('entry helpers', () => {
   })
 })
 
-// Events of the corpus on 2026-10-08: sommerfest is past (hidden), weinabend and martinigans are upcoming.
+// Events of the corpus on 2026-10-08: weinabend (16 Oct) and martinigans (11 Nov); sommerfest had ended, so the bundle
+// does not hold it (D111).
 function today(date: string) {
   useState<Partial<Record<Locale, Bundle>>>(BUNDLE_STATE).value = bundles
   useState<string>(TODAY_STATE).value = date
@@ -170,7 +171,7 @@ function today(date: string) {
 
 describe('collection composables', () => {
   test.each([
-    ['all visible, hidden one not counted', {}, ['weinabend', 'martinigans'], 2, 1],
+    ['all shown', {}, ['weinabend', 'martinigans'], 2, 1],
     ['order newest first', { order: 'when desc' }, ['martinigans', 'weinabend'], 2, 1],
     ['where on money', { where: { price: { gt: 4000 } } }, ['martinigans'], 1, 1],
     ['limit with page 2', { limit: 1, page: 2 }, ['martinigans'], 2, 2],
@@ -183,20 +184,56 @@ describe('collection composables', () => {
     expect(result.items[0]).toHaveProperty('url', `/veranstaltungen/${ids[0] === 'weinabend' ? 'weinabend-ebner' : 'martini-gansl'}`)
   })
 
-  test('useGinkoQuery follows a reactive query and a hidden entry comes back when it is current', () => {
-    today('2026-06-20')
+  // Wrong behaviour caught: a page from a cache still lists an entry after its last day (the reader's day decides).
+  test('useGinkoQuery follows a reactive query and drops an entry that ended by the reader\'s day', () => {
+    today('2026-10-08')
     const page = ref(1)
     const result = useGinkoQuery('events' as never, () => ({ limit: 1, page: page.value }))
-    expect(result.value.items.map((i: { id: string }) => i.id)).toEqual(['sommerfest'])
-    page.value = 3
+    expect(result.value.items.map((i: { id: string }) => i.id)).toEqual(['weinabend'])
+    page.value = 2
+    expect(result.value.items.map((i: { id: string }) => i.id)).toEqual(['martinigans'])
+    today('2026-10-17')
+    page.value = 1
     expect(result.value.items.map((i: { id: string }) => i.id)).toEqual(['martinigans'])
   })
 
-  test('useGinkoNeighbors skips the hidden entry: the first visible one has no prev', () => {
+  // Wrong behaviour caught: a page from a cache, read after the target's last day, still includes the target of a
+  // reference (only the queried collection was filtered). The restaurant has no reference, so the test adds one.
+  test('useGinkoQuery include leaves out a target that ended by the reader\'s day', () => {
+    const fields = siteSchema.bricks.notices!.fields
+    fields.event = { type: 'ref', to: 'events', label: 'Event' }
+    try {
+      const de = bundles.de!
+      const notices = { kind: 'collection' as const, items: [{ id: 'n', data: { text: 'Weinabend', event: 'weinabend' }, fallback: [] }] }
+      const run = (date: string) => {
+        useState<Partial<Record<Locale, Bundle>>>(BUNDLE_STATE).value = { de: { ...de, bricks: { ...de.bricks, notices } } }
+        useState<string>(TODAY_STATE).value = date
+        i18nLocale.value = 'de'
+        const [item] = useGinkoQuery('notices' as never, { include: ['event'] } as never).value.items as { data: { event: unknown } }[]
+        return item!.data.event
+      }
+      expect(run('2026-10-16')).toMatchObject({ id: 'weinabend' })
+      // The day after the event: the reference is not resolved, as for a target that is not there.
+      expect(run('2026-10-17')).toBe('weinabend')
+    } finally {
+      delete fields.event
+    }
+  })
+
+  test('useGinkoNeighbors: the first entry has no prev', () => {
     today('2026-10-08')
     const { prev, next } = useGinkoNeighbors('events' as never, 'weinabend').value as { prev?: unknown; next?: { id: string } }
     expect(prev).toBeUndefined()
     expect(next?.id).toBe('martinigans')
+  })
+
+  // Wrong behaviour caught: a page from a cache, read after weinabend's day, still links to it as the previous entry.
+  test('useGinkoNeighbors leaves out an entry that ended by the reader\'s day', () => {
+    today('2026-10-08')
+    const around = useGinkoNeighbors('events' as never, 'martinigans')
+    expect((around.value as { prev?: { id: string } }).prev?.id).toBe('weinabend')
+    today('2026-10-17')
+    expect(around.value).toEqual({ prev: undefined, next: undefined })
   })
 
   test('useGinkoNeighbors takes the order as { order }', () => {

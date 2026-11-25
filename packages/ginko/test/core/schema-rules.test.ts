@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import { plan } from '../../src/cli/plan.ts'
 import {
@@ -18,12 +19,12 @@ type Bricks = SiteInput['bricks']
 function site(fields: Fields = {}, over: Partial<SiteInput> = {}): SiteInput {
   return defineSite({
     site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
-    locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
-    bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }), ...fields }, max: 20, order: 'manual' }) },
+    locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
+    bricks: { menu: collection({ listing: { title: 'name' }, untranslated: 'fallback', label: 'Karte', fields: { name: f.text('Name', { max: 120 }), ...fields }, max: 20, order: 'manual' }) },
     ...over,
   })
 }
-const problemsOf = (input: SiteInput) => checkSchema(serializeSchema(input))
+const problemsOf = (input: SiteInput) => checkSchema(serializeSchema(input), statusRules)
 
 describe('1. number options must be finite', () => {
   it.each([
@@ -34,7 +35,7 @@ describe('1. number options must be finite', () => {
       const s = base()
       const [brick, name] = path.split('.')
       node(s, `bricks.${brick}.fields.${name}`)[key] = bad
-      expect(checkSchema(s), `${path}.${key} = ${bad}`).toContain(`${path}: ${key} must be a finite number.`)
+      expect(checkSchema(s, statusRules), `${path}.${key} = ${bad}`).toContain(`${path}: ${key} must be a finite number.`)
     }
   })
 
@@ -79,7 +80,7 @@ describe('2. values lost in serializeSchema', () => {
       ['column', site({ rows: column }), 'invalid column name'],
     ]
     for (const [what, input, word] of cases) {
-      const problems = checkSchema(serializeSchema(input))
+      const problems = checkSchema(serializeSchema(input), statusRules)
       expect(problems.join('\n'), `${what} ${key}`).toContain(`${word} “${key}”`)
     }
   })
@@ -87,7 +88,7 @@ describe('2. values lost in serializeSchema', () => {
   // Wrong behaviour caught: a brick named `page` or `file` would make `$page.menu` or `$file.<id>` in a text mean two things.
   it.each(['page', 'file'])('a brick named %s is refused: the name belongs to Markdown references', (key) => {
     const brick = single({ label: 'X', fields: { t: f.text('T', optional) } })
-    const problems = checkSchema(serializeSchema(site({}, { bricks: { ...site().bricks, ...Object.fromEntries([[key, brick]]) } as Bricks })))
+    const problems = checkSchema(serializeSchema(site({}, { bricks: { ...site().bricks, ...Object.fromEntries([[key, brick]]) } as Bricks })), statusRules)
     expect(problems.join('\n')).toContain(`The brick name “${key}” is reserved`)
   })
 })
@@ -136,7 +137,7 @@ describe('4. locales and currency', () => {
     [{ fr: 'fr-FR' }, ['languages: locale “fr” is not in locales.']],
     [{ de: 'de_AT' }, ['languages.de: invalid language “de_AT” (expected a canonical language tag such as “de-AT” or “en-US”).']],
   ])('languages %j', (languages, expected) => {
-    expect(checkSite(site({}, { languages }))).toEqual(expected)
+    expect(checkSite(site({}, { languages }), statusRules)).toEqual(expected)
   })
 
   it.each([
@@ -144,7 +145,7 @@ describe('4. locales and currency', () => {
     ['rgb(4,120,87)', ['seo.color: invalid colour “rgb(4,120,87)” (expected “#rrggbb” or “#rgb”).']],
     ['#047857ff', ['seo.color: invalid colour “#047857ff” (expected “#rrggbb” or “#rgb”).']],
   ])('seo.color %s', (color, expected) => {
-    expect(checkSite(site({}, { seo: { color } }))).toEqual(expected)
+    expect(checkSite(site({}, { seo: { color } }), statusRules)).toEqual(expected)
   })
 
   // Wrong behaviour caught: a platform with a path or plain http would send every content request to a wrong address,
@@ -154,7 +155,7 @@ describe('4. locales and currency', () => {
     ['https://cms.example.com/s/linde', ['platform: invalid address “https://cms.example.com/s/linde” (expected the Studio\'s https:// origin, such as “https://cms.example.com”; http:// only for localhost).']],
     ['http://cms.example.com', ['platform: invalid address “http://cms.example.com” (expected the Studio\'s https:// origin, such as “https://cms.example.com”; http:// only for localhost).']],
   ])('platform %s', (platform, expected) => {
-    expect(checkSite(site({}, { platform }))).toEqual(expected)
+    expect(checkSite(site({}, { platform }), statusRules)).toEqual(expected)
   })
 
   // Wrong behaviour caught: a typo in seo.noindex keeps the page in the sitemap and in search, without a word.
@@ -162,7 +163,7 @@ describe('4. locales and currency', () => {
     [['home'], []],
     [['thanks'], ['seo.noindex: “thanks” is not a key of pages.']],
   ])('seo.noindex %j', (noindex, expected) => {
-    expect(checkSite(site({}, { seo: { noindex } }))).toEqual(expected)
+    expect(checkSite(site({}, { seo: { noindex } }), statusRules)).toEqual(expected)
   })
 })
 
@@ -193,7 +194,7 @@ describe('4b. translatable labels', () => {
   })
   it('checks labels of bricks, options and tasks too', () => {
     const input = site({ kind: f.choice('Art', { options: [{ value: 'a', label: { fr: 'A' } }] }) }, {
-      bricks: { menu: collection({ label: { fr: 'Menu' }, fields: { name: f.text('Name') }, max: 5, order: 'manual', tasks: [{ id: 'new', kind: 'create', label: { fr: 'Nouveau' } }] }) },
+      bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: { fr: 'Menu' }, fields: { name: f.text('Name') }, max: 5, order: 'manual', tasks: [{ id: 'new', kind: 'create', label: { fr: 'Nouveau' } }] }) },
     })
     expect(problemsOf(input)).toEqual(['menu.label: label needs a text in the main language “de” or in English.', 'menu.new.label: label needs a text in the main language “de” or in English.'])
   })
@@ -226,7 +227,8 @@ describe('5. money options stay within SPEC 2.2', () => {
 })
 
 describe('6. routes and pages', () => {
-  const news = (de: string, en = '/en/news/[slug]') => collection({
+  const news = (de: string, en = '/en/news/[slug]') => collection({ untranslated: 'hide',
+    listing: { title: 'title' },
     // Invalid routes on purpose: the schema check must report what the type would reject.
     label: 'News', fields: { title: f.text('Titel', { max: 80 }), slug: f.slug('Adresse', { from: 'title' }) }, max: 5, order: 'manual', route: { de, en } as Record<string, RouteTemplate>,
   })
@@ -361,19 +363,21 @@ describe('9. value rules (F12)', () => {
 // Phase 13 (CONTENT.md): file bricks and their markdown field.
 describe('file bricks', () => {
   const md = { body: f.markdown('Text') }
-  const files = (fields: Fields, source?: 'files') => site({}, { bricks: { docs: collection({ label: 'Doku', source, fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }) } })
+  const files = (fields: Fields, source?: 'files', body?: string) => site({}, { bricks: { docs: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Doku', source, body: body as never, fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }) } })
   const list = (cell: Fields[string]) => ({ rows: f.list('Zeilen', { itemLabel: 'Zeile', fields: { cell }, max: 5 }) })
 
   it.each([
-    ['two markdown fields in a file brick', files({ ...md, intro: f.markdown('Intro') }, 'files'), 'docs: at most one markdown field (the text of the file).'],
-    ['markdown in a list of a file brick', files(list(f.markdown('Zelle')), 'files'), 'docs: in file bricks, markdown is only allowed as the text of the file, not in a list.'],
+    ['two markdown fields in a file brick', files({ ...md, intro: f.markdown('Intro') }, 'files', 'body'), "docs.intro: in a file brick, a markdown field is the text of the file. Write `body: 'intro'` (one markdown field per file brick)."],
+    ['a markdown field of a file brick without body', files(md, 'files'), "docs.body: in a file brick, a markdown field is the text of the file. Write `body: 'body'` (one markdown field per file brick)."],
+    ['body naming a text field', files(md, 'files', 'title'), 'docs.body: “title” is not a markdown field of this brick.'],
+    ['markdown in a list of a file brick', files(list(f.markdown('Zelle')), 'files'), 'docs: in file bricks, markdown is only allowed as the text of the file, not in a list or a rows field.'],
   ])('%s is refused', (_, input, problem) => {
     expect(problemsOf(input)).toContain(problem)
   })
 
   // Wrong behaviour caught: the old rule "markdown only in file bricks" comes back and blocks editable Markdown in the platform.
   it.each([
-    ['one markdown field in a file brick', files(md, 'files')],
+    ['one markdown field in a file brick, named by body', files(md, 'files', 'body')],
     ['markdown in a platform brick', files(md)],
     ['markdown in a list of a platform brick', files(list(f.markdown('Zelle')))],
   ])('%s is fine', (_, input) => {
@@ -387,14 +391,14 @@ describe('file bricks', () => {
     ['a ref in a list row', { links: f.list('Links', { itemLabel: 'Link', fields: { page: f.ref('Seite', { to: 'docs' }) }, max: 5 }) }, 'notes.links.page'],
   ])('%s from a platform brick to a file brick is refused', (_, fields, path) => {
     const input = site({}, { bricks: {
-      docs: collection({ label: 'Doku', source: 'files', fields: { title: f.text('Titel'), ...md }, max: 50, order: 'manual' }),
-      notes: collection({ label: 'Notizen', fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }),
+      docs: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Doku', source: 'files', fields: { title: f.text('Titel'), ...md }, max: 50, order: 'manual' }),
+      notes: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Notizen', fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }),
     } })
     expect(problemsOf(input)).toContain(`${path}: points at “docs”, which comes from files; a brick on the platform can only point at platform bricks. Keep “docs” on the platform or move “notes” to files.`)
   })
 
   it('the platform never sees a file brick', async () => {
-    const input = site({}, { bricks: { ...site().bricks, docs: collection({ label: 'Doku', source: 'files', fields: { title: f.text('Titel'), ...md }, max: 50, order: 'manual' }) } })
+    const input = site({}, { bricks: { ...site().bricks, docs: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Doku', source: 'files', fields: { title: f.text('Titel'), ...md }, max: 50, order: 'manual' }) } })
     expect(Object.keys(platformSchema(serializeSchema(input)).bricks)).toEqual(['menu'])
     const state = { site: 'linde', schema: serializeSchema(site()), schemaRev: 1, contentRev: 1, migrations: [], entries: [] }
     expect((await plan(state, input)).schema.bricks.docs).toBeUndefined()
@@ -437,7 +441,7 @@ describe('markdown field rules', () => {
 // Wrong behaviour caught: a site whose config (or stored schema, from 0.12 or older) still says `drafts` cannot be
 // checked or released after the option was removed (SPEC 15: every collection keeps changes until published).
 describe('drafts, no option since 0.13', () => {
-  const menu = { ...collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }), drafts: false }
+  const menu = { ...collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }), drafts: false }
   it('a config that still says drafts passes the check, and its schema leaves the key out', () => {
     const input = site({}, { bricks: { menu: menu as never } })
     expect(problemsOf(input)).toEqual([])
@@ -447,7 +451,7 @@ describe('drafts, no option since 0.13', () => {
   it('a stored schema with drafts passes checkSchema', () => {
     const stored = serializeSchema(site({}, { bricks: { menu: menu as never } }))
     ;(stored.bricks.menu as { drafts?: boolean }).drafts = false
-    expect(checkSchema(stored)).toEqual([])
+    expect(checkSchema(stored, statusRules)).toEqual([])
   })
 })
 
@@ -469,14 +473,14 @@ describe('week tokens', () => {
   })
 
   // Wrong behaviour caught: the week is not stored on the schema, so server, Studio and site disagree about the first day.
-  it('stores the week of the main language, with firstDayOfWeek as override', () => {
-    expect(serializeSchema(site({}, { languages: { de: 'en-US' } })).week).toEqual({ firstDay: 7, weekend: [6, 7] })
-    expect(serializeSchema(site({}, { languages: { de: 'de-AT' }, firstDayOfWeek: 6 })).week).toEqual({ firstDay: 6, weekend: [6, 7] })
+  it('stores the week as the site states it, and none when it states none', () => {
+    expect(serializeSchema(site({}, { week: { firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] } })).week).toEqual({ firstDay: 'su', workdays: ['su', 'mo', 'tu', 'we', 'th', 'fr'] })
+    expect('week' in serializeSchema(site({}, { week: undefined }))).toBe(false)
   })
 })
 
 describe('defaults in the stored form', () => {
-  const stored = (fields: Fields, tasks?: unknown) => serializeSchema(site({}, { bricks: { menu: collection({ label: 'Karte', fields, max: 20, order: 'manual', tasks: tasks as never }) } })).bricks.menu!
+  const stored = (fields: Fields, tasks?: unknown) => serializeSchema(site({}, { bricks: { menu: collection({ untranslated: 'fallback', label: 'Karte', listing: { title: Object.keys(fields)[0]! }, fields, max: 20, order: 'manual', tasks: tasks as never }) } })).bricks.menu!
   // Wrong behaviour caught: a plain default of a translatable field is stored as a string and fails the release check,
   // or a preset's `{ de, en }` text keeps locales the site does not have.
   it.each([
@@ -501,33 +505,46 @@ describe('defaults in the stored form', () => {
     const components = defineComponents({ box: { kind: 'block', label: 'Box', describe: 'Box', props: { title: f.text('T', { optional: true, default: 'Hallo' }) } } })
     const input = site({}, { components })
     expect(serializeSchema(input).components!.box!.props.title!.default).toEqual({ de: 'Hallo' })
-    expect(checkSite(input)).toEqual([])
+    expect(checkSite(input, statusRules)).toEqual([])
   })
 })
 
 describe('brick describe', () => {
   // Wrong behaviour caught: a per-language describe without the main language shows an empty text in the Studio.
   it('is checked like a label', () => {
-    const input = site({}, { bricks: { menu: collection({ label: 'Karte', describe: { fr: 'Carte' }, fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }) } })
+    const input = site({}, { bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', describe: { fr: 'Carte' }, fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }) } })
     expect(problemsOf(input)).toEqual(['menu.describe: label needs a text in the main language “de” or in English.'])
   })
 })
 
-describe('visible', () => {
-  const withVisible = (visible: unknown) => site({}, {
-    bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }), until: f.date('Bis', optional), when: f.daterange('Wann', optional) }, max: 20, order: 'manual', visible: visible as never }) },
+describe('showUntil', () => {
+  const withShowUntil = (showUntil: unknown) => site({}, {
+    bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name', { max: 120 }), until: f.date('Bis', optional), when: f.daterange('Wann', optional) }, max: 20, order: 'manual', showUntil: showUntil as never }) },
   })
-  // Wrong behaviour caught: a mode or option name from before 0.4 is stored and every entry shows for ever.
+  // Wrong behaviour caught: an option name of the old `visible` shape is stored and every entry shows for ever.
   it.each([
-    [{ mode: 'until', field: 'until', days: 6, deleteExpired: true }, []],
-    [{ mode: 'until', field: 'when' }, []],
-    [{ mode: 'active', field: 'until' }, ['menu: visible.mode must be “always” or “until”.']],
-    [{ mode: 'until', field: 'name' }, ['menu: visibility needs a date or daterange field.']],
-    [{ mode: 'until', field: 'until', autoRemoveExpired: true }, ['menu.visible: unknown property “autoRemoveExpired”.']],
-    [{ mode: 'always', field: 'until' }, ['menu: visible: “always” takes no other options.']],
-    [{ mode: 'until', field: 'until', deleteExpired: 'yes' }, ['menu: visibility: deleteExpired must be true or false.']],
-  ])('%j', (visible, problems) => {
-    expect(problemsOf(withVisible(visible))).toEqual(problems)
+    [{ field: 'until', plusDays: 6, thenDelete: true }, []],
+    [{ field: 'when' }, []],
+    [{ mode: 'until', field: 'until' }, ['menu.showUntil: unknown property “mode”.']],
+    [{ field: 'until', days: 6 }, ['menu.showUntil: unknown property “days”.']],
+    [{ field: 'name' }, ['menu.showUntil needs a date or daterange field.']],
+    [{ field: 'until', plusDays: -1 }, ['menu.showUntil: plusDays must be a whole number from 0.']],
+    [{ field: 'until', thenDelete: 'yes' }, ['menu.showUntil: thenDelete must be true or false.']],
+    ['until', ['menu: showUntil must be an object { field, plusDays?, thenDelete? }.']],
+  ])('%j', (showUntil, problems) => {
+    expect(problemsOf(withShowUntil(showUntil))).toEqual(problems)
+  })
+
+  // Wrong behaviour caught: a rule names a retired date field, which no form fills any more, so every entry has no end
+  // (showUntil) or no day it was published (publishedOn).
+  it.each([
+    ['showUntil', { showUntil: { field: 'old' } }, ['menu.showUntil needs a date or daterange field.']],
+    ['publishedOn', { publishedOn: 'old' }, ["menu.publishedOn: “old” is no date field of the brick. Name the date field that holds the day an entry was published, such as 'date'."]],
+  ])('%s refuses a retired date field', (_, rule, problems) => {
+    expect(problemsOf(site({}, {
+      retired: { 'menu.old': { drop: true } },
+      bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name', { max: 120 }), old: f.date('Alt', optional) }, max: 20, order: 'manual', ...rule as object }) },
+    }))).toEqual(problems)
   })
 })
 
@@ -536,8 +553,8 @@ describe('plans (weeks planned ahead)', () => {
   const planner = (plans: { brick: string; field: string }) => site({}, {
     bricks: {
       lunch: week,
-      other: collection({ label: 'Andere', fields: { name: f.text('Name', { max: 20 }) }, max: 3, order: 'manual' }),
-      plan: collection({ label: 'Plan', fields: { weekOf: f.date('Woche'), note: f.text('Hinweis', { max: 20 }) }, max: 3, order: 'manual', plans: plans as never }),
+      other: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Andere', fields: { name: f.text('Name', { max: 20 }) }, max: 3, order: 'manual' }),
+      plan: collection({ untranslated: 'fallback', listing: { title: 'note' }, label: 'Plan', fields: { weekOf: f.date('Woche'), note: f.text('Hinweis', { max: 20 }) }, max: 3, order: 'manual', plans: plans as never }),
     },
   })
 
@@ -552,37 +569,21 @@ describe('plans (weeks planned ahead)', () => {
   })
 })
 
-describe('planned (a change from a date on)', () => {
-  const dish = (planned: unknown, priceTask: readonly string[] = ['price', 'nextPrice', 'priceFrom']) => site({}, {
-    bricks: {
-      menu: collection({
-        label: 'Karte', max: 20, order: 'manual',
-        fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), nextPrice: f.money('Geplanter Preis', optional), priceFrom: f.date('Gilt ab', optional), note: f.text('Hinweis', { max: 20, optional: true }), old: f.text('Alt', { max: 20, optional: true }) },
-        planned: planned as never,
-        tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', pick: true, fields: priceTask as never }],
-      }),
-    },
-  })
-  const rule = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
-
-  // Wrong behaviour caught: a task changes the price without seeing the planned one, so the new price is replaced on
-  // the plan's date and nobody saw it coming; or a rule naming fields that cannot hold a plan ships and never applies.
-  it.each([
-    ['a valid rule', rule, undefined, []],
-    ['a price task blind to its plan', rule, ['price'], ['menu.price: the task changes “price”, so it must also show its plan “nextPrice” and “priceFrom”.']],
-    ['a missing field', { ...rule, next: 'nope' }, undefined, ['menu: planned.next names “nope”, which is not a field of the brick.']],
-    ['a next of another type', { ...rule, next: 'note' }, ['price', 'note', 'priceFrom'], ['menu: planned.next “note” needs the type of “price” (money).']],
-    ['a from that is not a date', { ...rule, from: 'note' }, ['price', 'nextPrice', 'note'], ['menu: planned.from “note” must be a date field.']],
-    ['a required next', { ...rule, next: 'price', field: 'nextPrice' }, undefined, ['menu: planned.next “price” and planned.from “priceFrom” must be optional.']],
-    ['one field twice', { ...rule, next: 'price' }, undefined, ['menu: planned needs three different fields.', 'menu: planned.next “price” and planned.from “priceFrom” must be optional.']],
-  ])('%s', (_name, planned, priceTask, expected) => {
-    expect(problemsOf(dish(planned, priceTask))).toEqual(expected)
+describe('planned, a brick key before dated changes', () => {
+  // Wrong behaviour caught: a stored schema that still has `planned` gets only "unknown key" (or passes), and the site
+  // owner does not learn that the field's plan now is a dated change with `timeline` and `when`.
+  it('names the way to dated changes', () => {
+    const schema = base()
+    Object.assign(schema.bricks.menu!, { planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' } })
+    expect(checkSchema(schema, statusRules)).toEqual([
+      "menu.planned: a planned change is a dated change now. Remove planned and its two fields, and write `timeline: { public: ['<field>'] }` on the brick and `when: { from: 'ask' }` on the task that changes the field.",
+    ])
   })
 })
 
 describe('approvals (SPEC 17)', () => {
   const withTasks = (needsApproval: unknown, over: Partial<SiteInput> = {}) => site({}, {
-    bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual', tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', needsApproval } as never] }) },
+    bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual', tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', needsApproval } as never] }) },
     ...over,
   })
 
@@ -590,7 +591,7 @@ describe('approvals (SPEC 17)', () => {
     const schema = serializeSchema(withTasks(true, { agents: { review: true, description: 'Karte' } }))
     expect(schema.bricks.menu!.tasks).toEqual([{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', needsApproval: true }])
     expect(schema.agents).toEqual({ review: true })
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
   })
 
   it('a schema without the flags has no agents key', () => {
@@ -604,13 +605,13 @@ describe('approvals (SPEC 17)', () => {
   it.each([['yes', ['agents.review must be true or false.']], [undefined, []]])('agents.review %j', (review, expected) => {
     const s = serializeSchema(site())
     ;(s as unknown as Record<string, unknown>).agents = { review }
-    expect(checkSchema(s)).toEqual(expected)
+    expect(checkSchema(s, statusRules)).toEqual(expected)
   })
 
   it('an unknown agents property is refused', () => {
     const s = serializeSchema(site())
     ;(s as unknown as Record<string, unknown>).agents = { review: true, speed: 1 }
-    expect(checkSchema(s)).toEqual(['agents: unknown property “speed”.'])
+    expect(checkSchema(s, statusRules)).toEqual(['agents: unknown property “speed”.'])
   })
 })
 
@@ -618,7 +619,7 @@ describe('ref fields (SPEC 2.2)', () => {
   const withRef = (field: Record<string, unknown>) => {
     const s = base()
     node(s, 'bricks.menu.fields').side = { type: 'ref', label: 'Beilage', optional: true, ...field }
-    return checkSchema(s)
+    return checkSchema(s, statusRules)
   }
 
   // Wrong behaviour caught: a ref to a missing brick or a single brick is released, so no entry could ever be picked.
@@ -675,11 +676,11 @@ describe('askAgainWhen', () => {
 describe('group and layout (display only)', () => {
   it('serializeSchema keeps them and the schema stays valid', () => {
     const input = site({ note: f.longtext('Notiz', { group: { de: 'Mehr', en: 'More' } }) }, {
-      bricks: { menu: collection({ label: 'Karte', layout: 'tabs', fields: { name: f.text('Name', { group: 'Basis' }) }, max: 20, order: 'manual' }) },
+      bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', layout: 'tabs', fields: { name: f.text('Name', { group: 'Basis' }) }, max: 20, order: 'manual' }) },
     })
     const schema = serializeSchema(input)
     expect(schema.bricks.menu).toMatchObject({ layout: 'tabs', fields: { name: { group: 'Basis' } } })
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
   })
   it.each([
     ['empty group', { group: '' }, 'menu.note.group: label is empty.'],
@@ -689,7 +690,7 @@ describe('group and layout (display only)', () => {
     const problems = problemsOf(site({ note: f.longtext('Notiz', extra as never) })); expect(problems, JSON.stringify(problems)).toContain(problem)
   })
   it('rejects an unknown layout', () => {
-    const input = site({}, { bricks: { menu: collection({ label: 'Karte', layout: 'columns' as never, fields: { name: f.text('Name') }, max: 20, order: 'manual' }) } })
+    const input = site({}, { bricks: { menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', layout: 'columns' as never, fields: { name: f.text('Name') }, max: 20, order: 'manual' }) } })
     expect(problemsOf(input)).toContain('menu: layout must be “sections” or “tabs”.')
   })
 })
@@ -712,10 +713,10 @@ describe('create task fields', () => {
   const dish = (fields: unknown, prefill?: unknown) => site({}, {
     retired: { 'menu.old': { drop: true } },
     bricks: {
-      menu: collection({
+      menu: collection({ untranslated: 'fallback',
+        listing: { title: 'name' },
         label: 'Karte', max: 20, order: 'manual',
-        fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), nextPrice: f.money('Neuer Preis', { optional: true }), priceFrom: f.date('Preis ab', { optional: true }), slug: f.slug('Adresse', { from: 'name' }), onMenu: f.boolean('Auf der Karte', { optional: true, default: true }), note: f.text('Hinweis', { max: 20, optional: true }), old: f.text('Alt', { max: 20, optional: true }) },
-        planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
+        fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), slug: f.slug('Adresse', { from: 'name' }), onMenu: f.boolean('Auf der Karte', { optional: true, default: true }), note: f.text('Hinweis', { max: 20, optional: true }), old: f.text('Alt', { max: 20, optional: true }) },
         tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', fields: fields as never, ...(prefill ? { prefill: prefill as never } : {}) }],
       }),
     },
@@ -729,8 +730,6 @@ describe('create task fields', () => {
     ['an unknown field', ['name', 'price', 'nope'], undefined, ['menu.add.fields: “nope” is not a field of this brick.']],
     ['a required field left out', ['name'], undefined, ['menu.add.fields: “price” is required and has no default, so the task must ask for it.']],
     ['the slug', ['name', 'price', 'slug'], undefined, ['menu.add.fields: “slug” is the address and is made from “name”, so the task cannot ask for it.']],
-    ['the planned next value', ['name', 'price', 'nextPrice'], undefined, ['menu.add.fields: “nextPrice” is the plan of a planned change, so the task cannot ask for it.']],
-    ['the planned from date', ['name', 'price', 'priceFrom'], undefined, ['menu.add.fields: “priceFrom” is the plan of a planned change, so the task cannot ask for it.']],
     ['a retired field', ['name', 'price', 'old'], undefined, ['menu.add.fields: “old” is retired, so the task cannot ask for it.']],
     ['a required field that the prefill sets', ['name'], { price: { amount: 500 } }, []],
   ])('%s', (_name, fields, prefill, expected) => {
@@ -747,23 +746,25 @@ describe('status (Today page status line)', () => {
     ['age on a daterange', set('events', { age: 'when' }), []],
     ['missing on an optional field without a default', set('events', { missing: 'image' }), []],
     ['count on a collection with visible until', set('notices', { count: true }), []],
-    ['hours on the hours single', set('hours', { hours: true }), []],
-    ['hours linked to the hour plans', set('hours', { hours: { plans: 'hourPlans' } }), []],
-    ['hours linked to a missing brick', set('hours', { hours: { plans: 'seasons' } }), ['hours: status.hours.plans names “seasons”, which is not a live brick of the site.']],
-    ['hours linked to a collection that is not hour plans', set('hours', { hours: { plans: 'events' } }), ['hours: status.hours.plans names “events”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).']],
-    ['hours linked to hour plans without yearly', (s) => { node(s, 'bricks.hourPlans.fields.yearly').type = 'text'; set('hours', { hours: { plans: 'hourPlans' } })(s) }, ['hours: status.hours.plans names “hourPlans”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).']],
-    ['hours with a link of another form', set('hours', { hours: 'hourPlans' }), ['hours: status.hours must be true or { plans: \'<key of the hour plans>\' }.']],
+    ['the opening-hours rule on the hours single', set('hours', { rule: 'opening-hours' }), []],
+    ['the rule linked to the hour plans', set('hours', { rule: 'opening-hours', plans: 'hourPlans' }), []],
+    ['a rule Ginko does not know', set('hours', { rule: 'opening-times' }), ['hours: status.rule “opening-times” is no rule Ginko knows. Known rules: opening-hours.']],
+    ['the rule linked to a missing brick', set('hours', { rule: 'opening-hours', plans: 'seasons' }), ['hours: status.plans names “seasons”, which is not a live brick of the site.']],
+    ['the rule linked to a collection without the plans fields', set('hours', { rule: 'opening-hours', plans: 'events' }), ['hours: status.plans names “events”, which is not a collection with the fields the rule “opening-hours” needs (week: a rows field of weekdays, from: a date field, yearly: a boolean field).']],
+    ['the rule linked to hour plans without yearly', (s) => { node(s, 'bricks.hourPlans.fields.yearly').type = 'text'; set('hours', { rule: 'opening-hours', plans: 'hourPlans' })(s) }, ['hours: status.plans names “hourPlans”, which is not a collection with the fields the rule “opening-hours” needs (week: a rows field of weekdays, from: a date field, yearly: a boolean field).']],
+    ['the old stored shape', set('hours', { hours: true }), ["hours: status must be { rule: '<name>' } or { rule: '<name>', plans: '<key of a collection>' }. Known rules: opening-hours."]],
+    ['a link of another form', set('hours', { rule: 'opening-hours', plans: 1 }), ["hours: status must be { rule: '<name>' } or { rule: '<name>', plans: '<key of a collection>' }. Known rules: opening-hours."]],
     ['next on a missing field', set('events', { next: 'date' }), ['events: status.next names “date”, which is not a field of the brick.']],
     ['age on a text field', set('events', { age: 'title' }), ['events: status.age needs a date or daterange field, “title” is a text field.']],
     ['missing on a required field', set('events', { missing: 'title' }), ['events: status.missing needs an optional field without a default, “title” is not.']],
     ['missing on an optional field with a default', (s) => { node(s, 'bricks.events.fields.soldOut').default = false; set('events', { missing: 'soldOut' })(s) }, ['events: status.missing needs an optional field without a default, “soldOut” is not.']],
-    ['count without visible until', set('menu', { count: true }), ['menu: status { count: true } needs visible: { mode: \'until\' }.']],
+    ['count without showUntil', set('menu', { count: true }), ['menu: status { count: true } needs showUntil.']],
     ['count that is not true', set('notices', { count: 1 }), ['notices: status.count must be true.']],
     ['two kinds at once', set('events', { next: 'when', age: 'when' }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
-    ['hours on a collection', set('events', { hours: true }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
-    ['next on a single', set('hours', { next: 'closedOn' }), ['hours: status must be { hours: true } or { hours: { plans } }.']],
-    ['hours on a single without the hours fields', set('contact', { hours: true }), ['week', 'exceptions', 'closedOn', 'holidays'].map((name) => `contact: status { hours } needs the live field “${name}”.`)],
-    ['hours with closedOn of another type', (s) => { node(s, 'bricks.hours.fields.closedOn').type = 'text'; set('hours', { hours: true })(s) }, ['hours: status { hours } needs “closedOn” to be a date field.']],
+    ['a rule on a collection', set('events', { rule: 'opening-hours' }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
+    ['next on a single', set('hours', { next: 'closedOn' }), ["hours: status must be { rule: '<name>' } or { rule: '<name>', plans: '<key of a collection>' }. Known rules: opening-hours."]],
+    ['the rule on a single without its fields', set('contact', { rule: 'opening-hours' }), [['week', 'a rows field of weekdays'], ['exceptions', 'a list field'], ['closedOn', 'a date field'], ['holidays', 'a choice field']].map(([name, need]) => `contact: status.rule “opening-hours” needs the live field “${name}” (${need}).`)],
+    ['the rule with closedOn of another type', (s) => { node(s, 'bricks.hours.fields.closedOn').type = 'text'; set('hours', { rule: 'opening-hours' })(s) }, ['hours: status.rule “opening-hours” needs the live field “closedOn” (a date field).']],
     ['a field retired while the status still names it', (s) => {
       set('events', { missing: 'image' })(s)
       node(s, 'bricks.events.fields.image').retired = true
@@ -772,7 +773,7 @@ describe('status (Today page status line)', () => {
   ])('%s', (_name, mutate, expected) => {
     const s = base()
     mutate(s)
-    const problems = checkSchema(s).filter((p) => p.includes('status'))
+    const problems = checkSchema(s, statusRules).filter((p) => p.includes('status'))
     expect(problems).toEqual(expected)
   })
 
@@ -780,7 +781,7 @@ describe('status (Today page status line)', () => {
   it('collection() and single() carry the status into the stored schema', () => {
     const input = site({ until: f.date('Bis', optional) }, {
       bricks: {
-        menu: collection({ label: 'Karte', fields: { name: f.text('Name'), until: f.date('Bis', optional) }, max: 20, order: 'manual', visible: { mode: 'until', field: 'until' }, status: { count: true } }),
+        menu: collection({ untranslated: 'fallback', listing: { title: 'name' }, label: 'Karte', fields: { name: f.text('Name'), until: f.date('Bis', optional) }, max: 20, order: 'manual', showUntil: { field: 'until' }, status: { count: true } }),
       },
     })
     expect(serializeSchema(input).bricks.menu!.status).toEqual({ count: true })

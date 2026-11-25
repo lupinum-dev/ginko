@@ -1,4 +1,4 @@
-import { ALT_INVISIBLE, ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isShown, isTranslatable, MAX_CENTS } from './fields.ts'
+import { ALT_INVISIBLE, ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isShown, isTranslatable, MAX_CENTS, rowKeysOf } from './fields.ts'
 import { fileRefUses } from './file-refs.ts'
 import { parseMarkdown } from './markdown.ts'
 import { labelOf } from './labels.ts'
@@ -6,7 +6,7 @@ import { bare, DEFAULT_LOCALE, msg, type CoreKey, type Described, type Msg } fro
 import { roundedMb, type UploadType } from './uploads.ts'
 import { SLUG_PATTERN } from './slug.ts'
 import { weekStartField } from './stale.ts'
-import { DEFAULT_WEEK, startOfWeek } from './time.ts'
+import { startOfWeek, weekInfo, type SiteWeek } from './time.ts'
 import type { Brick, Field, FileField, Fields, Issue, Json, Locale, MarkdownField, Schema } from './types.ts'
 
 /**
@@ -15,15 +15,36 @@ import type { Brick, Field, FileField, Fields, Issue, Json, Locale, MarkdownFiel
  */
 export const SHAPE_CODES: ReadonlySet<string> = new Set(['TYPE', 'NOT_OBJECT', 'NOT_LOCALIZED', 'UNKNOWN_FIELD', 'UNKNOWN_LOCALE', 'UNKNOWN_BRICK'])
 
+/**
+ * Codes a `draft` check only warns about (D115): a value must be well formed to be stored; it need not be complete or
+ * good enough for visitors. So a missing value, a length, a format, a count, a range, a step, a choice that is no option,
+ * a reference that leads nowhere and a text the Markdown profile does not allow only warn. Every other code is refused,
+ * a code added later too, until it is listed here: a date that is no date, a time that is no time, a row without a proper
+ * or with a doubled `_id`, an address that is no address, a picture reference to a file that is no picture.
+ */
+const DRAFT_WARNINGS: ReadonlySet<string> = new Set([
+  'REQUIRED', 'TOO_LONG', 'FORMAT', 'RANGE', 'STEP', 'DATE_ORDER', 'CHOICE', 'TOO_MANY', 'TOO_FEW', 'REF_MISSING',
+  'FILE_REF_MISSING', 'ALT_REQUIRED', 'MARKDOWN',
+])
+/**
+ * `DUPLICATE` is one code for three things; a draft only warns about a doubled value in a list's `unique` column
+ * (`duplicateRowValue`), which is about content, and refuses the two that make a value no set (a choice or an entry
+ * twice in one field). Told apart by the issue's message key.
+ */
+const warnsInDraft = (i: Issue) => DRAFT_WARNINGS.has(i.code) || (i.code === 'DUPLICATE' && i.key === 'issues.duplicateRowValue')
+const refusedInDraft = (i: Issue) => !warnsInDraft(i)
+
 export interface ValidateOptions {
   /**
    * create/release: everything strict. patch: only paths under `changed` are errors, the rest are warnings.
-   * restore (backup import, never a Studio path): only SHAPE_CODES are errors, the rest are warnings.
+   * restore (backup import, seed; never a Studio path): only SHAPE_CODES are errors, the rest are warnings.
+   * draft (a draft without a time at create, save, copy, undo, revert and in a release, D115): only what is not well
+   * formed is an error; what is missing or not good enough for visitors is a warning (DRAFT_WARNINGS).
    * The rules across fields (`ruleIssues`: a plan set by halves, a week that does not start on its first day) bind
    * what is written now: errors in create, and in patch when the save touches one of their fields. Stored data that
-   * breaks one (release, restore) only warns.
+   * breaks one (release, restore, draft) only warns.
    */
-  mode: 'create' | 'patch' | 'release' | 'restore'
+  mode: 'create' | 'patch' | 'release' | 'restore' | 'draft'
   /** Leaf paths changed by a patch, e.g. `closedNote` or `days.k3Fd9aZ0qx.dish`. */
   changed?: ReadonlySet<string>
   /** Whether entry `id` exists in collection brick `brick`. Without it, referenced IDs are not looked up. */
@@ -57,7 +78,7 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
   const brick = Object.hasOwn(schema.bricks, brickKey) ? schema.bricks[brickKey] : undefined
   if (!brick) return { errors: [issue('', 'UNKNOWN_BRICK', 'unknownBrick', { brick: brickKey })], warnings: [] }
   const texts: MarkdownLeaf[] = []
-  const issues = checkFields(brick.fields, data, '', { locales: schema.locales, main: schema.locales[0]!, texts, refs: opts.refs, fileAlt: opts.fileAlt })
+  const issues = checkFields(brick.fields, data, '', { locales: schema.locales, main: schema.locales[0]!, week: schema.week, texts, refs: opts.refs, fileAlt: opts.fileAlt })
   for (const { field, text, path, locale } of texts) {
     const { problemMessages: problems, value } = await parseMarkdown(text, { profile: effectiveProfile(field), components: schema.components })
     const label = shown(field, schema.locales[0]!)
@@ -70,6 +91,7 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
   }
   const rules = ruleIssues(schema, brick, data)
   if (opts.mode === 'restore') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: [...issues.filter((i) => !SHAPE_CODES.has(i.code)), ...rules.map((r) => r.issue)] }
+  if (opts.mode === 'draft') return { errors: issues.filter(refusedInDraft), warnings: [...issues.filter((i) => !refusedInDraft(i)), ...rules.map((r) => r.issue)] }
   if (opts.mode === 'release') return { errors: issues, warnings: rules.map((r) => r.issue) }
   if (opts.mode === 'create') return { errors: [...issues, ...rules.map((r) => r.issue)], warnings: [] }
   const changed = opts.changed ?? new Set<string>()
@@ -92,33 +114,37 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
 interface RuleIssue { issue: Issue; touches: string[] }
 
 /**
- * The rules that span fields of a brick: a planned change (`planned`) has both its value and its date, or neither (a
- * value without a date never applies, a date without a value changes nothing); the field that holds a week start
+ * The rules that span fields of a brick: times in order (`after`); the field that holds a week start
  * (`weekStartField`) holds the first day of a week of the site (a week stored as a Thursday never shows).
  */
 function ruleIssues(schema: Schema, brick: Brick, data: unknown): RuleIssue[] {
   if (!isRecord(data)) return []
   const out: RuleIssue[] = []
   const main = schema.locales[0]!
-  const plan = brick.planned
-  if (plan) {
-    const set = (key: string) => data[key] !== undefined && data[key] !== null
-    const missing = set(plan.next) && !set(plan.from) ? plan.from : set(plan.from) && !set(plan.next) ? plan.next : undefined
-    const field = missing && Object.hasOwn(brick.fields, missing) ? brick.fields[missing] : undefined
-    if (missing && field) out.push({ issue: issue(missing, 'REQUIRED', 'fieldMissing', { label: shown(field, main) }), touches: [plan.next, plan.from] })
-  }
-  // An end time after its start (`after`), e.g. a session from 10:00 to 11:30. Equal times are an empty slot.
+  out.push(...timeOrderIssues(brick.fields, data, '', main))
+  // The same inside every row of a rows field: its columns may name each other in `after`.
   for (const [name, field] of Object.entries(brick.fields)) {
-    if (field.type !== 'time' || !field.after) continue
-    const [start, end] = [data[field.after], data[name]]
-    if (typeof start === 'string' && typeof end === 'string' && timePattern.test(start) && timePattern.test(end) && end <= start) {
-      out.push({ issue: issue(name, 'TIME_ORDER', 'timeOrder', { start: shown(brick.fields[field.after]!, main), end: shown(field, main) }), touches: [field.after, name] })
-    }
+    const rows = data[name]
+    if (field.type !== 'rows' || !isRecord(rows)) continue
+    for (const [key, row] of Object.entries(rows)) if (isRecord(row)) out.push(...timeOrderIssues(field.of, row, `${name}.${key}.`, main))
   }
   const week = weekStartField(brick)
   const start = week ? data[week] : undefined
-  if (week && isDate(start) && startOfWeek(start, schema.week ?? DEFAULT_WEEK) !== start) {
+  if (week && isDate(start) && startOfWeek(start, weekInfo(schema.week)) !== start) {
     out.push({ issue: issue(week, 'NOT_WEEK_START', 'notWeekStart', { label: shown(brick.fields[week]!, main) }), touches: [week] })
+  }
+  return out
+}
+
+/** An end time after its start (`after`), e.g. a session from 10:00 to 11:30. Equal times are an empty slot. */
+function timeOrderIssues(fields: Fields, data: Record<string, unknown>, prefix: string, main: Locale): RuleIssue[] {
+  const out: RuleIssue[] = []
+  for (const [name, field] of Object.entries(fields)) {
+    if (field.type !== 'time' || !field.after) continue
+    const [start, end] = [data[field.after], data[name]]
+    if (typeof start === 'string' && typeof end === 'string' && timePattern.test(start) && timePattern.test(end) && end <= start) {
+      out.push({ issue: issue(`${prefix}${name}`, 'TIME_ORDER', 'timeOrder', { start: shown(fields[field.after]!, main), end: shown(field, main) }), touches: [`${prefix}${field.after}`, `${prefix}${name}`] })
+    }
   }
   return out
 }
@@ -146,13 +172,14 @@ function eachNode(nodes: readonly Json[], fn: (node: [string, Record<string, Jso
 
 interface MarkdownLeaf { field: MarkdownField; text: string; path: string; locale: Locale }
 /** `texts` collects Markdown values for the profile check, which needs the async parser. */
-interface Ctx { locales: Locale[]; main: Locale; texts?: MarkdownLeaf[]; refs?: ValidateOptions['refs']; fileAlt?: ValidateOptions['fileAlt'] }
+interface Ctx { locales: Locale[]; main: Locale; week: SiteWeek; texts?: MarkdownLeaf[]; refs?: ValidateOptions['refs']; fileAlt?: ValidateOptions['fileAlt'] }
 
-function checkFields(fields: Fields, data: unknown, path: string, ctx: Ctx): Issue[] {
+/** `listRow`: the fields are the columns of a list row, which also holds its `_id`. */
+function checkFields(fields: Fields, data: unknown, path: string, ctx: Ctx, listRow = false): Issue[] {
   if (!isRecord(data)) return [issue(path, 'NOT_OBJECT', 'notObject')]
   const issues: Issue[] = []
   for (const key of Object.keys(data)) {
-    if (key === '_id' && path) continue
+    if (key === '_id' && listRow) continue
     if (!Object.hasOwn(fields, key)) issues.push(issue(join(path, key), 'UNKNOWN_FIELD', 'unknownField'))
   }
   for (const [key, field] of Object.entries(fields)) {
@@ -236,9 +263,15 @@ function checkScalar(field: Field, value: unknown, path: string, locale: Locale 
       return isDate(value) ? [] : fail('DATE', 'badDate')
     case 'time':
       return typeof value === 'string' && timePattern.test(value) ? [] : fail('TIME', 'badTime')
-    case 'daterange':
-      if (!isRecord(value) || !isDate(value.from) || !isDate(value.to) || Object.keys(value).length !== 2) return fail('DATE', 'badDateRange')
+    case 'daterange': {
+      // A side that is there must be a date; a side that is not there is missing (a draft keeps a half-filled period).
+      if (!isRecord(value) || Object.keys(value).some((k) => k !== 'from' && k !== 'to')) return fail('DATE', 'badDateRange')
+      if ([value.from, value.to].some((side) => side !== undefined && !isDate(side))) return fail('DATE', 'badDateRange')
+      if (value.from === undefined && value.to === undefined) return fail('REQUIRED', 'fieldMissing')
+      if (value.from === undefined) return fail('REQUIRED', 'dateRangeFromMissing')
+      if (value.to === undefined) return fail('REQUIRED', 'dateRangeToMissing')
       return (value.from as string) <= (value.to as string) ? [] : fail('DATE_ORDER', 'dateRangeOrder')
+    }
     case 'choice':
       return typeof value === 'string' && field.options.some((o) => o.value === value) ? [] : fail('CHOICE', 'badChoice')
     case 'choices': {
@@ -276,8 +309,21 @@ function checkScalar(field: Field, value: unknown, path: string, locale: Locale 
         if (!id || !rowIdPattern.test(id)) { out.push(issue(join(path, String(index)), 'ROW_ID', 'badRowId', { label, row: index + 1 })); return }
         if (ids.has(id)) { out.push(issue(join(path, id), 'ROW_ID', 'duplicateRowId', { label })); return }
         ids.add(id)
-        out.push(...checkFields(field.of, row, join(path, id), ctx!))
+        out.push(...checkFields(field.of, row, join(path, id), ctx!, true))
       })
+      return out
+    }
+    case 'rows': {
+      // Exactly the rows of the field, by key. A day set needs the site's week (checkSchema requires it): `rowKeysOf` throws without one.
+      if (!isRecord(value)) return fail('TYPE', 'notRows')
+      const keys = rowKeysOf(field, ctx!.week)
+      const out: Issue[] = []
+      for (const key of Object.keys(value)) if (!keys.includes(key)) out.push(issue(join(path, key), 'UNKNOWN_ROW', 'unknownRow', { label, row: key }))
+      for (const key of keys) {
+        const row = value[key]
+        if (row === undefined || row === null) out.push(issue(join(path, key), 'REQUIRED', 'rowMissing', { label, row: key }))
+        else out.push(...checkFields(field.of, row, join(path, key), ctx!))
+      }
       return out
     }
     case 'image':
@@ -292,8 +338,8 @@ function checkScalar(field: Field, value: unknown, path: string, locale: Locale 
 }
 
 /** Checks one stored value against one field, e.g. the `value` of a retired rule. */
-export function checkValue(schema: Pick<Schema, 'locales'>, field: Field, value: unknown, path: string): Issue[] {
-  const ctx = { locales: schema.locales, main: schema.locales[0]! }
+export function checkValue(schema: Pick<Schema, 'locales' | 'week'>, field: Field, value: unknown, path: string): Issue[] {
+  const ctx = { locales: schema.locales, main: schema.locales[0]!, week: schema.week }
   if (value === undefined || value === null) return field.optional ? [] : [issue(path, 'REQUIRED', 'fieldMissing', { label: shown(field, ctx.main) })]
   return checkField(field, value, path, ctx)
 }

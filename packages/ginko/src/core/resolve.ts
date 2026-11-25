@@ -1,9 +1,10 @@
-import { effectiveAlt, isTranslatable } from './fields.ts'
-import { addDays } from './time.ts'
+import { effectiveAlt, isTranslatable, rowKeysOf, slugKeyOf, startValue } from './fields.ts'
+import { addDays, type SiteWeek } from './time.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { resolveRouteLinks } from './links.ts'
 import { resolveFileRefs } from './file-refs.ts'
-import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type MarkdownTrees } from './bundle.ts'
+import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type MarkdownTrees, type Holding, type Upcoming } from './bundle.ts'
+import { dataOn, holdingOn, isException, occurrence, waitingChanges, type Change } from './changes.ts'
 import type { MarkdownTree } from './markdown.ts'
 import type { Brick, CollectionBrick, Field, Fields, Json, Locale, Schema } from './types.ts'
 
@@ -20,6 +21,16 @@ export interface StoredEntry {
   updatedAt?: string
   /** Repo-relative path of the file per locale (a translation's own file); file entries only. */
   sources?: Partial<Record<Locale, string>>
+  /** Old paths of a file entry (`$redirectFrom`); the bundle forwards them to the entry's page in every language (`oldUrls`). */
+  redirectFrom?: string[]
+  /**
+   * The entry's dated changes (a file's `$changes`, the platform's rows that are not stopped). `data` already holds the
+   * normal values of today (D120): changes without an end whose day has come are written into it. The bundle lays the
+   * exceptions that hold today over it (`dataOn`), so a holding exception is here (on the platform only once its start
+   * run passed), and reads only the fields of `timeline.public` from the changes still ahead (`upcoming`) and from the
+   * holding exceptions with the normal values they cover (`holding`); nothing else of them leaves the server.
+   */
+  changes?: Change[]
 }
 
 export interface FileInfo {
@@ -62,9 +73,12 @@ export interface ResolvedEntry {
   hidden: boolean
 }
 
-/** Pages (collections with a route) leave an untranslated entry out of that language; parts of pages fall back to the main language. */
+/**
+ * What an untranslated entry does, as the collection states it (`untranslated`). A site with one language need not
+ * state it: no entry is untranslated there, so `'fallback'` changes nothing.
+ */
 export function untranslatedMode(brick: CollectionBrick): 'hide' | 'fallback' {
-  return brick.untranslated ?? (brick.route ? 'hide' : 'fallback')
+  return brick.untranslated ?? 'fallback'
 }
 
 /** The print that marks a translation as fresh for the current main-language value. */
@@ -152,6 +166,14 @@ function resolveValue(field: Field, value: Json, path: string, state: State): un
     }
     case 'list':
       return (value as Record<string, Json>[]).map((row) => ({ _id: row._id, ...resolveFields(field.of, row, `${path}.${String(row._id)}`, state) }))
+    case 'rows': {
+      // The rows the field has, in its order (the site's week for days); a stored row the field no longer has is left out.
+      const rows = value as Record<string, Record<string, Json> | undefined>
+      return Object.fromEntries(rowKeysOf(field, state.schema.week).flatMap((key) => {
+        const row = Object.hasOwn(rows, key) ? rows[key] : undefined
+        return row ? [[key, resolveFields(field.of, row, `${path}.${key}`, state)]] : []
+      }))
+    }
     default:
       return value
   }
@@ -217,32 +239,49 @@ function localized(value: Json, leaf: string, state: State, field: Field): unkno
 }
 
 /** Stored-format data built from the fields' defaults (new singletons, module defaults). */
-export function defaultsFor(fields: Fields): Record<string, Json> {
+export function defaultsFor(fields: Fields, week: SiteWeek): Record<string, Json> {
   const out: Record<string, Json> = {}
-  for (const [name, field] of Object.entries(fields)) if (field.default !== undefined && !field.retired) out[name] = field.default
+  for (const [name, field] of Object.entries(fields)) {
+    if (field.retired) continue
+    const start = startValue(field, week)
+    if (start !== undefined) out[name] = start
+  }
   return out
 }
 
-/** One visibility rule for listings, detail pages, URL maps and sitemap. Dates inclusive, in the site's time zone. */
-export function isVisible(brick: Brick, data: Record<string, unknown>, today: string): boolean {
-  const last = visibleUntil(brick, data)
+/** Whether an entry is shown on `today`: the one end rule for listings, detail pages, URL maps and the sitemap. Dates inclusive, in the site's time zone. */
+export function shownOn(brick: Brick, data: Record<string, unknown>, today: string): boolean {
+  const last = shownUntil(brick, data)
   return last === undefined || last >= today
 }
 
 /**
- * The last day an entry shows under `visible: { mode: 'until' }`: the date, or the end `to` of a daterange, plus `days`.
- * `undefined` when the entry has no end: the brick has no `until` rule, or the field is empty.
+ * The bundle without the entries that ended before `today` (`shownOn`): what a page or a server route reads on that
+ * day. `buildBundle` already leaves out what ended before the day it ran, so this matters for a bundle from a cache,
+ * read after midnight.
  */
-export function visibleUntil(brick: Brick, data: Record<string, unknown>): string | undefined {
-  const vis = brick.kind === 'collection' ? brick.visible : undefined
-  if (vis?.mode !== 'until') return undefined
-  const value = data[vis.field]
-  const last = typeof value === 'string' ? value : (value as { to?: unknown } | null | undefined)?.to
-  return typeof last === 'string' ? addDays(last, vis.days ?? 0) : undefined
+export function shownBundle(bundle: Bundle, schema: Schema, today: string): Bundle {
+  const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, value]) => {
+    const def = schema.bricks[key]
+    return [key, value.kind === 'collection' && def ? { ...value, items: value.items.filter((item) => shownOn(def, item.data, today)) } : value]
+  }))
+  return { ...bundle, bricks }
 }
 
-/** Whether the platform deletes the entries of this brick that no longer show (`visible.deleteExpired`). */
-export const deletesExpired = (brick: Brick): boolean => brick.kind === 'collection' && brick.visible?.mode === 'until' && brick.visible.deleteExpired === true
+/**
+ * The last day an entry is shown under `showUntil`: the date, or the end `to` of a daterange, plus `plusDays`.
+ * `undefined` when the entry has no end: the brick has no `showUntil`, or the field is empty.
+ */
+export function shownUntil(brick: Brick, data: Record<string, unknown>): string | undefined {
+  const rule = brick.kind === 'collection' ? brick.showUntil : undefined
+  if (!rule) return undefined
+  const value = data[rule.field]
+  const last = typeof value === 'string' ? value : (value as { to?: unknown } | null | undefined)?.to
+  return typeof last === 'string' ? addDays(last, rule.plusDays ?? 0) : undefined
+}
+
+/** Whether the platform deletes the entries of this brick that ended (`showUntil.thenDelete`). */
+export const deletesEnded = (brick: Brick): boolean => brick.kind === 'collection' && brick.showUntil?.thenDelete === true
 
 /**
  * The entries in the brick's order. With `languages`, a translatable field (a title) sorts by its text in `locale`,
@@ -266,7 +305,11 @@ export function sortEntries(brick: CollectionBrick, entries: StoredEntry[], lang
     if (v === undefined || v === null) return []
     if (typeof v === 'number') return [v]
     if (typeof v === 'object' && !Array.isArray(v) && 'amount' in v) return [Number((v as { amount: unknown }).amount)]
-    if (typeof v === 'object' && !Array.isArray(v) && 'from' in v) return [String((v as { from: unknown }).from), String((v as { to?: unknown }).to)]
+    // A draft may hold half a period: the missing side counts as empty.
+    if (typeof v === 'object' && !Array.isArray(v) && ('from' in v || 'to' in v)) {
+      const { from, to } = v as { from?: unknown; to?: unknown }
+      return [String(from ?? ''), String(to ?? '')]
+    }
     return [typeof v === 'object' ? stableJson(v as Json) : String(v)]
   }
   const compare = (a: (number | string)[], b: (number | string)[]): number => {
@@ -292,6 +335,11 @@ export interface BuildBundleInput {
   generatedAt: string
   /** Today in the site's time zone (`todayIn`). */
   today: string
+  /**
+   * Keeps the entries that ended, without `urls` (an ended entry has no address, so a link to it stays broken). For the
+   * link checks only, which read the links inside every live entry: an end date moved forward puts them online (D111).
+   */
+  keepEnded?: boolean
 }
 
 /**
@@ -314,27 +362,30 @@ export function buildBundle(input: BuildBundleInput): Bundle {
   const locale = known ? (input.requestedLocale as Locale) : main
   const bricks: Record<string, BundleBrick> = {}
   for (const [key, brick] of Object.entries(schema.bricks)) {
-    const stored = input.entries[key] ?? []
+    // What visitors see today: the exceptions that hold laid over the normal values (the one rule, `dataOn`).
+    const stored = (input.entries[key] ?? []).map((entry) => withHolding(entry, input.today))
     const ctx: ResolveContext = { locale, markAllFallback: !known, files: input.files }
     if (brick.kind === 'single') {
-      const entry = stored[0] ?? { id: `default:${key}`, data: defaultsFor(brick.fields) }
+      const entry = stored[0] ?? { id: `default:${key}`, data: defaultsFor(brick.fields, schema.week) }
       const r = resolveEntry(schema, key, entry, ctx)
-      bricks[key] = { kind: 'single', data: r.data, fallback: r.fallback }
+      bricks[key] = { kind: 'single', data: r.data, fallback: r.fallback, ...aheadOf(schema, key, entry, ctx, input.today) }
       continue
     }
     const items: BundleItem[] = []
     for (const entry of sortEntries(brick, stored, { locale, main })) {
       const r = resolveEntry(schema, key, entry, ctx)
-      if (r.hidden) continue
+      // An entry outside its life is not in what a page gets, in files and on the platform alike (D111).
+      const ended = !shownOn(brick, r.data, input.today)
+      if (r.hidden || (ended && !input.keepEnded)) continue
       const item: BundleItem = { id: entry.id, data: r.data, fallback: r.fallback }
-      // resolveEntry keeps only schema fields; `redirectFrom` and `draft` (reserved keys of content files) are no fields, and the bundle carries them.
-      if (entry.data.redirectFrom !== undefined) item.data.redirectFrom = entry.data.redirectFrom
-      if (entry.data.draft === true) item.data.draft = true
+      // `data` holds the fields only; a file entry's old paths forward to its page in this language.
+      if (entry.redirectFrom?.length) item.oldUrls = { [locale]: [...entry.redirectFrom] }
       if (entry.updatedAt !== undefined) item.updatedAt = entry.updatedAt
       // The file of this locale ("edit this page" opens the translation), else the main-language file.
       const source = entry.sources?.[locale] ?? entry.sources?.[main]
       if (source !== undefined) item.source = source
-      if (brick.route && isVisible(brick, r.data, input.today)) item.urls = urlsFor(schema, key, brick, entry)
+      if (brick.route && !ended) item.urls = urlsFor(schema, key, brick, entry)
+      Object.assign(item, aheadOf(schema, key, entry, ctx, input.today))
       items.push(item)
     }
     bricks[key] = { kind: 'collection', items }
@@ -355,11 +406,111 @@ export function buildBundle(input: BuildBundleInput): Bundle {
 }
 
 /**
+ * What a page may read ahead of an entry (D121): each change after `today` that sets a field of the brick's
+ * `timeline.public`, with only those fields, resolved like the entry's own values. Undefined when there is none. A change
+ * whose day comes after the entry's last shown day (`showUntil`) is left out: the entry is gone by then. The field
+ * `showUntil` reads is one no change may set (`fixedFields`), so the stored value is the last day.
+ */
+export function upcomingOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): Upcoming[] | undefined {
+  const brick = schema.bricks[key]!
+  const shown = brick.timeline?.public
+  if (!shown?.length || !entry.changes?.length) return undefined
+  const last = shownUntil(brick, entry.data)
+  const out: Upcoming[] = []
+  for (const { change, from, until } of waitingChanges(entry.changes, today)) {
+    if (last !== undefined && from > last) continue
+    const names = Object.keys(change.set).filter((name) => shown.includes(name))
+    if (!names.length) continue
+    if (isException(change)) {
+      out.push({ from, ...(until ? { until } : {}), ...labelsOf(change), data: publicValues(schema, key, entry.id, change.set, names, ctx) })
+      continue
+    }
+    // A change for good under an exception shows each field only once no exception holds it (round M2): one item per
+    // day a field first shows; a field that a later change for good takes over before then never shows from this one.
+    const byDay = new Map<string, string[]>()
+    for (const name of names) {
+      const day = firstUncovered(entry.changes, name, from)
+      if (day === undefined || (last !== undefined && day > last)) continue
+      if (entry.changes.some((c) => !isException(c) && c.from > from && c.from <= day && Object.hasOwn(c.set, name))) continue
+      byDay.set(day, [...(byDay.get(day) ?? []), name])
+    }
+    for (const [day, fields] of byDay) out.push({ from: day, ...labelsOf(change), data: publicValues(schema, key, entry.id, change.set, fields, ctx) })
+  }
+  out.sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0))
+  return out.length ? out : undefined
+}
+
+/**
+ * The first day on or after `day` on which no exception holds `field`, walking over chained and overlapping ones; undefined
+ * when exceptions hold it for more than two years on end (two yearly ones that cover the whole year never let it show).
+ */
+function firstUncovered(changes: readonly Change[], field: string, day: string): string | undefined {
+  const covering = changes.filter((c) => isException(c) && Object.hasOwn(c.set, field))
+  const horizon = addDays(day, 2 * 366)
+  let at = day
+  while (at <= horizon) {
+    const end = covering.map((c) => occurrence(c, at)).filter((t) => t !== undefined && t.from <= at).map((t) => t!.until).sort().at(-1)
+    if (end === undefined) return at
+    at = addDays(end, 1)
+  }
+  return undefined
+}
+
+/**
+ * The exceptions that hold today and set a field of the brick's `timeline.public` (slice 3): the days of the time that
+ * holds, their public values and the normal values they cover (`normal`, read from the entry's normal values of today),
+ * resolved like the entry's own values. Undefined when there is none.
+ */
+export function holdingOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): Holding[] | undefined {
+  const shown = schema.bricks[key]!.timeline?.public
+  if (!shown?.length || !entry.changes?.length) return undefined
+  const normal = (entry as Showing).normal ?? entry.data
+  const out: Holding[] = []
+  for (const { change, time } of holdingOn(entry.changes, today)) {
+    const names = Object.keys(change.set).filter((name) => shown.includes(name))
+    if (!names.length) continue
+    out.push({ ...time, ...labelsOf(change), data: publicValues(schema, key, entry.id, change.set, names, ctx), normal: publicValues(schema, key, entry.id, normal, names, ctx) })
+  }
+  return out.length ? out : undefined
+}
+
+/** The name and `yearly` of a change, each only when it has one (slice 4): a page may show "Sommer, jedes Jahr". */
+const labelsOf = (change: Change): { name?: string; yearly?: true } => ({ ...(change.name ? { name: change.name } : {}), ...(change.yearly ? { yearly: true } : {}) })
+
+/** An entry as visitors see it today, with its normal values kept for `holding`. */
+type Showing = StoredEntry & { normal?: Record<string, Json> }
+
+/**
+ * The entry with the exceptions that hold on `today` laid over its normal values (`dataOn`, exceptions only): what the
+ * bundle reads, and what the platform's facts read (one rule for what a page shows today).
+ */
+export function withHolding(entry: StoredEntry, today: string): Showing {
+  const exceptions = entry.changes?.filter(isException)
+  if (!exceptions?.length) return entry
+  const data = dataOn(entry.data, exceptions, today)
+  return data === entry.data ? entry : { ...entry, data, normal: entry.data }
+}
+
+/** `upcoming` and `holding` of an entry, each only when it has one. */
+function aheadOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): { upcoming?: Upcoming[]; holding?: Holding[] } {
+  const upcoming = upcomingOf(schema, key, entry, ctx, today)
+  const holding = holdingOf(schema, key, entry, ctx, today)
+  return { ...(upcoming ? { upcoming } : {}), ...(holding ? { holding } : {}) }
+}
+
+/** Only the public values go into the resolver: nothing else of the change or the entry can reach the result. */
+function publicValues(schema: Schema, key: string, id: string, from: Record<string, Json>, names: string[], ctx: ResolveContext): Record<string, unknown> {
+  const values = Object.fromEntries(names.filter((name) => Object.hasOwn(from, name) && from[name] !== null).map((name) => [name, from[name]!]))
+  const { data } = resolveEntry(schema, key, { id, data: values }, ctx)
+  return Object.fromEntries(names.map((name) => [name, Object.hasOwn(data, name) ? data[name] : null]))
+}
+
+/**
  * Every locale's address of the entry from the route and slug (a locale without its own slug takes the main one),
  * translated or not: for cache refresh and URL clash checks.
  */
 export function routeUrls(schema: Schema, brick: CollectionBrick, entry: StoredEntry): Partial<Record<Locale, string>> {
-  const slugField = Object.entries(brick.fields).find(([, field]) => field.type === 'slug' && !field.retired)?.[0]
+  const slugField = slugKeyOf(brick)
   if (!slugField || !brick.route) return {}
   const slugs = (entry.data[slugField] ?? {}) as Partial<Record<Locale, string>>
   const main = schema.locales[0]!

@@ -17,14 +17,14 @@ const weekly = (brick) => (brick.tasks ?? []).some((task) => Object.values(task.
 /**
  * What create-ginko needs to know about a template's config, computed in the monorepo (build.mjs), where the config
  * can be imported: its locales, and per brick the date fields to move. A brick's dates move when the brick hides
- * entries after a date (`visible: { mode: 'until' }`), shows the next date on the Studio's Today page
+ * entries after a date (`showUntil`), shows the next date on the Studio's Today page
  * (`status: { next }`) or has a weekly task (the lunch week's `weekOf`), and for the `sessions` brick. Other dates
  * (a post's date, holidays, a changelog) stay.
  */
 export function manifestOf(site) {
   const shift = {}
   for (const [key, brick] of Object.entries(site.bricks)) {
-    const timed = brick.visible?.mode === 'until' || brick.status?.next !== undefined || weekly(brick) || key === 'sessions'
+    const timed = brick.showUntil !== undefined || brick.status?.next !== undefined || weekly(brick) || key === 'sessions'
     if (!timed) continue
     const fields = Object.entries(brick.fields).filter(([, field]) => field.type === 'date' || field.type === 'daterange').map(([name]) => name)
     if (fields.length) shift[key] = fields

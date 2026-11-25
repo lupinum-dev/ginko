@@ -11,9 +11,9 @@
 // storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import { byteSize, entryBytes, entryLinkRefs, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
+import { byteSize, changeIssues, dataOn, entryBytes, MAX_DATED, sizeDays, todayIn, keptChanges, entryLinkRefs, ENTRY_NAME_RULE, isEntryName, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
 import type { Runner } from './local.ts'
-import { CliError, isObject, parseExport, type ExportEntry, type SiteExport } from './model.ts'
+import { CliError, isObject, parseExport, stoppedLine, type ExportEntry, type SiteExport } from './model.ts'
 import { english, explainRejected, kib } from './report.ts'
 
 /**
@@ -147,7 +147,7 @@ async function readFileOf(dir: string, file: SiteExport['files'][number]): Promi
  */
 function referencedIds(entries: ExportEntry[], ids: Map<string, string>): { from: string; to: string }[] {
   const linked = new Set<string>()
-  const text = JSON.stringify(entries.map((e) => e.data), (_key, value: unknown) => {
+  const text = JSON.stringify(entries.map((e) => [e.data, e.changes]), (_key, value: unknown) => {
     if (typeof value === 'string') for (const ref of entryLinkRefs(value)) linked.add(ref)
     return value
   })
@@ -184,7 +184,7 @@ const NEW_ID = 'x'.repeat(32)
  * What the platform's import (seed.ts importExport, importRefs) would refuse in an export, as English lines: values the
  * Studio cannot open at all, entries over the entry limit (removed ones too: a restore must be able to save them), and
  * live or removed entries over a site's budget, live Markdown trees over the guard the bundle needs; an entry ID twice,
- * a collection over its max, two entries with one address. Values that a save refuses only today are no problem: the platform stores
+ * a collection over its max, two entries with one address, a name of the wrong shape or twice in one brick. Values that a save refuses only today are no problem: the platform stores
  * them and warns. The target site counts as empty: a local import clears it first, and the hosted import takes only an
  * empty site. Sizes count references to other entries with their new IDs: an ID from `ginko files-export` is a path like
  * `authors/anna`, shorter than the Convex ID that replaces it, so an entry with many references grows in step 6.
@@ -200,14 +200,35 @@ export async function checkImport(schema: Schema, entries: ExportEntry[]): Promi
   let live = 0
   const seen = new Set<string>()
   const liveIn = new Map<string, number>()
+  const names = new Set<string>()
   for (const entry of entries) {
     if (seen.has(entry.id)) problems.push(`The entry “${entry.id}” appears twice.`)
     seen.add(entry.id)
+    if (entry.kind === 'item' && entry.name !== undefined) {
+      if (!isEntryName(entry.name)) problems.push(`Entry ${entry.id} (${entry.brick}) has the name “${entry.name}”. ${ENTRY_NAME_RULE}`)
+      else if (names.has(`${entry.brick}/${entry.name}`)) problems.push(`Two entries of “${entry.brick}” have the name “${entry.name}”. A name is unique in its brick, the trash included.`)
+      names.add(`${entry.brick}/${entry.name}`)
+    }
     for (const issue of (await validate(schema, entry.brick, entry.data, { mode: 'restore' })).errors) {
       problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
     }
+    // A waiting change is checked as a save makes it (D128); removing an entry cancelled its changes.
+    if (entry.changes?.length && entry.deletedAt === undefined) {
+      for (const issue of await changeIssues(schema, entry.brick, entry.data, entry.changes)) {
+        problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path}: ${english(issue)}`)
+      }
+      // As a save makes them (planDated): at most MAX_DATED kept (waiting, or an exception that holds), and the entry
+      // with all of them applied fits.
+      const waiting = keptChanges(entry.changes, todayIn(schema.timeZone)).length
+      if (waiting > MAX_DATED) problems.push(`Entry ${entry.id} (${entry.brick}) has ${waiting} waiting changes; at most ${MAX_DATED} can wait.`)
+    }
     const size = entryBytes(withNewIds(entry.data), entry.prints)
     if (size > SITE_BUDGET.entryBytes) problems.push(`Entry ${entry.id} (${entry.brick}) is ${kib(size)}; the limit is ${kib(SITE_BUDGET.entryBytes)}.`)
+    else if (entry.changes?.length && entry.deletedAt === undefined) {
+      // Every day its changes give it values: after the last one, and on each exception's days (sizeDays).
+      const last = Math.max(...sizeDays(entry.changes).map((day) => entryBytes(withNewIds(dataOn(entry.data, entry.changes, day)), entry.prints)))
+      if (last > SITE_BUDGET.entryBytes) problems.push(`Entry ${entry.id} (${entry.brick}) is ${kib(last)} with its waiting changes applied; the limit is ${kib(SITE_BUDGET.entryBytes)}.`)
+    }
     if (entry.deletedAt === undefined) {
       live++
       liveIn.set(entry.brick, (liveIn.get(entry.brick) ?? 0) + 1)
@@ -311,14 +332,14 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   })
   // Every call carries all folders (a few rows; the platform matches them by name and parent).
   const toArgs = (entries: ExportEntry[]) => {
-    const text = JSON.stringify(entries.map((e) => e.data))
+    const text = JSON.stringify(entries.map((e) => [e.data, e.changes]))
     return { site, files: data.files.filter((file) => text.includes(file.id)).map(toFile), folders, entries }
   }
   const size = (entries: ExportEntry[]) => Buffer.byteLength(JSON.stringify(toArgs(entries)))
   const batches: { args: ReturnType<typeof toArgs>; count: number }[] = []
 
   // Library files that no entry mentions (kept or in a folder) and the folders themselves go in a first batch without entries.
-  const allText = JSON.stringify(data.entries.map((e) => e.data))
+  const allText = JSON.stringify(data.entries.map((e) => [e.data, e.changes]))
   const library = data.files.filter((file) => !allText.includes(file.id) && (file.kept || file.folder !== undefined))
   if (library.length > 0 || folders.length > 0) batches.push({ args: { site, files: library.map(toFile), folders, entries: [] }, count: 0 })
 
@@ -393,6 +414,8 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
     const first = firstWarning ? ` (first: ${firstWarning})` : ''
     log(`${warnings === 1 ? '1 entry holds' : `${warnings} entries hold`} values the Studio would refuse today${first}. They were imported as they were; fix them in the Studio.`)
   }
+  const stopped = stoppedLine(data.stoppedChanges)
+  if (stopped) log(stopped)
   // Originals (local:files-export) go through the upload pipeline after their batch; the bundle serves only ready files.
 
   // 6. References between entries still name the exported IDs. Each part of the pairs goes once through all entries.

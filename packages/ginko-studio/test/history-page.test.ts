@@ -6,7 +6,7 @@ import { ConvexError } from 'convex/values'
 import { normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import * as vue from 'vue'
 import { describe, expect, test, vi } from 'vitest'
-import { collection, defineSite, f } from '@lupinum/ginko'
+import { collection, defineSite, f } from '@lupinum/ginko/internal'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import HistoryPage from '../app/pages/s/[site]/history/index.vue'
@@ -18,9 +18,9 @@ const { computed, defineComponent, h, onMounted, onUnmounted, ref, Suspense } = 
 Object.entries({ computed, onMounted, onUnmounted, ref, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const schema = serializeSchema(defineSite({
-  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
-  bricks: { legal: collection({ label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') } }) },
+  bricks: { legal: collection({ listing: { title: 'title' }, label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') } }) },
 }))
 
 vi.stubGlobal('definePageMeta', () => {})
@@ -117,9 +117,9 @@ describe('going back to a version', () => {
   // the week change in the preview that the save does not make.
   test('the preview is asked for with the task the revert will use', async () => {
     const withTasks = serializeSchema(defineSite({
-      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
       pages: { home: { de: '/' } },
-      bricks: { legal: collection({ label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') }, tasks: [{ id: 'fix', label: 'Titel', kind: 'edit', fields: ['title'] }] }) },
+      bricks: { legal: collection({ listing: { title: 'title' }, label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') }, tasks: [{ id: 'fix', label: 'Titel', kind: 'edit', fields: ['title'] }] }) },
     }))
     changes.value = [row('save', ['title'])]
     answers['entries.versionAt'] = { change: 'c2', diff: [] }

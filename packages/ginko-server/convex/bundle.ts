@@ -6,6 +6,7 @@ import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, internalQuery, type QueryCtx } from './_generated/server'
 import { newOrder } from './lib/content'
+import { datedByBrick, isHolding, shownChanges } from './lib/dated'
 import { readTrees } from './lib/trees'
 
 /** SPEC 6: 600 requests per minute and site. */
@@ -64,7 +65,7 @@ export const build = internalQuery({
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()
     if (!site || site.deleting) return 'SITE_NOT_FOUND'
     if (minRev && (site.schemaRev < minRev.schemaRev || site.contentRev < minRev.contentRev)) return 'STALE'
-    return bundleOf(ctx, site, locale, undefined, [], stableFiles)
+    return bundleOf(ctx, site, locale, { stableFiles })
   },
 })
 
@@ -104,30 +105,54 @@ function latestChange(entries: Record<string, StoredEntry[]>, fallback: number):
   return latest
 }
 
-/** The bundle of a site that is known to exist; the agent door's link check builds one per language with it. */
-export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string, overrides?: ReadonlyMap<string, Record<string, Json>>, added: readonly NewItem[] = [], stableFiles = false): Promise<Bundle> {
+/** What a link check or the site asks of `bundleOf`. */
+export interface BundleOptions {
+  /** Data that is about to be written, by entry id; it also lets a draft through (the link check reads the state after the write). */
+  overrides?: ReadonlyMap<string, Record<string, Json>>
+  /** Entries that do not exist yet (a create that is only proposed). */
+  added?: readonly NewItem[]
+  /** File URLs on the site's own address (`/__ginko/file/…`) instead of live storage URLs. */
+  stableFiles?: boolean
+  /** For the link check of a plan (D106), in ms: a draft planned for that time or earlier counts as online. */
+  plannedBy?: number
+  /** For the link checks: keep the entries that ended, without an address (core `buildBundle`, D111). */
+  keepEnded?: boolean
+}
+
+/** The bundle of a site that is known to exist; the link checks build one per language with it. */
+export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string, options: BundleOptions = {}): Promise<Bundle> {
+  const { overrides, added = [], stableFiles = false, plannedBy, keepEnded } = options
   const schema = site.schema as Schema
   // A missing locale parameter (empty string) means the main language, not an unknown locale.
   const requestedLocale = locale === '' ? schema.locales[0]! : locale
+  const today = todayIn(schema.timeZone)
   const entries: Record<string, StoredEntry[]> = {}
   for (const key of Object.keys(schema.bricks)) {
     // Live rows only, through the index: the trash is never read (servedBundle sorts the items itself).
     const rows = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', site._id).eq('brick', key).eq('deletedAt', undefined)).collect()
     // Drafts never leave the platform (SPEC 15); their slugs stay reserved in the slugs table.
     // An override (a save that is about to happen) replaces the stored data and also lets a draft through: the link check reads the state after the write.
-    const live = rows.filter((row) => row.state !== 'draft' || overrides?.has(row._id))
+    const live = rows.filter((row) => row.state !== 'draft' || overrides?.has(row._id) || (plannedBy !== undefined && row.publishAt !== undefined && row.publishAt <= plannedBy))
+    // The dated changes (D128, slice 3) as `shownChanges` picks them: core lays the exceptions that hold over the values
+    // of today (in every brick) and reads only the fields of `timeline.public` from the rest (`upcoming`, `holding`). The
+    // rows hold the normal values of today; a change without an end is written into them by its run on its day. A brick
+    // without `timeline` gets only the holding exceptions, so its read stays as it was while none holds.
+    const timeline = schema.bricks[key]!.timeline !== undefined
+    const dated = live.length ? await datedByBrick(ctx, site._id, key) : undefined
     // An overridden row's stored trees belong to its old data: its texts are parsed, as are those of a row without trees.
     const list: StoredEntry[] = await Promise.all(live.map(async (row) => {
       const override = overrides?.get(row._id)
       const trees = override === undefined ? await storedTrees(ctx, row) : undefined
       // `contentAt` is when the entry last changed for the public; an entry from before it counts from its creation.
       const updatedAt = new Date(row.contentAt ?? row._creationTime).toISOString()
-      return { id: row._id, order: row.order, data: override ?? row.data, prints: row.prints, ...(trees ? { trees } : {}), updatedAt }
+      const own = dated?.get(row._id) ?? []
+      const changes = shownChanges(timeline ? own : own.filter(isHolding), today)
+      return { id: row._id, order: row.order, data: override ?? row.data, prints: row.prints, ...(trees ? { trees } : {}), updatedAt, ...(changes.length ? { changes } : {}) }
     }))
     // An entry that does not exist yet (a create that is only proposed) joins its collection where entries.create puts it.
     const brick = schema.bricks[key]!
     for (const item of added) {
-      if (item.brick === key && brick.kind === 'collection') list.push({ id: item.id, order: newOrder(key, brick, list.map((e) => e.order ?? 0)), data: item.data, prints: {}, updatedAt: new Date().toISOString() })
+      if (item.brick === key && brick.kind === 'collection') list.push({ id: item.id, order: newOrder(brick, list.map((e) => e.order ?? 0)), data: item.data, prints: {}, updatedAt: new Date().toISOString() })
     }
     entries[key] = list
   }
@@ -167,7 +192,8 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     // The newest content change, not the clock: the same content must give the same bundle, byte for byte, or every
     // ISR revalidation of a site page stores a "changed" page and is billed as a write (ISR efficiency plan).
     generatedAt: latestChange(entries, site._creationTime),
-    today: todayIn(schema.timeZone),
+    today,
+    ...(keepEnded ? { keepEnded } : {}),
   })
   // Addresses an entry had before entries.changeSlug: the site forwards them to its page there (301).
   for (const row of await ctx.db.query('slugs').withIndex('by_site_old', (q) => q.eq('site', site._id).eq('old', true)).collect()) {

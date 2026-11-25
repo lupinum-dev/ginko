@@ -19,7 +19,7 @@ export function dayAndClock(timeZone: string, time: number): { date: string, clo
   return { date: `${parts.year}-${parts.month}-${parts.day}`, clock: `${parts.hour}:${parts.minute}` }
 }
 
-/** Sessions grouped by day, in the order given (`sessionsInOrder` of the basics: date, then start time). */
+/** Sessions grouped by day, in the order given (`sessionsInOrder` of the patterns: date, then start time). */
 export function byDay<S extends { date: string }>(sessions: readonly S[]): { date: string, sessions: S[] }[] {
   const days: { date: string, sessions: S[] }[] = []
   for (const session of sessions) {

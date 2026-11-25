@@ -5,10 +5,9 @@ export { allergenNames, weekdayNames } from './names.ts'
 export {
   closedOnClosure, hoursOn, noticesOn, spansOf, spansText, timesOf, todayState, upcomingClosures, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor,
   type DayHours, type DayRule, type Exception, type Holiday, type HolidayClosure, type HoursContext, type HoursData, type HoursSource, type HourPlan, type Span,
-  type TodayState, type Weekday,
+  type TodayState, type Weekday, type WeekHours,
 } from './hours.ts'
 export type { HolidayCalendar, HolidaysOption } from './holidays.ts'
 export { lunchWeekOn, type LunchWeekData } from './lunch.ts'
 export { dishOn } from './menu.ts'
-export { priceOn, upcomingPrice, type PricedItem } from './prices.ts'
 export { eventJsonLd, restaurantJsonLd, type EventJsonLdInput, type JsonLdMenuSection, type RestaurantJsonLdInput } from './jsonld.ts'

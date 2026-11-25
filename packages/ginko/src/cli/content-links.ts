@@ -19,12 +19,16 @@ export async function checkFileLinks(input: { config: SiteInput; root: string; l
   }
   const contentDir = join(input.root, 'content')
   const publicDir = join(input.root, 'public')
-  const result = await content.buildFileBundles({ contentDir, publicDir, schema, drafts: false })
+  // Entries that ended are checked too: an end date moved forward puts their links online (D111).
+  const result = await content.buildFileBundles({ contentDir, publicDir, schema, drafts: false, keepEnded: true })
   let ok = true
   for (const e of result.errors) {
     input.log(content.errorLine(e))
     ok = false
   }
+  // Warnings and notes do not fail the check (a dated change whose day has come; a `publishedOn` date that does not fit `$publishAt`).
+  for (const w of result.warnings) input.log(`Warning: ${content.errorLine(w)}`)
+  for (const n of result.notes) input.log(`Note: ${content.errorLine(n)}`)
   const issues = await fileLinkIssues({ bundles: Object.values(result.bundles) as Bundle[], schema, site: input.config, publicDir, root: input.root, log: input.log, fetch: input.fetch, external: true })
   for (const i of issues) {
     input.log(`content/${i.id}: ${english(i)}`)

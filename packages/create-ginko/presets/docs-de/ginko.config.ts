@@ -6,16 +6,19 @@ import { components, docsCollection } from '@lupinum/ginko-docs/config'
 const locales = ['de'] as const
 
 export default defineSite({
-  site: '{{SITE}}',
+  studio: { id: '{{SITE}}', bricks: [] }, // die Kennung der Website auf einer Ginko-Plattform; jede Seite ist eine Datei in content/
   name: '{{SITE}}',
   url: 'https://example.com',
   timeZone: 'Europe/Vienna', // für dein Land ändern
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales,
   currency: 'EUR', // für dein Land ändern
   pages: { home: '/' },
+  entries: { docs: '/docs/[slug]' }, // die Adresse jeder Seite
   // Steht in Suchergebnissen und Link-Vorschauen. Ersetze es durch einen Satz über deine Website.
   // `color`: the brand colour of the generated share cards.
   seo: { description: 'Dokumentation zu unserem Produkt.', color: '#047857' },
   components, // die Markdown-Komponenten (::callout, ::tabs …) und ihre geprüften Props
-  bricks: { docs: docsCollection({ locales }) },
+  bricks: { docs: docsCollection() },
 })

@@ -1,9 +1,31 @@
 // The translation state of one field in the English view of the Studio form: what the hint under the German text says.
 import { describe, expect, it } from 'vitest'
-import { collection, defineSite, f, type CollectionBrick } from '@lupinum/ginko'
+import { collection, defineSite, f, type CollectionBrick } from '@lupinum/ginko/internal'
 import { printOf, serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
-import { hidesUntranslated, languageLabel, leafTranslation, missingNote, pageOf, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'
+import { hidesUntranslated, languageLabel, leafTranslation, leafValue, missingNote, pageOf, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'
+
+describe('leafValue', () => {
+  const data = {
+    name: { de: 'Suppe' },
+    image: { file: 'f1', alt: { de: 'Teller' } },
+    images: [{ _id: 'r1', image: { file: 'f2', alt: { de: 'Garten' } } }],
+    days: { mo: { dish: { de: 'Kürbiscremesuppe' } } },
+  }
+  // Wrong behaviour caught: the English view of the lunch showed "–" as the German text of every day and never said
+  // "Deutsch geändert seit Übersetzung", because a rows field keeps its rows by key, not in a list with `_id`.
+  it.each([
+    ['name', { de: 'Suppe' }],
+    ['image.alt', { de: 'Teller' }],
+    ['images.r1.image.alt', { de: 'Garten' }],
+    ['days.mo.dish', { de: 'Kürbiscremesuppe' }],
+    ['days.di.dish', undefined],
+    // Wrong behaviour caught (tidy-up of K1.4): a path of two parts that is not an image description read the alt text.
+    ['image.file', undefined],
+  ])('%s', (path, expected) => {
+    expect(leafValue(data, path)).toEqual(expected)
+  })
+})
 
 describe('leafTranslation', () => {
   const base = { locale: 'en', main: 'de', confirmed: false }
@@ -86,11 +108,12 @@ describe('what the Studio says the website shows in another language', () => {
 
 describe('the address line of a translation', () => {
   const schema = serializeSchema(defineSite({
-    site: 'wirt', name: 'Wirt', url: 'https://wirt.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    site: 'wirt', name: 'Wirt', url: 'https://wirt.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/', en: '/en' } },
     bricks: {
-      events: collection({
-        label: 'Veranstaltungen', max: 30, order: { field: 'when', dir: 'asc' }, visible: { mode: 'until', field: 'when' },
+      events: collection({ untranslated: 'hide',
+        listing: { title: 'title' },
+        label: 'Veranstaltungen', max: 30, order: { field: 'when', dir: 'asc' }, showUntil: { field: 'when' },
         route: { de: '/veranstaltungen/[slug]', en: '/en/events/[slug]' },
         fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), when: f.date('Wann') },
       }),
@@ -124,11 +147,11 @@ describe('hidesUntranslated', () => {
     program: f.list('Programm', { itemLabel: 'Punkt', max: 10, fields: { what: f.text('Was'), extra: f.text('Zusatz', { optional: true }) } }),
   }
   const { bricks } = serializeSchema(defineSite({
-    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
     pages: { home: { de: '/', en: '/en' } },
     bricks: {
-      events: collection({ label: 'Veranstaltungen', max: 30, order: 'manual', fields, route: { de: '/termine/[slug]', en: '/en/events/[slug]' } }),
-      notices: collection({ label: 'Hinweise', max: 30, order: 'manual', fields: { title: f.text('Text') } }),
+      events: collection({ untranslated: 'hide', label: 'Veranstaltungen', listing: { title: 'title' }, max: 30, order: 'manual', fields, route: { de: '/termine/[slug]', en: '/en/events/[slug]' } }),
+      notices: collection({ untranslated: 'fallback', listing: { title: 'title' }, label: 'Hinweise', max: 30, order: 'manual', fields: { title: f.text('Text') } }),
     },
   }))
   // Wrong behaviour caught (WS-8): the hint under an English event title said the website shows the German text, while

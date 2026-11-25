@@ -1,6 +1,7 @@
 // Facts (`facts` in the site config, `:fact{name="…"}` in texts): what a fact says, where the config is wrong, and
 // that search and the Markdown twin show the value instead of a gap.
 import { describe, expect, it } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import {
   bundleFactResolver, checkSchema, checkSite, collection, defineSite, entryMarkdown, f, factCopies, factCopiesInMarkdown, factNamesIn, factText, factValues, parseMarkdown, serializeSchema, single,
   type Bundle, type FactContext, type SiteInput,
@@ -11,8 +12,6 @@ const practice = single({
   label: 'Praxis',
   fields: {
     price: f.money('Preis pro Sitzung'),
-    nextPrice: f.money('Neuer Preis', { optional: true }),
-    priceFrom: f.date('Neuer Preis gilt ab', { optional: true }),
     validUntil: f.date('Preis gültig bis', { optional: true }),
     minutes: f.number('Dauer', { min: 15, max: 240, step: 5, unit: 'Minuten' }),
     days: f.choices('Tage', { options: [{ value: 'tue', label: 'Dienstag' }, { value: 'wed', label: 'Mittwoch' }, { value: 'thu', label: 'Donnerstag' }] }),
@@ -22,45 +21,45 @@ const practice = single({
     note: f.markdown('Hinweis', { profile: 'inline', optional: true }),
     rows: f.list('Zeilen', { itemLabel: 'Zeile', max: 4, fields: { a: f.text('A', { max: 10 }), b: f.text('B', { max: 10 }) } }),
   },
-  planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
+  timeline: { public: ['price'] },
 })
 
 const site = (over: Partial<SiteInput> = {}): SiteInput => defineSite({
-  site: 'praxis', name: 'Praxis', url: 'https://praxis.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+  site: 'praxis', name: 'Praxis', url: 'https://praxis.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: '/' },
   bricks: {
     practice,
-    docs: collection({ label: 'Seiten', fields: { title: f.text('Titel', { max: 120 }), body: f.markdown('Text', { profile: 'page' }) }, max: 20, order: 'manual', route: { de: '/[slug]' } }),
+    docs: collection({ listing: { title: 'title' }, label: 'Seiten', fields: { title: f.text('Titel', { max: 120 }), body: f.markdown('Text', { profile: 'page' }) }, max: 20, order: 'manual', route: { de: '/[slug]' } }),
   },
   facts: ['practice.price', 'practice.minutes', 'practice.days', 'practice.times', 'practice.email', 'practice.validUntil'],
   ...over,
 })
 
 const data = {
-  price: { amount: 9800, currency: 'EUR' }, nextPrice: { amount: 10550, currency: 'EUR' }, priceFrom: '2027-01-01', validUntil: '2026-12-31',
+  price: { amount: 9800, currency: 'EUR' }, validUntil: '2026-12-31',
   minutes: 60, days: ['wed', 'tue'], times: [{ _id: 'r1', time: '11:00' }, { _id: 'r2', time: '12:15' }, { _id: 'r3', time: '13:30' }],
   email: 'praxis@example.test', room: 'a',
 }
-const ctx = (today?: string): FactContext => ({
-  bricks: serializeSchema(site()).bricks, data: { practice: { kind: 'single', data } }, locale: 'de', mainLocale: 'de', language: 'de-AT', ...(today ? { today } : {}),
+const ctx = (): FactContext => ({
+  bricks: serializeSchema(site()).bricks, data: { practice: { kind: 'single', data } }, locale: 'de', mainLocale: 'de', language: 'de-AT',
 })
+/** A new price from 1 January 2027, as the bundle's `upcoming` and the platform give it. */
+const newPrice = { practice: [{ from: '2027-01-01', data: { price: { amount: 10550, currency: 'EUR' } } }] }
 
 describe('factText', () => {
-  // Wrong behaviour caught: a fact that shows the raw value ({amount: 9800}, ["wed","tue"]) or the wrong price on a day.
+  // Wrong behaviour caught: a fact that shows the raw value ({amount: 9800}, ["wed","tue"]).
   it.each([
-    ['practice.price', '2026-12-31', '€ 98'],
-    ['practice.price', '2027-01-01', '€ 105,50'],
-    ['practice.price', undefined, '€ 98'],
-    ['practice.minutes', undefined, '60 Minuten'],
-    ['practice.days', undefined, 'Dienstag und Mittwoch'],
-    ['practice.times', undefined, '11:00, 12:15 und 13:30'],
-    ['practice.email', undefined, 'praxis@example.test'],
-    ['practice.validUntil', undefined, '31. Dezember 2026'],
-    ['practice.room', undefined, 'Raum A'],
-    ['practice.missing', undefined, undefined],
-    ['docs.title', undefined, undefined],
-  ])('%s on %s → %s', (path, today, expected) => {
-    expect(factText(path, ctx(today))?.replace(/ /g, ' ')).toBe(expected)
+    ['practice.price', '€ 98'],
+    ['practice.minutes', '60 Minuten'],
+    ['practice.days', 'Dienstag und Mittwoch'],
+    ['practice.times', '11:00, 12:15 und 13:30'],
+    ['practice.email', 'praxis@example.test'],
+    ['practice.validUntil', '31. Dezember 2026'],
+    ['practice.room', 'Raum A'],
+    ['practice.missing', undefined],
+    ['docs.title', undefined],
+  ])('%s → %s', (path, expected) => {
+    expect(factText(path, ctx())?.replace(/ /g, ' ')).toBe(expected)
   })
 
   // Wrong behaviour caught (the second and third): Intl threw, and one unreadable value broke the whole page.
@@ -98,11 +97,11 @@ describe('facts in the site config', () => {
     ['practice.note', 'a markdown field'],
     ['practice.rows', 'a list field'],
   ])('reports %s', (path, problem) => {
-    expect(checkSite(site({ facts: [path] })).join('\n')).toContain(problem)
+    expect(checkSite(site({ facts: [path] }), statusRules).join('\n')).toContain(problem)
   })
 
   it('reports a retired field', () => {
-    expect(checkSite(site({ retired: { 'practice.minutes': { drop: true } } })).join('\n')).toContain('“practice.minutes” is retired')
+    expect(checkSite(site({ retired: { 'practice.minutes': { drop: true } } }), statusRules).join('\n')).toContain('“practice.minutes” is retired')
   })
 
   // Wrong behaviour caught: turning on facts made every text strict, so a site without components of its own could no
@@ -119,7 +118,7 @@ describe('facts in the site config', () => {
 
   it('reports a site component named fact next to facts', () => {
     const components = { fact: { kind: 'inline' as const, label: 'Fakt', describe: 'Eigener', props: {} } }
-    expect(checkSite(site({ components })).join('\n')).toContain('“fact” is the component of facts')
+    expect(checkSite(site({ components }), statusRules).join('\n')).toContain('“fact” is the component of facts')
   })
 })
 
@@ -140,7 +139,7 @@ describe('facts in search and in the Markdown twin', () => {
   // Wrong behaviour caught: "dauert und kostet ." in search excerpts, and no hit for the price.
   it('puts the value into the search record', async () => {
     const [record] = searchSections(await bundleWith(text), { schema, language: 'de-AT', today: '2027-02-01' })
-    expect(record!.text.replace(/ /g, ' ')).toBe('Eine Sitzung dauert 60 Minuten und kostet € 105,50.')
+    expect(record!.text.replace(/ /g, ' ')).toBe('Eine Sitzung dauert 60 Minuten und kostet € 98.')
   })
 
   it('writes the value into the Markdown twin', async () => {
@@ -148,7 +147,7 @@ describe('facts in search and in the Markdown twin', () => {
     const docs = bundle.bricks.docs
     if (docs?.kind !== 'collection') throw new Error('docs is a collection')
     const item = docs.items[0]!
-    const markdown = await entryMarkdown(item, 'docs', { schema, resolve: bundleFactResolver(bundle, schema.bricks, 'de-AT', '2026-11-01') })
+    const markdown = await entryMarkdown(item, 'docs', { schema, resolve: bundleFactResolver(bundle, schema.bricks, 'de-AT') })
     expect(markdown.replace(/ /g, ' ')).toContain('Eine Sitzung dauert 60 Minuten und kostet € 98.')
   })
 })
@@ -159,8 +158,8 @@ describe('facts for editors and agents', () => {
   it('stores the language tags and passes the platform check', () => {
     const schema = serializeSchema(site({ languages: { de: 'de-AT' } }))
     expect(schema.languages).toEqual({ de: 'de-AT' })
-    expect(checkSchema(schema)).not.toContainEqual(expect.stringMatching(/open|languages/))
-    expect(checkSchema({ ...schema, languages: { de: 'not a tag', en: 'en-US' } }).join('\n')).toMatch(/languages\.de: invalid language[\s\S]*locale “en” is not in locales/)
+    expect(checkSchema(schema, statusRules)).not.toContainEqual(expect.stringMatching(/open|languages/))
+    expect(checkSchema({ ...schema, languages: { de: 'not a tag', en: 'en-US' } }, statusRules).join('\n')).toMatch(/languages\.de: invalid language[\s\S]*locale “en” is not in locales/)
   })
 
   it.each([
@@ -171,10 +170,10 @@ describe('facts for editors and agents', () => {
     expect(factNamesIn(text)).toEqual(names)
   })
 
-  // Wrong behaviour caught: the Studio showed "98 €" while the de-AT site shows "€ 98", or no planned change.
-  it('formats every fact as the site does, with the planned change and the forms of a copy', () => {
+  // Wrong behaviour caught: the Studio showed "98 €" while the de-AT site shows "€ 98", or no waiting change.
+  it('formats every fact as the site does, with the waiting change and the forms of a copy', () => {
     const schema = serializeSchema(site({ languages: { de: 'de-AT' } }))
-    const values = factValues(schema, { practice: data }, 'de', '2026-12-31')
+    const values = factValues(schema, { practice: data }, 'de', newPrice)
     const byName = Object.fromEntries(values.map((v) => [v.name, v]))
     expect(values.map((v) => v.name)).toEqual(['practice.price', 'practice.minutes', 'practice.days', 'practice.times', 'practice.email', 'practice.validUntil'])
     expect({ ...byName['practice.price'], copies: undefined }).toEqual({ name: 'practice.price', brick: 'practice', field: 'price', text: '€\u00a098', next: { text: '€\u00a0105,50', from: '2027-01-01' }, copies: undefined })
@@ -182,15 +181,15 @@ describe('facts for editors and agents', () => {
     expect(byName['practice.minutes']!.copies).toEqual(['60 Minuten'])
     expect(byName['practice.validUntil']!.copies).toEqual(['31. Dezember 2026', '31.12.2026'])
     expect(byName['practice.email']!.copies).toEqual(['praxis@example.test'])
-    // On the day of the change the new price is shown and nothing is planned any more.
-    expect(factValues(schema, { practice: data }, 'de', '2027-01-01')[0]).toMatchObject({ text: '€\u00a0105,50' })
-    expect(factValues(schema, { practice: data }, 'de', '2027-01-01')[0]!.next).toBeUndefined()
+    // A change that does not set the price is no next price; without changes nothing is next.
+    expect(factValues(schema, { practice: data }, 'de', { practice: [{ from: '2027-01-01', data: { minutes: 90 } }] })[0]!.next).toBeUndefined()
+    expect(factValues(schema, { practice: data }, 'de')[0]!.next).toBeUndefined()
     expect(factValues(schema, {}, 'de')[0]).toEqual({ name: 'practice.price', brick: 'practice', field: 'price', copies: [] })
   })
 
   // Wrong behaviour caught: a copied price stays in a text after the price changes, or an ordinary number is flagged.
   it('finds copies of fact values in a text, standing on their own', () => {
-    const values = factValues(serializeSchema(site()), { practice: data }, 'de', '2026-12-31')
+    const values = factValues(serializeSchema(site()), { practice: data }, 'de')
     const text = 'Eine Sitzung kostet 98 € und dauert 60 Minuten, an Dienstag und Mittwoch. 198 € kostet das Paket, Tee 12,98 €. Mail: praxis@example.test'
     expect(factCopies(text, values).map((c) => [c.name, c.text, text.slice(c.from, c.to)])).toEqual([
       ['practice.price', '98 €', '98 €'],

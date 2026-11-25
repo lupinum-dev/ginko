@@ -21,6 +21,8 @@ const props = defineProps<{
   plan: boolean
   /** The card's main section is due: it keeps the card's one filled button. */
   ownerDue?: boolean
+  /** The tinted hours card of an open day: the times stand large, and its buttons are quiet. */
+  tinted?: boolean
   ownLine: (p: View['waiting'][number]) => string
   ownWhen: (at: number) => string
 }>()
@@ -31,9 +33,11 @@ const label = (task: Task) => shownLabel(task.label, ctx.main)
 const area = computed(() => shownLabel(props.sec.brick.label, ctx.main))
 const main = computed(() => props.view.split.buttons[0])
 const others = computed(() => props.view.split.buttons.slice(1))
-const mainVariant = computed(() => (props.view.due && !(props.plan && props.ownerDue) ? 'default' : props.plan ? 'outline' : 'secondary'))
-// Dark mode: the outline buttons lose their fill, so the main (secondary, filled) task stays the strongest on the card.
-const quiet = 'dark:bg-transparent'
+// A card's first task is its filled button. A plan's task is filled only when the plan is due and the card is not.
+const mainVariant = computed(() => (props.tinted ? 'outline' : !props.plan || (props.view.due && !props.ownerDue) ? 'default' : 'outline'))
+// On a phone the buttons are full width and the cards stand in one column: a filled bar in every card would hide the
+// one that is due. So there only a due section keeps the fill; the others look like outline buttons.
+const calmOnPhone = computed(() => !props.view.due && mainVariant.value === 'default' && '@max-[680px]:border @max-[680px]:border-input @max-[680px]:bg-background @max-[680px]:text-foreground @max-[680px]:hover:bg-muted')
 const day = (date: string) => format.date(date, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 const hasState = computed(() => {
   const v = props.view
@@ -56,12 +60,17 @@ function menuClosed(event: Event) {
 </script>
 
 <template>
-  <div v-if="hasState" class="grid gap-1.5">
+  <!-- A card's state stands close under its heading (the card's gap is for its parts). -->
+  <div v-if="hasState" class="grid gap-1.5" :class="!plan && !(tinted && view.status?.open) && '-mt-2'">
     <template v-if="view.status && !view.flagIsHours">
-      <p v-if="view.status.due" class="flex items-start gap-1.5 text-sm font-semibold text-warning" data-test="status">
-        <CircleAlertIcon class="mt-0.5 size-4 flex-none" aria-hidden="true" /><span>{{ view.status.text }}</span>
+      <p v-if="view.status.due" class="flex items-start gap-1.5 text-[13px] leading-[1.45] font-semibold text-warning" data-test="status">
+        <CircleAlertIcon class="mt-px size-4 flex-none" aria-hidden="true" /><span>{{ view.status.text }}</span>
       </p>
-      <p v-else class="text-sm text-muted-foreground" data-test="status">{{ view.status.text }}</p>
+      <!-- One sentence in two sizes; the space between the parts keeps it a sentence for a screen reader. -->
+      <p v-else-if="tinted && view.status.open" class="grid gap-0.5" data-test="status">
+        <span class="flex items-center gap-[7px] text-[13px] font-semibold text-accent-foreground"><span class="size-2 flex-none rounded-full bg-ring" aria-hidden="true" />{{ view.status.open.lead }}</span> <span class="font-display leading-[1.1] font-extrabold tracking-[-0.03em] text-balance tabular-nums" :class="view.status.open.count > 1 ? 'text-[28px]' : 'text-[40px]'">{{ view.status.open.times }}</span>
+      </p>
+      <p v-else class="text-[13px] leading-[1.45] text-muted-foreground" data-test="status">{{ view.status.text }}</p>
     </template>
     <Skeleton v-else-if="view.statusPending" class="h-5 w-48" />
 
@@ -77,9 +86,9 @@ function menuClosed(event: Event) {
 
     <template v-if="view.week">
       <!-- Not current but not due: the person's own week waits for approval (the line under it says so). -->
-      <p v-if="view.week.current || !view.due" class="text-sm text-muted-foreground">{{ view.week.text }}</p>
-      <p v-else class="flex items-start gap-1.5 text-sm font-semibold text-warning">
-        <CircleAlertIcon class="mt-0.5 size-4 flex-none" aria-hidden="true" /><span>{{ view.week.text }}</span>
+      <p v-if="view.week.current || !view.due" class="text-[13px] leading-[1.45] text-muted-foreground">{{ view.week.text }}</p>
+      <p v-else class="flex items-start gap-1.5 text-[13px] leading-[1.45] font-semibold text-warning">
+        <CircleAlertIcon class="mt-px size-4 flex-none" aria-hidden="true" /><span>{{ view.week.text }}</span>
       </p>
     </template>
 
@@ -93,14 +102,14 @@ function menuClosed(event: Event) {
 
   <!-- Phone: the card's main task full width, the others in two columns; with two card columns they wrap in one row. -->
   <div v-if="main || view.split.more.length" class="grid gap-2 @[680px]:flex @[680px]:flex-wrap @[680px]:items-center">
-    <Button v-if="main && !plan" type="button" :variant="mainVariant" class="w-full @[680px]:w-auto @max-[680px]:min-h-12" @click="ctx.start(sec.key, main)">{{ label(main) }}</Button>
+    <Button v-if="main && !plan" type="button" :variant="mainVariant" class="w-full @[680px]:w-auto @max-[680px]:min-h-12" :class="calmOnPhone" @click="ctx.start(sec.key, main)">{{ label(main) }}</Button>
     <div v-if="plan || others.length || view.split.more.length" class="grid gap-2 @[680px]:contents" :class="plan ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-2 [&>:last-child:nth-child(odd):not([aria-haspopup])]:col-span-2'">
       <!-- A plan's one task shares its phone row with a narrow "⋯": the card's own main task stays the one full-width button. -->
-      <Button v-if="main && plan" type="button" :variant="mainVariant" class="min-w-0 @max-[680px]:min-h-12 @max-[680px]:w-full" :class="[!view.split.more.length && 'col-span-2', mainVariant === 'outline' && quiet]" :title="label(main)" @click="ctx.start(sec.key, main)"><span class="truncate">{{ label(main) }}</span></Button>
-      <Button v-for="task in others" :key="task.id" type="button" variant="outline" :class="quiet" class="@max-[680px]:h-auto @max-[680px]:min-h-12 @max-[680px]:w-full @max-[680px]:whitespace-normal @max-[680px]:py-1.5 @max-[680px]:leading-[18px]" @click="ctx.start(sec.key, task)">{{ label(task) }}</Button>
+      <Button v-if="main && plan" type="button" :variant="mainVariant" class="min-w-0 @max-[680px]:min-h-12 @max-[680px]:w-full" :class="!view.split.more.length && 'col-span-2'" :title="label(main)" @click="ctx.start(sec.key, main)"><span class="truncate">{{ label(main) }}</span></Button>
+      <Button v-for="task in others" :key="task.id" type="button" variant="outline" class="@max-[680px]:h-auto @max-[680px]:min-h-12 @max-[680px]:w-full @max-[680px]:whitespace-normal @max-[680px]:py-1.5 @max-[680px]:leading-[18px]" @click="ctx.start(sec.key, task)">{{ label(task) }}</Button>
       <DropdownMenu v-if="view.split.more.length">
         <DropdownMenuTrigger as-child>
-          <Button :id="triggerId" type="button" variant="outline" size="icon" :class="[quiet, plan ? '@max-[680px]:size-12' : '@max-[680px]:h-auto @max-[680px]:min-h-12 @max-[680px]:w-full']" :aria-label="t('today.moreTasks', { area })" :title="t('today.moreTasks', { area })">
+          <Button :id="triggerId" type="button" variant="outline" size="icon" :class="plan ? '@max-[680px]:size-12' : '@max-[680px]:h-auto @max-[680px]:min-h-12 @max-[680px]:w-full'" :aria-label="t('today.moreTasks', { area })" :title="t('today.moreTasks', { area })">
             <EllipsisIcon class="size-4" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>

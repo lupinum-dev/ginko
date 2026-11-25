@@ -5,16 +5,18 @@
      away and the form and the preview share the panel. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isNavTree, isShown, ordered, routeUrls, textIn, todayIn, untranslatedMode, urlsFor, visibleUntil, type Place, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, slugKeyOf, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, shownUntil, statusOf, type Place, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
+import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Data, type Task } from '../utils/content'
+import { COVERED, coveredHint, type DatedRow } from '../utils/datedLines'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
 import { isModKey } from '../utils/keys'
 import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { isProposal, opErrorOf } from '../composables/useOps'
+import { messageOf } from '../utils/messageOf'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { SLUG_CHANGE } from '../utils/slugChange'
 import { EllipsisIcon, EyeIcon, EyeOffIcon } from '@lucide/vue'
@@ -24,6 +26,7 @@ import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
 import EntryRemoveDialog from './EntryRemoveDialog.vue'
 import EntryPublishPanel from './EntryPublishPanel.vue'
+import DatedNotices from './DatedNotices.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
 import SplitHandle from './SplitHandle.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
@@ -78,6 +81,11 @@ const main = computed(() => props.schema.locales[0]!)
 provideSiteRefs(() => props.site.slug, () => props.schema, () => main.value)
 // Fact fields say which texts quote them (EntryFields).
 provideFactUses(() => props.site.slug, () => props.schema, () => props.brickKey)
+// A field an exception covers today says what the website shows instead, as in the task sheet (EntryFields, L11). The
+// same query as the notices (DatedNotices), so one subscription serves both.
+const { data: datedRows } = useConvexQuery(api.datedChanges.list, () => (props.entry && !props.removed ? { site: props.site.slug, entry: props.entry._id, ...(props.tasks?.save ? { task: props.tasks.save } : {}) } : 'skip' as const), { server: false })
+const holdingRows = computed<DatedRow[]>(() => (datedRows.value ?? []).filter((c) => !c.stopped).map((c) => ({ id: c.id, from: c.from, until: c.until, holds: c.holds === true, fields: c.fields, values: c.values as Data })))
+provide(COVERED, (key: string) => coveredHint(holdingRows.value, key, props.brick.fields, main.value, { t, format, currency: props.schema.currency }))
 // A link from a translation badge opens the entry in that language (?lang=en).
 const wantedLocale = String(useRoute().query.lang ?? '')
 const locale = ref<Locale>(props.schema.locales.includes(wantedLocale) ? wantedLocale : main.value)
@@ -87,12 +95,13 @@ const foreign = computed(() => locale.value !== main.value)
  * All live fields; a new entry has no slug yet; a foreign language shows only translatable ones, and the address the
  * page has there (display only: the form never sends a slug, the server makes it from the translated title).
  */
-const navTree = computed(() => isNavTree(props.brickKey, props.brick))
+const navTree = computed(() => treeOf(props.brick))
+const placeFields = computed(() => new Set(navTree.value ? treeFields(navTree.value) : []))
 const fields = computed<Fields>(() => Object.fromEntries(ordered(props.brick.fields).filter(([key, f]) => {
   if (f.retired) return false
   if (!props.entry && f.type === 'slug') return false
   // A navigation tree places its pages itself (NavTree; NavPlace shows where).
-  if (navTree.value && (key === 'parent' || key === 'section' || key === 'tab')) return false
+  if (placeFields.value.has(key)) return false
   if (props.entry && props.tasks?.fields && !props.tasks.fields.includes(key)) return false
   if (foreign.value) return hasTranslation(f) || (f.type === 'slug' && props.brick.kind === 'collection' && !!props.brick.route?.[locale.value])
   return true
@@ -123,19 +132,18 @@ const form = useEntryForm({
     return true
   },
 })
-const { draft, baseline, issues, problem, conflict, busy, offline, waiting, dirty, confirm, localOffer } = form
+const { draft, baseline, issues, fieldIssues, problem, conflict, busy, offline, waiting, dirty, confirm, localOffer } = form
 
 /**
- * A new entry starts like the brick's create task in Schnell ändern: its title and its prefill (e.g. today's date).
- * With several create tasks the general one counts (no prefill); "Heute ausgebucht" fills in values for its own case
- * only. Staff get it only when it is the create task they work with.
+ * A new entry starts like the brick's standard add task (id `add`, D85) in Schnell ändern: its title and its prefill
+ * (e.g. today's date). Other create tasks, such as "Heute ausgebucht", fill in values for their own case only. Staff
+ * get it only when it is the create task they work with.
  */
 const createTask = computed(() => {
   if (props.entry || props.brick.kind !== 'collection') return undefined
-  const creates = (props.brick.tasks ?? []).filter((task): task is Extract<Task, { kind: 'create' }> => task.kind === 'create')
-  const general = creates.length === 1 ? creates[0] : creates.find((task) => !task.prefill)
-  if (!general || (props.tasks && props.tasks.create !== taskRef(props.brickKey, general))) return undefined
-  return general
+  const add = props.brick.tasks?.find((task): task is Extract<Task, { kind: 'create' }> => task.id === 'add' && task.kind === 'create')
+  if (!add || (props.tasks && props.tasks.create !== taskRef(props.brickKey, add))) return undefined
+  return add
 })
 const createPrefill = useConvexQuery(api.tasks.prefill, () => (createTask.value ? { site: props.site.slug, task: taskRef(props.brickKey, createTask.value) } : 'skip'), { server: false })
 /** The server resolves the prefill (tokens such as @today in the site's time zone); only fields of this form. */
@@ -146,7 +154,7 @@ const prefilled = computed<Record<string, Json>>(() => {
 })
 
 function start() {
-  form.load(props.entry ? { ...props.entry.data } : { ...defaultsFor(fields.value), ...prefilled.value })
+  form.load(props.entry ? { ...props.entry.data } : { ...defaultsFor(fields.value, props.schema.week), ...prefilled.value })
 }
 start()
 // The prefill arrives after the form opened: it fills the new form unless the person has typed already.
@@ -244,7 +252,7 @@ const shown = (label: LabelText) => shownLabel(label, main.value)
  * form shows no fields and no Speichern, but a note that says why and whom to ask. Vorschau, Mehr and publishing stay.
  */
 const readOnly = computed(() => !!props.entry && !!props.tasks && !props.tasks.save)
-const readOnlyNote = computed(() => props.tasks?.create
+const readOnlyNote = computed(() => props.tasks?.held?.some((task) => task.kind === 'create')
   ? t('entry.readOnlyOthers')
   : t('entry.readOnly', { area: shown(props.brick.label), tasks: (props.tasks?.held ?? []).map((task) => shown(task.label)).join(', ') }))
 const title = computed(() => {
@@ -302,24 +310,27 @@ function resetForm() {
 const timeZone = computed(() => props.schema.timeZone)
 const offlineable = computed(() => props.brick.kind === 'collection')
 const state = computed(() => props.entry?.state ?? 'live')
-const isDraft = computed(() => (props.entry ? state.value === 'draft' : offlineable.value))
+// A stored entry asks the one status (D113); a new entry of a collection starts as a draft.
+const isDraft = computed(() => (props.entry ? statusOf(props.brick, { data: props.entry.data, state: state.value }, todayIn(timeZone.value)).now === 'draft' : offlineable.value))
 /**
  * Save without publishing: on every live entry and single, Speichern keeps the changes unpublished; Veröffentlichen
- * puts them live (now or later), Verwerfen goes back to the version on the website.
+ * puts them live (now, or from a later day as a dated change), Verwerfen goes back to the version on the website.
  */
 const pending = computed(() => (state.value === 'live' ? props.entry?.pending : undefined))
 const keepsChanges = computed(() => !!props.entry && state.value === 'live')
-/** The planned time of a scheduled draft, or of a live entry's unpublished changes. */
-const scheduledAt = computed(() => props.entry?.publishAt ?? pending.value?.publishAt)
+/** The planned time of a scheduled draft (an online entry's changes take a day instead, D130). */
+const scheduledAt = computed(() => (state.value === 'live' ? undefined : props.entry?.publishAt))
+/** The first change waiting for a later day (D125): the badge names its day, the notices above the form say the rest. */
+const nextChange = computed(() => {
+  const next = props.entry && state.value === 'live' ? statusOf(props.brick, { data: props.entry.data, state: 'live', ...(props.entry.changes ? { changes: props.entry.changes } : {}) }, todayIn(timeZone.value)).waiting.find((w) => w.kind === 'change') : undefined
+  return next?.kind === 'change' ? next : undefined
+})
 /** "Veröffentlichen …": a draft, or unpublished changes (saved, or typed and saved on the way). */
 const publishable = computed(() => isDraft.value || (keepsChanges.value && (!!pending.value || dirty.value)))
 const statusText = computed(() => {
   if (!props.entry) return ''
-  if (pending.value) {
-    return pending.value.publishAt
-      ? t('entry.status.changesFrom', { when: whenText(pending.value.publishAt, timeZone.value, format) })
-      : t('entry.status.changes')
-  }
+  if (pending.value) return t('entry.status.changes')
+  if (nextChange.value) return t('entry.status.changesFrom', { when: format.date(nextChange.value.from, { weekday: 'short', day: 'numeric', month: 'short' }) })
   if (state.value === 'live') return t('entry.status.online')
   return props.entry.publishAt
     ? t('entry.status.onlineFrom', { when: whenText(props.entry.publishAt, timeZone.value, format) })
@@ -376,7 +387,7 @@ const groupHasGap = (g: FieldGroup) => g.fields.some(([key]) => gapRoots.value.h
 // A refused save shows the first tab that holds an error.
 watch(issues, () => { const first = mainGroups.value.find(groupHasIssue); if (tabbed.value && first) activeTab.value = first.id })
 const setField = (key: string, value: Json | undefined) => form.setField(key, value)
-const fieldProps = computed(() => ({ all: props.brick.fields, draft: draft.value, baseline: baseline.value, locale: locale.value, locales: props.schema.locales, issues: issues.value, route: props.brick.kind === 'collection' ? props.brick.route : undefined, weeks: (key: string) => weekShortcuts(props.brick, key) }))
+const fieldProps = computed(() => ({ all: props.brick.fields, draft: draft.value, baseline: baseline.value, locale: locale.value, locales: props.schema.locales, issues: fieldIssues.value, route: props.brick.kind === 'collection' ? props.brick.route : undefined, weeks: (key: string) => weekShortcuts(props.brick, key) }))
 
 // The entry limit spans all fields and languages, so no field counter shows it (SPEC 3). Counted as the server does
 // (core entryBytes: the stored text, the draft over the stored data; the prints may lag by a few bytes), after the
@@ -412,11 +423,12 @@ function onFormKey(event: KeyboardEvent) {
   save()
 }
 
+// A conflict answer merges; the save repeats the last one's publish step.
 async function keepMine() {
-  if (await form.keepMine() && !waiting.value) savedOnce.value = true
+  if (form.keepMine() && await form.saveAgain() && !waiting.value) savedOnce.value = true
 }
 async function keepBoth() {
-  if (await form.mergeLists() && !waiting.value) savedOnce.value = true
+  if (form.mergeLists() && await form.saveAgain() && !waiting.value) savedOnce.value = true
 }
 
 const ops = useOps(computed(() => props.site.slug))
@@ -495,13 +507,15 @@ watch(() => props.entry?._id, () => {
 
 /** The status card's line under the badge: what a draft or a scheduled entry means for the website. */
 const statusNote = computed(() => {
-  if (pending.value) return pending.value.publishAt ? t('entry.side.changesScheduledNote') : t('entry.side.changesNote')
+  if (pending.value) return t('entry.side.changesNote')
   if (!props.entry) return ''
   if (state.value === 'live') return t('entry.side.liveNote')
   return props.entry.publishAt ? t('entry.side.scheduledNote') : t('entry.side.draftNote')
 })
 /** Publishing belongs to the brick's create and edit tasks (staff need one of them). */
 const publishTask = computed(() => props.tasks?.save ?? props.tasks?.create)
+/** That task needs a yes: the publish goes to review (owners and managers hold no tasks here). */
+const publishReviewed = computed(() => props.tasks?.held?.find((task) => taskRef(props.brickKey, task) === publishTask.value)?.needsApproval === true)
 
 const publishing = ref(false)
 const when = ref<'now' | 'later'>('now')
@@ -510,6 +524,10 @@ const at = ref('')
 const picked = ref<number>()
 const publishError = ref('')
 const publishBusy = ref(false)
+/** The day an online entry's unpublished changes start on ("Ab einem späteren Tag", D131), and what is wrong with it. */
+const day = ref('')
+const dayError = ref('')
+watch(day, () => { dayError.value = '' })
 const HOUR = 60 * 60 * 1000
 
 function openPublish() {
@@ -519,6 +537,8 @@ function openPublish() {
   // A suggestion for "Online ab": tomorrow 9:00 at the site, or the time already planned.
   at.value = scheduled ? msToZoned(scheduled, timeZone.value) : `${msToZoned(now + 24 * HOUR, timeZone.value).slice(0, 10)}T09:00`
   picked.value = scheduled
+  day.value = ''
+  dayError.value = ''
   publishError.value = ''
   publishing.value = true
 }
@@ -526,7 +546,13 @@ function openPublish() {
 async function doPublish() {
   publishError.value = ''
   let ms: number | undefined
-  if (when.value === 'later') {
+  let from: string | undefined
+  if (when.value === 'later' && keepsChanges.value) {
+    // A day, not a time: the changes become a change of that day (D125).
+    dayError.value = !day.value ? t('dated.dayRequired') : day.value <= todayIn(timeZone.value) ? messageOf({ key: 'errors.dayNotAhead' }) : ''
+    if (dayError.value) return document.getElementById('publish-day')?.focus()
+    from = day.value
+  } else if (when.value === 'later') {
     const problem = scheduleProblem(at.value, timeZone.value, picked.value, Date.now())
     if (problem === 'entry.publish.timeMissing') document.getElementById('publish-at')?.focus()
     else if (problem) publishError.value = t(problem)
@@ -548,14 +574,18 @@ async function doPublish() {
     if (dirty.value && !(await form.save())) return
     if (keepsChanges.value) {
       // The rev the form last saved or read: a newer save of someone else refuses the publish.
-      await ops.publishChanges(props.entry._id, props.entry.lifeRev, form.baseRev.value, { at: ms, task: publishTask.value, timeZone: timeZone.value, main: main.value })
+      await ops.publishChanges(props.entry._id, props.entry.lifeRev, form.baseRev.value, { from, task: publishTask.value, main: main.value })
       publishing.value = false
       return
     }
-    await ops.publishEntry(props.entry._id, props.entry.lifeRev, { at: ms, task: publishTask.value, timeZone: timeZone.value, main: main.value })
+    // A plan sends the rev the form last saved or read: content someone else saved since refuses it (D105).
+    await ops.publishEntry(props.entry._id, props.entry.lifeRev, { at: ms, rev: ms === undefined ? undefined : form.baseRev.value, task: publishTask.value, timeZone: timeZone.value, main: main.value })
     publishing.value = false
   } catch (error) {
-    publishError.value = opErrorOf(error).message
+    const e = opErrorOf(error)
+    // Refused for its fields: they show what is wrong, an empty required one as an error now, not a note (D116).
+    form.showFieldErrors(e)
+    publishError.value = e.message
   } finally {
     publishBusy.value = false
   }
@@ -567,8 +597,6 @@ async function doUnpublish() {
   publishBusy.value = true
   publishError.value = ''
   try {
-    // The server takes one step back per call: a planned time of unpublished changes goes first, then the entry.
-    if (pending.value?.publishAt !== undefined) await ops.clearChangesSchedule(props.entry._id, props.entry.lifeRev, publishTask.value)
     await ops.unpublishEntry(props.entry._id, props.entry.lifeRev, { task: publishTask.value, timeZone: timeZone.value, wasLive: state.value === 'live', at: props.entry.publishAt, main: main.value })
     askUnpublish.value = false
     publishing.value = false
@@ -579,20 +607,6 @@ async function doUnpublish() {
   }
 }
 
-/** "Zeitplan aufheben" in the publish panel: a scheduled draft stays a draft, planned changes stay saved and the entry online. */
-async function doClearSchedule() {
-  if (!pending.value?.publishAt || !props.entry) return doUnpublish()
-  publishBusy.value = true
-  publishError.value = ''
-  try {
-    await ops.clearChangesSchedule(props.entry._id, props.entry.lifeRev, publishTask.value)
-    publishing.value = false
-  } catch (error) {
-    publishError.value = opErrorOf(error).message
-  } finally {
-    publishBusy.value = false
-  }
-}
 
 const askDiscard = ref(false)
 const discardBusy = ref(false)
@@ -622,7 +636,7 @@ const publishQuestionText = computed(() => {
 
 // A new entry has no address yet: the preview gives it the one the server will make from its title (draftSlugs), so
 // the site finds it on its own page. Read after the typing pause, so the page does not reload on every key.
-const newSlugs = computed(() => (props.entry ? undefined : draftSlugs(props.brick, props.schema.locales, typed.value)))
+const newSlugs = computed(() => (props.entry ? undefined : draftSlugs(props.brickKey, props.brick, props.schema.locales, typed.value)))
 const previewData = computed(() => (newSlugs.value ? { ...draft.value, ...newSlugs.value } : draft.value))
 /** The field with the focus (its frame carries path, type and label): the preview outlines where the page shows it. */
 const focused = ref<{ path: string; type: string; label: string }>()
@@ -634,7 +648,8 @@ const previewFocus = computed(() => focused.value && { ...focused.value, text: f
 /** The label of the field a new entry's address is made from, while it is empty: there is no page to show yet. */
 const previewWaitsFor = computed(() => {
   if (props.entry || props.brick.kind !== 'collection' || !props.brick.route) return undefined
-  const slug = Object.values(props.brick.fields).find((field) => field.type === 'slug' && !field.retired)
+  const key = slugKeyOf(props.brick)
+  const slug = key === undefined ? undefined : props.brick.fields[key]
   if (slug?.type !== 'slug' || textIn(typed.value[slug.from], main.value).trim()) return undefined
   return shown(props.brick.fields[slug.from]!.label)
 })
@@ -654,8 +669,10 @@ const previewUrls = computed(() => {
  * a new entry's address cannot be made yet, or the entry has no page in this language until it is translated.
  */
 const previewNotice = computed(() => {
-  const last = visibleUntil(props.brick, { ...props.entry?.data, ...typed.value })
-  if (last && last < todayIn(timeZone.value)) return t('entry.preview.ended', { date: formatDay(last, format) })
+  // The preview shows the entry as if it were online: it ended when `statusOf` of the typed values says so (D113).
+  const data = { ...props.entry?.data, ...typed.value }
+  const last = shownUntil(props.brick, data)
+  if (last && statusOf(props.brick, { data, state: 'live' }, todayIn(timeZone.value)).now === 'ended') return t('entry.preview.ended', { date: formatDay(last, format) })
   const urls = previewUrls.value
   if (!urls) return undefined
   if (previewWaitsFor.value) return t('entry.preview.needsTitle', { field: previewWaitsFor.value })
@@ -705,7 +722,8 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <header class="grid gap-2.5">
           <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <h1 class="text-xl font-semibold tracking-tight min-[900px]:text-[1.375rem]">{{ title }}</h1>
+              <!-- tabindex: the focus lands here when the last notice of a planned change goes (DatedNotices). -->
+              <h1 id="entry-title" class="text-2xl outline-none min-[900px]:text-[1.875rem]" tabindex="-1">{{ title }}</h1>
               <Badge v-if="bar && !sideMode && statusText" :variant="statusVariant">{{ statusText }}</Badge>
             </div>
             <DropdownMenu v-if="entry && !removed">
@@ -755,9 +773,9 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <!-- Wide screens without the right column: publishing under the header (the top bar has no room for the panel). -->
         <template v-if="bar && !sideMode">
           <EntryPublishPanel
-            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
-            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
-            @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
+            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
+            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError" :review="publishReviewed"
+            @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
           />
           <div v-if="askUnpublish" class="grid gap-2.5 rounded-lg border bg-sidebar p-3.5">
             <p>{{ t('entry.unpublish.warning', { title }) }}</p>
@@ -775,7 +793,8 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           :may-restore="canRemove" :may-create="mayCreate"
           @restore="restoreRemoved" @save-as-new="saveAsNew" @discard="discardRemoved"
         />
-        <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
+        <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :planned-from="localOffer.from" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
+        <DatedNotices v-if="entry && !removed" :site="site.slug" :entry="entry._id" :brick="brick" :main="main" :time-zone="timeZone" :currency="schema.currency" :task="tasks?.save" last-focus="entry-title" />
         <ConflictPanel
           v-if="conflict"
           :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="locale" :main="main"
@@ -789,9 +808,8 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <EntryFields v-bind="fieldProps" :entries="mainUngrouped" @update="setField" />
         <template v-if="tabbed">
           <Tabs v-if="mainGroups.length" v-model="activeTab">
-            <!-- Underlined, so the tabs never look like the language switch above them. -->
-            <TabsList class="h-auto w-full flex-wrap justify-start gap-5 rounded-none border-b bg-transparent p-0">
-              <TabsTrigger v-for="g in mainGroups" :key="g.id" :value="g.id" class="-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-0 pt-1 pb-2 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent">
+            <TabsList>
+              <TabsTrigger v-for="g in mainGroups" :key="g.id" :value="g.id">
                 {{ shown(g.label) }}
                 <span v-if="groupHasIssue(g)" class="size-2 rounded-full bg-destructive" role="img" :aria-label="t('entry.groupHasIssues')" />
                 <span v-if="groupHasGap(g)" class="size-2 rounded-full bg-warning" role="img" :aria-label="t('entry.groupHasGaps')" />
@@ -841,9 +859,9 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
               <p v-if="publishError && askUnpublish" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ publishError }}</p>
             </template>
             <EntryPublishPanel
-              v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
-              :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
-              @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
+              v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
+              :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError" :review="publishReviewed"
+              @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
             />
           </template>
         </div>
@@ -852,7 +870,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
       <!-- The right column (from 1280px, preview closed): status and publishing, then the entry's address, picture and
            search fields. Inside the form, so Enter and the shortcuts work there too. -->
       <aside v-if="sideMode" class="side-col grid content-start gap-4" :aria-label="t('entry.side.label')">
-        <section v-if="statusCard" class="grid gap-3 rounded-xl border bg-card p-4">
+        <section v-if="statusCard" class="grid gap-3 rounded-[14px] border bg-card p-4">
           <div class="flex items-center justify-between gap-2">
             <h2 class="text-sm font-semibold">{{ t('entry.side.status') }}</h2>
             <Badge v-if="statusText" :variant="statusVariant">{{ statusText }}</Badge>
@@ -870,9 +888,9 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
             </PopoverContent>
           </Popover>
           <EntryPublishPanel
-            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
-            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
-            @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
+            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
+            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError" :review="publishReviewed"
+            @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
           />
           <div v-else-if="!removed" class="flex flex-wrap gap-2">
             <Button v-if="publishable" type="button" variant="outline" size="sm" :disabled="busy" @click="openPublish">{{ scheduledAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
@@ -887,11 +905,11 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
             <p v-if="publishError" class="rounded-md bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive" role="alert">{{ publishError }}</p>
           </div>
         </section>
-        <section v-if="sideImage || sideSlug.length" class="grid gap-5 rounded-xl border bg-card p-4">
+        <section v-if="sideImage || sideSlug.length" class="grid gap-5 rounded-[14px] border bg-card p-4">
           <EntryFields v-if="sideImage" v-bind="fieldProps" :entries="[sideImage]" @update="setField" />
           <EntryFields v-if="sideSlug.length" v-bind="fieldProps" :entries="sideSlug" @update="setField" />
         </section>
-        <section v-for="g in sideGroups" :key="g.id" class="grid gap-4 rounded-xl border bg-card p-4">
+        <section v-for="g in sideGroups" :key="g.id" class="grid gap-4 rounded-[14px] border bg-card p-4">
           <h2 class="text-sm font-semibold">{{ shown(g.label) }}</h2>
           <EntryFields v-bind="fieldProps" :entries="g.fields" @update="setField" />
         </section>
@@ -905,7 +923,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <span v-else-if="!dirty && savedOnce" class="text-success">{{ savedText }}</span>
         <span v-else-if="dirty && !busy" class="inline-flex items-center gap-1.5 text-warning"><span class="size-1.5 rounded-full bg-warning" aria-hidden="true" />{{ t('entry.unsaved') }}</span>
       </span>
-      <Button type="button" :variant="showPreview ? 'secondary' : 'ghost'" class="h-9 gap-2 px-3" :aria-pressed="showPreview" @click="togglePreview">
+      <Button type="button" variant="ghost" class="h-9 gap-2 px-3" :aria-pressed="showPreview" @click="togglePreview">
         <component :is="showPreview ? EyeOffIcon : EyeIcon" aria-hidden="true" />{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}
       </Button>
       <Button v-if="publishable && !publishing && !removed && !sideMode" type="button" variant="outline" class="h-9" :disabled="busy" @click="openPublish">{{ scheduledAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>

@@ -1,25 +1,29 @@
 // Taktwerk (Zeiterfassung für Handwerksbetriebe, Berlin/Zürich): demo 2 in DEMOS.md. All content is invented.
 import { collection, defineSite, f, single } from '@lupinum/ginko'
 
-
 export default defineSite({
-  site: 'saas',
   name: 'Taktwerk',
   url: 'https://ginko-demo-saas.vercel.app',
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   locales: ['de', 'en', 'fr'],
   languages: { de: 'de-DE', en: 'en-GB', fr: 'fr-FR' },
   currency: 'EUR',
+  studio: { id: 'saas', bricks: 'all' },
   pages: {
-    home: { de: '/', en: '/en', fr: '/fr' },
-    pricing: { de: '/preise', en: '/en/pricing', fr: '/fr/tarifs' },
-    changelog: { de: '/changelog', en: '/en/changelog', fr: '/fr/changelog' },
-    blog: { de: '/blog', en: '/en/blog', fr: '/fr/blog' },
-    faq: { de: '/faq', en: '/en/faq', fr: '/fr/faq' },
-    terms: { de: '/agb', en: '/en/terms', fr: '/fr/conditions' },
-    dpa: { de: '/avv', en: '/en/dpa', fr: '/fr/sous-traitance' },
-    privacy: { de: '/datenschutz', en: '/en/privacy', fr: '/fr/confidentialite' },
-    imprint: { de: '/impressum', en: '/en/imprint', fr: '/fr/mentions-legales' },
+    home: '/',
+    pricing: { de: '/preise', en: '/pricing', fr: '/tarifs' },
+    changelog: '/changelog',
+    blog: '/blog',
+    faq: '/faq',
+    terms: { de: '/agb', en: '/terms', fr: '/conditions' },
+    dpa: { de: '/avv', en: '/dpa', fr: '/sous-traitance' },
+    privacy: { de: '/datenschutz', en: '/privacy', fr: '/confidentialite' },
+    imprint: { de: '/impressum', en: '/imprint', fr: '/mentions-legales' },
+  },
+  entries: {
+    blog: '/blog/[slug]',
   },
   bricks: {
     hero: single({
@@ -46,7 +50,12 @@ export default defineSite({
       },
     }),
     pricing: collection({
+      preview: 'pricing',
+      listing: { title: 'name' },
+      untranslated: 'fallback',
       label: 'Preise',
+      item: 'Plan',
+      max: 6,
       fields: {
         name: f.text('Plan', { max: 40, translate: false }),
         priceEur: f.money('Preis je Monat (EUR)', { currency: 'EUR' }),
@@ -57,16 +66,14 @@ export default defineSite({
         features: f.list('Funktionen', { itemLabel: 'Funktion', fields: { text: f.text('Funktion', { max: 120 }) }, max: 20 }),
         note: f.text('Hinweis zum Preis', { max: 120, optional: true }),
       },
-      max: 6,
-      order: 'manual',
-      tasks: [
-        { id: 'add', label: 'Plan hinzufügen', kind: 'create' },
-        { id: 'price', label: 'Preis ändern', kind: 'edit', pick: true, fields: ['priceEur', 'priceChf', 'yearEur', 'yearChf', 'note'] },
-        { id: 'remove', label: 'Plan entfernen', kind: 'remove' },
-      ],
+      tasks: ['add', { id: 'price', label: 'Preis ändern', fields: ['priceEur', 'priceChf', 'yearEur', 'yearChf', 'note'] }, 'remove'],
     }),
     changelog: collection({
+      preview: 'changelog',
+      listing: { title: 'version', detail: 'date' },
+      untranslated: 'fallback',
       label: 'Changelog',
+      max: 300,
       fields: {
         version: f.text('Version', { max: 20, translate: false }),
         date: f.date('Datum'),
@@ -78,16 +85,15 @@ export default defineSite({
         }),
         body: f.markdown('Text', { profile: 'basic', max: 5000 }),
       },
-      max: 300,
       order: { field: 'date', dir: 'desc' },
-      tasks: [
-        { id: 'add', label: 'Eintrag hinzufügen', kind: 'create' },
-        { id: 'edit', label: 'Eintrag bearbeiten', kind: 'edit', pick: true, fields: ['version', 'date', 'tags', 'body'] },
-        { id: 'remove', label: 'Eintrag entfernen', kind: 'remove' },
-      ],
+      tasks: ['add', 'edit', 'remove'],
     }),
     blog: collection({
+      listing: { title: 'title', detail: 'date' },
+      untranslated: 'hide',
       label: 'Blog',
+      item: 'Artikel',
+      max: 200,
       fields: {
         title: f.text('Titel', { max: 120 }),
         slug: f.slug('Adresse', { from: 'title' }),
@@ -97,61 +103,56 @@ export default defineSite({
         image: f.image('Bild', { optional: true }),
         body: f.markdown('Text', { profile: 'basic', max: 20000 }),
       },
-      max: 200,
       order: { field: 'date', dir: 'desc' },
-      route: { de: '/blog/[slug]', en: '/en/blog/[slug]', fr: '/fr/blog/[slug]' },
+      // This blog lets the owner change the address of an article, so its edit task names the fields.
       tasks: [
-        { id: 'add', label: 'Artikel schreiben', kind: 'create' },
-        { id: 'edit', label: 'Artikel bearbeiten', kind: 'edit', pick: true, fields: ['title', 'slug', 'date', 'author', 'description', 'image', 'body'] },
-        { id: 'remove', label: 'Artikel entfernen', kind: 'remove' },
+        { id: 'add', label: 'Artikel schreiben' },
+        { id: 'edit', fields: ['title', 'slug', 'date', 'author', 'description', 'image', 'body'] },
+        'remove',
       ],
     }),
     testimonials: collection({
+      listing: { title: 'quote' },
+      untranslated: 'fallback',
       label: 'Kundenstimmen',
+      item: 'Stimme',
+      max: 30,
       fields: {
         quote: f.longtext('Zitat', { max: 400 }),
         name: f.text('Name', { max: 80, translate: false }),
         company: f.text('Firma', { max: 80, translate: false }),
         logo: f.image('Logo', { optional: true }),
       },
-      max: 30,
-      order: 'manual',
-      tasks: [
-        { id: 'add', label: 'Stimme hinzufügen', kind: 'create' },
-        { id: 'edit', label: 'Stimme bearbeiten', kind: 'edit', pick: true, fields: ['quote', 'name', 'company', 'logo'] },
-        { id: 'remove', label: 'Stimme entfernen', kind: 'remove' },
-      ],
+      tasks: ['add', 'edit', 'remove'],
     }),
     faq: collection({
+      preview: 'faq',
+      listing: { title: 'question' },
+      untranslated: 'fallback',
       label: 'Fragen und Antworten',
+      item: 'Frage',
+      max: 60,
       fields: {
         question: f.text('Frage', { max: 200 }),
         answer: f.markdown('Antwort', { profile: 'basic', max: 2000 }),
       },
-      max: 60,
-      order: 'manual',
-      tasks: [
-        { id: 'add', label: 'Frage hinzufügen', kind: 'create' },
-        { id: 'edit', label: 'Frage bearbeiten', kind: 'edit', pick: true, fields: ['question', 'answer'] },
-        { id: 'remove', label: 'Frage entfernen', kind: 'remove' },
-      ],
+      tasks: ['add', 'edit', 'remove'],
     }),
     notices: collection({
+      listing: { title: 'text', detail: 'until' },
+      untranslated: 'fallback',
       label: 'Ankündigungen',
+      item: 'Ankündigung',
+      max: 5,
       fields: {
         text: f.text('Text', { max: 160 }),
         link: f.text('Link', { format: 'url', optional: true }),
         until: f.date('Gilt bis', { optional: true }),
       },
-      max: 5,
-      order: 'manual',
-      visible: { mode: 'until', field: 'until', deleteExpired: true },
-      tasks: [
-        { id: 'add', label: 'Ankündigung hinzufügen', kind: 'create' },
-        { id: 'remove', label: 'Ankündigung entfernen', kind: 'remove' },
-      ],
+      showUntil: { field: 'until', thenDelete: true },
+      tasks: ['add', 'remove'],
     }),
-    // Address of the company for the footer and the imprint page; rare to change, found in Alles bearbeiten.
+    // Address of the company for the footer and the imprint page; rare to change, so it has no task.
     company: single({
       label: 'Firma und Adresse',
       fields: {
@@ -172,7 +173,7 @@ export default defineSite({
         // Required on a German site (DDG §5); like the other legal texts never machine-translated.
         imprint: f.markdown('Impressum', { profile: 'basic', translate: 'manual', optional: true, max: 30_000 }),
       },
-      tasks: [{ id: 'terms', label: 'AGB ändern', kind: 'edit', fields: ['terms'] }],
+      tasks: [{ id: 'terms', label: 'AGB ändern', fields: ['terms'] }],
     }),
   },
 })

@@ -1,0 +1,42 @@
+// statusOf (design V2 5.13 part 1): one answer to "what do visitors see now, and what waits", for every reader.
+import { describe, expect, it } from 'vitest'
+import restaurant from '../../../../sites/restaurant/ginko.config.ts'
+import { serializeSchema, statusOf, type StatusInput } from '../../src/internal.ts'
+
+const schema = serializeSchema(restaurant)
+const events = schema.bricks.events!
+const menu = schema.bricks.menu!
+const TODAY = '2026-10-08'
+const AT = Date.parse('2026-10-09T08:00:00Z')
+const event = (to?: string) => (to ? { when: { from: '2026-10-01', to } } : {})
+
+describe('statusOf', () => {
+  // Wrong behaviour caught: a reader calls an ended entry a draft (or online), shows a plan and a stop at once, lists
+  // "ends" for an entry without an end or that is not online, or loses who planned it.
+  it.each<[string, typeof events, StatusInput, ReturnType<typeof statusOf>]>([
+    ['online without an end rule', menu, { data: {}, state: 'live' }, { now: 'online', waiting: [] }],
+    ['online with an empty end field', events, { data: event(), state: 'live' }, { now: 'online', waiting: [] }],
+    ['online until today', events, { data: event('2026-10-08'), state: 'live' }, { now: 'online', waiting: [{ kind: 'ends', on: '2026-10-08' }] }],
+    ['ended yesterday', events, { data: event('2026-10-07'), state: 'live' }, { now: 'ended', waiting: [] }],
+    ['online with unpublished changes and an end', events, { data: event('2026-10-20'), state: 'live', unpublished: { by: 'u1', since: AT } },
+      { now: 'online', waiting: [{ kind: 'unpublished', by: 'u1', since: AT }, { kind: 'ends', on: '2026-10-20' }] }],
+    // `now` and `waiting` are independent (spec 5.13.1): the saved changes still wait, the end does not.
+    ['ended with unpublished changes', events, { data: event('2026-10-01'), state: 'live', unpublished: { since: AT } }, { now: 'ended', waiting: [{ kind: 'unpublished', since: AT }] }],
+    ['a draft', events, { data: event('2026-10-01'), state: 'draft' }, { now: 'draft', waiting: [] }],
+    ['a planned draft', events, { data: event('2026-10-20'), state: 'draft', publishAt: AT, publishBy: 'u1' }, { now: 'draft', waiting: [{ kind: 'planned', at: AT, by: 'u1' }] }],
+    ['a planned draft from an import has no person', events, { data: {}, state: 'draft', publishAt: AT }, { now: 'draft', waiting: [{ kind: 'planned', at: AT }] }],
+    ['a stopped draft', events, { data: {}, state: 'draft', stopped: { at: AT, by: 'u1', reason: { code: 'link', href: '/x' } } },
+      { now: 'draft', waiting: [{ kind: 'stopped', at: AT, by: 'u1', reason: { code: 'link', href: '/x' } }] }],
+    // Wrong behaviour caught (D124): a dated change is hidden on a draft or an ended entry, out of the order of its days,
+    // or a change that stopped on its day reads like a waiting one.
+    ['online with dated changes, a stopped one among them, in the order of their days', events,
+      { data: event('2026-12-31'), state: 'live', unpublished: { since: AT }, changes: [{ from: '2026-12-01', fields: ['price'], by: 'u1' }, { from: '2026-11-01', fields: ['name'], stopped: { at: AT, reason: { code: 'invalid', fields: ['name'] } } }] },
+      { now: 'online', waiting: [{ kind: 'unpublished', since: AT }, { kind: 'stopped', at: AT, reason: { code: 'invalid', fields: ['name'] }, change: { from: '2026-11-01', fields: ['name'] } }, { kind: 'change', from: '2026-12-01', fields: ['price'], by: 'u1' }, { kind: 'ends', on: '2026-12-31' }] }],
+    ['an ended entry lists its dated change', events, { data: event('2026-10-01'), state: 'live', changes: [{ from: '2026-11-01', fields: ['price'] }] },
+      { now: 'ended', waiting: [{ kind: 'change', from: '2026-11-01', fields: ['price'] }] }],
+    ['a planned draft lists its dated change after its plan', events, { data: {}, state: 'draft', publishAt: AT, changes: [{ from: '2026-11-01', fields: ['price'], by: 'u2' }] },
+      { now: 'draft', waiting: [{ kind: 'planned', at: AT }, { kind: 'change', from: '2026-11-01', fields: ['price'], by: 'u2' }] }],
+  ])('%s', (_, brick, entry, expected) => {
+    expect(statusOf(brick, entry, TODAY)).toEqual(expected)
+  })
+})

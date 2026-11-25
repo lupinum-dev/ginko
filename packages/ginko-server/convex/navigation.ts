@@ -1,8 +1,8 @@
-// The side navigation of a manually ordered collection whose pages nest through a `parent` ref to the same collection
-// (the docs layer): the Studio reads it as a tree, moves a page (order, parent and the section/tab handover in one
+// The side navigation of a collection with `tree` (the docs layer): its pages nest through the parent field, and the
+// section and tab fields start headings. The Studio reads it as a tree, moves a page (order, parent and the section/tab handover in one
 // step) and sets, renames or removes a section or tab heading. The rules are core's (`outline`, `placePlan`), the same the website uses.
 import type { CollectionBrick, Field, Json, Locale } from '@lupinum/ginko'
-import { isNavTree, isTranslatable, outline, placePlan, sortEntries, validate, walkOutline, type OutlineRow, type Place, type Schema } from '@lupinum/ginko/internal'
+import { isTranslatable, outline, placePlan, sortEntries, treeFields, validate, walkOutline, type CollectionTree, type OutlineRow, type Place, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
@@ -12,15 +12,19 @@ import { msg, recorded } from './lib/history'
 import { commitEntry, lookupsFor } from './lib/write'
 import { titleOf } from './lib/list'
 
-/** The fields that place a page in the navigation; a move checks and writes only these. */
-const PLACE_FIELDS = ['parent', 'section', 'tab'] as const
+type TreeBrick = CollectionBrick & { tree: CollectionTree }
 
-/** A collection shown as a tree: manual order and a `parent` ref to itself. Fails for any other brick. */
-export function treeBrick(schema: Schema, key: string): CollectionBrick {
+/** A collection with `tree`. Fails for any other brick. */
+export function treeBrick(schema: Schema, key: string): TreeBrick {
   const brick = Object.hasOwn(schema.bricks, key) ? schema.bricks[key] : undefined
   if (!brick || brick.retired) fail('INVALID', 'errors.brickNoLongerEditable')
-  if (!isNavTree(key, brick)) fail('INVALID', 'errors.notANavigationTree', undefined, { brick: key })
-  return brick
+  if (brick.kind !== 'collection' || !brick.tree) fail('INVALID', 'errors.notANavigationTree', undefined, { brick: key })
+  return brick as TreeBrick
+}
+
+/** A text of the page in the field `key` names (the section or tab field of the tree), or undefined. */
+function treeText(brick: TreeBrick, key: string | undefined, data: Data, locale: Locale, main: Locale): string | undefined {
+  return key === undefined ? undefined : textIn(brick.fields[key], data[key], locale, main)
 }
 
 /** A text field's value in one language ('' counts as none); undefined when the brick has no such text field. */
@@ -42,13 +46,14 @@ async function pagesOf(ctx: QueryCtx, site: Id<'sites'>, key: string, brick: Col
  * root, as on the website), the own section and tab in the main language (the rules run on it), and `draft` for a page
  * the website does not show.
  */
-function rowsOf(schema: Schema, brick: CollectionBrick, pages: Doc<'entries'>[]): OutlineRow[] {
+function rowsOf(schema: Schema, brick: TreeBrick, pages: Doc<'entries'>[]): OutlineRow[] {
   const main = schema.locales[0]!
+  const { tree } = brick
   return pages.map((p) => {
     const data = p.data as Data
-    const parent = typeof data.parent === 'string' ? data.parent : undefined
-    const section = textIn(brick.fields.section, data.section, main, main)
-    const tab = textIn(brick.fields.tab, data.tab, main, main)
+    const parent = typeof data[tree.parent] === 'string' ? data[tree.parent] as string : undefined
+    const section = treeText(brick, tree.section, data, main, main)
+    const tab = treeText(brick, tree.tab, data, main, main)
     return { id: p._id, ...(parent ? { parent } : {}), ...(section ? { section } : {}), ...(tab ? { tab } : {}), ...((p.state ?? 'live') !== 'live' ? { draft: true } : {}) }
   })
 }
@@ -70,12 +75,15 @@ export const tree = query({
     const rows = rowsOf(schema, brick, pages)
     return pages.map((p, i) => {
       const data = p.data as Data
-      const text = (key: string) => textIn(brick.fields[key], data[key], language, main) ?? null
       return {
         ...rows[i]!, rev: p.rev, state: p.state ?? 'live', publishAt: p.publishAt ?? null,
-        title: titleOf(schema, brick, data, language), navTitle: text('navTitle'), badge: text('badge'),
+        title: titleOf(schema, brick, data, language),
+        // The short name and the badge the tree states (`tree.label`, `tree.badge`), in the language shown.
+        label: treeText(brick, brick.tree.label, data, language, main) ?? null,
+        badge: treeText(brick, brick.tree.badge, data, language, main) ?? null,
         // Labels in the language shown, for the headings (the rules run on the main language).
-        sectionLabel: text('section'), tabLabel: text('tab'),
+        sectionLabel: treeText(brick, brick.tree.section, data, language, main) ?? null,
+        tabLabel: treeText(brick, brick.tree.tab, data, language, main) ?? null,
       }
     })
   },
@@ -125,7 +133,8 @@ export const move = mutation({
       const schema = actor.site.schema as Schema
       const brick = treeBrick(schema, entry.brick)
       refuseStaff(actor)
-      refuseChanged(entry, args.baseRev, PLACE_FIELDS)
+      const { tree } = brick
+      refuseChanged(entry, args.baseRev, treeFields(tree))
 
       const pages = await pagesOf(ctx, actor.site._id, entry.brick, brick)
       const rows = rowsOf(schema, brick, pages)
@@ -148,14 +157,17 @@ export const move = mutation({
         const page = (await ctx.db.get(id as Id<'entries'>))!
         const before = page.data as Data
         const data: Data = { ...before }
-        if (p.parent === null) delete data.parent
-        else if (p.parent !== undefined) data.parent = p.parent
-        for (const key of ['section', 'tab'] as const) {
-          const w = p[key]
+        if (p.parent === null) delete data[tree.parent]
+        else if (p.parent !== undefined) data[tree.parent] = p.parent
+        const roots = p.parent !== undefined ? [tree.parent] : []
+        for (const role of ['section', 'tab'] as const) {
+          const w = p[role]
+          const key = tree[role]
+          if (w === undefined || key === undefined) continue
           if (w === null) delete data[key]
-          else if (w) data[key] = (byId.get(w.from)!.data as Data)[key]!
+          else data[key] = (byId.get(w.from)!.data as Data)[key]!
+          roots.push(key)
         }
-        const roots = PLACE_FIELDS.filter((k) => p[k] !== undefined)
         const pageTitle = titleOf(schema, brick, before, undefined) ?? entry.brick
         await writeData(ctx, actor, page, brick, roots, data, id === entry._id ? msg('history.placed', { title }) : msg('history.headingHandedOver', { title: pageTitle, from: title }), args.opId)
         if ((page.state ?? 'live') === 'live') { publicChange = true; committed = true }
@@ -227,10 +239,12 @@ export const heading = mutation({
       const entry = await entryOf(ctx, actor, args.entry)
       const schema = actor.site.schema as Schema
       const brick = treeBrick(schema, entry.brick)
-      const field = brick.fields[args.field]
-      if (!field || field.type !== 'text') fail('INVALID', 'errors.notANavigationTree', undefined, { brick: entry.brick })
+      // `field` is the role (section or tab); `key` the field of the brick that holds it.
+      const key = brick.tree[args.field]
+      const field = key === undefined ? undefined : brick.fields[key]
+      if (key === undefined || !field || field.type !== 'text') fail('INVALID', 'errors.notANavigationTree', undefined, { brick: entry.brick })
       refuseStaff(actor)
-      refuseChanged(entry, args.baseRev, [args.field, 'parent'])
+      refuseChanged(entry, args.baseRev, [key, brick.tree.parent])
       const locale = args.locale as Locale
       if (!schema.locales.includes(locale)) fail('INVALID', 'errors.languageNotSetUp', { locale })
       const text = args.text.trim()
@@ -241,7 +255,7 @@ export const heading = mutation({
       const at = roots.findIndex((r) => r.row.id === entry._id)
       // Nested pages follow their parent: the website ignores a heading on them.
       if (at < 0) fail('INVALID', 'errors.headingOnSubpage')
-      const own = (p: Doc<'entries'>) => textIn(field, (p.data as Data)[args.field], locale, main)
+      const own = (p: Doc<'entries'>) => textIn(field, (p.data as Data)[key], locale, main)
       const old = own(entry)
       if (!old && !text) return { changed: 0, contentRev: actor.site.contentRev }
       if (old === text) return { changed: 0, contentRev: actor.site.contentRev }
@@ -261,13 +275,13 @@ export const heading = mutation({
       for (const page of targets) {
         const before = page.data as Data
         const data: Data = { ...before }
-        if (!text) delete data[args.field]
+        if (!text) delete data[key]
         // A new heading gets the text in the main language too: the structure follows the main language.
-        else if (!old && isTranslatable(field)) data[args.field] = mergeField(field, undefined, { [main]: text, [locale]: text }, undefined)!
-        else data[args.field] = mergeField(field, before[args.field] as Json | undefined, isTranslatable(field) ? { [locale]: text } : text, locale)!
-        const { errors } = await validate(schema, page.brick, data, { mode: 'patch', changed: new Set([args.field]), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+        else if (!old && isTranslatable(field)) data[key] = mergeField(field, undefined, { [main]: text, [locale]: text }, undefined)!
+        else data[key] = mergeField(field, before[key] as Json | undefined, isTranslatable(field) ? { [locale]: text } : text, locale)!
+        const { errors } = await validate(schema, page.brick, data, { mode: 'patch', changed: new Set([key]), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
         if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
-        await writeData(ctx, actor, page, brick, [args.field], data, line, args.opId)
+        await writeData(ctx, actor, page, brick, [key], data, line, args.opId)
       }
       const site = (await ctx.db.get(actor.site._id))!
       return { changed: targets.length, contentRev: site.contentRev }

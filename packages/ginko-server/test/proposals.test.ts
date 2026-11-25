@@ -104,6 +104,23 @@ describe('when a write needs a yes', () => {
     expect((await s.row(draft.entry as Id<'entries'>))!.state).toBe('live')
   })
 
+  // Wrong behaviour caught (D105): a yes before the time checked the asker's own later edits against the rev they asked
+  // with and refused the plan, naming the asker as the one who changed it; a plan does not freeze the text.
+  it('a plan asked with a time, edited by the asker, and approved before the time is made', async () => {
+    const s = await approvalSetup()
+    const draft = await s.as.owner.mutation(api.entries.create, {
+      site: 'restaurant', opId: opId(), brick: 'menu', data: { category: 'starters', name: { de: 'Neu' }, price: { amount: 900 }, allergens: ['A'], veg: 'none' },
+    })
+    const entry = draft.entry as Id<'entries'>
+    const at = Date.now() + 2 * 60 * 60 * 1000
+    const asked = await s.as.cook.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, lifeRev: 1, at, rev: 1 })
+    expect(asked).toMatchObject({ status: 'open' })
+    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 950 } }, sentence: 'x' })
+    await s.as.owner.mutation(api.proposals.approve, { proposal: (asked as Proposed).proposal })
+    const row = (await s.row(entry))!
+    expect({ state: row.state, publishAt: row.publishAt, price: (row.data as { price?: unknown }).price }).toEqual({ state: 'draft', publishAt: at, price: { amount: 950 } })
+  })
+
   it('an invalid change is refused when it is proposed, not at approval', async () => {
     const s = await approvalSetup()
     const error = await errorOf(s.cookPrice(s.saibling, -5))
@@ -245,39 +262,6 @@ describe('approving', () => {
     })
   })
 
-  it('a scheduled approval applies at the time', async () => {
-    const s = await approvalSetup()
-    const { proposal } = (await s.cookPrice(s.saibling, 1450)) as Proposed
-    const at = NOW + HOUR
-    expect(await s.as.owner.mutation(api.proposals.approve, { proposal, at })).toMatchObject({ status: 'scheduled', at })
-    expect(await s.row(s.saibling)).toMatchObject({ rev: 1 })
-    await s.advanceTo(at - MINUTE)
-    expect(await s.row(s.saibling)).toMatchObject({ rev: 1 })
-    await s.advanceTo(at + MINUTE)
-    expect(await s.proposalRow(proposal)).toMatchObject({ status: 'applied', decidedBy: 'u-wirtin' })
-    expect(await s.row(s.saibling)).toMatchObject({ rev: 2, data: { price: { amount: 1450 } } })
-  })
-
-  it('a scheduled approval is stale at the time when the field changed before', async () => {
-    const s = await approvalSetup()
-    const { proposal } = (await s.cookPrice(s.saibling, 1450)) as Proposed
-    const at = NOW + HOUR
-    await s.as.owner.mutation(api.proposals.approve, { proposal, at })
-    await s.ownerPrice(s.saibling, 1500)
-    await s.advanceTo(at + MINUTE)
-    expect(await s.proposalRow(proposal)).toMatchObject({ status: 'stale', reason: expect.stringContaining('Inzwischen hat jemand das geändert') })
-    expect((await s.row(s.saibling))!.data.price).toEqual({ amount: 1500 })
-  })
-
-  it.each([
-    ['too far ahead', NOW + YEAR + HOUR],
-    ['in the past', NOW - MINUTE],
-  ])('a scheduled approval %s is refused', async (_why, at) => {
-    const s = await approvalSetup()
-    const { proposal } = (await s.cookPrice(s.saibling, 1450)) as Proposed
-    expect((await errorOf(s.as.owner.mutation(api.proposals.approve, { proposal, at }))).code).toBe('INVALID')
-  })
-
   it('create and remove proposals apply through their own operations', async () => {
     const s = await approvalSetup()
     const created = await s.as.cook.mutation(api.entries.create, {
@@ -303,6 +287,22 @@ describe('approving', () => {
     await s.as.owner.mutation(api.proposals.approve, { proposal })
     const [change] = await s.rows('changes')
     expect((await errorOf(s.as.cook.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), task: 'menu.price', change: change!._id }))).code).toBe('FORBIDDEN')
+  })
+})
+
+describe('an open request from before D130', () => {
+  // R4 B. Wrong behaviour caught: a request to take the time off a planned entry ("unpublish", its after is online,
+  // asked before times went away) takes the entry offline when an approver says yes now.
+  it('to take a time off is stale and leaves the entry online', async () => {
+    const s = await approvalSetup()
+    const entry = (await s.row(s.saibling))!
+    const old = await s.t.run((ctx) => ctx.db.insert('proposals', {
+      site: s.site, op: 'unpublish', brick: 'menu', entry: s.saibling, args: { site: 'restaurant', opId: 'old-request', task: 'menu.edit', entry: s.saibling, lifeRev: entry.lifeRev },
+      base: { lifeRev: entry.lifeRev }, before: { state: 'scheduled' }, after: { state: 'live' }, sentence: 'Zeitplan von „Gebeizter Saibling“ aufheben',
+      author: people.cook, via: 'ui', status: 'open', createdAt: Date.now(),
+    }))
+    expect(await s.as.owner.mutation(api.proposals.approve, { proposal: old })).toMatchObject({ status: 'stale', reasonMsg: { key: 'history.staleTimeGone' } })
+    expect((await s.row(s.saibling))!.state ?? 'live').toBe('live')
   })
 })
 

@@ -2,7 +2,7 @@ import type { ComponentRegistry } from './components.ts'
 import type { MarkdownProfile } from './markdown.ts'
 import type { ValueInput } from './fields.ts'
 import type { Msg } from './messages.ts'
-import type { WeekInfo } from './time.ts'
+import type { SiteWeek } from './time.ts'
 import type { StoredHolidays } from './holidays.ts'
 // The schema as plain data. This is what `ginko.config.ts` describes, what
 // `ginko release` sends, and what the platform stores. SPEC.md part 2.
@@ -78,11 +78,23 @@ export interface ChoicesField<V extends string = string> extends FieldBase { typ
 }
 export interface ListField<F extends Fields = Fields> extends FieldBase {
   type: 'list'; of: F; itemLabel: Label; max: number
-  /** Fewest rows. With `max` equal and a unique required choice this expresses "every option exactly once". */
+  /** Fewest rows. */
   min?: number
-  /** A required subfield (choice, text, date or time) whose value must differ in every row. */
+  /** A required subfield (choice, text, date or time) whose value must differ in every row, such as session times. */
   unique?: string
 }
+/** One row of a rows field with its own rows: `key` names it in the stored value and in paths, `label` heads it in the Studio. */
+export interface RowDef { key: string; label: Label }
+/**
+ * The rows of a rows field: `'weekdays'` the seven days (keys `mo` … `su`), `'workdays'` the site's workdays
+ * (`week.workdays` days from `week.firstDay` on), or an own list of rows. A list and not an object: the platform sorts object keys.
+ */
+export type RowSet = 'weekdays' | 'workdays' | readonly RowDef[]
+/**
+ * A table with a fixed set of rows and the same columns in every row (`of`), such as the hours of each weekday. The
+ * value is a map from row key to row (`{ mo: { closed, … }, … }`) with exactly the rows of the field.
+ */
+export interface RowsField<F extends Fields = Fields, R extends RowSet = RowSet> extends FieldBase { type: 'rows'; rows: R; of: F }
 /** Points to entries of a collection brick `to`; stores the entry ID (a list of IDs with `multiple`). `max` only with `multiple`. */
 export interface RefField extends FieldBase { type: 'ref'; to: string; multiple?: boolean; max?: number }
 /** A frame's shape as `width:height`, such as `3:2`, `1:1` or `1.91:1`. */
@@ -101,7 +113,7 @@ export interface SlugField extends FieldBase { type: 'slug'; from: string }
 
 export type Field =
   | TextField | LongTextField | MarkdownField | NumberField | MoneyField | BooleanField
-  | DateField | TimeField | DateRangeField | ChoiceField | ChoicesField | ListField
+  | DateField | TimeField | DateRangeField | ChoiceField | ChoicesField | ListField | RowsField
   | ImageField | FileField | SlugField | RefField
 
 export type FieldType = Field['type']
@@ -122,12 +134,29 @@ export const isPrefillToken = (value: unknown): value is PrefillToken => PREFILL
  * reports a token on a field that is not a `date`. A `create` task may list `fields`: it then asks for and writes only
  * those (besides its prefill and the fields' defaults), like an `edit` task. Without `fields` it asks for every field
  * but the slug and the plan of a planned change. The release check wants every required field without a default
- * (and not a slug) in `fields` or in the prefill.
+ * (and not a slug) in `fields` or in the prefill. `when` on an `edit` task says whether its form asks from which day the
+ * values hold, and until which day (`TaskWhen`). `set` on an `edit` task gives fields fixed values that every save of
+ * the task writes, such as `{ onMenu: false }` for "Heute nicht auf der Karte"; a field is either in `fields` or in `set`.
  */
 export type Task<F extends Fields = Fields> =
-  | { id: string; label: Label; kind: 'edit'; fields: readonly (keyof F & string)[]; pick?: boolean; prefill?: Prefill<F>; needsApproval?: boolean }
+  | { id: string; label: Label; kind: 'edit'; fields: readonly (keyof F & string)[]; pick?: boolean; prefill?: Prefill<F>; needsApproval?: boolean; when?: TaskWhen; set?: TaskSet<F> }
   | { id: string; label: Label; kind: 'create'; fields?: readonly (keyof F & string)[]; prefill?: Prefill<F>; needsApproval?: boolean }
   | { id: string; label: Label; kind: 'remove'; needsApproval?: boolean }
+
+/**
+ * From when, and until when, the values of an edit task hold (D123, slice 3): `{ from: 'now' }` (the default when absent)
+ * at once, for good; `{ from: 'ask' }` the form asks for a day, and a day ahead saves them as a dated change (`Change`);
+ * `{ from: 'ask', until: 'ask' }` the form asks for both days and saves an exception that ends by itself;
+ * `{ from: '@today', until: '@today' }` an exception for today only, with no day field. Every field of a task that asks
+ * a day must be one a change may set. With both days asked, `yearly: 'ask'` offers "Jedes Jahr wiederholen" (the days
+ * come back every year) and `name: 'ask'` a name for the change (slice 4).
+ */
+export type TaskWhen = { from: 'now' | 'ask' } | { from: 'ask'; until: 'ask'; yearly?: 'ask'; name?: 'ask' } | { from: '@today'; until: '@today' }
+
+/** Fixed values of an edit task (`set`), written like the fields' values. */
+type TaskSet<F extends Fields> = Fields extends F
+  ? { readonly [name: string]: Json | undefined }
+  : { readonly [P in keyof F]?: ValueInput<F[P]> }
 
 /** Prefill values by field name. Without known fields (the stored schema) any JSON or token. */
 type Prefill<F extends Fields> = Fields extends F
@@ -135,19 +164,16 @@ type Prefill<F extends Fields> = Fields extends F
   : { readonly [P in keyof F]?: ValueInput<F[P]> }
 
 /**
- * Which entries of a collection the website shows. `always`: all of them. `until`: an entry is shown until the
- * date in `field` (a `date`, or the end `to` of a `daterange`) has passed, plus `days` more (a week that starts
- * on that day: `days: 6`). An empty field always shows the entry. `deleteExpired: true` lets the platform delete
- * entries that are no longer shown (see the docs page "Bricks", Visibility).
+ * The end of an entry's life (stored form): it is shown until the date in `field` (a `date`, or the end `to` of a
+ * `daterange`) has passed, plus `plusDays` more (a week that starts on that day: `plusDays: 6`). An empty field never
+ * ends. `thenDelete: true` lets the platform delete entries that ended. The written form is `ShowUntil` of the site file.
  */
-export type Visibility<K extends string = string> =
-  | { mode: 'always' }
-  | { mode: 'until'; field: K; days?: number; deleteExpired?: boolean }
+export interface ShowUntilRule<K extends string = string> { field: K; plusDays?: number; thenDelete?: boolean }
 
 /**
  * The one-line status of a collection on the Studio's Today page, computed on the server from the live entries:
  * `next` the first entry whose date (a `date`, or a `daterange` that has not ended) is today or later; `count` how many
- * entries end within 7 days (needs `visible: { mode: 'until' }`); `missing` how many entries leave an optional field
+ * entries end within 7 days (needs `showUntil`); `missing` how many entries leave an optional field
  * without a default empty; `age` the newest entry by a date field and how long ago that is. A status also says when a
  * section is due: entries end within 7 days, entries miss the field, or the next entry is within 7 days and misses a
  * required text. Changing it changes no stored data.
@@ -159,17 +185,20 @@ export type CollectionStatus<D extends string = string, K extends string = strin
   | { age: D }
 
 /**
- * The status of a single brick on the Studio's Today page: `hours` shows today's opening hours ("Open today
- * 11:30–14:30", "Closed today") from the brick's `week`, `exceptions`, `closedOn` and `holidays` fields.
- * `{ hours: { plans: 'hourPlans' } }` also reads the site's hour plans (a collection of `hourPlans()`, by its key): the
- * line follows the plan that applies today.
+ * The status of a single brick on the Studio's Today page: the line of a status rule, by name (`{ rule: '<name>' }`).
+ * The rule comes from a pattern and states the fields it reads; `checkSchema` refuses a name its caller does not know.
+ * `plans` names a collection of the site the rule also reads (the rule states its fields): the line follows the entry
+ * of it that applies today.
  */
-export type SingleStatus = { hours: true | { plans: string } }
+export type SingleStatus = { rule: string; plans?: string }
 
 export type BrickStatus = CollectionStatus | SingleStatus
 
 /** Where a brick's content comes from: the platform (default) or Markdown files in the site's repo (CONTENT.md). */
 export type BrickSource = 'files'
+
+/** `timeline` of a brick: `public` names the fields whose waiting changes a page may read. */
+export interface BrickTimeline<K extends string = string> { public: readonly K[] }
 
 export interface SingleBrick<F extends Fields = Fields> {
   kind: 'single'
@@ -180,16 +209,18 @@ export interface SingleBrick<F extends Fields = Fields> {
   /** What the brick is for, shown in the Studio; a text or a text per language like `label`. Fields have `hint` instead. */
   describe?: Label
   fields: F
+  /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
+  body?: string
+  /** The key of the page (`pages`) the Studio's preview opens for an entry; only for a brick without `route`. */
+  preview?: string
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
   /**
-   * A planned change of one field: from the date in `from` on, the value in `next` replaces `field`, e.g. a price that
-   * goes up on the 1st. `next` (the type of `field`) and `from` (a date) are optional fields that are set together, and
-   * every edit task that changes `field` shows them too. The site applies the plan; the platform checks it and opens a
-   * task on the value in effect.
+   * The fields whose dated changes a page may read ahead (`upcoming` in the bundle): "from 1 November 19.50". Live fields
+   * that a change may set. Every other waiting value stays on the server (D121).
    */
-  planned?: { field: string; next: string; from: string }
+  timeline?: BrickTimeline
   /** The status line on the Studio's Today page (see `SingleStatus`). */
   status?: SingleStatus
   /** @internal Platform-managed: set when the brick is listed in `retired`. Do not set it. */
@@ -206,28 +237,40 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   /** What the brick is for, shown in the Studio; a text or a text per language like `label`. Fields have `hint` instead. */
   describe?: Label
   fields: F
+  /** The markdown field that is the text of the brick's file (`content/<brick>.md`); other fields are its front matter. */
+  body?: string
+  /** The key of the page (`pages`) the Studio's preview opens for an entry; only for a brick without `route`. */
+  preview?: string
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
   /**
-   * A planned change of one field: from the date in `from` on, the value in `next` replaces `field`, e.g. a price that
-   * goes up on the 1st. `next` (the type of `field`) and `from` (a date) are optional fields that are set together, and
-   * every edit task that changes `field` shows them too. The site applies the plan; the platform checks it and opens a
-   * task on the value in effect.
+   * The fields whose dated changes a page may read ahead (`upcoming` in the bundle): "from 1 November 19.50". Live fields
+   * that a change may set. Every other waiting value stays on the server (D121).
    */
-  planned?: { field: string; next: string; from: string }
+  timeline?: BrickTimeline
   max: number
   /** `manual`: the owner sorts the entries. Else by a field, ascending unless `dir: 'desc'`. */
   order: 'manual' | { field: string; dir?: 'asc' | 'desc' }
+  /** How an entry appears in lists (see `CollectionListing`). */
+  listing: CollectionListing
+  /** The entries are pages of a navigation tree (see `CollectionTree`). */
+  tree?: CollectionTree
   route?: R
-  visible?: Visibility
+  showUntil?: ShowUntilRule
   /**
    * What an entry does in a language where a translatable required field is missing (an outdated translation still
    * counts): `'hide'` leaves it out of that language (no page, not in lists, sitemap or hreflang); `'fallback'` shows
-   * the main language there and, with a `route`, links to the main-language page. Default: `'hide'` with a `route`,
-   * else `'fallback'` (`untranslatedMode`).
+   * the main language there and, with a `route`, links to the main-language page. Required when the site has more than
+   * one language.
    */
   untranslated?: 'fallback' | 'hide'
+  /**
+   * The date field that holds the day an entry was published (a live `date` field of the brick), such as the date a
+   * post shows. It never hides an entry: a file entry waits for its `$publishAt`, and `ginko check` notes a date that
+   * does not fit it.
+   */
+  publishedOn?: string
   /** Entries of this collection plan weeks of the single brick `brick`; `field` (a date field here) holds the first day of the week (`week.firstDay`). A planned week counts as entered for the weekly upkeep rule. */
   plans?: { brick: string; field: string }
   /** The status line on the Studio's Today page (see `CollectionStatus`). Without one, the collection shows its drafts and scheduled entries. */
@@ -237,6 +280,38 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
 }
 
 export type Brick = SingleBrick | CollectionBrick
+
+/** The field types `listing.title` may name: the name of an entry is a text, or the day it is for. */
+export const LISTING_TITLE_TYPES = ['text', 'longtext', 'date'] as const
+/** The field types `listing.detail` may name: a value that reads as one short line. */
+export const LISTING_DETAIL_TYPES = ['text', 'longtext', 'number', 'money', 'date', 'daterange', 'time', 'choice', 'choices', 'boolean'] as const
+
+/**
+ * How an entry of a collection appears in the Studio's lists, pick lists and search, and in the site's lists of
+ * entries (navigation, llms.txt, search): `title` is the field that names it, `detail` the value shown beside or under
+ * the name, `group` a choice field whose options group a pick list, `image` a picture shown with it. Field names only;
+ * the stored data does not change with it.
+ */
+export type CollectionListing<T extends string = string, D extends string = string, G extends string = string, I extends string = string> = {
+  title: T
+  detail?: D
+  group?: G
+  image?: I
+}
+
+/**
+ * A collection whose entries are pages of a navigation tree, such as documentation: `parent` is a ref field to the
+ * same collection that nests a page under another, `section` and `tab` are text fields that start a heading or a tab
+ * at a top-level page, `label` is a text field with the short name the tree shows in place of the title, `badge` a
+ * text field shown as a badge beside it. The order is the owner's (`order: 'manual'`). Field names only; any name works.
+ */
+export type CollectionTree<P extends string = string, S extends string = string, T extends string = string, L extends string = string, B extends string = string> = {
+  parent: P
+  section?: S
+  tab?: T
+  label?: L
+  badge?: B
+}
 
 /**
  * What a retired field (SPEC 2.5) answers to old code: `from` mirrors another field of the brick, `value` is a fixed
@@ -252,8 +327,16 @@ export interface MigrationDescriptor {
   fingerprint: string
 }
 
+/**
+ * The number of the stored model's form. A platform reads one form only (it serves every site from one deployment), so
+ * it refuses a schema of another form, and a release never changes it: the platform's upgrade does.
+ */
+export const SCHEMA_FORMAT = 2
+
 /** The serialized schema (JSON). `serializeSchema()` produces it; the platform stores it. */
 export interface Schema {
+  /** The form of the stored model (`SCHEMA_FORMAT`). */
+  format: typeof SCHEMA_FORMAT
   site: string
   name: string
   url: string
@@ -262,8 +345,8 @@ export interface Schema {
   /** The language tag per locale for numbers, money and dates (`SiteInput.languages`, "de-AT"); absent when the site sets none. */
   languages?: Partial<Record<Locale, string>>
   currency: Currency
-  /** First day of the week and weekend days of the site (computed once from the main language or `firstDayOfWeek`). */
-  week: WeekInfo
+  /** The site's week as the site states it (`SiteInput.week`). */
+  week: SiteWeek
   /** The public-holiday calendar of the site (`calendar`, else from `country`); absent when the config sets neither. */
   holidays?: StoredHolidays
   /** Static pages by key, each with its path per locale (the home page is the one whose main-locale path is `/`). */

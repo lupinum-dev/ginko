@@ -1,11 +1,10 @@
 // SaaS template: a small German software company with a web app for planning shifts in care homes and small clinics:
 // what the product does on the home page, the plans with their prices, the changelog, questions and answers, a blog,
 // customer logos and a quote, security and data facts, and legal texts, in English (main), German and French. Every
-// brick reads Markdown from content/ (source: 'files'), so the site runs without an account and can be built as static
-// files. To let the team change a brick in Ginko Studio later, remove `source: 'files'` from it (README, "Move to
-// the Studio").
-import { defineSite, f, single } from '@lupinum/ginko'
-import { changelog, faq, legal, notices, people, posts, site } from '@lupinum/ginko/basics'
+// brick reads Markdown from content/, so the site runs without an account and can be built as static files. To let
+// the team change a brick in Ginko Studio later, name it in `studio.bricks` (README, "Move to the Studio").
+import { defineSite, extend, f, single } from '@lupinum/ginko'
+import { changelog, faq, legal, notices, people, posts, site } from '@lupinum/ginko/patterns'
 import { components, docsCollection } from '@lupinum/ginko-docs/config'
 import { logos, quotes } from './app/bricks/logos-quotes.ts'
 import { pages } from './app/bricks/pages.ts'
@@ -20,7 +19,6 @@ const point = {
 }
 
 export default defineSite({
-  site: 'saas',
   name: 'Planwerk',
   // `color` fills the share cards: the light `--brand` of app/assets/css/main.css.
   seo: {
@@ -29,6 +27,8 @@ export default defineSite({
   },
   url: siteUrl('https://example.com'),
   timeZone: 'Europe/Berlin',
+  // The site's week: the calendar starts on firstDay, and workdays are the days you work.
+  week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   // `addressCountry` in the Organization JSON-LD.
   country: 'DE',
   locales,
@@ -43,34 +43,43 @@ export default defineSite({
     faq: localized('/faq'),
     help: localized('/help'),
   },
+  // The site's id on a Ginko platform, and the bricks the team edits in Ginko Studio: none yet, every brick is in files.
+  studio: { id: 'saas', bricks: [] },
+  // The page of one entry, by brick.
+  entries: {
+    legal: localized('/legal/[slug]'),
+    posts: localized('/news/[slug]'),
+    pages: localized('/[slug]'),
+    // The help center: /help/<slug> in every language (Ginko adds the language prefix).
+    docs: '/help/[slug]',
+  },
   // The order of the bricks is the order of the Studio's Today page: the weekly changelog entry first, then the
   // notice, the prices and the questions.
   components,
   bricks: {
     // The help center (content/docs/, pages from @lupinum/ginko-docs) at /help; app/pages/help/index.vue is its start page.
-    docs: docsCollection({ locales, base: '/help' }),
+    docs: docsCollection(),
     // One file per release (content/changelog/), newest first: version, date and the text, which starts with one
     // sentence (the summary on the home page and in the feed), then `<!-- more -->`, then the changes under the
     // headings New, Improved and Fixed. In the Studio, Today shows how old the newest entry is.
-    changelog: {
-      ...changelog({ source: 'files' }),
-      status: { age: 'date' },
+    changelog: extend(changelog(), {
+      preview: 'changelog',
+      status: { show: 'newest', field: 'date' },
       tasks: [
-        { id: 'add', kind: 'create', label: { de: 'Änderung eintragen', en: 'Add a release', fr: 'Ajouter une version' } },
-        { id: 'edit', kind: 'edit', pick: true, fields: ['version', 'date', 'body'], label: { de: 'Eintrag bearbeiten', en: 'Edit a release', fr: 'Modifier une version' } },
+        { id: 'add', kind: 'add', label: { de: 'Änderung eintragen', en: 'Add a release', fr: 'Ajouter une version' } },
+        { id: 'edit', fields: ['version', 'date', 'body'], label: { de: 'Eintrag bearbeiten', en: 'Edit a release', fr: 'Modifier une version' } },
       ],
-    },
+    }),
     // Short lines at the top of every page ("New in 4.6: …"), each until a date (content/notices/).
-    notices: notices({ source: 'files' }),
+    notices: notices(),
     // The plans, each with a price per month and per year in `currency`, or "on request" (content/pricing/).
-    pricing: pricing({ source: 'files' }),
+    pricing: extend(pricing, { preview: 'pricing' }),
     // Questions and answers: billing, cancellation, data export, data location (content/faq/).
-    faq: faq({ source: 'files' }),
+    faq: extend(faq(), { preview: 'faq' }),
     // The first screen of the home page and its lists (content/home.md): what the product does and for whom, the link
     // to the free trial in the app, a picture of the product, its main features and the facts about security and data.
     home: single({
       label: { de: 'Startseite', en: 'Home page', fr: 'Page d’accueil' },
-      source: 'files',
       fields: {
         title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 100, default: 'Welcome' }),
         lead: f.longtext({ de: 'Einleitung', en: 'Lead', fr: 'Introduction' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
@@ -87,22 +96,21 @@ export default defineSite({
     }),
     // Legal name, address, register entry, VAT number, phone and email for the footer, the imprint, the email of the
     // plan on request and the Organization JSON-LD (content/site.md).
-    site: site({ source: 'files' }),
+    site: site(),
     // Privacy policy, terms of service and imprint: one file per text in content/legal/.
-    legal: legal({ source: 'files', route: localized('/legal/[slug]') }),
-    // Product news, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
+    legal: legal(),
+    // Product news, newest first (content/posts/). `authors` names entries of `people`. A file with `$draft: true` never
     // goes online. In the Studio, "Write a post" on Today.
-    posts: {
-      ...posts({ source: 'files', authors: 'people', route: localized('/news/[slug]') }),
-      tasks: [{ id: 'write', kind: 'create', label: { de: 'Beitrag schreiben', en: 'Write a post', fr: 'Écrire un article' } }],
-    },
+    posts: extend(posts({ authors: 'people' }), {
+      tasks: [{ id: 'write', kind: 'add', label: { de: 'Beitrag schreiben', en: 'Write a post', fr: 'Écrire un article' } }],
+    }),
     // The people who write the posts (content/people/). No photos: the site shows initials.
-    people: people({ source: 'files' }),
+    people: people(),
     // Customer logos on the home page (content/logos/, the files in public/logos/).
-    logos: logos({ source: 'files' }),
+    logos,
     // What customers say, on the home page (content/quotes/), with their permission.
-    quotes: quotes({ source: 'files' }),
+    quotes,
     // Security, about us, contact and any other page (content/pages/).
-    pages: pages({ route: localized('/[slug]'), source: 'files' }),
+    pages,
   },
 })

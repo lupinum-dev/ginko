@@ -3,7 +3,7 @@
 // (namespace `server`, see modules/server-messages.ts), else core's (`issues.*`, `links.*`, …), else the stored
 // German text (rows from before `msg`, an older server, a key this Studio does not know).
 // No Nuxt here, so unit tests load it directly; `useTextOf` binds it to the Studio's translator.
-import { coreMessage, labelOf } from '@lupinum/ginko/internal'
+import { coreMessage, isDate, labelOf } from '@lupinum/ginko/internal'
 import type { Params } from '@lupinum/ginko-i18n/core'
 import { twiceOnClock } from './when'
 
@@ -23,7 +23,15 @@ export interface TextEnv {
   timeZone?: string
   /** The site's main language, where a label lacks the reader's. */
   main?: string
+  /** A day ('2026-11-01') as the reader reads it ("Sonntag, 1. November"); without it a day stays as stored. */
+  day?: (iso: string) => string
 }
+
+/**
+ * The one param that holds a day (`issues.changeValue`, the day of a dated change): shown in the reader's form, while a
+ * file's message keeps the ISO day. Only `day`: a `from` can be an old address, and "2026-11-01" is a valid slug.
+ */
+const DAY_PARAM = 'day'
 
 /** A value in `params`: text, a number (a date in ms), a label per locale or a nested message. */
 type Param = string | number | Record<string, unknown>
@@ -34,7 +42,9 @@ const isMsg = (value: Param): value is { key: string; params?: Record<string, Pa
 function translate(msg: StoredMsg, env: TextEnv): string | undefined {
   const params: Record<string, string | number> = {}
   for (const [name, value] of Object.entries((msg.params ?? {}) as Record<string, Param>)) {
-    if (typeof value === 'string' || typeof value === 'number') {
+    if (typeof value === 'string' && env.day && name === DAY_PARAM && isDate(value)) {
+      params[name] = env.day(value)
+    } else if (typeof value === 'string' || typeof value === 'number') {
       params[name] = value
     } else if (isMsg(value)) {
       const nested = translate(value, env)

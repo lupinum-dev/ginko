@@ -6,12 +6,21 @@ import { useI18n } from '#imports'
 import { isConvexCallError, normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import type { InjectionKey } from 'vue'
 import type { Json } from '@lupinum/ginko'
-import type { Place } from '@lupinum/ginko/internal'
-import { whenText } from '../utils/when'
+import { occurrence, todayIn, type Place } from '@lupinum/ginko/internal'
+import { dayWords, whenText } from '../utils/when'
 import { translationNote } from '../utils/content'
 import { UploadError } from './useUpload'
 import { messageOf, type Described } from '../utils/messageOf'
 import type { Who } from '../utils/who'
+
+/** A field issue as the server sends it (core `Issue`, the errors of an INVALID and the warnings of a save). */
+export type FieldMessage = NonNullable<NonNullable<OpError['details']>['errors']>[number]
+
+/** The warnings of a save or create: JSON from the server, in the shape of `OpError` errors. */
+const warningsOf = (result: object): FieldMessage[] => {
+  const value = 'warnings' in result ? result.warnings : undefined
+  return Array.isArray(value) ? value : []
+}
 
 export interface OpError {
   code: string
@@ -105,23 +114,38 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   const create = useConvexMutation(api.entries.create)
   const revert = useConvexMutation(api.entries.revert)
   const purge = useConvexMutation(api.entries.purge)
+  const cancelDated = useConvexMutation(api.datedChanges.cancel)
+  const moveDated = useConvexMutation(api.datedChanges.setDay)
   const lasting = inject(LASTING)
   if (!lasting) throw new Error('provideLastingOps() is missing in app.vue')
   const { remove, restore, undo, publish, unpublish, discard, move, place: moveInTree, setHeading: headingInTree } = lasting
   /** Nothing was written: say so and offer no Undo. The server does not name the approver, so neither does the message. */
-  const sentForApproval = () => show(t('review.sent'))
 
   const opId = () => crypto.randomUUID()
 
   /** What the other languages show after a save, create or publish (the server's `translation`); `main` is the site's main locale. */
   const noteOf = (notes: Parameters<typeof translationNote>[0], main: string) => translationNote(notes, t, language.value, main)
+  /** "Samstag, 17. Oktober": the day a dated change or a week planned ahead starts on. */
+  const dayText = (day: string) => dayWords(day, format)
+  /** "1. Juni": a day of a change that comes back every year, without its year (slice 4). */
+  const dayMonth = (day: string) => format.date(day, { day: 'numeric', month: 'short' })
+  /** A change for one day (`from` = `until`) names that day, or "heute" in the site's zone (L13). */
+  const oneDay = (from: string, timeZone: string | undefined) => timeZone !== undefined && from === todayIn(timeZone)
+  /** A write that became a request (SPEC 17); `from`: it is a change for that day, which the message names (E5). */
+  const sentForApproval = (from?: string, until?: string, timeZone?: string) => show(
+    from === undefined ? t('review.sent')
+    : until === undefined ? t('dated.sentFrom', { day: dayText(from) })
+    : until !== from ? t('dated.sentFromUntil', { day: dayText(from), until: dayText(until) })
+    : oneDay(from, timeZone) ? t('dated.sentToday') : t('dated.sentOn', { day: dayText(from) }),
+  )
   /**
-   * When a write shows on the website: "in about a minute", or the day the server names (`liveFrom`) for a week planned
-   * ahead or a planned price, so nobody takes it for live now.
+   * When a write shows on the website: "in about a minute", or the day the server names, so nobody takes it for live
+   * now: `liveFrom` for a week planned ahead, `from` for a dated change (D125).
    */
   const liveText = (result: unknown) => {
-    const from = typeof result === 'object' && result !== null && 'liveFrom' in result && typeof result.liveFrom === 'string' ? result.liveFrom : undefined
-    return from ? t('ops.liveFrom', { date: format.date(from, { weekday: 'long', day: 'numeric', month: 'long' }) }) : t('ops.liveHint')
+    const day = (key: string) => (typeof result === 'object' && result !== null && key in result ? (result as Record<string, unknown>)[key] : undefined)
+    const from = [day('liveFrom'), day('from')].find((d): d is string => typeof d === 'string')
+    return from ? t('ops.liveFrom', { date: dayText(from) }) : t('ops.liveHint')
   }
 
   /** `text` and a sentence per picture that came back from the Files trash with the old version. */
@@ -168,8 +192,8 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
    * `at` absent: online now, and the message says what the other languages show (`main`: the site's main locale).
    * Undo takes it back to a draft (SPEC 15). `timeZone` words the scheduled time.
    */
-  async function publishEntry(entry: string, lifeRev: number, opts: { at?: number; task?: string; timeZone: string; main: string }) {
-    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, at: opts.at })
+  async function publishEntry(entry: string, lifeRev: number, opts: { at?: number; rev?: number; task?: string; timeZone: string; main: string }) {
+    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, at: opts.at, rev: opts.rev })
     if (isProposal(result)) { sentForApproval(); return result }
     const text = opts.at === undefined
       ? [t('ops.published'), t('ops.liveHint'), noteOf(result.translation, opts.main)].filter(Boolean).join(' ')
@@ -180,28 +204,42 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   }
 
   /**
-   * Puts a live entry's unpublished changes online, now or at `at`; `rev` is the version the person saw. A planned
-   * publish offers Rückgängig (the time goes, the changes stay); one done now is undone from the history.
+   * Puts a live entry's unpublished changes online, now or, with `from`, as a dated change of that day (D125); `rev`
+   * is the version the person saw. One done now is undone from the history; a dated one is cancelled or moved in the
+   * editor's notice of it (D131), so the message offers no Rückgängig.
    */
-  async function publishChanges(entry: string, lifeRev: number, rev: number, opts: { at?: number; task?: string; timeZone: string; main: string }) {
-    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, rev, at: opts.at })
-    if (isProposal(result)) { sentForApproval(); return result }
-    if (opts.at === undefined) {
-      show([t('ops.changesPublished'), t('ops.liveHint'), noteOf(result.translation, opts.main)].filter(Boolean).join(' '))
-      return result
-    }
-    show(t('ops.changesScheduled', { time: whenText(opts.at, opts.timeZone, format) }), {
-      action: { label: t('ops.undo'), run: async () => { await clearChangesSchedule(entry, lifeRev, opts.task).catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } },
-    })
+  async function publishChanges(entry: string, lifeRev: number, rev: number, opts: { from?: string; task?: string; main: string }) {
+    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, rev, ...(opts.from === undefined ? {} : { from: opts.from }) })
+    if (isProposal(result)) { sentForApproval(opts.from); return result }
+    show(opts.from === undefined
+      ? [t('ops.changesPublished'), t('ops.liveHint'), noteOf(result.translation, opts.main)].filter(Boolean).join(' ')
+      : t('ops.changesScheduled', { time: dayText(opts.from) }))
     return result
   }
 
-  /** Takes the time off planned unpublished changes; the entry stays online and the changes stay saved. */
-  async function clearChangesSchedule(entry: string, lifeRev: number, task?: string) {
-    const result = await unpublish.mutate({ site: site.value, opId: opId(), task, entry, lifeRev })
-    if (isProposal(result)) { sentForApproval(); return result }
-    show(t('ops.changesScheduleCleared'))
-    return result
+  /**
+   * A change waiting for a later day (D131): `cancel` takes it out (the entry stays as it is, nothing goes offline),
+   * `setDay` moves it to another day (a stopped one starts again). Throw OpError for the notice to show.
+   */
+  async function cancelChange(change: string, task?: string) {
+    try {
+      await cancelDated.mutate({ site: site.value, opId: opId(), task, change })
+      show(t('dated.cancelled'))
+    } catch (error) {
+      throw opErrorOf(error)
+    }
+  }
+  /** `until`: the new last day of an exception (slice 3). */
+  /** `yearly`: the days count for every year, so the message names them without a year, as the notice does (round N6). */
+  async function moveChange(change: string, from: string, task?: string, until?: string, yearly?: boolean) {
+    try {
+      await moveDated.mutate({ site: site.value, opId: opId(), task, change, from, ...(until === undefined ? {} : { until }) })
+      show(until === undefined ? t('dated.moved', { day: dayText(from) })
+        : yearly ? t('dated.movedYearly', { day: dayMonth(from), until: dayMonth(until) })
+        : t('dated.movedUntil', { day: dayText(from), until: dayText(until) }))
+    } catch (error) {
+      throw opErrorOf(error)
+    }
   }
 
   /** Verwerfen: the unpublished changes go, the website keeps its version. Not undoable, so the editor asks first. */
@@ -299,21 +337,52 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     placeEntry,
     setHeading,
     publishChanges,
-    clearChangesSchedule,
+    cancelChange,
+    moveChange,
+    dayText,
     discardChanges,
     /**
      * Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. The message also says
      * what the other languages show now (the server's `translation`), named from the site's `main` locale.
      */
-    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string; publish?: true }) {
+    /**
+     * `until` (with `from`): the last day of an exception (slice 3); `change`: the exception a save edits (its end and
+     * values; its start stays). `timeZone`: the site's, so a change for today alone says "heute".
+     */
+    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string; publish?: true; from?: string; until?: string; change?: string; yearly?: true; name?: string; timeZone?: string }) {
       try {
-        const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm, publish: args.publish })
+        const result = await save.mutate({
+          site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm, publish: args.publish,
+          ...(args.from === undefined ? {} : { from: args.from }), ...(args.until === undefined ? {} : { until: args.until }), ...(args.change === undefined ? {} : { change: args.change }),
+          ...(args.yearly ? { yearly: args.yearly } : {}), ...(args.name === undefined ? {} : { name: args.name }),
+        })
+        // A change that comes back every year (slice 4) names its days without a year, and from when it shows.
+        const yearlyDays = args.yearly && args.from !== undefined && args.until !== undefined ? { day: dayMonth(args.from), until: dayMonth(args.until) } : undefined
+        // One day is named once ("am 24. Dez.", round N8).
+        const yearlyOne = args.from === args.until ? 'On' : ''
         // A change that needs a yes writes nothing yet (SPEC 17): say so instead of "Saved".
         if (isProposal(result)) {
-          sentForApproval()
+          if (yearlyDays) show(t(`dated.sentYearly${yearlyOne}`, yearlyDays))
+          else sentForApproval(args.from, args.until, args.timeZone)
           return { proposal: result.proposal }
         }
         const change = 'change' in result ? result.change : undefined
+        // A change for a later day (D125): the day it starts on. It is cancelled or moved in the editor's notice of it,
+        // not undone from the history, so no Rückgängig. The message says "saved" only when the server answers that a
+        // change waits for that day (E6): an answer without `dated` wrote nothing, and `dated: null` emptied that day.
+        if (args.from !== undefined) {
+          if (!('dated' in result)) return { proposal: undefined, rev: result.rev, unchanged: true as const }
+          const today = args.timeZone === undefined ? args.from : todayIn(args.timeZone)
+          const first = yearlyDays && occurrence({ from: args.from, until: args.until, yearly: true, set: {} }, today)
+          // `first` carries its year when the next time starts in another calendar year than today (round N8).
+          const firstText = (day: string) => (day.slice(0, 4) === today.slice(0, 4) ? dayText(day) : format.date(day, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
+          const days = first && yearlyDays ? (first.from <= today ? t(`dated.liveYearly${yearlyOne}Today`, yearlyDays) : t(`dated.liveYearly${yearlyOne}`, { ...yearlyDays, first: firstText(first.from) }))
+            : args.until === undefined ? liveText({ from: args.from })
+            : args.until !== args.from ? t('dated.liveFromUntil', { date: dayText(args.from), until: dayText(args.until) })
+            : oneDay(args.from, args.timeZone) ? t('dated.liveToday') : t('dated.liveOn', { date: dayText(args.from) })
+          show(result.dated === null ? t('dated.cancelled') : `${t('ops.saved')} ${days}`)
+          return { proposal: undefined, rev: result.rev }
+        }
         // A live entry keeps the save unpublished unless `publish`: the message says so, and there is nothing to undo on the website.
         if ('pending' in result) {
           show(result.pending ? t('ops.changesSaved') : t('ops.savedLikeLive'))
@@ -322,7 +391,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
         // A draft is not on the website, so the message does not promise it (SPEC 15).
         const text = args.draft ? t('ops.draftSaved') : [args.publish ? t('ops.published') : t('ops.saved'), liveText(result), noteOf('translation' in result ? result.translation : undefined, args.main)].filter(Boolean).join(' ')
         show(text, change ? { action: { label: t('ops.undo'), run: () => undoChange(change, args.task) } } : {})
-        return { proposal: undefined, rev: result.rev }
+        return { proposal: undefined, rev: result.rev, warnings: warningsOf(result) }
       } catch (error) {
         throw opErrorOf(error)
       }
@@ -342,7 +411,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           : t('ops.draftCreated')
         // A new entry starts at lifeRev 1; undo removes it (a draft or a scheduled one was never on the website).
         show(text, { action: { label: t('ops.undo'), run: async () => { await removeEntry(result.entry, 1, args.removeTask, t('ops.removed'), result.state !== 'live').catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
-        return { proposal: undefined, entry: result.entry }
+        return { proposal: undefined, entry: result.entry, rev: result.rev, warnings: warningsOf(result) }
       } catch (error) {
         throw opErrorOf(error)
       }

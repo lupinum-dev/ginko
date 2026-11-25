@@ -1,13 +1,14 @@
 // "Why is this not public?" (SPEC 4.2 entries.whyNotPublic): every reason, in plain words, that an
 // entry is missing on the website in one language. The rules are the ones the bundle applies
-// (drafts, `isVisible`, `untranslatedMode`, `urlsFor`); this only names them.
+// (`statusOf`, `untranslatedMode`, `urlsFor`); this only names them.
 import type { Brick, CollectionBrick, Locale } from '@lupinum/ginko'
-import { isVisible, todayIn, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { todayIn, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { Data } from './content'
 import { historyText, msg, type HistoryMsg } from './history'
 import { languageLabel } from './i18n'
 import { DELETED_KEPT } from './lifecycle'
+import { statusOfRow } from './list'
 import { leafStatus } from './translation'
 
 /** What the person can do about it; the Studio turns the id into a button. */
@@ -46,16 +47,19 @@ export function publicness(site: Doc<'sites'>, key: string, row: Doc<'entries'>,
     reasons.push(reason('deleted', true, msg('publicness.deleted', { until: row.deletedAt + DELETED_KEPT }), 'restore'))
     return done()
   }
-  if (row.state === 'draft') {
-    reasons.push(row.publishAt === undefined
-      ? reason('draft', true, msg('publicness.draft'), 'publish')
-      : reason('scheduled', true, msg('publicness.scheduled', { at: row.publishAt, zone }), 'publish'))
+  // One status for the entry (D113): a draft names its plan; an entry that ended is not visible.
+  const status = statusOfRow(brick, row, undefined, todayIn(zone))
+  const planned = status.waiting.find((w) => w.kind === 'planned')
+  if (status.now === 'draft') {
+    reasons.push(planned
+      ? reason('scheduled', true, msg('publicness.scheduled', { at: planned.at, zone }), 'publish')
+      : reason('draft', true, msg('publicness.draft'), 'publish'))
   }
   const route = brick.kind === 'collection' ? brick.route?.[locale] : undefined
   if (!route) {
     reasons.push(reason('no_route', false, msg(brick.kind === 'collection' && brick.route ? 'publicness.noRouteLocale' : 'publicness.noRoute', { brick: brick.label })))
   }
-  if (brick.kind === 'collection' && !isVisible(brick as Brick, row.data as Data, todayIn(zone))) {
+  if (status.now === 'ended') {
     reasons.push(reason('not_visible', true, msg('publicness.notVisible'), 'edit'))
   }
   if (locale !== schema.locales[0]) {

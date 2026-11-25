@@ -19,7 +19,7 @@ const CORE = pathToFileURL(join(import.meta.dirname, '../../src/core/index.ts'))
 const config = (extra = '') => `import { collection, defineSite, f } from '${CORE}'
 export default defineSite({
   site: 'demo', name: 'Demo', url: 'https://demo.example', timeZone: 'Europe/Vienna',
-  locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+  locales: ['de', 'en'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: { home: { de: '/', en: '/en' } },
   bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 })${extra} }, max: 20, order: 'manual' }) },
 })
 `

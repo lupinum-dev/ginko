@@ -2,7 +2,7 @@
 // are v.any() on purpose: every write checks them with the one validator in
 // @lupinum/ginko/core, so nothing unchecked gets in.
 import { defineSchema, defineTable } from 'convex/server'
-import { v } from 'convex/values'
+import { v, type Infer } from 'convex/values'
 
 const role = v.union(v.literal('owner'), v.literal('staff'))
 /**
@@ -11,6 +11,18 @@ const role = v.union(v.literal('owner'), v.literal('staff'))
  * the type is recursive; every write builds them with `msg()`.
  */
 const historyMsg = v.object({ key: v.string(), params: v.optional(v.record(v.string(), v.any())) })
+/**
+ * Why a plan did not go online (D103): a link to a page that does not exist, fields that fail the full check (their
+ * paths), a time that had passed when the content was imported, or an error of the run itself (`failed`). A refusal while a
+ * dated change is written (a budget the site reached since, G5) is `invalid` with that refusal's message as its `cause`.
+ */
+export const stopReason = v.union(
+  v.object({ code: v.literal('link'), href: v.string() }),
+  v.object({ code: v.literal('invalid'), fields: v.array(v.string()), cause: v.optional(v.object({ key: v.string(), params: v.optional(v.record(v.string(), v.union(v.string(), v.number()))) })) }),
+  v.object({ code: v.literal('late') }),
+  v.object({ code: v.literal('failed') }),
+)
+export type StopReason = Infer<typeof stopReason>
 const scope = v.union(v.literal('release'), v.literal('pull'), v.literal('check'), v.literal('export'))
 
 export default defineSchema({
@@ -108,15 +120,38 @@ export default defineSchema({
     publishAt: v.optional(v.number()),
     /** The scheduled `entries.publishDue` run that belongs to `publishAt`. */
     publishJob: v.optional(v.id('_scheduled_functions')),
+    /** Who planned `publishAt` (user id): written and cleared with it (D102). Absent on a plan that came with an import. */
+    publishBy: v.optional(v.string()),
+    /**
+     * A plan that did not go online (D103): the entry stayed a draft. `at` is the time it had, `by` its planner. Never
+     * set together with `publishAt`; a new plan, a publish, "cancel" (`unpublish`) and removing the entry clear it.
+     */
+    stopped: v.optional(v.object({ at: v.number(), by: v.optional(v.string()), reason: stopReason })),
     /**
      * The staff member (user id) who created the entry through a create task: they may change it later with that
      * task (lib/access.ts `authorize`). Absent for entries of owners and admins, and for entries made before it existed.
      */
     createdBy: v.optional(v.string()),
+    /**
+     * A collection entry's name (D96): the same as a file name, `content/<brick>/<name>.md`, in the shape of a slug.
+     * Unique in the site and brick among all rows, drafts and the trash included. A single has none (its brick key is
+     * its name). Optional only until the upgrade of checkpoint 6 has written one for every stored entry.
+     */
+    name: v.optional(v.string()),
+    /**
+     * The name no longer follows the title (D96): set when the entry is first planned or first goes online, never taken
+     * back. Absent: a save that changes the title makes the name, and the main-language slug, again.
+     */
+    nameFixed: v.optional(v.literal(true)),
   })
     .index('by_site_brick_order', ['site', 'brick', 'order'])
+    .index('by_site_brick_name', ['site', 'brick', 'name'])
     .index('by_site_brick_deleted', ['site', 'brick', 'deletedAt'])
-    .index('by_site_deleted', ['site', 'deletedAt']),
+    .index('by_site_deleted', ['site', 'deletedAt'])
+    // Today's stopped plans (entries `stoppedPlans`).
+    .index('by_site_stopped', ['site', 'stopped.at'])
+    // A staff member's own stopped plans (entries.stoppedPlans), without reading those of others.
+    .index('by_site_stopped_by', ['site', 'stopped.by', 'stopped.at']),
 
   /**
    * The trees of an entry's Markdown texts (core `markdownTrees`) as JSON text, split into parts below Convex's 1 MiB
@@ -147,10 +182,72 @@ export default defineSchema({
     by: v.string(),
     since: v.number(),
     at: v.number(),
-    /** When the changes go online (ms), and the scheduled `entries.publishDue` run. */
+    /**
+     * Retired (D130): a time for unpublished changes and its `entries.publishDue` run. Nothing writes them; the
+     * migration `2026-11-25-dated-changes` turns them into a dated change or drops them. Optional until the contract
+     * step (internals/migrations.md).
+     */
     publishAt: v.optional(v.number()),
     publishJob: v.optional(v.id('_scheduled_functions')),
   }).index('by_entry', ['entry']).index('by_site', ['site']),
+
+  /**
+   * Dated changes of an entry (D125, lib/dated.ts): fields that take their values from the first minute of `from` (a day
+   * in the site's zone) on. `entries.save` with `from` and `entries.publish` with `from` make one, `datedChanges.applyDue`
+   * writes it into the entry on its day through `commitEntry` and deletes the row. One row per entry and day. The bundle
+   * reads the waiting rows for `upcoming` (only the fields of `timeline.public`); the website's values stay the entry's.
+   */
+  datedChanges: defineTable({
+    site: v.id('sites'),
+    entry: v.id('entries'),
+    brick: v.string(),
+    /** The day, `YYYY-MM-DD`, in the site's zone. */
+    from: v.string(),
+    /**
+     * The last day of an exception (slice 3): its values lie over the entry's from the first minute of `from` to the last
+     * minute of `until` and are never written into it. Absent: a change for good, written into the entry on its day.
+     */
+    until: v.optional(v.string()),
+    /**
+     * An exception that comes back every year on the same days (slice 4). `from` and `until` stay the days of its first
+     * time; `occurrence` (core) gives the time of any day. Its end run keeps the row and plans the next start.
+     */
+    yearly: v.optional(v.literal(true)),
+    /** The name of an exception ("Sommer"), trimmed, 1 to `NAME_MAX` characters; not translated. */
+    name: v.optional(v.string()),
+    /**
+     * When the start run of an exception let it through (ms): only then does the read lay it over the entry. Absent while
+     * it waits, and on a change without an end.
+     */
+    holds: v.optional(v.number()),
+    /** Root field → its value from that day on; null: the field is cleared. */
+    fields: v.record(v.string(), v.any()),
+    /** The prints of the leaves under those roots. */
+    prints: v.record(v.string(), v.record(v.string(), v.string())),
+    /** Root field → the entry rev its value was saved at: a live write after it shows as "changed since" (`changedSince`). */
+    revs: v.record(v.string(), v.number()),
+    /** Who saved into it last (user id); absent on a change that came with an import. */
+    by: v.optional(v.string()),
+    /**
+     * Someone other than `by` saved into it while it waited (a save, an approved request, the migration's join): it holds
+     * values of several people, so it is nobody's own to cancel without a yes (H2). Set once, for the row's life.
+     */
+    shared: v.optional(v.literal(true)),
+    /** When it was made or last saved into (ms). */
+    at: v.number(),
+    /**
+     * The scheduled `datedChanges.applyDue` run at the first minute of `from` (the start run of an exception); once an
+     * exception holds, its `datedChanges.endDue` run at the first minute after `until`. Absent once it stopped.
+     */
+    job: v.optional(v.id('_scheduled_functions')),
+    /** It did not take effect on its day (D103 reasons): nothing was written; `setDay` or a save into it clears this. */
+    stopped: v.optional(v.object({ at: v.number(), reason: stopReason })),
+  })
+    .index('by_entry', ['entry', 'from'])
+    .index('by_site_brick', ['site', 'brick'])
+    // Today's stopped list (entries.stoppedPlans): every one for an owner, a staff member's own.
+    .index('by_site_stopped', ['site', 'stopped.at'])
+    .index('by_site_by_stopped', ['site', 'by', 'stopped.at']),
 
   slugs: defineTable({
     site: v.id('sites'),
@@ -181,6 +278,8 @@ export default defineSchema({
     agentKey: v.optional(v.id('agentKeys')),
     /** The owner or admin who approved the proposal this change applies (SPEC 17); `actor` is the author. */
     approvedBy: v.optional(v.string()),
+    /** On the row of a dated change's day (D126): the person who made it; `actor` is the system that wrote it. */
+    plannedBy: v.optional(v.string()),
     opId: v.string(),
     kind: v.string(),
     /** German rendering of `msg`: the fallback for rows from before `msg` (they have no `msg`). Readers render `msg` in their own language. */
@@ -240,8 +339,12 @@ export default defineSchema({
     agentKey: v.optional(v.id('agentKeys')),
     status: v.union(v.literal('open'), v.literal('approved'), v.literal('scheduled'), v.literal('applied'), v.literal('rejected'), v.literal('stale'), v.literal('withdrawn')),
     createdAt: v.number(),
-    /** When a scheduled approval applies (ms), and its scheduled run. */
+    /** When the scheduled release of this member applies (ms; `releases.at`). */
     at: v.optional(v.number()),
+    /**
+     * Retired (D130): the run of a scheduled single approval. Nothing writes it; the migration `2026-11-25-dated-changes`
+     * cancels it. Optional until the contract step (internals/migrations.md).
+     */
     job: v.optional(v.id('_scheduled_functions')),
     release: v.optional(v.id('releases')),
     decidedBy: v.optional(v.string()),
@@ -303,6 +406,11 @@ export default defineSchema({
     finishedAt: v.optional(v.number()),
     /** Recorded as done on a fresh deployment: there was nothing to migrate, nothing ran. */
     baseline: v.optional(v.boolean()),
+    /**
+     * The sites a step could not convert, with the class or code of the error; the others went on. `ops:status` lists
+     * them; a successful rerun of the site (internals/migrations.md) takes it off.
+     */
+    skipped: v.optional(v.array(v.object({ site: v.id('sites'), slug: v.string(), kind: v.string() }))),
   }),
 
   /** A one-time upload ticket (SPEC 4.3): who may store one file for which site, until when. Only its hash is kept. */
@@ -364,7 +472,7 @@ export default defineSchema({
   fileRefs: defineTable({
     site: v.id('sites'),
     file: v.id('uploads'),
-    holder: v.union(v.literal('entry'), v.literal('change'), v.literal('pending')),
+    holder: v.union(v.literal('entry'), v.literal('change'), v.literal('pending'), v.literal('dated')),
     holderId: v.string(),
     /** Entry holders only: where in the entry the file sits, and whether that image lacks a description in a language of the site. */
     uses: v.optional(v.array(v.object({ path: v.string(), missingAlt: v.boolean() }))),

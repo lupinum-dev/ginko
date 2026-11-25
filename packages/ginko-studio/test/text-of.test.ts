@@ -4,6 +4,7 @@ import { createTranslator, type MessageTree } from '@lupinum/ginko-i18n/core'
 import { compileCatalogs } from '@lupinum/ginko-i18n/compile'
 import { describe, expect, it } from 'vitest'
 import { textOf } from '../app/utils/textOf.ts'
+import { useTextOf } from '../app/composables/useTextOf.ts'
 
 const catalogs = compileCatalogs({
   de: { server: { history: { changedSingle: '{label}: {fields} geändert', undo: 'Rückgängig: {what}', revert: 'Zurück zur Version vom {when, date, ::ddMMyyyy} {when, time, ::HHmm}' }, errors: { siteNotFound: 'Diese Seite gibt es nicht.' } } },
@@ -58,5 +59,38 @@ describe('textOf', () => {
     const translator = createTranslator({ messages: catalogs.en, language: 'en', onMissing: (key) => missing.push(key) })
     const shown = textOf({ key: 'issues.fieldMissing', params: { label: 'Title' } }, 'Etwas Neues.', { t: translator.t, has: translator.has, locale: 'en' })
     expect([shown, missing]).toEqual(['“Title” is missing.', []])
+  })
+})
+
+describe('useTextOf', () => {
+  // Wrong behaviour caught (D114): while the site's model loads, a stored time showed in Vienna's zone or in UTC
+  // instead of the site's, and changed when the model came.
+  it('gives no text with a time while the site zone is unknown, and the text in the site zone once it is known', () => {
+    let timeZone: string | undefined
+    const text = useTextOf(() => ({ timeZone, main: 'de' }))
+    expect(text(revert, 'Zurück zur Version vom 08.10.2026 12:00')).toBe('')
+    timeZone = 'America/New_York'
+    expect(text(revert, '')).toContain('06:00')
+  })
+
+  // Wrong behaviour caught: the Studio says "Änderung ab 2026-11-01" in the file's ISO form instead of the reader's day.
+  it('shows the day of a change in the reader\'s form', () => {
+    const text = useTextOf(() => ({ timeZone: 'Europe/Vienna', main: 'de' }))
+    const issue = { key: 'issues.changeValue', params: { day: '2026-11-01', problem: { key: 'issues.fieldMissing', params: { label: 'Preis' } } } }
+    expect(text(issue, '')).toBe('Änderung ab Sonntag, 1. November: „Preis“ fehlt.')
+  })
+
+  // Wrong behaviour caught: every `from` was read as a day, so an address changed from the slug "2026-11-01" showed a weekday.
+  it('shows an old address that looks like a day as written', () => {
+    const text = useTextOf(() => ({ timeZone: 'Europe/Vienna', main: 'de' }))
+    const changed = { key: 'history.addressChanged', params: { title: 'Fest', from: '2026-11-01', to: 'fest' } }
+    expect(text(changed, '')).toBe('Adresse von „Fest“ geändert: 2026-11-01 → fest')
+  })
+
+  // Wrong behaviour caught: the wait for the zone blanks every site text, also one without a time in it.
+  it('gives a text without a time at once, while the site zone is unknown', () => {
+    const text = useTextOf(() => ({ timeZone: undefined, main: 'de' }))
+    expect(text({ key: 'errors.siteNotFound' }, '')).not.toBe('')
+    expect(text(null, 'Gespeichert.')).toBe('Gespeichert.')
   })
 })

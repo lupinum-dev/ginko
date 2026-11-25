@@ -1,36 +1,36 @@
 ---
 week:
-  - day: mo
+  mo:
     closed: true
-  - day: tu
+  tu:
     closed: false
     from1: '11:30'
     to1: '14:00'
     from2: '17:30'
     to2: '22:00'
-  - day: we
+  we:
     closed: false
     from1: '11:30'
     to1: '14:00'
     from2: '17:30'
     to2: '22:00'
-  - day: th
+  th:
     closed: false
     from1: '11:30'
     to1: '14:00'
     from2: '17:30'
     to2: '22:00'
-  - day: fr
+  fr:
     closed: false
     from1: '11:30'
     to1: '14:00'
     from2: '17:30'
     to2: '22:00'
-  - day: sa
+  sa:
     closed: false
     from1: '11:30'
     to1: '22:00'
-  - day: su
+  su:
     closed: false
     from1: '11:30'
     to1: '15:00'

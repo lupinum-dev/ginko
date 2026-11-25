@@ -150,7 +150,8 @@ if (template) {
     }
   }
   const config = join(dir, 'ginko.config.ts')
-  writeFileSync(config, readFileSync(config, 'utf8').replace(/(\bsite:\s*)(['"])[^'"]*\2/, `$1'${site}'`))
+  // The site's id: `studio: { id: '…' }`.
+  writeFileSync(config, readFileSync(config, 'utf8').replace(/(\bstudio:\s*\{\s*id:\s*)(['"])[^'"]*\2/, `$1'${site}'`))
   const path = join(dir, 'package.json')
   const pkg = JSON.parse(readFileSync(path, 'utf8'))
   pkg.name = site

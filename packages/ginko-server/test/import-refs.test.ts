@@ -47,11 +47,11 @@ afterEach(async () => {
   for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true })
 })
 
-/** The bricks of the tests below: `authors`, `posts` with the ref fields above, and `notes` with a text. */
+/** The bricks of the tests below: `authors`, `posts` with the ref fields above, and `notes` with a Markdown text (and an optional title, which names an entry). */
 const refBricks = {
-  authors: { kind: 'collection', label, fields: { name: { type: 'text', label } } },
-  posts: { kind: 'collection', label, fields },
-  notes: { kind: 'collection', label, fields: { body: { type: 'markdown', label } } },
+  authors: { kind: 'collection', label, listing: { title: 'name' }, fields: { name: { type: 'text', label } } },
+  posts: { kind: 'collection', label, listing: { title: 'title' }, fields: { ...fields, title: { type: 'text', label, optional: true } } },
+  notes: { kind: 'collection', label, listing: { title: 'title' }, fields: { title: { type: 'text', label, optional: true }, body: { type: 'markdown', label } } },
 }
 
 /** The site with the bricks above in its stored schema. */
@@ -64,7 +64,8 @@ async function withRefBricks(s: Setup, site: Setup['site']) {
   })
 }
 
-const exported = (id: string, brick: string, order: number, data: unknown, prints = {}) => ({ id, brick, kind: 'item', order, data, prints, rev: 1 })
+/** An entry as `ginko files-export` writes it: its name is the file name, fixed (D96). */
+const exported = (id: string, brick: string, order: number, data: unknown, prints = {}) => ({ id, brick, kind: 'item', order, data, prints, rev: 1, name: id.slice(brick.length + 1), nameFixed: true })
 
 async function exportFolder(entries: unknown[] = [
   // The post comes first on purpose: its author is imported after it.
@@ -137,6 +138,47 @@ describe('import keeps references between entries', () => {
     expect([site.bytes, site.treeBytes]).toEqual([rows.reduce((sum, e) => sum + e.bytes, 0), rows.reduce((sum, e) => sum + (e.treeBytes ?? 0), 0)])
   })
 
+  // Wrong behaviour caught: a file links to an entry by its name (`$authors.anna`), and the import's map is keyed by the
+  // exported ID `authors/anna`, so the link kept pointing at `anna`, which names no entry of a brick without an address.
+  it('points a link by name from a files export at the new id, also in a brick without a slug field', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const { run, upload } = runnerOf(s)
+    await importSite({ dir: await exportFolder([
+      exported('notes/hello', 'notes', 1, { body: { de: 'Von [Anna]($authors.anna).' } }),
+      exported('authors/anna', 'authors', 1, { name: { de: 'Anna' } }),
+    ]), run, upload, log: () => undefined })
+
+    const rows = await entriesOf(s, s.site)
+    const anna = rows.find((e) => e.brick === 'authors')!
+    expect(rows.find((e) => e.brick === 'notes')!.data).toEqual({ body: { de: `Von [Anna]($authors.${anna._id}).` } })
+  })
+
+  // Wrong behaviour caught: the entries of a files export get new names on the platform, so `$authors.anna` and the file
+  // names no longer match the entries they were written for.
+  it('keeps the file name of a files export as the fixed name of each entry', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const { run, upload } = runnerOf(s)
+    await importSite({ dir: await exportFolder(), run, upload, log: () => undefined })
+    const rows = (await entriesOf(s, s.site)).filter((e) => e.brick === 'posts' || e.brick === 'authors')
+    expect(rows.map((e) => [e.brick, e.name, e.nameFixed]).sort()).toEqual([['authors', 'anna', true], ['posts', 'hello', true]])
+  })
+
+  // Wrong behaviour caught: an entry stored before names existed gets a name that is not fixed, so its next title change
+  // moves its address without a forward (a draft that was online once included); or two entries get one name.
+  it('makes a fixed name for every entry of an export without names, -2 for the second of one title', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const entry = (id: string, state: 'draft' | 'live') => ({ id, brick: 'authors', kind: 'item' as const, order: 1, data: { name: { de: 'Anna' } }, prints: {}, rev: 1, state })
+    await s.t.mutation(makeFunctionReference<'mutation'>('seed:importExport'), { site: 'restaurant', files: [], entries: [entry('a1', 'live'), entry('a2', 'draft')] })
+    const rows = (await entriesOf(s, s.site)).filter((e) => e.brick === 'authors')
+    expect(rows.map((e) => [e.name, e.nameFixed, e.state ?? 'live'])).toEqual([['anna', true, 'live'], ['anna-2', true, 'draft']])
+  })
+
   // A post that names a short files-export ID 20000 times: 234 KiB in the export, 684 KiB once each `authors/a` is a
   // 32-character Convex ID. Wrong behaviour caught: the size is checked before the rewrite only, so the import clears the
   // site and stores an entry the Studio then refuses to grow.
@@ -165,7 +207,7 @@ describe('import keeps references between entries', () => {
 })
 
 describe('import keeps what the Studio keeps', () => {
-  const services = { kind: 'collection', label, max: 2, route: { de: '/leistungen/[slug]' }, fields: { title: { type: 'text', label }, slug: { type: 'slug', from: 'title', label } } }
+  const services = { kind: 'collection', label, max: 2, listing: { title: 'title' }, route: { de: '/leistungen/[slug]' }, fields: { title: { type: 'text', label }, slug: { type: 'slug', from: 'title', label } } }
   const service = (id: string, slug: string) => ({ id, brick: 'services', kind: 'item' as const, order: 1, data: { title: { de: id }, slug: { de: slug } }, prints: {}, rev: 1 })
 
   // Wrong behaviour caught: an import stores a collection over its max (its removed entries can then never come back),
@@ -178,6 +220,15 @@ describe('import keeps what the Studio keeps', () => {
     {
       case: 'an entry ID twice', entries: [service('services/a', 'a'), service('services/a', 'b')],
       cli: 'The entry “services/a” appears twice.', server: 'Der Eintrag „services/a“ kommt zweimal vor.',
+    },
+    {
+      case: 'two entries of one brick with one name', entries: [{ ...service('services/a', 'a'), name: 'gleich' }, { ...service('services/b', 'b'), name: 'gleich' }],
+      cli: 'Two entries of “services” have the name “gleich”. A name is unique in its brick, the trash included.', server: 'Zwei Einträge von „services“ haben den Namen „gleich“. Ein Name kommt in seinem Baustein nur einmal vor, auch im Papierkorb.',
+    },
+    {
+      case: 'a name that is no entry name', entries: [{ ...service('services/a', 'a'), name: 'Ann_Smith' }],
+      cli: 'Entry services/a (services) has the name “Ann_Smith”. An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-party”.',
+      server: 'Der Eintrag „services/a“ hat den Namen „Ann_Smith“. Ein Name besteht aus 1 bis 100 Kleinbuchstaben (a bis z), Ziffern und einzelnen Bindestrichen dazwischen.',
     },
     {
       case: 'two entries with one URL', entries: [service('services/a', 'webseiten'), service('services/b', 'webseiten')],
@@ -213,7 +264,7 @@ describe('import of a big site', () => {
     vi.stubEnv('GINKO_LOCAL', '1')
     const s = await setup()
     // A collection holds at most 500 entries: four of them.
-    const bricks = Object.fromEntries([0, 1, 2, 3].map((n) => [`faq${n}`, { kind: 'collection', label, max: 500, fields: { question: { type: 'text', label }, next: { type: 'ref', to: `faq${(n + 1) % 4}`, label } } }]))
+    const bricks = Object.fromEntries([0, 1, 2, 3].map((n) => [`faq${n}`, { kind: 'collection', label, max: 500, listing: { title: 'question' }, fields: { question: { type: 'text', label }, next: { type: 'ref', to: `faq${(n + 1) % 4}`, label } } }]))
     await s.t.run(async (ctx) => {
       const schema = (await ctx.db.get(s.site))!.schema as { bricks: Record<string, unknown> }
       Object.assign(schema.bricks, bricks)
@@ -402,7 +453,7 @@ describe('import checks each entry like a save', () => {
     await s.t.run(async (ctx) => {
       const row = (await ctx.db.get(s.site))!
       const schema = row.schema as { bricks: Record<string, unknown> }
-      schema.bricks.notes = { kind: 'collection', label, fields: { body: { type: 'markdown', label } } }
+      schema.bricks.notes = { kind: 'collection', label, listing: { title: 'title' }, fields: { title: { type: 'text', label, optional: true }, body: { type: 'markdown', label } } }
       await ctx.db.patch(s.site, { schema, treeBytes: 8 * 1024 * 1024 - 10 })
     })
     const before = (await entriesOf(s, s.site)).length

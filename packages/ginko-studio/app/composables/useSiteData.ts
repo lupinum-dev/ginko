@@ -3,7 +3,7 @@
 // single, titles, ofBricks), so a save elsewhere does not send the whole site again.
 import { api } from '#convex/api'
 import type { Brick } from '@lupinum/ginko'
-import { ordered, type Schema } from '@lupinum/ginko/internal'
+import { ordered, type Schema, type StatusInput } from '@lupinum/ginko/internal'
 import { useToday } from '@lupinum/ginko-editor'
 import { taskRef, type Data, type StoredTranslation, type Task } from '../utils/content'
 
@@ -31,9 +31,11 @@ export interface Entry {
   since?: number
   /**
    * A live entry's unpublished changes (save without publishing): `data` and `prints` already show them. Since when,
-   * the last save, the changed fields, a planned publish, and `own` when the person saved last.
+   * the last save, the changed fields, and `own` when the person saved last.
    */
-  pending?: { since: number; at: number; fields: string[]; publishAt?: number; own?: boolean }
+  pending?: { since: number; at: number; fields: string[]; own?: boolean }
+  /** Its changes for a later day, waiting or stopped (D124; the input of `statusOf`); their values are in datedChanges.list. */
+  changes?: StatusInput['changes']
 }
 
 export async function useSiteData() {
@@ -46,7 +48,9 @@ export async function useSiteData() {
   const role = computed(() => query.data.value?.role)
   const grants = computed(() => new Set(query.data.value?.grants ?? []))
   const main = computed(() => schema.value?.locales[0] ?? 'de')
-  const today = useToday(() => schema.value?.timeZone ?? 'Europe/Vienna')
+  // The site's day, '' while the model loads (D114): a day in another zone would be wrong, and nothing has ended on ''.
+  const zoned = useToday(() => schema.value?.timeZone ?? 'UTC')
+  const today = computed(() => (schema.value ? zoned.value : ''))
 
   /** owner and admin may do everything; staff only granted tasks (SPEC 2.7). */
   const may = (brick: string, task: Task) => role.value === 'owner' || role.value === 'admin' || grants.value.has(taskRef(brick, task))

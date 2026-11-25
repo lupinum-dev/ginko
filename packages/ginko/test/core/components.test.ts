@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { statusRules } from '@lupinum/ginko/patterns'
 import {
   checkSchema, componentProblems, defineComponents, f, parseMarkdown, serializeSchema, single, validate,
   type ComponentRegistry,
@@ -100,14 +101,14 @@ describe('parseMarkdown with a component registry', () => {
 
 describe('component registry in the schema', () => {
   const site = {
-    site: 'demo', name: 'Demo', url: 'https://demo.test', timeZone: 'Europe/Vienna', locales: ['de'] as const, currency: 'EUR' as const,
+    site: 'demo', name: 'Demo', url: 'https://demo.test', timeZone: 'Europe/Vienna', locales: ['de'] as const, currency: 'EUR' as const, week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] } as const,
     pages: { home: '/' },
     bricks: { article: single({ label: 'Seite', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
   }
 
   test('validate rejects an unknown component in a markdown field', async () => {
     const schema = serializeSchema({ ...site, components: registry })
-    expect(checkSchema(schema)).toEqual([])
+    expect(checkSchema(schema, statusRules)).toEqual([])
     const ok = await validate(schema, 'article', { body: { de: '::callout{type="info"}\nHi\n::' } }, { mode: 'release' })
     expect(ok.errors).toEqual([])
     const bad = await validate(schema, 'article', { body: { de: '::nope\nHi\n::' } }, { mode: 'release' })
@@ -123,7 +124,7 @@ describe('component registry in the schema', () => {
 
   test('checkSchema reports registry problems', () => {
     const schema = serializeSchema({ ...site, components: { table: { kind: 'block', label: 'T', describe: 't', props: { r: f.ref('R', { to: 'missing' }) } } } })
-    const problems = checkSchema(schema).join('\n')
+    const problems = checkSchema(schema, statusRules).join('\n')
     expect(problems).toContain('belongs to Markdown')
     expect(problems).toContain('components.table.props.r: to must name a collection')
   })

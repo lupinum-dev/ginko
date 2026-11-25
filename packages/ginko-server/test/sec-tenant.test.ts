@@ -24,6 +24,7 @@ async function fixtures(s: S) {
   const folder = await s.as.owner.mutation(api.files.createFolder, { site: 'restaurant', name: 'GEHEIM-ORDNER' })
   const save = await s.as.owner.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), entry: s.entries['menu-frittaten']!, baseRev: 1, fields: { price: { amount: 1111 } } }) as { change: string }
   const proposal = await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1500 } } }) as { proposal: string }
+  const dated = (await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries['menu-frittaten']!, baseRev: 2, fields: { price: { amount: 1234 } }, from: '2026-11-01' }) as { dated: string }).dated
   const release = (await s.as.owner.mutation(api.proposals.createRelease, { site: 'restaurant', name: 'GEHEIM-RELEASE' }) as { release: string }).release
   const member = await s.t.run(async (ctx) => (await ctx.db.query('memberships').collect()).find((m) => m.user === 'u-koch')!._id)
   const invite = (await s.as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'geheim@example.com', role: 'staff', grants: [] }) as { invite: string }).invite
@@ -46,7 +47,7 @@ async function fixtures(s: S) {
     await ctx.db.patch(user, { data: { ...row.data, dish: entry } })
   })
   expect(await s.as.owner.query(api.entries.usedBy, { site: 'restaurant', entry })).toMatchObject([{ entry: user }])
-  return { entry, file: file as string, folder: folder as string, change: save.change, proposal: proposal.proposal, release, member: member as string, invite, pushKey, agentKey, view, removed, user, connectCode }
+  return { dated, entry, file: file as string, folder: folder as string, change: save.change, proposal: proposal.proposal, release, member: member as string, invite, pushKey, agentKey, view, removed, user, connectCode }
 }
 
 type Fx = Awaited<ReturnType<typeof fixtures>>
@@ -103,6 +104,10 @@ const calls: Call[] = [
   { fn: 'navigation.heading', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, baseRev: 1, field: 'section', locale: 'de', text: 'x' }) },
   { fn: 'entries.removed', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
   { fn: 'entries.trash', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
+  { fn: 'entries.stoppedPlans', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'datedChanges.list', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
+  { fn: 'datedChanges.setDay', kind: 'mutation', args: (site, f) => ({ site, opId: o(), change: f.dated, from: '2026-11-02' }) },
+  { fn: 'datedChanges.cancel', kind: 'mutation', args: (site, f) => ({ site, opId: o(), change: f.dated }) },
   { fn: 'entries.whyNotPublic', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'entries.list', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
   { fn: 'entries.list#search', kind: 'query', args: (site) => ({ site, brick: 'menu', search: 'Saibling' }) },

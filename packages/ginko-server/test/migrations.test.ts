@@ -1,11 +1,16 @@
 // The data migrations that run by themselves after a deploy (convex/lib/migrations.ts): `migrations:runPending` starts
 // what is pending, the steps run one after another, and a stopped one starts again from where it stopped.
+import { checkSchema, diffSchema, entryBytes, serializeSchema, type Schema } from '@lupinum/ginko/internal'
+import { statusRules } from '@lupinum/ginko/patterns'
 import { convexTest } from 'convex-test'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
-import { internal } from '../convex/_generated/api'
+import { api, internal } from '../convex/_generated/api'
+import type { Id } from '../convex/_generated/dataModel'
 import { MIGRATIONS } from '../convex/lib/migrations'
 import schema from '../convex/schema'
-import { setup } from './setup'
+import restaurant from '../../../sites/restaurant/ginko.config.ts'
+import { opId, people, setup } from './setup'
 
 type Backend = Awaited<ReturnType<typeof setup>>['t']
 
@@ -33,7 +38,7 @@ describe('migrations.runPending', () => {
       await ctx.db.patch(entry, { trees: '{}', bytes: 99_999, treeBytes: undefined, contentAt: undefined })
       await ctx.db.patch(s.site, { bytes: 1, trashBytes: undefined, treeBytes: undefined, orderRevs: { menu: 3 } })
     })
-    expect(await s.t.mutation(internal.migrations.runPending, {})).toBe(`Migrations: started ${MIGRATIONS[0]!.name} (5 pending). Progress: npx convex run ops:status`)
+    expect(await s.t.mutation(internal.migrations.runPending, {})).toBe(`Migrations: started ${MIGRATIONS[0]!.name} (6 pending). Progress: npx convex run ops:status`)
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
 
     expect((await runs(s.t)).map((r) => [r.name, r.state])).toEqual(MIGRATIONS.map((m) => [m.name, 'done']))
@@ -43,7 +48,7 @@ describe('migrations.runPending', () => {
     // The recount ran after the entry migration: the counters are the sums over the migrated entries.
     const status = await s.t.query(internal.entries.storageStatus, { cursor: null })
     expect(status.sites).toMatchObject([{ site: 'restaurant', legacyRows: 0, countersMatch: true }])
-    expect((await s.t.query(internal.ops.status, {}))!.migrations).toEqual({ done: 5, pending: [], running: null, stopped: null })
+    expect((await s.t.query(internal.ops.status, {}))!.migrations).toEqual({ done: 6, pending: [], running: null, stopped: null, skipped: [] })
   })
 
   // Wrong behaviour caught: every deploy runs the finished migrations again.
@@ -53,7 +58,7 @@ describe('migrations.runPending', () => {
     await s.t.mutation(internal.migrations.runPending, {})
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
     const before = (await jobs(s.t)).length
-    expect(await s.t.mutation(internal.migrations.runPending, {})).toBe('Migrations: all 5 done.')
+    expect(await s.t.mutation(internal.migrations.runPending, {})).toBe('Migrations: all 6 done.')
     expect(await jobs(s.t)).toHaveLength(before)
   })
 
@@ -70,7 +75,7 @@ describe('migrations.runPending', () => {
   // Wrong behaviour caught: a fresh install starts the chain over empty tables or reports work that does not exist.
   it('records every migration as done on a fresh deployment without running any', async () => {
     const t = convexTest(schema, modules)
-    expect(await t.mutation(internal.migrations.runPending, {})).toBe('Migrations: fresh deployment, 5 recorded as done.')
+    expect(await t.mutation(internal.migrations.runPending, {})).toBe('Migrations: fresh deployment, 6 recorded as done.')
     expect((await runs(t)).map((r) => [r.name, r.state, r.baseline])).toEqual(MIGRATIONS.map((m) => [m.name, 'done', true]))
     expect(await jobs(t)).toEqual([])
   })
@@ -96,6 +101,449 @@ describe('migrations.runPending', () => {
     expect(row!.cursor).not.toBeNull()
     expect((await runs(s.t))[0]).toMatchObject({ attempts: 2 })
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
-    expect((await s.t.query(internal.ops.status, {}))!.migrations).toMatchObject({ done: 5, stopped: null })
+    expect((await s.t.query(internal.ops.status, {}))!.migrations).toMatchObject({ done: 6, stopped: null })
+  })
+})
+
+describe('2026-11-25-dated-changes (D130)', () => {
+  /** The earlier migrations as done, so runPending starts this one alone; then its pages, one step at a time. */
+  async function runThisOne(s: Awaited<ReturnType<typeof setup>>) {
+    await s.t.run(async (ctx) => {
+      for (const m of MIGRATIONS.slice(0, -1)) await ctx.db.insert('serverMigrations', { name: m.name, state: 'done', cursor: null, pages: 0, attempts: 0, startedAt: 0, finishedAt: 0 })
+    })
+    expect(await s.t.mutation(internal.migrations.runPending, {})).toMatch('started 2026-11-25-dated-changes')
+    for (let page = 0; page < 5 && (await runs(s.t)).some((r) => r.state === 'running'); page++) await oneStep(s.t)
+    expect((await runs(s.t)).every((r) => r.state === 'done')).toBe(true)
+  }
+
+  // Wrong behaviour caught: after the upgrade, a time on unpublished changes, a request approved for a time or a
+  // `planned` price is lost or runs through code that is gone: the change never goes online, a cancelled job still
+  // fires, or the stored schema keeps `planned` and every release of the site is refused.
+  it('turns the older plans into dated changes, open requests and a schema with timeline', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const { schnitzel, saibling, risotto, contact } = { schnitzel: s.entries['menu-schnitzel']!, saibling: s.entries['menu-saibling']!, risotto: s.entries['menu-risotto']!, contact: s.entries.contact! }
+    const later = Date.parse('2026-10-20T08:00:00Z')
+    const proposal = (await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: s.entries.lunch!, baseRev: 1, fields: { note: { de: 'Neu' } } }) as { proposal: Id<'proposals'> }).proposal
+    const before = (await s.t.run((ctx) => ctx.db.get(s.site)))!
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const stored = structuredClone(site.schema) as { bricks: Record<string, { fields: Record<string, unknown>; tasks: { id: string; fields?: string[]; when?: unknown }[]; timeline?: unknown; planned?: unknown }> }
+      const menu = stored.bricks.menu!
+      menu.fields.nextPrice = { type: 'money', label: 'Geplanter Preis', optional: true, pos: 7 }
+      menu.fields.priceFrom = { type: 'date', label: 'Gilt ab', optional: true, pos: 8 }
+      menu.planned = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
+      delete menu.timeline
+      menu.tasks = menu.tasks.map((task) => (task.id === 'price' ? { id: task.id, label: 'Preis ändern', kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'] } : task.id === 'edit' ? { ...task, fields: [...task.fields!, 'nextPrice', 'priceFrom'] } : task)) as typeof menu.tasks
+      await ctx.db.patch(s.site, { schema: stored })
+      // The stored model is in the older format: the new check refuses it, and the migration must not need it.
+      expect(checkSchema(stored as unknown as Schema, statusRules)).not.toEqual([])
+      const plan = async (entry: Id<'entries'>, next: number, from: string) => {
+        const row = (await ctx.db.get(entry))!
+        await ctx.db.patch(entry, { data: { ...(row.data as object), nextPrice: { amount: next }, priceFrom: from } })
+      }
+      await plan(schnitzel, 2290, '2026-10-18')
+      await plan(saibling, 1590, '2026-10-01')
+      const timed = async (entry: Id<'entries'>, brick: string, fields: Record<string, unknown>, at: number) => {
+        const id = await ctx.db.insert('pendingChanges', { site: s.site, entry, brick, fields, prints: {}, revs: Object.fromEntries(Object.keys(fields).map((k) => [k, 1])), by: people.owner, since: 0, at: 0, publishAt: at })
+        await ctx.db.patch(id, { publishJob: await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry, at }) })
+      }
+      await timed(risotto, 'menu', { price: { amount: 1500 } }, later)
+      await timed(contact, 'contact', { city: 'Graz' }, Date.now() - 60_000)
+      await ctx.db.patch(proposal, { status: 'scheduled', at: later, decidedBy: people.owner, decidedAt: Date.now(), job: await ctx.scheduler.runAt(later, internal.entries.publishDue, { entry: s.entries.lunch!, at: later }) })
+    })
+
+    await runThisOne(s)
+
+    const after = await s.t.run(async (ctx) => ({
+      site: (await ctx.db.get(s.site))!,
+      dated: await ctx.db.query('datedChanges').collect(),
+      pending: await ctx.db.query('pendingChanges').collect(),
+      proposal: (await ctx.db.get(proposal))!,
+      jobs: (await ctx.db.system.query('_scheduled_functions').collect()).filter((j) => j.name === 'entries:publishDue' && j.state.kind === 'pending'),
+      entries: Object.fromEntries(await Promise.all([schnitzel, saibling].map(async (id) => [id, (await ctx.db.get(id))!.data]))),
+    }))
+    // The risotto's time is a dated change of 20 October by the person who saved it; the contact's had passed: it is
+    // online now, in the planner's name. No old job is left.
+    expect(after.dated.map((d) => [d.entry, d.from, d.fields, d.by ?? null]).sort()).toEqual([
+      [risotto, '2026-10-20', { price: { amount: 1500 } }, people.owner],
+      [schnitzel, '2026-10-18', { price: { amount: 2290 } }, null],
+    ].sort())
+    expect(after.pending).toEqual([])
+    expect(await s.t.run(async (ctx) => (await ctx.db.get(contact))!.data)).toMatchObject({ city: 'Graz' })
+    expect((await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', contact)).collect())).at(-1)).toMatchObject({ kind: 'save', msg: { key: 'history.publishedChanges' }, plannedBy: people.owner })
+    expect(after.jobs).toEqual([])
+    // The request is open again for a new decision.
+    expect([after.proposal.status, after.proposal.at, after.proposal.job, after.proposal.decidedBy]).toEqual(['open', undefined, undefined, undefined])
+    // The planned price whose day had come is in the field; the plan fields are gone from the data.
+    expect(after.entries[saibling]).toMatchObject({ price: { amount: 1590 } })
+    expect(after.entries[schnitzel]).toMatchObject({ price: { amount: 2190 } })
+    for (const data of Object.values(after.entries)) expect(Object.keys(data as object)).not.toEqual(expect.arrayContaining(['nextPrice']))
+    // The stored schema: no plan, the coming price public, the price task asks for the day; the edit task cannot.
+    const menu = (after.site.schema as { bricks: Record<string, any> }).bricks.menu
+    expect([menu.planned, menu.fields.nextPrice, menu.fields.priceFrom, menu.timeline]).toEqual([undefined, undefined, undefined, { public: ['price'] }])
+    expect(menu.tasks.find((t: { id: string }) => t.id === 'price')).toEqual({ id: 'price', label: 'Preis ändern', kind: 'edit', pick: true, fields: ['price'], when: { from: 'ask' } })
+    expect(menu.tasks.find((t: { id: string }) => t.id === 'edit').when).toBeUndefined()
+    expect(checkSchema(after.site.schema as Schema, statusRules)).toEqual([])
+    // contentRev rises with the converted model, the risotto's change of a public field and the contact going online.
+    expect([after.site.schemaRev, after.site.contentRev]).toEqual([before.schemaRev + 1, before.contentRev + 3])
+    // The coming price is on the website's bundle the way a new dated change is.
+    const bundle = await (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json() as { bricks: { menu: { items: { id: string; upcoming?: unknown }[] } } }
+    expect(bundle.bricks.menu.items.find((i) => i.id === schnitzel)?.upcoming).toEqual([{ from: '2026-10-18', data: { price: { amount: 2290, currency: 'EUR' } } }])
+  })
+
+  /** The menu's stored model as before D129: a `planned` price with its two plan fields. */
+  async function withPlanned(s: Awaited<ReturnType<typeof setup>>, site = s.site) {
+    await s.t.run(async (ctx) => {
+      const stored = structuredClone((await ctx.db.get(site))!.schema) as { bricks: Record<string, { fields: Record<string, unknown>; planned?: unknown; timeline?: unknown }> }
+      const menu = stored.bricks.menu!
+      menu.fields.nextPrice = { type: 'money', label: 'Geplanter Preis', optional: true, pos: 7 }
+      menu.fields.priceFrom = { type: 'date', label: 'Gilt ab', optional: true, pos: 8 }
+      menu.planned = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
+      delete menu.timeline
+      await ctx.db.patch(site, { schema: stored as never })
+    })
+  }
+  const timedRow = (s: Awaited<ReturnType<typeof setup>>, entry: Id<'entries'>, fields: Record<string, unknown>, publishAt: number) =>
+    s.t.run((ctx) => ctx.db.insert('pendingChanges', { site: s.site, entry, brick: 'menu', fields, prints: {}, revs: Object.fromEntries(Object.keys(fields).map((k) => [k, 1])), by: people.owner, since: 0, at: 0, publishAt }))
+  const datedRows = (s: Awaited<ReturnType<typeof setup>>) => s.t.run(async (ctx) => (await ctx.db.query('datedChanges').collect()).map((d) => [d.entry, d.from, d.fields]))
+
+  // Wrong behaviour caught: the timed changes were converted with the old model, so a plan field in them became a
+  // dated change of a field the converted model no longer has (it stops on its day, and no form shows it).
+  it('converts the planned rule first, then a timed change with the converted model', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const risotto = s.entries['menu-risotto']!
+    await withPlanned(s)
+    await timedRow(s, risotto, { price: { amount: 1500 }, nextPrice: { amount: 1600 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await runThisOne(s)
+    expect(await datedRows(s)).toEqual([[risotto, '2026-10-20', { price: { amount: 1500 } }]])
+    expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).toEqual([])
+    // H3.24. Wrong behaviour caught: the unpublished planned price went without a word, so nobody plans it again.
+    const lines = (await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', risotto)).collect())).filter((c) => c.kind === 'planDropped')
+    expect(lines.map((c) => c.sentence)).toEqual(['„Kürbisrisotto“: Die unveröffentlichte Planung (Geplanter Preis) gibt es nicht mehr. Bitte plane sie neu.'])
+  })
+
+  // A4. Wrong behaviour caught: a request approved for a time opened again without a word on its entry (nobody learns
+  // why the change did not come), or a release member lost the schedule of its release.
+  it('opens a request approved for a time with a history line, and leaves a release member alone', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const lunch = s.entries.lunch!
+    const later = Date.parse('2026-10-20T08:00:00Z')
+    const ask = async () => (await s.as.cook.mutation(api.entries.save, { publish: true, site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: 1, fields: { note: { de: 'Neu' } } }) as { proposal: Id<'proposals'> }).proposal
+    const single = await ask()
+    const member = await s.t.run(async (ctx) => {
+      const release = await ctx.db.insert('releases', { site: s.site, name: 'Herbst', at: later, status: 'scheduled', createdBy: people.owner, createdAt: 0, decidedBy: people.owner, decidedAt: 0 })
+      const p = (await ctx.db.get(single))!
+      const { _id, _creationTime, ...copy } = p
+      const id = await ctx.db.insert('proposals', { ...copy, release, status: 'scheduled', at: later, decidedBy: people.owner, decidedAt: 0 })
+      await ctx.db.patch(single, { status: 'scheduled', at: later, decidedBy: people.owner, decidedAt: 0 })
+      return id
+    })
+    await runThisOne(s)
+    const after = await s.t.run(async (ctx) => ({
+      single: (await ctx.db.get(single))!,
+      member: (await ctx.db.get(member))!,
+      lines: (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', lunch)).collect()).filter((c) => c.kind === 'requestReopened'),
+    }))
+    expect([after.single.status, after.member.status, after.member.at]).toEqual(['open', 'scheduled', later])
+    expect(after.lines).toMatchObject([{ actor: 'system', msg: { key: 'history.requestReopened', params: { at: later } } }])
+    expect(after.lines[0]!.sentence).toBe('Anfrage zu „Mittagsmenü“ wieder offen: Sie war für 20. Okt., 10:00 freigegeben. Wer freigeben darf, entscheidet sie neu.')
+  })
+
+  // A3. Wrong behaviour caught: a time whose day had come (also one that passed between the deploy and the step) left
+  // the changes unpublished, though the person had planned them for then; or the day was read in UTC, not the site's.
+  it.each([
+    ['later today', '2026-10-08T18:00:00Z', 'online'],
+    ['an hour ago', '2026-10-08T09:00:00Z', 'online'],
+    ['20 October 01:30 in Vienna, still 19 October in UTC', '2026-10-19T23:30:00Z', '2026-10-20'],
+  ])('a time %s', async (_, at, expected) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const risotto = s.entries['menu-risotto']!
+    await timedRow(s, risotto, { price: { amount: 1500 } }, Date.parse(at))
+    await runThisOne(s)
+    const price = (await s.t.run((ctx) => ctx.db.get(risotto)))!.data as { price: unknown }
+    if (expected === 'online') {
+      expect([price.price, await datedRows(s)]).toEqual([{ amount: 1500 }, []])
+    } else {
+      expect(await datedRows(s)).toEqual([[risotto, expected, { price: { amount: 1500 } }]])
+    }
+    expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).toEqual([])
+  })
+
+  // A3. Wrong behaviour caught: a change whose day has come goes online although the check refuses it.
+  it('keeps a due change the check refuses unpublished, with a history line', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const risotto = s.entries['menu-risotto']!
+    await timedRow(s, risotto, { price: { amount: -5 } }, Date.parse('2026-10-08T09:00:00Z'))
+    await runThisOne(s)
+    expect(((await s.t.run((ctx) => ctx.db.get(risotto)))!.data as { price: unknown }).price).not.toEqual({ amount: -5 })
+    expect((await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).map((p) => [p.fields, p.publishAt ?? null])).toEqual([[{ price: { amount: -5 } }, null]])
+    expect((await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', risotto)).collect())).at(-1)).toMatchObject({ kind: 'unschedule' })
+  })
+
+  // G1. Wrong behaviour caught: a planned price and another change of the same day became two rows of one day, and every
+  // later save into that day was refused ("two changes have the day").
+  it.each([
+    ['a timed unpublished change', async (s: Awaited<ReturnType<typeof setup>>, entry: Id<'entries'>) => {
+      await timedRow(s, entry, { veg: 'vegan' }, Date.parse('2026-10-20T08:00:00Z'))
+    }],
+    ['a dated change saved since the deploy', async (s: Awaited<ReturnType<typeof setup>>, entry: Id<'entries'>) => {
+      await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { veg: 'vegan' }, from: '2026-10-20' })
+    }],
+  ])('joins a planned value and %s of the same day into one row', async (_, other) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = s.entries['menu-schnitzel']!
+    await withPlanned(s)
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(schnitzel))!
+      await ctx.db.patch(schnitzel, { data: { ...(row.data as object), nextPrice: { amount: 2290 }, priceFrom: '2026-10-20' } })
+    })
+    await other(s, schnitzel)
+    await runThisOne(s)
+    expect(await datedRows(s)).toEqual([[schnitzel, '2026-10-20', { price: { amount: 2290 }, veg: 'vegan' }]])
+  })
+
+  /** The schnitzel with a planned price before D129. */
+  async function plannedSchnitzel(s: Awaited<ReturnType<typeof setup>>, price: number, from: string) {
+    const schnitzel = s.entries['menu-schnitzel']!
+    await withPlanned(s)
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(schnitzel))!
+      await ctx.db.patch(schnitzel, { data: { ...(row.data as object), nextPrice: { amount: price }, priceFrom: from } })
+    })
+    return schnitzel
+  }
+  const kept = (s: Awaited<ReturnType<typeof setup>>, entry: Id<'entries'>) => s.t.run(async (ctx) => ({
+    pending: (await ctx.db.query('pendingChanges').collect()).map((p) => [p.fields, p.publishAt ?? null]),
+    line: (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).at(-1),
+  }))
+
+  // H3.21. Wrong behaviour caught: a planned price and a timed price of the same day became one row, and the timed one
+  // silently replaced the planned one (or the other way round).
+  it('keeps a timed change unpublished when the row of its day already sets the same field', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = await plannedSchnitzel(s, 2290, '2026-10-20')
+    await timedRow(s, schnitzel, { price: { amount: 1500 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await runThisOne(s)
+    expect(await datedRows(s)).toEqual([[schnitzel, '2026-10-20', { price: { amount: 2290 } }]])
+    const after = await kept(s, schnitzel)
+    expect(after.pending).toEqual([[{ price: { amount: 1500 } }, null]])
+    expect(after.line).toMatchObject({ kind: 'unschedule', msg: { key: 'history.changesUnscheduled' } })
+  })
+
+  // H3.22. Wrong behaviour caught: a passed plan wrote the price during the migration, and a timed price for a later
+  // day, saved before that, became a dated change on top of it without the check "Publish" with a day makes.
+  it('keeps a timed change for a later day unpublished when its field changed online since the save', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = await plannedSchnitzel(s, 1200, '2026-10-01')
+    const rev = await s.t.run(async (ctx) => ((await ctx.db.get(schnitzel))!.fieldRevs as Record<string, number>).price ?? 0)
+    await s.t.run((ctx) => ctx.db.insert('pendingChanges', { site: s.site, entry: schnitzel, brick: 'menu', fields: { price: { amount: 1100 } }, prints: {}, revs: { price: rev }, by: people.owner, since: 0, at: 0, publishAt: Date.parse('2026-10-20T08:00:00Z') }))
+    await runThisOne(s)
+    expect([((await s.t.run((ctx) => ctx.db.get(schnitzel)))!.data as { price: unknown }).price, await datedRows(s)]).toEqual([{ amount: 1200 }, []])
+    const after = await kept(s, schnitzel)
+    expect(after.pending).toEqual([[{ price: { amount: 1100 } }, null]])
+    expect(after.line).toMatchObject({ kind: 'unschedule', msg: { key: 'history.changesUnscheduled' } })
+  })
+
+  // H3.23. Wrong behaviour caught: an empty plan day sorts before every day, so the planned price went online at once.
+  it('treats a plan day that is no date as no plan', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = await plannedSchnitzel(s, 1200, '')
+    await runThisOne(s)
+    const data = (await s.t.run((ctx) => ctx.db.get(schnitzel)))!.data as Record<string, unknown>
+    expect([data.price, Object.hasOwn(data, 'nextPrice'), Object.hasOwn(data, 'priceFrom'), await datedRows(s)]).toEqual([{ amount: 2190 }, false, false, []])
+    // I2.7. Wrong behaviour caught: the set plan value went without a word, so nobody plans it again.
+    const lines = (await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', schnitzel)).collect())).filter((c) => c.kind === 'planDropped')
+    expect(lines.map((c) => [c.msg?.key, c.sentence?.includes('(Geplanter Preis)')])).toEqual([['history.planDropped', true]])
+  })
+
+  // Wrong behaviour caught: the migration cancels a job that already ran or failed, which rewrites its record in
+  // `_scheduled_functions` (the only place a failed run is remembered) as cancelled. This guards the record under
+  // convex-test, which rewrites it; the real backend leaves a finished job as it is.
+  it('cancels only a job that still waits', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const at = Date.parse('2026-10-20T08:00:00Z')
+    const job = await s.t.run(async (ctx) => {
+      // An old run of the time that already ran (it finds another time on the row and does nothing).
+      const id = await ctx.scheduler.runAfter(0, internal.entries.publishDue, { entry: s.entries['menu-risotto']!, at: 0 })
+      await ctx.db.insert('pendingChanges', { site: s.site, entry: s.entries['menu-risotto']!, brick: 'menu', fields: { price: { amount: 1500 } }, prints: {}, revs: { price: 1 }, by: people.owner, since: 0, at: 0, publishAt: at, publishJob: id })
+      return id
+    })
+    await oneStep(s.t)
+    const ran = (await s.t.run((ctx) => ctx.db.system.get(job)))!.state.kind
+    expect(ran).not.toBe('pending')
+    await runThisOne(s)
+    expect((await s.t.run((ctx) => ctx.db.system.get(job)))!.state.kind).toBe(ran)
+  })
+
+  // Wrong behaviour caught: the migration touches a site that has none of the older plans (a new schemaRev makes every
+  // release look like a model change; a new contentRev empties the website's cache).
+  it('leaves a site without older plans as it is', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const read = () => s.t.run(async (ctx) => ({ site: (await ctx.db.get(s.site))!, changes: (await ctx.db.query('changes').collect()).length, dated: (await ctx.db.query('datedChanges').collect()).length }))
+    const before = await read()
+    await runThisOne(s)
+    const after = await read()
+    expect([after.site.schema, after.site.schemaRev, after.site.contentRev, after.changes, after.dated]).toEqual([before.site.schema, before.site.schemaRev, before.site.contentRev, before.changes, 0])
+  })
+
+  // A8. Wrong behaviour caught: a second run changes a converted site again; a planned value of an entry in the trash
+  // comes back as a waiting change; the byte counters keep the bytes of the plan fields; or the site's next release
+  // with the gastro preset is refused against the converted model.
+  it('runs twice without a second change, leaves the trash without a change, counts bytes, and a release passes', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const [schnitzel, risotto] = [s.entries['menu-schnitzel']!, s.entries['menu-risotto']!]
+    await withPlanned(s)
+    await s.t.run(async (ctx) => {
+      for (const [entry, deleted] of [[schnitzel, false], [risotto, true]] as const) {
+        const row = (await ctx.db.get(entry))!
+        const data = { ...(row.data as object), nextPrice: { amount: 2290 }, priceFrom: '2026-10-18' }
+        const bytes = entryBytes(data, row.prints as never)
+        const site = (await ctx.db.get(s.site))!
+        await ctx.db.patch(entry, { data, bytes, ...(deleted ? { deletedAt: Date.now() } : {}) })
+        await ctx.db.patch(s.site, deleted ? { bytes: site.bytes - row.bytes, trashBytes: (site.trashBytes ?? 0) + bytes } : { bytes: site.bytes - row.bytes + bytes })
+      }
+    })
+    const read = () => s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const entries = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site)).collect()
+      const sum = (rows: typeof entries) => rows.reduce((n, e) => n + e.bytes, 0)
+      return {
+        counters: [site.bytes, site.trashBytes ?? 0], sums: [sum(entries.filter((e) => !e.deletedAt)), sum(entries.filter((e) => e.deletedAt))],
+        site: [site.schema, site.schemaRev, site.contentRev], dated: (await ctx.db.query('datedChanges').collect()).map((d) => [d.entry, d.from, d.fields]),
+        changes: (await ctx.db.query('changes').collect()).length, data: entries.map((e) => e.data),
+      }
+    })
+    const before = await read()
+    expect(before.counters).toEqual(before.sums)
+    await runThisOne(s)
+    const after = await read()
+    expect(after.counters).toEqual(after.sums)
+    expect(after.counters[0]).toBeLessThan(before.counters[0]!)
+    expect(after.counters[1]).toBeLessThan(before.counters[1]!)
+    expect(after.dated).toEqual([[schnitzel, '2026-10-18', { price: { amount: 2290 } }]])
+    expect(JSON.stringify(after.data)).not.toContain('nextPrice')
+
+    await s.t.mutation(internal.datedChanges.migrateOneSite, { site: s.site })
+    expect(await read()).toEqual(after)
+    expect(diffSchema(after.site[0] as Schema, serializeSchema(restaurant)).rejected).toEqual([])
+  })
+
+  // A2. Wrong behaviour caught: the migration reads the stored model through code written for the new format, so a site
+  // whose model is older (no `listing`, `visible` instead of `showUntil`, format 2) is not converted at all.
+  it('converts a site whose stored model is an old format', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const [risotto, schnitzel, saibling] = [s.entries['menu-risotto']!, s.entries['menu-schnitzel']!, s.entries['menu-saibling']!]
+    // The restaurant's stored model as the repository had it before `listing` (contracts/restaurant/schema.json at 67821142).
+    const old = JSON.parse(readFileSync(new URL('./fixtures/restaurant-schema-before-listing.json', import.meta.url), 'utf8'))
+    await s.t.run(async (ctx) => {
+      await ctx.db.patch(s.site, { schema: old })
+      for (const [entry, next, from] of [[schnitzel, 2290, '2026-10-18'], [saibling, 1590, '2026-10-01']] as const) {
+        const row = (await ctx.db.get(entry))!
+        await ctx.db.patch(entry, { data: { ...(row.data as object), nextPrice: { amount: next }, priceFrom: from } })
+      }
+    })
+    await timedRow(s, risotto, { price: { amount: 1500 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await runThisOne(s)
+    expect((await s.t.query(internal.ops.status, {}))!.migrations.skipped).toEqual([])
+    const menu = ((await s.t.run((ctx) => ctx.db.get(s.site)))!.schema as { bricks: Record<string, any> }).bricks.menu
+    expect([menu.planned, menu.fields.nextPrice, menu.fields.priceFrom, menu.timeline]).toEqual([undefined, undefined, undefined, { public: ['price'] }])
+    expect(menu.tasks.find((t: { id: string }) => t.id === 'price')).toMatchObject({ fields: ['price'], when: { from: 'ask' } })
+    expect((await datedRows(s)).sort()).toEqual([[risotto, '2026-10-20', { price: { amount: 1500 } }], [schnitzel, '2026-10-18', { price: { amount: 2290 } }]].sort())
+    expect(((await s.t.run((ctx) => ctx.db.get(saibling)))!.data as { price: unknown }).price).toEqual({ amount: 1590 })
+  })
+
+  // A1. Wrong behaviour caught: one timed change the migration cannot convert (here of a brick the stored model no
+  // longer has, so even its title cannot be read) stops the whole site.
+  it('keeps a timed change it cannot convert unpublished and converts the rest of the site', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const [risotto, schnitzel] = [s.entries['menu-risotto']!, s.entries['menu-schnitzel']!]
+    await timedRow(s, risotto, { price: { amount: 1500 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await s.t.run((ctx) => ctx.db.insert('pendingChanges', { site: s.site, entry: s.entries.contact!, brick: 'gone', fields: { city: 'Graz' }, prints: {}, revs: { city: 1 }, by: people.owner, since: 0, at: 0, publishAt: Date.parse('2026-10-20T08:00:00Z') }))
+    await s.t.run((ctx) => ctx.db.patch(s.entries.contact!, { brick: 'gone' }))
+    await withPlanned(s)
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(schnitzel))!
+      await ctx.db.patch(schnitzel, { data: { ...(row.data as object), nextPrice: { amount: 2290 }, priceFrom: '2026-10-25' } })
+    })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await runThisOne(s)
+    expect(log.mock.calls.map((c) => String(c[0]).replace(/changes \S+ stay/, 'changes … stay'))).toEqual(['Migration 2026-11-25-dated-changes: unpublished changes … stay without a time (TypeError).'])
+    log.mockRestore()
+    expect((await s.t.query(internal.ops.status, {}))!.migrations.skipped).toEqual([])
+    expect((await datedRows(s)).sort()).toEqual([[risotto, '2026-10-20', { price: { amount: 1500 } }], [schnitzel, '2026-10-25', { price: { amount: 2290 } }]].sort())
+    const kept = await s.t.run(async (ctx) => ({
+      held: (await ctx.db.query('pendingChanges').collect()).map((p) => [p.entry, p.publishAt ?? null]),
+      line: (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', s.entries.contact!)).collect()).at(-1)!,
+    }))
+    expect(kept.held).toEqual([[s.entries.contact!, null]])
+    expect(kept.line).toMatchObject({ kind: 'unschedule', msg: { key: 'history.changesUnscheduled', params: { title: 'gone' } } })
+  })
+
+  // Wrong behaviour caught: one site the migration cannot convert stops it for every other site, or leaves that site
+  // half converted, and nobody learns which site it was.
+  it('reports a site it cannot convert by name and converts the others', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const menuFields = structuredClone(((await s.t.run((ctx) => ctx.db.get(s.site)))!.schema as Schema).bricks.menu!.fields)
+    const second = await s.t.run(async (ctx) => {
+      const { _id, _creationTime, ...site } = (await ctx.db.get(s.site))!
+      const stored = structuredClone(site.schema) as { bricks: Record<string, { fields: Record<string, unknown>; planned?: unknown; timeline?: unknown }> }
+      stored.bricks.menu!.fields.nextPrice = { type: 'money', label: 'Geplanter Preis', optional: true, pos: 7 }
+      stored.bricks.menu!.fields.priceFrom = { type: 'date', label: 'Gilt ab', optional: true, pos: 8 }
+      stored.bricks.menu!.planned = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
+      return ctx.db.insert('sites', { ...site, slug: 'zweite', schema: stored })
+    })
+    // The restaurant has a timed unpublished change, and a planned rule on a brick whose stored fields cannot be read.
+    await timedRow(s, s.entries['menu-risotto']!, { price: { amount: 1500 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await withPlanned(s)
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const stored = structuredClone(site.schema) as { bricks: Record<string, { fields: unknown }> }
+      stored.bricks.menu!.fields = null
+      await ctx.db.patch(s.site, { schema: stored as unknown as typeof site.schema })
+    })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await runThisOne(s)
+    expect(log.mock.calls).toEqual([['Migration 2026-11-25-dated-changes: site restaurant not converted (TypeError); the other sites go on.']])
+    log.mockRestore()
+    expect((await s.t.query(internal.ops.status, {}))!.migrations.skipped).toEqual([{ migration: '2026-11-25-dated-changes', site: 'restaurant', id: s.site, kind: 'TypeError' }])
+    const after = await s.t.run(async (ctx) => ({ restaurant: (await ctx.db.query('pendingChanges').collect())[0]!, second: (await ctx.db.get(second))! }))
+    // Nothing of the restaurant is half written: its change keeps its time.
+    expect(after.restaurant.publishAt).toBe(Date.parse('2026-10-20T08:00:00Z'))
+    expect((after.second.schema as { bricks: Record<string, { planned?: unknown; timeline?: unknown }> }).bricks.menu).toMatchObject({ timeline: { public: ['price'] } })
+    expect((after.second.schema as { bricks: Record<string, { planned?: unknown }> }).bricks.menu!.planned).toBeUndefined()
+
+    // G2. Wrong behaviour caught: the run is done, so nothing ever converts the skipped site, and the list never empties.
+    // Its stored fields are fixed by hand, then the one command of internals/migrations.md runs it again.
+    await s.t.run(async (ctx) => {
+      const stored = (await ctx.db.get(s.site))!.schema as { bricks: Record<string, { fields: unknown }> }
+      stored.bricks.menu!.fields = { ...menuFields, nextPrice: { type: 'money', label: 'Geplanter Preis', optional: true, pos: 7 }, priceFrom: { type: 'date', label: 'Gilt ab', optional: true, pos: 8 } }
+      await ctx.db.patch(s.site, { schema: stored as never })
+    })
+    await s.t.mutation(internal.datedChanges.migrateOneSite, { site: s.site })
+    expect((await s.t.query(internal.ops.status, {}))!.migrations.skipped).toEqual([])
+    const fixed = (await s.t.run((ctx) => ctx.db.get(s.site)))!.schema as { bricks: Record<string, { planned?: unknown; timeline?: unknown }> }
+    expect([fixed.bricks.menu!.planned, fixed.bricks.menu!.timeline]).toEqual([undefined, { public: ['price'] }])
+    expect(await datedRows(s)).toEqual([[s.entries['menu-risotto']!, '2026-10-20', { price: { amount: 1500 } }]])
   })
 })

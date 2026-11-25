@@ -1,5 +1,6 @@
 import { parseMarkdown, type MarkdownTree } from './markdown.ts'
-import type { Currency, Fields, Json, Locale, Schema } from './types.ts'
+import { isTable, rowsIn } from './fields.ts'
+import type { Brick, Currency, Fields, Json, Locale, Schema } from './types.ts'
 
 /** 3: text fields carry comark trees; collection items carry `updatedAt` and, for file entries, `source`. Other formats are refused. */
 export const BUNDLE_FORMAT = 3
@@ -11,27 +12,44 @@ export interface BundleItem {
   fallback: string[]
   /** Only for collections with `route`, only visible entries, only locales where the entry exists. */
   urls?: Partial<Record<Locale, string>>
-  /** Platform only: addresses the entry had before its slug was changed, per locale where it has a page; the site forwards them to `urls` (301). */
+  /** Old addresses per locale, which the site forwards to `urls` (301): a file entry's `$redirectFrom`, a platform entry's addresses before its slug was changed. */
   oldUrls?: Partial<Record<Locale, string[]>>
   /** When the entry last changed (ISO 8601, UTC). Files: last commit of its files, else file time. Platform: last published change. */
   updatedAt?: string
   /** Repo-relative path of the main-language file (POSIX separators). File entries only. */
   source?: string
+  /** The waiting changes of the fields in the brick's `timeline.public`, in the order of their days (D121). */
+  upcoming?: Upcoming[]
+  /** The exceptions that hold today and set a field of the brick's `timeline.public`, in the order of their starts. */
+  holding?: Holding[]
 }
 
 /**
- * The name of an entry in a list or a heading (llms.txt, its Markdown twin, the search): its `title`, else the text
- * field its slug is made from (a person's `name`), else its id.
+ * A change that starts later, as a page may read it: its day, its last day when it is an exception (`until`), and only
+ * the fields of the brick's `timeline.public`, resolved like `data` (one language, file references, Markdown trees). A
+ * field the change clears is `null`.
  */
-export function entryTitle(item: BundleItem, fields: Fields | undefined): string {
-  if (typeof item.data.title === 'string') return item.data.title
-  const slug = Object.values(fields ?? {}).find((field) => field.type === 'slug')
-  const named = slug?.type === 'slug' ? item.data[slug.from] : undefined
+export interface Upcoming { from: string; until?: string; name?: string; yearly?: true; data: Record<string, unknown> }
+
+/**
+ * An exception that holds today, as a page may read it to show an offer as an offer ("9,90 € bis 31. Dez., sonst
+ * 12,90 €"): its days, its values (already in `data`) and the normal values it covers (`normal`), only the fields of the
+ * brick's `timeline.public`, resolved like `data`. A field without a normal value is `null` in `normal`.
+ */
+export interface Holding { from: string; until: string; name?: string; yearly?: true; data: Record<string, unknown>; normal: Record<string, unknown> }
+
+/**
+ * The name of an entry in a list or a heading (llms.txt, its Markdown twin, the search, the navigation): the value of
+ * the field its brick's `listing.title` names, else its id. A bundle item is in one language, so the value is a text
+ * (a date field gives its ISO day).
+ */
+export function entryTitle(item: BundleItem, brick: Brick | undefined): string {
+  const named = brick?.kind === 'collection' ? item.data[brick.listing.title] : undefined
   return typeof named === 'string' && named.trim() ? named : item.id
 }
 
 export type BundleBrick =
-  | { kind: 'single'; data: Record<string, unknown>; fallback: string[] }
+  | { kind: 'single'; data: Record<string, unknown>; fallback: string[]; upcoming?: Upcoming[]; holding?: Holding[] }
   | { kind: 'collection'; items: BundleItem[] }
 
 /** GET <platform>/bundle/<site>?format=3&locale=<l> (SPEC part 6). */
@@ -102,8 +120,9 @@ export async function markdownTrees(fields: Fields, data: Record<string, Json>):
         const perLocale: Partial<Record<Locale, MarkdownTree>> = {}
         for (const [locale, text] of Object.entries(value)) if (typeof text === 'string') perLocale[locale as Locale] = await parse(text)
         trees[leaf] = perLocale
-      } else if (field.type === 'list' && Array.isArray(value)) {
-        for (const r of value) if (isRecord(r) && typeof r._id === 'string') await walk(field.of, r, `${leaf}.${r._id}`)
+      } else if (isTable(field)) {
+        // A list row without its `_id` has no path (rowsIn names it `#<index>`).
+        for (const [id, r] of rowsIn(field, value)) if (!id.startsWith('#')) await walk(field.of, r, `${leaf}.${id}`)
       }
     }
   }
@@ -124,15 +143,22 @@ export async function withMarkdownTrees(bundle: Bundle, schema: Pick<Schema, 'br
       const value = out[key]
       if (field.type === 'markdown' && typeof value === 'string') out[key] = (await parseMarkdown(value)).value
       else if (field.type === 'list' && Array.isArray(value)) out[key] = await Promise.all(value.map((row) => (isRecord(row) ? fill(field.of, row) : row)))
+      else if (field.type === 'rows' && isRecord(value)) out[key] = Object.fromEntries(await Promise.all(Object.entries(value).map(async ([row, cells]) => [row, isRecord(cells) ? await fill(field.of, cells) : cells])))
     }
     return out
   }
+  const fillUpcoming = (fields: Fields, upcoming: Upcoming[]) => Promise.all(upcoming.map(async (u) => ({ ...u, data: await fill(fields, u.data) })))
+  const fillHolding = (fields: Fields, holding: Holding[]) => Promise.all(holding.map(async (h) => ({ ...h, data: await fill(fields, h.data), normal: await fill(fields, h.normal) })))
+  const ahead = async (fields: Fields, of: { upcoming?: Upcoming[]; holding?: Holding[] }) => ({
+    ...(of.upcoming ? { upcoming: await fillUpcoming(fields, of.upcoming) } : {}),
+    ...(of.holding ? { holding: await fillHolding(fields, of.holding) } : {}),
+  })
   const bricks: Record<string, BundleBrick> = {}
   for (const [key, brick] of Object.entries(bundle.bricks)) {
     const fields = Object.hasOwn(schema.bricks, key) ? schema.bricks[key]!.fields : undefined
     if (!fields) bricks[key] = brick
-    else if (brick.kind === 'single') bricks[key] = { ...brick, data: await fill(fields, brick.data) }
-    else bricks[key] = { ...brick, items: await Promise.all(brick.items.map(async (item) => ({ ...item, data: await fill(fields, item.data) }))) }
+    else if (brick.kind === 'single') bricks[key] = { ...brick, data: await fill(fields, brick.data), ...await ahead(fields, brick) }
+    else bricks[key] = { ...brick, items: await Promise.all(brick.items.map(async (item) => ({ ...item, data: await fill(fields, item.data), ...await ahead(fields, item) }))) }
   }
   return { ...bundle, bricks }
 }
@@ -147,11 +173,20 @@ export function bundleFits(bundle: Bundle, schema: Pick<Schema, 'bricks'>): bool
 
 function isBundleBrick(brick: unknown): boolean {
   if (!isRecord(brick)) return false
-  if (brick.kind === 'single') return isRecord(brick.data) && isStrings(brick.fallback)
+  if (brick.kind === 'single') return isRecord(brick.data) && isStrings(brick.fallback) && isUpcoming(brick.upcoming) && isHolding(brick.holding)
   if (brick.kind !== 'collection' || !Array.isArray(brick.items)) return false
   return brick.items.every((item) => isRecord(item) && typeof item.id === 'string' && isRecord(item.data) && isStrings(item.fallback)
     && (item.urls === undefined || (isRecord(item.urls) && Object.values(item.urls).every((u) => typeof u === 'string')))
-    && (item.updatedAt === undefined || typeof item.updatedAt === 'string') && (item.source === undefined || typeof item.source === 'string'))
+    && (item.updatedAt === undefined || typeof item.updatedAt === 'string') && (item.source === undefined || typeof item.source === 'string')
+    && isUpcoming(item.upcoming) && isHolding(item.holding))
+}
+
+function isUpcoming(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every((u) => isRecord(u) && typeof u.from === 'string' && (u.until === undefined || typeof u.until === 'string') && isRecord(u.data)))
+}
+
+function isHolding(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every((h) => isRecord(h) && typeof h.from === 'string' && typeof h.until === 'string' && isRecord(h.data) && isRecord(h.normal)))
 }
 
 function isStrings(value: unknown): boolean {

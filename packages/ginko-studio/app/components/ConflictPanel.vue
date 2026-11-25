@@ -1,18 +1,18 @@
 <!-- Someone saved fields the person is editing (UI.md 3.2): their value next to the person's input, and the
      choice of one version. A list says row by row what each side added, removed or changed ("Du hast „…“
-     hinzugefügt", "Anna hat „…“ entfernt"), and when no row was changed by both, "Beides behalten" saves
+     hinzugefügt", "Anna hat „…“ entfernt"), and when no row was changed by both, "Beides behalten" keeps
      both. When the other save was the person's own (another window or tab), it says so instead of naming them.
      Used by Alles bearbeiten and Schnell ändern. -->
 <script setup lang="ts">
 import { useI18n } from '#imports'
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { mergeRows, rowDiffs } from '@lupinum/ginko/internal'
+import { keyedRowDiffs, mergeKeyedRows, mergeRows, rowDiffs, rowKeysOf, type SiteWeek } from '@lupinum/ginko/internal'
 import { GitCompareArrowsIcon } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@studio/components/ui/alert'
 import { Button } from '@studio/components/ui/button'
-import { computed } from 'vue'
-import { displayValue, rowTitle, type Data } from '../utils/content'
-import { shownLabel } from '../utils/labels'
+import { computed, inject, ref, type Ref } from 'vue'
+import { displayValue, rowLabel, rowTitle, type Data } from '../utils/content'
+import { shownLabel, useStudioSite } from '../utils/labels'
 import { isYou, whoText, type Who } from '../utils/who'
 
 const props = defineProps<{
@@ -26,9 +26,16 @@ const props = defineProps<{
   main: Locale
   /** "Beides behalten" is possible (useEntryForm.listMerge). */
   canKeepBoth: boolean
+  /** The answers only merge and the person saves with the form's own button (Schnell ändern, I1): "Meine Eingaben behalten". */
+  mergeOnly?: boolean
+  /** A save is on its way: the answers wait for it. */
+  busy?: boolean
 }>()
 const emit = defineEmits<{ keepMine: []; takeTheirs: []; keepBoth: [] }>()
 const { t, format } = useI18n()
+const { currency } = useStudioSite()
+// The site's week (layouts/site.vue): rows of days are named in its order. Before the schema loads, in stored order.
+const siteWeek = inject<Ref<SiteWeek | undefined>>('ginko:week', ref(undefined))
 
 const shownField = (key: string) => (props.fields[key] ? shownLabel(props.fields[key]!.label, props.main) : key)
 const whoOf = (key: string) => {
@@ -60,7 +67,7 @@ function rowName(key: string, id: string, ...lists: (Json | undefined)[]): strin
     const at = id.startsWith('#') ? Number(id.slice(1)) : rows.findIndex((r) => r._id === id)
     const row = rows[at]
     if (!row) continue
-    const named = field?.type === 'list' ? rowTitle(field.of, row, props.locale, { t, format })?.text : undefined
+    const named = field?.type === 'list' ? rowTitle(field.of, row, props.locale, { t, format, currency: currency() })?.text : undefined
     return named || t('entry.conflict.row.untitled', { n: at + 1 })
   }
   return id
@@ -70,7 +77,7 @@ const YOU = { added: 'entry.conflict.row.youAdded', removed: 'entry.conflict.row
 const THEY = { added: 'entry.conflict.row.theyAdded', removed: 'entry.conflict.row.theyRemoved', changed: 'entry.conflict.row.theyChanged' } as const
 const ELSEWHERE = { added: 'entry.conflict.row.otherWindowAdded', removed: 'entry.conflict.row.otherWindowRemoved', changed: 'entry.conflict.row.otherWindowChanged' } as const
 
-/** One line per field; a list instead gets one line per row each side changed, and one per row both changed. */
+/** One line per field; a list or rows field instead gets one line per row each side changed, and one per row both changed. */
 const items = computed(() => props.conflict.fields.map((key) => {
   const field = props.fields[key]
   const stored = props.conflict.data[key]
@@ -88,7 +95,21 @@ const items = computed(() => props.conflict.fields.map((key) => {
     ]
     if (lines.length) return { key, label: shownField(key), lines }
   }
-  const words = { t, format }
+  // A rows field keeps its rows: one line per row each side changed, and one per row both changed.
+  if (field?.type === 'rows') {
+    const base = props.baseline[key]
+    const name = (id: string) => rowLabel(field, id, props.locale, { t, format })
+    const order = siteWeek.value ? rowKeysOf(field, siteWeek.value) : []
+    const [mineRows, theirRows] = [keyedRowDiffs(base, mine, order).rows.map((r) => r.id), keyedRowDiffs(base, stored, order).rows.map((r) => r.id)]
+    const { clashes } = mergeKeyedRows(base, mine, stored)
+    const lines = [
+      ...mineRows.filter((id) => !clashes.includes(id)).map((id) => t(YOU.changed, { row: name(id) })),
+      ...theirRows.filter((id) => !clashes.includes(id)).map((id) => (yoursElsewhere(key) ? t(ELSEWHERE.changed, { row: name(id) }) : t(THEY.changed, { who: whoOf(key), row: name(id) }))),
+      ...clashes.map((id) => t(yoursElsewhere(key) ? 'entry.conflict.row.clashYou' : 'entry.conflict.row.clash', { row: name(id) })),
+    ]
+    if (lines.length) return { key, label: shownField(key), lines }
+  }
+  const words = { t, format, currency: currency() }
   return { key, label: shownField(key), text: t('entry.conflict.item', { field: shownField(key), stored: field ? displayValue(field, stored, props.locale, words) : '', mine: field ? displayValue(field, mine, props.locale, words) : '' }) }
 }))
 </script>
@@ -110,9 +131,9 @@ const items = computed(() => props.conflict.fields.map((key) => {
         </li>
       </ul>
       <div class="flex flex-wrap gap-2">
-        <Button v-if="canKeepBoth" type="button" size="sm" @click="emit('keepBoth')">{{ t('entry.conflict.keepBoth') }}</Button>
-        <Button type="button" size="sm" :variant="canKeepBoth ? 'outline' : 'default'" @click="emit('keepMine')">{{ t('entry.conflict.keepMine') }}</Button>
-        <Button type="button" size="sm" variant="outline" @click="emit('takeTheirs')">{{ t('entry.conflict.takeTheirs') }}</Button>
+        <Button v-if="canKeepBoth" type="button" size="sm" :disabled="busy" @click="emit('keepBoth')">{{ t('entry.conflict.keepBoth') }}</Button>
+        <Button type="button" size="sm" :variant="canKeepBoth ? 'outline' : 'default'" :disabled="busy" @click="emit('keepMine')">{{ mergeOnly ? t('entry.conflict.keepInput') : t('entry.conflict.keepMine') }}</Button>
+        <Button type="button" size="sm" variant="outline" :disabled="busy" @click="emit('takeTheirs')">{{ t('entry.conflict.takeTheirs') }}</Button>
       </div>
     </AlertDescription>
   </Alert>

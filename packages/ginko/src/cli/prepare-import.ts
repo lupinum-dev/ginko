@@ -106,7 +106,7 @@ export async function prepareImport(input: PrepareInput): Promise<PrepareResult>
   const site: SiteExport = parseExport(parsed, 'path', 'export.json is not a valid export (format 1).')
 
   const exportSchema = site.schema
-  const main = exportSchema.locales?.[0] ?? 'de'
+  const main = exportSchema.locales?.[0] ?? noLanguage()
   const files = new Map(site.files.map((f) => [f.id, f]))
   const folders = site.folders ?? (site.folders = [])
   const known = input.config?.components as ComponentRegistry | undefined
@@ -234,6 +234,16 @@ export async function prepareImport(input: PrepareInput): Promise<PrepareResult>
       }
       return rows
     }
+    if (field.type === 'rows' && isObject(value)) {
+      const rows: Record<string, Json> = {}
+      for (const [key, row] of Object.entries(value as Record<string, Json>)) {
+        if (!isObject(row)) { rows[key] = row; continue }
+        const out: Record<string, Json> = { ...(row as Record<string, Json>) }
+        for (const [name, column] of Object.entries(field.of)) if (name in out) out[name] = await walk(column, out[name]!)
+        rows[key] = out
+      }
+      return rows
+    }
     return value
   }
 
@@ -245,6 +255,14 @@ export async function prepareImport(input: PrepareInput): Promise<PrepareResult>
       const before = entry.data[name]!
       const after = await walk(field, before)
       if (JSON.stringify(after) !== JSON.stringify(before)) { entry.data[name] = after; changed = true }
+    }
+    // A dated change names images and links like the fields it sets (D128).
+    for (const change of entry.changes ?? []) {
+      for (const [name, before] of Object.entries(change.set as Record<string, Json>)) {
+        if (!Object.hasOwn(fields, name) || before === null) continue
+        const after = await walk(fields[name]!, before)
+        if (JSON.stringify(after) !== JSON.stringify(before)) { (change.set as Record<string, Json>)[name] = after; changed = true }
+      }
     }
   }
   result.images.failed.sort((a, b) => a.url.localeCompare(b.url))
@@ -295,4 +313,9 @@ async function redirects(input: PrepareInput, map: ImportMap, site: SiteExport, 
   result.redirects.count = good.length
   result.redirects.file = file
   result.redirects.hint = 'Put the array in `redirects` in ginko.config.ts (defineSite).'
+}
+
+/** An export without a language: there is no default (design V2 5.4). */
+function noLanguage(): never {
+  throw new CliError('export.json names no language (schema.locales is missing or empty). Export the site again.')
 }

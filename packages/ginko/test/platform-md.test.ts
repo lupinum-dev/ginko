@@ -16,7 +16,7 @@ vi.mock('nuxt/server', () => ({
 
 const { default: handler } = await import('../src/nuxt/runtime/server/platform-md.ts')
 const bundle = readFileSync(fileURLToPath(new URL('../../../contracts/restaurant/bundle.format3.de.json', import.meta.url)), 'utf8')
-const get = (rev: string) => (handler as unknown as (event: { path: string }) => Promise<{ nodes: unknown[] }>)({ path: `/__ginko/platform/de/${rev}/md/events/sommerfest/description.json` })
+const get = (rev: string) => (handler as unknown as (event: { path: string }) => Promise<{ nodes: unknown[] }>)({ path: `/__ginko/platform/de/${rev}/md/events/weinabend/description.json` })
   .then((tree) => ({ status: 200, nodes: tree.nodes.length > 0 }), (error: { statusCode: number; message: string }) => ({ status: error.statusCode, message: error.message }))
 
 afterEach(() => vi.unstubAllGlobals())

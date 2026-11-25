@@ -1,32 +1,114 @@
+import { slugKeyOf } from './fields.ts'
+import type { CollectionBrick, Json } from './types.ts'
+
 const replacements: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss', Ä: 'ae', Ö: 'oe', Ü: 'ue' }
 
-/** German-friendly URL slug: "Über uns & Team" → "ueber-uns-team". Empty input gives "eintrag". */
+/**
+ * German-friendly URL slug: "Über uns & Team" → "ueber-uns-team". '' when the text has no letters or digits: each
+ * caller states what it takes then (the platform takes the brick key, `nameBase`).
+ */
 export function slugify(input: string): string {
-  const slug = input
+  const dashed = input
     .replace(/[äöüßÄÖÜ]/g, (c) => replacements[c] ?? c)
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80)
-    .replace(/-+$/g, '')
-  return slug || 'eintrag'
+  return trimDashes(trimDashes(dashed).slice(0, 80))
+}
+
+/**
+ * `text` without the hyphens at its start and end. A loop, not `/^-+|-+$/`: that regex backtracks on a long run of
+ * hyphens inside the text (polynomial time on input someone else wrote).
+ */
+export function trimDashes(text: string): string {
+  let start = 0
+  let end = text.length
+  while (start < end && text[start] === '-') start++
+  while (end > start && text[end - 1] === '-') end--
+  return text.slice(start, end)
 }
 
 export const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
+/** The longest entry name. */
+export const ENTRY_NAME_MAX = 100
+
+/**
+ * An entry's name, the same in both homes (V2 5.6): the file name `content/<brick>/<name>.md` without order number,
+ * language and extension, and the stored `name` of a platform entry. The shape of a slug, 1 to 100 characters.
+ */
+export function isEntryName(value: unknown): value is string {
+  return typeof value === 'string' && value.length >= 1 && value.length <= ENTRY_NAME_MAX && SLUG_PATTERN.test(value)
+}
+
+/** The rule of `isEntryName` as one sentence, for the messages that refuse a name. */
+export const ENTRY_NAME_RULE = 'An entry name is 1 to 100 lower-case letters (a to z), digits and single hyphens between them, such as “summer-party”.'
+
+/**
+ * `base` with the number `n` as an end `-n` (none for 1), cut so that the whole is at most `ENTRY_NAME_MAX` characters
+ * and still an entry name: a main slug set by hand may be 100 characters long, and its double then needs room for `-2`.
+ */
+export function numberedName(base: string, n: number): string {
+  const end = n === 1 ? '' : `-${n}`
+  return base.slice(0, ENTRY_NAME_MAX - end.length).replace(/-+$/, '') + end
+}
+
+const textIn = (value: Json | undefined, main: string): string => {
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const text = (value as Record<string, Json>)[main]
+    return typeof text === 'string' ? text : ''
+  }
+  return ''
+}
+
+/**
+ * The text a new entry's name is made from, in the main language: for a brick with an address field the text its slug
+ * is made from (`from`), so the name and the main slug start equal; for any other brick the field of `listing.title`
+ * (a date title gives `2026-11-30`).
+ */
+export function nameSource(brick: CollectionBrick, data: Readonly<Record<string, Json>>, main: string): string {
+  const slugKey = slugKeyOf(brick)
+  const field = slugKey ? brick.fields[slugKey]! : undefined
+  return textIn(data[field?.type === 'slug' ? field.from : brick.listing.title], main)
+}
+
+/** The name before it is made unique: from `nameSource`, or the brick key when that text gives none (`events`, then `events-2`). */
+export function nameBase(brickKey: string, brick: CollectionBrick, data: Readonly<Record<string, Json>>, main: string): string {
+  return slugify(nameSource(brick, data, main)) || slugify(brickKey)
+}
+
+/**
+ * The names of stored entries of one brick, in the order given, as the upgrade and a corpus give them: a brick with an
+ * address field takes each entry's main-language slug, any other the text of `listing.title`; a later entry with the
+ * same name gets `-2`, `-3`. `taken` names a name some other entry already holds.
+ */
+export function namesOf(brickKey: string, brick: CollectionBrick, main: string, rows: readonly Readonly<Record<string, Json>>[], taken: (name: string) => boolean = () => false): string[] {
+  const slugKey = slugKeyOf(brick)
+  const given = new Set<string>()
+  return rows.map((data) => {
+    const slug = slugKey ? textIn(data[slugKey], main) : ''
+    const base = isEntryName(slug) ? slug : nameBase(brickKey, brick, data, main)
+    let n = 1
+    while (given.has(numberedName(base, n)) || taken(numberedName(base, n))) n++
+    const name = numberedName(base, n)
+    given.add(name)
+    return name
+  })
+}
+
 /**
  * The slug of a new entry per locale before it is made unique (SPEC 2.2), from the text of its `from` field in that
- * locale: the main locale (the first) always gets one; another locale gets one from its own text, or `undefined`
- * when it has none and takes the main locale's slug. The platform makes these unique; the Studio's preview of a new
- * entry uses them as they are.
+ * locale: the main locale (the first) always gets one, `fallback` when its text gives none (the brick key on the
+ * platform); another locale gets one from its own text, or `undefined` when it has none and takes the main locale's
+ * slug. The platform makes these unique; the Studio's preview of a new entry uses them as they are.
  */
-export function slugBases(locales: readonly string[], texts: Readonly<Record<string, string | undefined>>): Record<string, string | undefined> {
+export function slugBases(locales: readonly string[], texts: Readonly<Record<string, string | undefined>>, fallback: string): Record<string, string | undefined> {
   const main = locales[0]
   return Object.fromEntries(locales.map((locale) => {
-    const own = texts[locale] ?? ''
-    return [locale, locale === main ? slugify(own) : own ? slugify(own) : undefined]
+    const own = slugify(texts[locale] ?? '')
+    return [locale, locale === main ? own || fallback : own || undefined]
   }))
 }
 

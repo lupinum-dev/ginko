@@ -79,6 +79,7 @@ export function cellValue(fields: Fields, column: string, cell: string): { value
       if (text !== 'true' && text !== 'false') return { error: `Column “${column}”: “${text}” is not true or false.` }
       return { value: text === 'true' }
     case 'list':
+    case 'rows':
     case 'image':
     case 'choices':
     case 'daterange':

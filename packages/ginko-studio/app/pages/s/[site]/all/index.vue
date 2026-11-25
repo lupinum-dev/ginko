@@ -67,7 +67,7 @@ const grid = 'grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_mi
         <!-- The title row of StudioPage (AllShell already pads the cell). Staff see only the areas they hold a task in,
              so the page does not promise "everything". -->
         <header class="mb-6">
-          <h1 class="text-[1.375rem] font-semibold tracking-tight">{{ s.isManager.value ? t('site.all.heading') : t('site.all.headingStaff') }}</h1>
+          <h1>{{ s.isManager.value ? t('site.all.heading') : t('site.all.headingStaff') }}</h1>
           <p class="mt-1 max-w-[65ch] text-muted-foreground min-[900px]:text-sm">{{ s.isManager.value ? t('site.all.lede') : t('site.all.ledeStaff') }}</p>
         </header>
         <!-- A site before its first release and without areas: the page says how the website sends them. A site that got

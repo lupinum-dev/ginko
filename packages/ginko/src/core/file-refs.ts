@@ -4,7 +4,7 @@
 // rewritten here too: an import gives entries new IDs as it gives files new ones. Pure: works on texts, data and bundles.
 import type { Bundle } from './bundle.ts'
 import type { ComponentRegistry } from './components.ts'
-import { effectiveAlt } from './fields.ts'
+import { effectiveAlt, isTable, mapRows } from './fields.ts'
 import { focusPosition } from './frames.ts'
 import { mapTrees } from './links.ts'
 import type { FileInfo } from './resolve.ts'
@@ -90,17 +90,23 @@ export function rewriteFileRefs(text: string, map: ReadonlyMap<string, string>):
  */
 const ENTRY_LINK = /(?<=\]\(\s*<?|^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*<?)\$([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)(?![\w.-])/gm
 
-/** The entry IDs and slugs that a text links to (`$authors.<ref>`); page links and words in code are left out. */
+/**
+ * The entry IDs and slugs that a text links to (`$authors.<ref>`): each `ref` as written, and `authors/<ref>`, the ID of
+ * a file entry, which a file links to by its name. Page links and words in code are left out.
+ */
 export function entryLinkRefs(text: string): Set<string> {
-  return new Set([...withoutCode(text).matchAll(ENTRY_LINK)].filter((m) => m[1] !== 'page').map((m) => m[2]!))
+  return new Set([...withoutCode(text).matchAll(ENTRY_LINK)].filter((m) => m[1] !== 'page').flatMap((m) => [m[2]!, `${m[1]}/${m[2]}`]))
 }
 
-/** The text with every link to an entry whose ID is in `map` pointing at its new ID. Slugs, unknown IDs and words in code stay as they are. */
+/**
+ * The text with every link to an entry whose ID is in `map` pointing at its new ID. A link by name (`$authors.anna`)
+ * finds a file entry's ID `authors/anna`. Slugs, unknown IDs and words in code stay as they are.
+ */
 export function rewriteEntryLinks(text: string, map: ReadonlyMap<string, string>): string {
   let out = ''
   let last = 0
   for (const match of withoutCode(text).matchAll(ENTRY_LINK)) {
-    const to = match[1] === 'page' ? undefined : map.get(match[2]!)
+    const to = match[1] === 'page' ? undefined : map.get(match[2]!) ?? map.get(`${match[1]}/${match[2]}`)
     if (to === undefined) continue
     out += `${text.slice(last, match.index)}$${match[1]}.${to}`
     last = match.index + match[0].length
@@ -124,9 +130,8 @@ export function remapFileIds(fields: Fields, data: Record<string, Json>, map: Re
       if (typeof value === 'string') return rewriteFileRefs(value, map)
       return isRecord(value) ? Object.fromEntries(Object.entries(value).map(([locale, text]) => [locale, typeof text === 'string' ? rewriteFileRefs(text, map) : text])) : value
     }
-    if (field.type === 'list' && Array.isArray(value)) {
-      return value.map((row) => {
-        if (!isRecord(row)) return row
+    if (isTable(field)) {
+      return mapRows(field, value, (row) => {
         const out: Record<string, Json> = { ...row }
         for (const [key, inner] of Object.entries(field.of)) if (out[key] !== undefined) out[key] = walk(inner, out[key]!)
         return out
@@ -139,14 +144,14 @@ export function remapFileIds(fields: Fields, data: Record<string, Json>, map: Re
   return out
 }
 
-/** The data with `fn` applied to every Markdown text: each language, list rows included. Other values stay as they are. */
+/** The data with `fn` applied to every Markdown text: each language, list and rows rows included. Other values stay as they are. */
 export function mapMarkdownTexts(fields: Fields, data: Record<string, Json>, fn: (text: string) => string): Record<string, Json> {
   const walk = (field: Field, value: Json): Json => {
     if (field.type === 'markdown') {
       if (typeof value === 'string') return fn(value)
       if (isRecord(value)) return Object.fromEntries(Object.entries(value).map(([locale, text]) => [locale, typeof text === 'string' ? fn(text) : text]))
     }
-    if (field.type === 'list' && Array.isArray(value)) return value.map((row) => (isRecord(row) ? mapMarkdownTexts(field.of, row, fn) : row))
+    if (isTable(field)) return mapRows(field, value, (row) => mapMarkdownTexts(field.of, row, fn))
     return value
   }
   return Object.fromEntries(Object.entries(data).map(([name, value]) => [name, Object.hasOwn(fields, name) ? walk(fields[name]!, value) : value]))

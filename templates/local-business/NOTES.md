@@ -13,7 +13,7 @@
   `content/hourPlans/` have fixed dates: create-ginko moves only dates of bricks with a `visible` rule (the notices).
   Once a closure has passed it simply no longer shows; the summer hours repeat every year.
 - With `holidays: closed`, a public holiday on a day the practice is closed anyway (1 November 2026, a Sunday) is left
-  out of the closures (basics' `upcomingClosures`, shared with the restaurant).
+  out of the closures (`upcomingClosures` of patterns, shared with the restaurant).
 - The treatments have no photos: only two photos fit the sample, and cards with and without photos side by side look
   unfinished. The treatment room photo is in the home page's hero and on the About page; both are on the contact page
   ("The practice").

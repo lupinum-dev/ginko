@@ -83,7 +83,7 @@ Write dates as `2026-10-24`, times as `'09:30'` (two-digit hours), prices as a p
 | On the site | File |
 |---|---|
 | Home page: mission, lead, photo | `content/home.md` (and `home.de.md`, `home.fr.md`, `home.ar.md`) |
-| News | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/jana-becker]`), `tags`, `image` (the cover, 3:2: `src` and `alt`), `slug` (optional, made from the title); `draft: true` keeps a post off the site |
+| News | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/jana-becker]`), `tags`, `image` (the cover, 3:2: `src` and `alt`), `slug` (optional, made from the title); `$draft: true` keeps a post off the site |
 | Projects and campaigns | `content/projects/<n>.<name>.md`: `title`, `summary`, `image` (`src` and `alt`), the text; `ends` for a campaign (the last day it shows); `actionLabel` and `actionUrl` for a button below the title ("Donate now") |
 | Team and board | `content/people/<n>.<name>.md`: `name`, `role`, `bio`, `email`, `phone`; no photo needed, the site shows initials |
 | Reports to download | `content/downloads/<name>.md`: `title`, `summary`, `date`, `file` (a PDF in `public/files/`; not `public/reports/`, which would take the address of the reports page), `language` (the language of the file, for example `en`; leave it out when the file is in your main language; the sample sets `en` because the sample PDF is English) |

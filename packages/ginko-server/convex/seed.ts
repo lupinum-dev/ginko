@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { carryPrints, defaultsFor, entryBytes, fitsBudget, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { carryPrints, changeIssues, dataOn, isException, keptChanges, MAX_DATED, sizeDays, todayIn, type Change, defaultsFor, entryBytes, fitsBudget, isEntryName, namesOf, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, withoutUnknownRows, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -20,7 +20,9 @@ import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { cleanName, kindOf, WRONG_TYPE } from './lib/files'
 import { deleteStorage } from './lib/library'
 import { dropTrees, putTrees } from './lib/trees'
+import { datedOf, insertWaiting } from './lib/dated'
 import { BUDGET, same, sizeText, syncEntryRefs, uploadIdsOf } from './lib/write'
+import { stopReason } from './schema'
 
 function localOnly() {
   if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.localOnly')
@@ -90,6 +92,7 @@ export const reset = internalMutation({
       ...(await ctx.db.query('entries').withIndex('by_site_deleted', (q) => q.eq('site', id)).collect()),
       ...(await ctx.db.query('entryTrees').withIndex('by_site', (q) => q.eq('site', id)).collect()),
       ...(await ctx.db.query('pendingChanges').withIndex('by_site', (q) => q.eq('site', id)).collect()),
+      ...(await ctx.db.query('datedChanges').withIndex('by_site_brick', (q) => q.eq('site', id)).collect()),
       ...(await ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', id)).collect()),
       ...(await ctx.db.query('fileRefs').withIndex('by_site_holder', (q) => q.eq('site', id)).collect()),
       ...(await ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', id)).collect()),
@@ -172,6 +175,11 @@ export const importClear = internalMutation({
       await dropRefs('pending', row.entry)
       await drop(row)
     }
+    for await (const row of ctx.db.query('datedChanges').withIndex('by_site_brick', (q) => q.eq('site', site._id))) {
+      if (full()) return { done: false }
+      await dropRefs('dated', row._id)
+      await drop(row)
+    }
     for await (const entry of ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id))) {
       if (full()) return { done: false }
       await dropRefs('entry', entry._id)
@@ -241,8 +249,15 @@ export const importExport = internalMutation({
       deletedAt: v.optional(v.number()),
       state: v.optional(v.union(v.literal('draft'), v.literal('live'))),
       publishAt: v.optional(v.number()),
+      /** A plan that did not go online (D103), without its person; absent in older exports. */
+      stopped: v.optional(v.object({ at: v.number(), reason: stopReason })),
       /** When the entry last changed for the public (the bundle's updatedAt); absent in older exports, then the import time. */
       contentAt: v.optional(v.number()),
+      /** A collection entry's name and whether it is fixed (D96); absent in older exports, then made like the upgrade does. */
+      name: v.optional(v.string()),
+      nameFixed: v.optional(v.literal(true)),
+      /** Its waiting dated changes (D128, `$changes` in a file); absent in older exports. */
+      changes: v.optional(v.array(v.object({ from: v.string(), until: v.optional(v.string()), yearly: v.optional(v.literal(true)), name: v.optional(v.string()), set: v.record(v.string(), v.any()) }))),
     })),
   },
   handler: async (ctx, args) => {
@@ -330,7 +345,8 @@ export const importExport = internalMutation({
     // removed ones too (a restore must be able to save them), the live entries against the site, the removed ones
     // against the trash.
     const problems: ImportProblem[] = []
-    const rows: { row: (typeof args.entries)[number]; fields: Fields; data: Data; prints: Prints; size: number; trees: { json: string; bytes: number } }[] = []
+    const rows: { row: (typeof args.entries)[number]; fields: Fields; data: Data; prints: Prints; size: number; trees: { json: string; bytes: number }; changes: Change[] }[] = []
+    const today = todayIn(schema.timeZone)
     let bytes = 0
     let trashBytes = 0
     let treeBytes = 0
@@ -344,10 +360,25 @@ export const importExport = internalMutation({
         problems.push({ code: 'INVALID', key: 'errors.entryBrickMissingFromSchema', params: { id: row.id, brick: row.brick } })
         continue
       }
-      const data = remapFileIds(def.fields, row.data as Data, uploads)
+      // Dated changes (D128) are checked like a save makes them; a change whose day has passed is written into the fields
+      // before the entry is stored, the others wait. A removed entry has none (removing it cancelled them).
+      // An exception (slice 3) is never written into the fields: one whose days are still to come or hold today gets its
+      // row (holding at once from today), an ended one is left out.
+      // A yearly exception (slice 4) is kept whatever its first days: it comes back on its next time.
+      const exported: Change[] = (row.changes ?? []).map((c) => ({
+        from: c.from, ...(c.until !== undefined ? { until: c.until } : {}), ...(c.yearly ? { yearly: c.yearly } : {}), ...(c.name !== undefined ? { name: c.name } : {}),
+        set: remapFileIds(def.fields, c.set as Data, uploads),
+      }))
+      const stored = remapFileIds(def.fields, row.data as Data, uploads)
+      const changeProblem = exported.length && row.deletedAt === undefined ? (await changeIssues(schema, row.brick, stored, exported))[0] : undefined
+      if (changeProblem) problems.push({ code: 'INVALID', key: 'errors.importEntryInvalid', params: { id: row.id, path: changeProblem.path, count: 1 } })
+      const remapped = row.deletedAt === undefined ? dataOn(stored, exported.filter((c) => !isException(c)), today) : stored
+      const changes = row.deletedAt === undefined ? keptChanges(exported, today) : []
+      const checked = await validate(schema, row.brick, remapped, { mode: 'restore' })
+      // A row its rows field no longer has (retired since the export) is dropped; its warning stays (UNKNOWN_ROW).
+      const data = withoutUnknownRows(def.fields, remapped, schema.week)
       // New file IDs change the main-language text a translation was made from, not its meaning.
       const prints = carryPrints(def.fields, row.data as Data, data, row.prints, schema.locales[0]!)
-      const checked = await validate(schema, row.brick, data, { mode: 'restore' })
       if (checked.errors.length) problems.push({ code: 'INVALID', key: 'errors.importEntryInvalid', params: { id: row.id, path: checked.errors[0]!.path, count: checked.errors.length } })
       const warning = checked.warnings[0]
       if (warning) {
@@ -356,6 +387,11 @@ export const importExport = internalMutation({
       }
       const size = entryBytes(data, prints)
       if (size > BUDGET.entryBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importEntryTooLarge', params: { id: row.id, used: sizeText(size), limit: sizeText(BUDGET.entryBytes) } })
+      // As a save makes them (planDated): at most MAX_DATED waiting changes, and the entry with all of them applied fits.
+      if (changes.length > MAX_DATED) problems.push({ code: 'TOO_LARGE', key: 'errors.importTooManyDated', params: { id: row.id, count: changes.length, max: MAX_DATED } })
+      // Every day its changes give it values: after the last one, and on each exception's days (sizeDays).
+      const last = changes.length ? Math.max(...sizeDays(changes).map((day) => entryBytes(dataOn(data, changes, day), prints))) : size
+      if (last > BUDGET.entryBytes && size <= BUDGET.entryBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importEntryTooLarge', params: { id: row.id, used: sizeText(last), limit: sizeText(BUDGET.entryBytes) } })
       // The trash keeps no trees.
       const trees = row.deletedAt === undefined ? await treesOf(def.fields, data) : { json: '', bytes: 0 }
       if (row.deletedAt === undefined) {
@@ -363,7 +399,7 @@ export const importExport = internalMutation({
         bytes += size
         treeBytes += trees.bytes
       } else trashBytes += size
-      rows.push({ row, fields: def.fields, data, prints, size, trees })
+      rows.push({ row, fields: def.fields, data, prints, size, trees, changes })
     }
     // What the Studio keeps true: every entry once, a collection within its max, one entry per address. An export that
     // breaks it gives two pages one URL, or a collection whose removed entries cannot come back. The CLI checks the
@@ -373,6 +409,44 @@ export const importExport = internalMutation({
     for (const { row } of rows) {
       if (seen.has(row.id)) problems.push({ code: 'INVALID', key: 'errors.importDuplicateId', params: { id: row.id } })
       seen.add(row.id)
+    }
+    // One name per entry of a brick (D96), also against entries stored by an earlier batch. An entry without one (an
+    // older export) gets one made from its slug or title, fixed, as the upgrade makes them.
+    const names = new Map<(typeof rows)[number], { name: string; nameFixed?: true }>()
+    const storedNames = new Map<string, Set<string>>()
+    const namesIn = async (brick: string) => {
+      let set = storedNames.get(brick)
+      if (!set) {
+        const stored = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', brick)).collect()
+        set = new Set(stored.flatMap((e) => (e.name === undefined ? [] : [e.name])))
+        storedNames.set(brick, set)
+      }
+      return set
+    }
+    for (const item of rows) {
+      const { row } = item
+      if (row.kind !== 'item' || row.name === undefined) continue
+      if (!isEntryName(row.name)) {
+        problems.push({ code: 'INVALID', key: 'errors.importNameShape', params: { id: row.id, name: row.name } })
+        continue
+      }
+      const taken = await namesIn(row.brick)
+      if (taken.has(row.name)) problems.push({ code: 'INVALID', key: 'errors.importDuplicateName', params: { brick: row.brick, name: row.name } })
+      taken.add(row.name)
+      names.set(item, { name: row.name, ...(row.nameFixed ? { nameFixed: true as const } : {}) })
+    }
+    for (const [brick, def] of Object.entries(schema.bricks)) {
+      if (def.kind !== 'collection') continue
+      const unnamed = rows.filter((item) => item.row.brick === brick && item.row.kind === 'item' && item.row.name === undefined)
+      if (!unnamed.length) continue
+      const taken = await namesIn(brick)
+      const made = namesOf(brick, def, schema.locales[0]!, unnamed.map((item) => item.data), (name) => taken.has(name))
+      unnamed.forEach((item, i) => {
+        taken.add(made[i]!)
+        // Every made name is fixed, as the upgrade fixes them: an entry stored before names existed kept the slug it was
+        // created with, so a later title change must not move it (a draft that was online once included).
+        names.set(item, { name: made[i]!, nameFixed: true as const })
+      })
     }
     const added = new Map<string, number>()
     for (const { row } of rows) if (row.deletedAt === undefined) added.set(row.brick, (added.get(row.brick) ?? 0) + 1)
@@ -399,19 +473,30 @@ export const importExport = internalMutation({
     // 2. Store.
     const ids: [string, Id<'entries'>][] = []
     const known = new Set<string>(uploads.values())
-    for (const { row, fields, data, prints, size, trees } of rows) {
+    for (const item of rows) {
+      const { row, fields, data, prints, size, trees, changes } = item
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
         fieldRevs: Object.fromEntries(Object.keys(fields).map((f) => [f, row.rev])),
         lifeRev: row.deletedAt === undefined ? 1 : 2, prints, bytes: size, treeBytes: trees.bytes, contentAt: row.contentAt ?? Date.now(),
         ...(row.deletedAt === undefined ? {} : { deletedAt: row.deletedAt }),
         ...(row.state === 'draft' ? { state: 'draft' as const } : {}),
+        ...names.get(item),
       })
       await putTrees(ctx, site._id, id, trees.json)
-      // A scheduled draft gets its job back (a time in the past runs at once); `contentRev` is not touched.
-      if (row.state === 'draft' && row.publishAt !== undefined && row.deletedAt === undefined) {
-        await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
+      // A planned draft gets its job back, without a person (D102); one whose time has passed is a stopped draft and
+      // does not go online (D107). A stopped plan comes back as it was. `contentRev` is not touched.
+      if (row.state === 'draft' && row.deletedAt === undefined) {
+        if (row.publishAt !== undefined && row.publishAt > Date.now()) {
+          await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
+        } else if (row.publishAt !== undefined) {
+          await ctx.db.patch(id, { stopped: { at: row.publishAt, reason: { code: 'late' } } })
+        } else if (row.stopped) {
+          await ctx.db.patch(id, { stopped: row.stopped })
+        }
       }
+      // Each waiting change gets its row and its run, without a person.
+      await insertWaiting(ctx, schema, { _id: id, site: site._id, brick: row.brick, rev: row.rev, ...(row.state ? { state: row.state } : {}) }, changes)
       ids.push([row.id, id])
       for (const [name, field] of Object.entries(fields)) {
         if (field.type !== 'slug') continue
@@ -486,6 +571,11 @@ export const importRefs = internalMutation({
     for (const entry of page.page) {
       const def = schema.bricks[entry.brick]
       if (!def) continue
+      // The entry references in its dated changes name exported IDs too.
+      for (const dated of await datedOf(ctx, entry._id)) {
+        const fields = mapMarkdownTexts(def.fields, remapEntryRefs(def.fields, dated.fields as Data, ids), (text) => rewriteEntryLinks(text, ids)) as Data
+        if (!same(fields, dated.fields)) await ctx.db.patch(dated._id, { fields })
+      }
       const refs = remapEntryRefs(def.fields, entry.data as Data, ids)
       const data = mapMarkdownTexts(def.fields, refs, (text) => rewriteEntryLinks(text, ids)) as Data
       if (same(data, entry.data)) continue
@@ -540,7 +630,7 @@ export const importOpen = internalMutation({
     const untouched = (e: Doc<'entries'>) => {
       const def = Object.hasOwn(schema.bricks, e.brick) ? schema.bricks[e.brick] : undefined
       return def?.kind === 'single' && e.kind === 'single' && e.rev === 1 && e.deletedAt === undefined && e.state === undefined
-        && stableJson(e.data) === stableJson(defaultsFor(def.fields))
+        && stableJson(e.data) === stableJson(defaultsFor(def.fields, schema.week))
     }
     if (used || !entries.every(untouched) || site.entryCount !== entries.length) fail('INVALID', 'errors.importNeedsEmptySite')
     let bytes = 0
@@ -575,7 +665,7 @@ export const importDone = internalMutation({
         if (def.kind !== 'single') continue
         const have = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', brick)).first()
         if (have) continue
-        const single = await newSingle(brick, def.fields, schema.locales[0]!)
+        const single = await newSingle(brick, def.fields, schema.locales[0]!, schema.week)
         await insertSingle(ctx, site._id, single, schema.locales)
         created.push(single)
       }
