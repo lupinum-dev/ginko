@@ -405,6 +405,38 @@ describe('upcoming in the bundle', () => {
     it('an entry without a holding exception gets no holding key', () => {
       expect(JSON.stringify(buildBundle(input()))).not.toContain('holding')
     })
+
+    // Round M2 (break-it P1-2): a change for good under an offer. Wrong behaviour caught: the page promises
+    // "ab 6. Dezember € 22,90" while the offer keeps 9,90 until 31 December.
+    it('a change for good under an offer is announced for the day after the offer', () => {
+      const changes: Change[] = [{ from: '2026-10-01', until: '2026-12-31', set: { price: money(990) } }, { from: '2026-12-06', set: { price: money(2290) } }]
+      const item = first(buildBundle({ ...input(), entries: { dishes: [{ id: 'd1', data: dish, changes }] } }))
+      expect(item?.upcoming).toEqual([{ from: '2027-01-01', data: { price: shown(2290) } }])
+    })
+
+    // Round M2, the number: every upcoming item is true on its day. A change for good with two public fields, an offer
+    // over its price, a second offer chained after the first, and a second change for good inside the cover (so the first
+    // one's price never shows). Wrong behaviour caught: an item names a value the page will not show on that day.
+    it('number: every field of every upcoming item equals what the page shows on its day (violations 0)', async () => {
+      const changes: Change[] = [
+        { from: '2026-12-06', set: { price: money(2290), story: de('Neu') } },
+        { from: '2026-11-20', until: '2026-12-31', set: { price: money(990) } },
+        { from: '2027-01-01', until: '2027-01-10', set: { price: money(890) } },
+        { from: '2027-01-05', set: { price: money(2390) } },
+      ]
+      const bundleOn = (data: typeof dish, today: string, kept: Change[]) => servedBundle({ ...input(), today, entries: { dishes: [{ id: 'd1', data, changes: kept }] } })
+      const item = first(await bundleOn(dish, TODAY, changes))!
+      const violations: string[] = []
+      for (const u of item.upcoming ?? []) {
+        // What the page shows on that day: the values of that day with no change left to apply.
+        const shownThen = first(await bundleOn(dataOn(dish, changes, u.from) as typeof dish, u.from, []))!
+        for (const [f, value] of Object.entries(u.data)) if (JSON.stringify(value) !== JSON.stringify(shownThen.data[f])) violations.push(`${u.from} ${f}`)
+      }
+      expect(violations).toEqual([])
+      expect(item.upcoming?.map((u) => [u.from, Object.keys(u.data)])).toEqual([
+        ['2026-11-20', ['price']], ['2026-12-06', ['story']], ['2027-01-01', ['price']], ['2027-01-11', ['price']],
+      ])
+    })
   })
 
   it('carries nothing ahead for a brick without timeline', () => {
