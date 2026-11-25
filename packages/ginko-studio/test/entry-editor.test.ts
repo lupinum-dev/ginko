@@ -734,4 +734,19 @@ describe('the footer of a live entry with unpublished changes', () => {
       vi.stubGlobal('useOps', () => ({}))
     }
   })
+
+  // Wrong behaviour caught (H1.10): under approval the day's button said "Planen", so staff could not tell the changes
+  // go to review, not online on that day.
+  test('under approval the day\'s button names review and the day', async () => {
+    const tasks = { save: 'blog.edit', held: [{ id: 'edit', label: 'Bearbeiten', kind: 'edit' as const, needsApproval: true }] }
+    const wrapper = mount(EntryEditor, { props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry: entryOf({ pending: { since: at, at, fields: ['title'] } }), canRemove: false, tasks }, global: { stubs } })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Veröffentlichen …')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('#publish-later').trigger('click')
+    await flushPromises()
+    expect(buttons(wrapper)).toContain('Planen')
+    await wrapper.get('#publish-day').setValue(new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
+    expect(buttons(wrapper).filter((b) => /^Ab .+ zur Prüfung senden$/.test(b))).toHaveLength(1)
+  })
 })

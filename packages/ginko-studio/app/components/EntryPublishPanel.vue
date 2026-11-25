@@ -9,13 +9,19 @@ import ScheduleField from './ScheduleField.vue'
 import StartsOnField from './StartsOnField.vue'
 import { RADIO_CARD } from './fields/sizes'
 
-defineProps<{ question: string; timeZone: string; scheduled: boolean; busy: boolean; error: string; byDay?: boolean; dayError?: string }>()
+/** `review`: the publish goes to approval; a day's button then says so with the day (H1). */
+const props = defineProps<{ question: string; timeZone: string; scheduled: boolean; busy: boolean; error: string; byDay?: boolean; dayError?: string; review?: boolean }>()
 const when = defineModel<'now' | 'later'>('when', { required: true })
 const at = defineModel<string>('at', { required: true })
 const picked = defineModel<number | undefined>('picked')
 const day = defineModel<string>('day', { default: '' })
 const emit = defineEmits<{ publish: []; clearSchedule: []; cancel: [] }>()
-const { t } = useI18n()
+const { t, format } = useI18n()
+const action = computed(() => {
+  if (when.value === 'now') return t('entry.publish.publishNow')
+  if (props.review && props.byDay && day.value) return t('dated.reviewFrom', { day: format.date(day.value, { weekday: 'short', day: 'numeric', month: 'short' }) })
+  return t('entry.publish.schedule')
+})
 </script>
 
 <template>
@@ -33,7 +39,7 @@ const { t } = useI18n()
     </div>
     <p v-if="error" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ error }}</p>
     <div class="flex flex-wrap gap-2">
-      <Button type="button" size="lg" class="px-4 font-semibold" :disabled="busy" @click="emit('publish')">{{ when === 'now' ? t('entry.publish.publishNow') : t('entry.publish.schedule') }}</Button>
+      <Button type="button" size="lg" class="px-4 font-semibold" :disabled="busy" @click="emit('publish')">{{ action }}</Button>
       <Button v-if="scheduled" type="button" variant="outline" size="lg" class="px-3.5" :disabled="busy" @click="emit('clearSchedule')">{{ t('entry.publish.clearSchedule') }}</Button>
       <Button type="button" variant="ghost" size="lg" class="px-3.5" @click="emit('cancel')">{{ t('entry.cancel') }}</Button>
     </div>

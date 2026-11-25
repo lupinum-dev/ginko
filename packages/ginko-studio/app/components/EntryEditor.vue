@@ -508,6 +508,8 @@ const statusNote = computed(() => {
 })
 /** Publishing belongs to the brick's create and edit tasks (staff need one of them). */
 const publishTask = computed(() => props.tasks?.save ?? props.tasks?.create)
+/** That task needs a yes: the publish goes to review (owners and managers hold no tasks here). */
+const publishReviewed = computed(() => props.tasks?.held?.find((task) => taskRef(props.brickKey, task) === publishTask.value)?.needsApproval === true)
 
 const publishing = ref(false)
 const when = ref<'now' | 'later'>('now')
@@ -765,7 +767,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <template v-if="bar && !sideMode">
           <EntryPublishPanel
             v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
-            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError"
+            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError" :review="publishReviewed"
             @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
           />
           <div v-if="askUnpublish" class="grid gap-2.5 rounded-lg border bg-sidebar p-3.5">
@@ -851,7 +853,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
             </template>
             <EntryPublishPanel
               v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
-              :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError"
+              :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError" :review="publishReviewed"
               @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
             />
           </template>
@@ -880,7 +882,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           </Popover>
           <EntryPublishPanel
             v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
-            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError"
+            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError" :review="publishReviewed"
             @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
           />
           <div v-else-if="!removed" class="flex flex-wrap gap-2">
