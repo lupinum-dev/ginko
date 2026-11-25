@@ -8,8 +8,8 @@ import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import DatedNotices from '../app/components/DatedNotices.vue'
 
-const { computed, nextTick, ref } = vue
-Object.entries({ computed, nextTick, ref, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
+const { computed, nextTick, ref, watch } = vue
+Object.entries({ computed, nextTick, ref, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 const rows = ref<unknown>([])
 vi.stubGlobal('useConvexQuery', () => ({ data: rows, error: ref(undefined) }))
 const ops = {

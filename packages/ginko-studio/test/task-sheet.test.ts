@@ -770,6 +770,27 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
+  // Wrong behaviour caught (H1.6): a half-typed day stayed "not a date" after "Bearbeiten" put a day into the field, so
+  // the save of that day was refused.
+  test('"Bearbeiten" over a day typed and not finished saves with its day', async () => {
+    const day = inDays(20)
+    datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    answer({ data: {} })
+    await flushPromises()
+    const field = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(field.element, 'validity', { value: { badInput: true }, configurable: true })
+    await field.trigger('keyup')
+    Object.defineProperty(field.element, 'validity', { value: { badInput: false }, configurable: true })
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Das ist kein Datum.')
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => s.from)).toEqual([day])
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught (H1.4): after "Bearbeiten" another day silently planned a second change, and the person
   // believed the edited one was moved.
   test('after "Bearbeiten" another day says the edited change stays', async () => {

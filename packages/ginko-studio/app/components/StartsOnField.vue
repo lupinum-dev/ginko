@@ -18,6 +18,8 @@ const day = defineModel<string>({ required: true })
  */
 const bad = defineModel<boolean>('bad', { default: false })
 const check = (event: Event) => { bad.value = (event.target as HTMLInputElement).validity?.badInput === true }
+// A day set from outside ("Bearbeiten", a restored copy) replaces whatever was half typed (H1).
+watch(day, (value) => { if (value) bad.value = false })
 const errors = computed(() => (bad.value ? [t('dated.notADate')] : props.error ? [props.error] : []))
 function pick(value: string) {
   bad.value = false
