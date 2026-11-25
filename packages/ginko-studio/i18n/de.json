@@ -378,6 +378,7 @@
     "yearlyHint": "Gilt jedes Jahr an diesen Tagen.",
     "yearlyWhileHolding": "Diese Änderung gilt gerade und kommt jedes Jahr wieder. Das lässt sich jetzt nicht ausschalten; du kannst sie aufheben.",
     "yearlyTooLong": "Eine Änderung, die jedes Jahr wiederkommt, muss kürzer als ein Jahr sein.",
+    "yearlyLeapDay": "Den 29. Februar gibt es nicht jedes Jahr. Wähle weitere Tage dazu oder schalte „Jedes Jahr wiederholen“ aus.",
     "startsTooFarBack": "„Gilt ab“ darf höchstens ein Jahr zurück liegen.",
     "name": "Name",
     "nameHint": "Zum Beispiel: Sommer",

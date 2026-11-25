@@ -60,6 +60,7 @@
     "changeYearly": "«yearly» يقبل القيمة true فقط ويحتاج إلى نهاية (until).",
     "changeName": "اسم التغيير من 1 إلى 60 حرفًا ويحتاج إلى نهاية (until).",
     "changeYearlyLong": "التغيير الذي يتكرر كل عام يستمر أقل من عام: «until» ({until}) بعيد جدًا عن «from» ({from}).",
+    "changeYearlyLeapDay": "يوم 29 فبراير لا يوجد كل عام: التغيير الذي يتكرر كل عام يحتاج إلى أيام أخرى، أو بدون «yearly».",
     "changeTwice": "تغييران لهما اليوم {day}. اكتبهما كتغيير واحد.",
     "changeUntilDay": "«{value}» ليس يومًا. اكتب «until» بالشكل YYYY-MM-DD، مثل 2026-12-31.",
     "changeUntilBefore": "نهاية التغيير ({until}) تسبق بدايته ({from}).",

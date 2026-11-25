@@ -60,6 +60,7 @@
     "changeYearly": "«yearly» accetta solo true e richiede una fine (until).",
     "changeName": "Il nome di una modifica ha da 1 a 60 caratteri e richiede una fine (until).",
     "changeYearlyLong": "Una modifica che torna ogni anno dura meno di un anno: «until» ({until}) è troppo lontano da «from» ({from}).",
+    "changeYearlyLeapDay": "Il 29 febbraio non esiste ogni anno: una modifica che torna ogni anno ha bisogno di altri giorni, oppure senza «yearly».",
     "changeTwice": "Due modifiche hanno il giorno {day}. Scrivile come una sola modifica.",
     "changeUntilDay": "«{value}» non è un giorno. Scrivi «until» come AAAA-MM-GG, per esempio 2026-12-31.",
     "changeUntilBefore": "La fine di una modifica ({until}) è prima del suo inizio ({from}).",

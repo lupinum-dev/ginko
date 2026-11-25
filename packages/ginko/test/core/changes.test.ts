@@ -494,6 +494,12 @@ describe('a change that comes back every year (slice 4)', () => {
       .map((day) => [day, occurrence(change, day), runOf(day)] as const)
       .filter(([, got, expected]) => JSON.stringify(got) !== JSON.stringify(expected))
     expect(wrong.slice(0, 5)).toEqual([])
+    // Round N2: a time never ends before it starts (29 February alone would, in a year without it).
+    const backwards = everyDay('2026-01-01', '2029-12-31').filter((day) => {
+      const time = occurrence(change, day)
+      return time !== undefined && time.until !== undefined && time.from > time.until
+    })
+    expect(backwards).toEqual([])
   })
 
   // Number 1, the core's own reading of the table both homes are tested against.
@@ -530,6 +536,9 @@ describe('a change that comes back every year (slice 4)', () => {
     ['yearly and one year long', [year({ from: '2026-03-01', until: '2027-02-28', yearly: true })], [[0, '$changes.0.until', 'CHANGE']]],
     // Month and day of `until` after those of `from`, a year later: as month and day alone it looks like one day.
     ['yearly and a year and a day long', [year({ from: '2026-06-15', until: '2027-06-15', yearly: true })], [[0, '$changes.0.until', 'CHANGE']]],
+    // 29 February alone exists every fourth year only (round N2); as one bound of longer days it is kept.
+    ['yearly on 29 February alone', [year({ from: '2028-02-29', until: '2028-02-29', yearly: true })], [[0, '$changes.0.until', 'CHANGE']]],
+    ['yearly from 29 February to 1 March', [year({ from: '2028-02-29', until: '2028-03-01', yearly: true })], []],
     ['a name on a change with an end', [year({ from: '2026-11-01', until: '2026-11-30', name: 'Betriebsurlaub' })], []],
     ['a name without an end', [year({ from: '2026-11-01', name: 'Neu' })], [[0, '$changes.0.name', 'CHANGE']]],
     ['an empty name', [year({ from: '2026-11-01', until: '2026-11-30', name: '  ' })], [[0, '$changes.0.name', 'CHANGE']]],

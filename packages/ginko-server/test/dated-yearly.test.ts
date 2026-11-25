@@ -141,6 +141,7 @@ describe('a yearly save (state table: save, yearly on)', () => {
     ['yearly without an end', { from: '2028-06-01', yearly: true }, 'errors.yearlyNeedsUntil'],
     ['a name without an end', { from: '2028-06-01', name: 'Neu' }, 'errors.nameNeedsUntil'],
     ['yearly and one year long', { from: '2027-11-01', until: '2028-10-31', yearly: true }, 'errors.yearlyTooLong'],
+    ['yearly on 29 February alone (round N2)', { from: '2028-02-29', until: '2028-02-29', yearly: true }, 'errors.yearlyLeapDay'],
     ['yearly from more than a year back', { from: '2026-10-07', until: '2026-10-31', yearly: true }, 'errors.dayTooFarBack'],
     ['yearly from more than a year ahead', { from: '2028-10-09', until: '2028-10-20', yearly: true }, 'errors.dayTooFarAhead'],
     ['a start in the past without yearly', { from: '2027-10-07', until: '2027-10-31' }, 'errors.dayBeforeToday'],

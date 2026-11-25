@@ -255,6 +255,7 @@
     "holdingFromFixed": "Este cambio ya está vigente. Su primer día se mantiene; se pueden cambiar el final y los valores.",
     "dayTooFarBack": "El primer día puede estar como máximo un año atrás.",
     "yearlyTooLong": "Un cambio que vuelve cada año debe durar menos de un año.",
+    "yearlyLeapDay": "El 29 de febrero no existe todos los años. Añade más días o desactiva «Repetir cada año».",
     "yearlyNeedsUntil": "Un cambio que vuelve cada año necesita un último día.",
     "nameNeedsUntil": "Solo un cambio temporal lleva nombre. Indica el último día.",
     "nameLength": "El nombre necesita de 1 a {max} caracteres.",

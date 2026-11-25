@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { addDays, defaultsFor, isShown, leavesOf, NAME_MAX, stableJson, taskAsks, taskEnds as endsByThemselves, todayIn, weeklyTask, yearTooLong, type Schema } from '@lupinum/ginko/internal'
+import { addDays, defaultsFor, isShown, leavesOf, NAME_MAX, stableJson, taskAsks, taskEnds as endsByThemselves, todayIn, weeklyTask, yearTooLong, leapDayAlone, type Schema } from '@lupinum/ginko/internal'
 import { textIn, TRANSLATION, useToday } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
@@ -429,6 +429,7 @@ const daysProblem = computed(() => {
   if (!untilOn.value) return 'untilEmpty' as const
   if (untilOn.value < from) return 'untilBeforeFrom' as const
   if (isYearly.value && yearTooLong({ from, until: untilOn.value, yearly: true, set: {} })) return 'yearlyTooLong' as const
+  if (isYearly.value && leapDayAlone({ from, until: untilOn.value, yearly: true, set: {} })) return 'yearlyLeapDay' as const
   return (!isYearly.value || holding) && untilOn.value < today.value ? 'untilPast' as const : undefined
 })
 /** The days an exception save sends; undefined while they are not both valid. */
@@ -584,7 +585,7 @@ async function save(step: Step = 'publish') {
     if (problem) {
       if (problem !== 'untilBad') {
         untilError.value = problem === 'untilEmpty' ? t('dated.dayRequired') : problem === 'untilBeforeFrom' ? t('dated.untilBeforeFrom')
-          : problem === 'yearlyTooLong' ? t('dated.yearlyTooLong') : messageOf({ key: 'errors.dayBeforeToday' })
+          : problem === 'yearlyTooLong' ? t('dated.yearlyTooLong') : problem === 'yearlyLeapDay' ? t('dated.yearlyLeapDay') : messageOf({ key: 'errors.dayBeforeToday' })
       }
       return focusDay('sheet-until')
     }

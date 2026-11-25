@@ -255,6 +255,7 @@
     "holdingFromFixed": "Ce changement s’applique déjà. Son premier jour reste ; sa fin et ses valeurs peuvent changer.",
     "dayTooFarBack": "Le premier jour peut être au plus il y a un an.",
     "yearlyTooLong": "Une modification qui revient chaque année doit durer moins d’un an.",
+    "yearlyLeapDay": "Le 29 février n’existe pas chaque année. Ajoutez d’autres jours ou désactivez « Répéter chaque année ».",
     "yearlyNeedsUntil": "Une modification qui revient chaque année a besoin d’un dernier jour.",
     "nameNeedsUntil": "Seule une modification temporaire porte un nom. Indiquez le dernier jour.",
     "nameLength": "Le nom doit compter de 1 à {max} caractères.",

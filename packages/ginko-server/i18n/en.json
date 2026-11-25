@@ -255,6 +255,7 @@
     "holdingFromFixed": "This change already holds. Its first day stays; its end and its values can change.",
     "dayTooFarBack": "The first day can be at most a year back.",
     "yearlyTooLong": "A change that comes back every year must be shorter than a year.",
+    "yearlyLeapDay": "29 February does not exist every year. Add more days or switch off “Repeat every year”.",
     "yearlyNeedsUntil": "A change that comes back every year needs a last day.",
     "nameNeedsUntil": "Only a change for certain days gets a name. Give the last day.",
     "nameLength": "The name needs 1 to {max} characters.",

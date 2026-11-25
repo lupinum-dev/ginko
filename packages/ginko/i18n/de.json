@@ -60,6 +60,7 @@
     "changeYearly": "„yearly“ hat nur den Wert true und braucht ein Ende (until).",
     "changeName": "Der Name einer Änderung hat 1 bis 60 Zeichen und braucht ein Ende (until).",
     "changeYearlyLong": "Eine Änderung, die jedes Jahr wiederkommt, dauert weniger als ein Jahr: „until“ ({until}) liegt zu weit nach „from“ ({from}).",
+    "changeYearlyLeapDay": "Den 29. Februar gibt es nicht jedes Jahr: Eine Änderung, die jedes Jahr wiederkommt, braucht weitere Tage dazu, oder „yearly“ fällt weg.",
     "changeTwice": "Zwei Änderungen haben den Tag {day}. Schreibe sie als eine Änderung.",
     "changeUntilDay": "„{value}“ ist kein Tag. Schreibe „until“ als JJJJ-MM-TT, zum Beispiel 2026-12-31.",
     "changeUntilBefore": "Das Ende einer Änderung ({until}) liegt vor ihrem Beginn ({from}).",

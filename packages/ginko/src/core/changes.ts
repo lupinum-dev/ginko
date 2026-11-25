@@ -71,6 +71,14 @@ export function yearTooLong(change: Change & { until: Day }): boolean {
   return change.until >= addDays(nextStart, -1)
 }
 
+/**
+ * A yearly change on 29 February alone: that day exists every fourth year only, so in the other years its time would
+ * end before it starts. As one bound of longer days 29 February is fine (it moves to 1 March or 28 February).
+ */
+export function leapDayAlone(change: Change & { until: Day }): boolean {
+  return change.from.endsWith('-02-29') && change.until === change.from
+}
+
 /** The days a change starts on, from its first up to `last` (a yearly one: each year's start). */
 function startsUpTo(change: Change, last: Day): Day[] {
   if (!change.yearly) return [change.from]
@@ -273,6 +281,9 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
     } else if (ends && isDate(raw.from) && raw.yearly === true && yearTooLong({ from: raw.from, until: raw.until as Day, yearly: true, set: {} })) {
       ok = false
       add(index, `${at}.until`, 'CHANGE', 'issues.changeYearlyLong', { until: raw.until as string, from: raw.from })
+    } else if (ends && isDate(raw.from) && raw.yearly === true && leapDayAlone({ from: raw.from, until: raw.until as Day, yearly: true, set: {} })) {
+      ok = false
+      add(index, `${at}.until`, 'CHANGE', 'issues.changeYearlyLeapDay')
     }
     const set = raw.set
     if (!isDate(raw.from)) {

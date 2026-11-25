@@ -3,7 +3,7 @@
 // first minute of its day. The core decides what a change may set and how it is applied (`changeIssues`, `dataOn`); this
 // file holds what the save, the publish, the run on the day and the readers share.
 import type { Json, Label } from '@lupinum/ginko'
-import { addDays, changeIssues, dataOn, dayStartIn, entryBytes, fitsBudget, isDate, labelOf, MAX_DATED, NAME_MAX, occurrence, sizeDays, startTie, taskAsks, taskDates, taskEnds, todayIn, yearTooLong, type Change, type ChangeIssue, type Schema, type Task, type Time, type ValidateOptions } from '@lupinum/ginko/internal'
+import { addDays, changeIssues, dataOn, dayStartIn, entryBytes, fitsBudget, isDate, labelOf, leapDayAlone, MAX_DATED, NAME_MAX, occurrence, sizeDays, startTie, taskAsks, taskDates, taskEnds, todayIn, yearTooLong, type Change, type ChangeIssue, type Schema, type Task, type Time, type ValidateOptions } from '@lupinum/ginko/internal'
 import { internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
@@ -107,7 +107,7 @@ export function checkDay(schema: Schema, from: unknown, opts: { exception?: bool
 /**
  * The last day of an exception: a real day, on or after `from`, not before today and at most a year ahead. A yearly
  * one's end may have passed (it waits for next year) unless its time holds now (`holding`), and its days must be
- * shorter than a year, else it would never end (`yearTooLong`).
+ * shorter than a year, else it would never end (`yearTooLong`), and more than 29 February alone (`leapDayAlone`).
  */
 export function checkUntil(schema: Schema, from: string, until: unknown, opts: { yearly?: boolean; holding?: boolean } = {}): asserts until is string {
   if (!isDate(until)) fail('INVALID', 'errors.dayInvalid')
@@ -116,6 +116,7 @@ export function checkUntil(schema: Schema, from: string, until: unknown, opts: {
   if ((!opts.yearly || opts.holding) && until < today) fail('INVALID', 'errors.dayBeforeToday')
   if (opts.yearly) {
     if (yearTooLong({ from, until, yearly: true, set: {} })) fail('INVALID', 'errors.yearlyTooLong')
+    if (leapDayAlone({ from, until, yearly: true, set: {} })) fail('INVALID', 'errors.yearlyLeapDay')
   } else if (until > yearAhead(today)) fail('INVALID', 'errors.dayTooFarAhead')
 }
 

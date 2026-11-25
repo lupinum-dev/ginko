@@ -506,6 +506,7 @@ export const compiled: Record<string, MessageTree> = {
     ],
     ")."
    ],
+   "changeYearlyLeapDay": "Den 29. Februar gibt es nicht jedes Jahr: Eine Änderung, die jedes Jahr wiederkommt, braucht weitere Tage dazu, oder „yearly“ fällt weg.",
    "changeTwice": [
     "Zwei Änderungen haben den Tag ",
     [
@@ -2036,6 +2037,7 @@ export const compiled: Record<string, MessageTree> = {
     ],
     ")."
    ],
+   "changeYearlyLeapDay": "29 February does not exist every year: a change that comes back every year needs more days, or no “yearly”.",
    "changeTwice": [
     "Two changes have the day ",
     [
@@ -3566,6 +3568,7 @@ export const compiled: Record<string, MessageTree> = {
     ],
     ")."
    ],
+   "changeYearlyLeapDay": "El 29 de febrero no existe todos los años: un cambio que vuelve cada año necesita más días, o quitar «yearly».",
    "changeTwice": [
     "Dos cambios tienen el día ",
     [
@@ -5098,6 +5101,7 @@ export const compiled: Record<string, MessageTree> = {
     ],
     ")."
    ],
+   "changeYearlyLeapDay": "Le 29 février n’existe pas chaque année : un changement qui revient chaque année a besoin d’autres jours, ou pas de « yearly ».",
    "changeTwice": [
     "Deux modifications ont le jour ",
     [
@@ -6629,6 +6633,7 @@ export const compiled: Record<string, MessageTree> = {
     ],
     ")."
    ],
+   "changeYearlyLeapDay": "Il 29 febbraio non esiste ogni anno: una modifica che torna ogni anno ha bisogno di altri giorni, oppure senza «yearly».",
    "changeTwice": [
     "Due modifiche hanno il giorno ",
     [
@@ -8229,6 +8234,7 @@ export const compiled: Record<string, MessageTree> = {
     ],
     ")."
    ],
+   "changeYearlyLeapDay": "يوم 29 فبراير لا يوجد كل عام: التغيير الذي يتكرر كل عام يحتاج إلى أيام أخرى، أو بدون «yearly».",
    "changeTwice": [
     "تغييران لهما اليوم ",
     [

@@ -255,6 +255,7 @@
     "holdingFromFixed": "Diese Änderung gilt schon. Ihr erster Tag bleibt; ändern lassen sich das Ende und die Werte.",
     "dayTooFarBack": "Der erste Tag darf höchstens ein Jahr zurück liegen.",
     "yearlyTooLong": "Eine Änderung, die jedes Jahr wiederkommt, muss kürzer als ein Jahr sein.",
+    "yearlyLeapDay": "Den 29. Februar gibt es nicht jedes Jahr. Wähle weitere Tage dazu oder schalte „Jedes Jahr wiederholen“ aus.",
     "yearlyNeedsUntil": "Eine Änderung, die jedes Jahr wiederkommt, braucht einen letzten Tag.",
     "nameNeedsUntil": "Einen Namen bekommt nur eine befristete Änderung. Gib den letzten Tag an.",
     "nameLength": "Der Name braucht 1 bis {max} Zeichen.",

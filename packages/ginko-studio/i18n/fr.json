@@ -378,6 +378,7 @@
     "yearlyHint": "S’applique chaque année à ces dates.",
     "yearlyWhileHolding": "Cette modification s’applique en ce moment et revient chaque année. Cela ne peut pas être désactivé maintenant ; vous pouvez l’annuler.",
     "yearlyTooLong": "Une modification qui revient chaque année doit durer moins d’un an.",
+    "yearlyLeapDay": "Le 29 février n’existe pas chaque année. Ajoutez d’autres jours ou désactivez « Répéter chaque année ».",
     "startsTooFarBack": "« En vigueur le » peut remonter au plus à un an.",
     "name": "Nom",
     "nameHint": "Par exemple : Été",
