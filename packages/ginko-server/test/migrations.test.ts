@@ -308,6 +308,36 @@ describe('2026-11-25-dated-changes (D130)', () => {
     expect(await datedRows(s)).toEqual([[schnitzel, '2026-10-20', { price: { amount: 2290 }, veg: 'vegan' }]])
   })
 
+  /** The schnitzel with a planned price before D129. */
+  async function plannedSchnitzel(s: Awaited<ReturnType<typeof setup>>, price: number, from: string) {
+    const schnitzel = s.entries['menu-schnitzel']!
+    await withPlanned(s)
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(schnitzel))!
+      await ctx.db.patch(schnitzel, { data: { ...(row.data as object), nextPrice: { amount: price }, priceFrom: from } })
+    })
+    return schnitzel
+  }
+  const kept = (s: Awaited<ReturnType<typeof setup>>, entry: Id<'entries'>) => s.t.run(async (ctx) => ({
+    pending: (await ctx.db.query('pendingChanges').collect()).map((p) => [p.fields, p.publishAt ?? null]),
+    line: (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).at(-1),
+  }))
+
+  // H3.21. Wrong behaviour caught: a planned price and a timed price of the same day became one row, and the timed one
+  // silently replaced the planned one (or the other way round).
+  it('keeps a timed change unpublished when the row of its day already sets the same field', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = await plannedSchnitzel(s, 2290, '2026-10-20')
+    await timedRow(s, schnitzel, { price: { amount: 1500 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await runThisOne(s)
+    expect(await datedRows(s)).toEqual([[schnitzel, '2026-10-20', { price: { amount: 2290 } }]])
+    const after = await kept(s, schnitzel)
+    expect(after.pending).toEqual([[{ price: { amount: 1500 } }, null]])
+    expect(after.line).toMatchObject({ kind: 'unschedule', msg: { key: 'history.changesUnscheduled' } })
+  })
+
   // Wrong behaviour caught: the migration cancels a job that already ran or failed, which rewrites its record in
   // `_scheduled_functions` (the only place a failed run is remembered) as cancelled.
   it('cancels only a job that still waits', async () => {

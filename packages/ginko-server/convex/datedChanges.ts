@@ -402,9 +402,15 @@ async function convertTimedRow(ctx: MutationCtx, id: Id<'pendingChanges'>, publi
     await ctx.db.patch(written.change, { plannedBy: held.by })
     return
   }
-  if (Object.keys(held.fields).some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
-  const words = { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, Object.keys(held.fields)), day: dayStart(day, schema.timeZone) }
-  const plan = await planDated(ctx, site, entry, day, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
+  const roots = Object.keys(held.fields)
+  if (roots.some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
+  const rows = await datedOf(ctx, entry._id)
+  // The row of that day already sets one of these fields (a planned value converted above, or a dated change saved
+  // since the deploy): neither value may silently win, so the change stays unpublished without a time.
+  const sameDay = rows.find((row) => row.from === day)
+  if (sameDay && roots.some((root) => Object.hasOwn(sameDay.fields as object, root))) throw new ConvexError({ code: 'INVALID' })
+  const words = { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, roots), day: dayStart(day, schema.timeZone) }
+  const plan = await planDated(ctx, site, entry, day, held.fields as Record<string, Json>, rows)
   const written = await writeDated(ctx, actor, entry, plan, held.revs, [{ kind: 'dated', history: recorded(msg('history.datedFromPending', words), schema) }], migrateOpId(held._id))
   if (written.dated) await ctx.db.patch(written.dated, { by: held.by })
   await dropPending(ctx, held)
