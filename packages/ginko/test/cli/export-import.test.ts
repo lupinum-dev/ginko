@@ -30,7 +30,8 @@ const file = (id: string, extra = {}) => ({ id, name: `${id}.png`, mime: 'image/
 async function roundTrip(data: ExportAnswer) {
   const dir = join(await tmp(), 'out')
   const platform = { exportSite: async () => data } as unknown as Platform
-  await exportSite({ platform, site: 'linde', dir, fetch: async () => new Response(bytes), log: () => {} })
+  const exported: string[] = []
+  await exportSite({ platform, site: 'linde', dir, fetch: async () => new Response(bytes), log: (line) => exported.push(line) })
   const stored = new Map<string, Batch>()
   const imported: string[] = []
   const upload = async (_url: string, body: Uint8Array<ArrayBuffer>, mime: string) => {
@@ -46,7 +47,7 @@ async function roundTrip(data: ExportAnswer) {
   }
   const logs: string[] = []
   await importSite({ dir, run, upload, log: (line) => logs.push(line) })
-  return { dir, batches: imported.map((id) => stored.get(id)!), logs }
+  return { dir, batches: imported.map((id) => stored.get(id)!), logs, exported }
 }
 
 describe('export and import keep the asset library', () => {
@@ -92,6 +93,15 @@ const faqs = (count: number): ExportAnswer => ({
   ...answer([]),
   schema: { locales: ['de'], bricks: { faq: { kind: 'collection', label: 'FAQ', max: 2000, fields: { question: { type: 'text', label: 'Frage' } } } } } as unknown as ExportAnswer['schema'],
   entries: Array.from({ length: count }, (_, i) => ({ id: `faq/q${i}`, brick: 'faq', kind: 'item' as const, order: i, data: { question: { de: `Frage ${i}` } }, prints: {}, rev: 1 })),
+})
+
+describe('stopped dated changes', () => {
+  // Wrong behaviour caught: a stopped change leaves the site with an export without a word, so a restore loses it unseen.
+  it('export and import say how many stay behind', async () => {
+    const line = 'Warning: 2 stopped changes stay behind: an export carries only the dated changes that still wait.'
+    const { logs, exported } = await roundTrip({ ...answer([]), stoppedChanges: 2 })
+    expect([exported.includes(line), logs.includes(line)]).toEqual([true, true])
+  })
 })
 
 describe('local:import batches', () => {

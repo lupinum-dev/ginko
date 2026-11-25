@@ -180,6 +180,8 @@ describe('on the day', () => {
     const today = await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })
     expect(today).toMatchObject([{ entry: s.saibling, change: { id: change!._id, from: '2026-10-09' } }])
     expect((await s.item(s.saibling)).upcoming).toBeUndefined()
+    // A backup leaves it behind and says how many (R3 point 13).
+    expect(await s.t.query(internal.backup.snapshot, { site: s.site })).toMatchObject({ stoppedChanges: 1 })
 
     await s.t.run((ctx) => ctx.db.patch(change!._id, { fields: { price: { amount: 1450 } } }))
     await s.as.owner.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), change: change!._id, from: '2026-10-10' })

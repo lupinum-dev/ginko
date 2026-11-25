@@ -43,6 +43,7 @@ async function snapshotOf(ctx: QueryCtx, siteId: Id<'sites'>) {
 
   const referenced = new Set<Id<'uploads'>>()
   const changes = new Map<Id<'entries'>, Change[]>()
+  let stopped = 0
   for (const entry of entries) {
     const refs = await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', 'entry').eq('holderId', entry._id)).collect()
     for (const ref of refs) referenced.add(ref.file)
@@ -50,7 +51,7 @@ async function snapshotOf(ctx: QueryCtx, siteId: Id<'sites'>) {
     const dated = await datedOf(ctx, entry._id)
     if (asChanges(dated).length) changes.set(entry._id, asChanges(dated))
     for (const row of dated) {
-      if (row.stopped) continue
+      if (row.stopped) { stopped += 1; continue }
       const held = await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', 'dated').eq('holderId', row._id)).collect()
       for (const ref of held) referenced.add(ref.file)
     }
@@ -106,5 +107,7 @@ async function snapshotOf(ctx: QueryCtx, siteId: Id<'sites'>) {
     folders: (await ctx.db.query('folders').withIndex('by_site_parent', (q) => q.eq('site', siteId)).collect())
       .map((f) => ({ id: f._id, name: f.name, ...(f.parent === undefined ? {} : { parent: f.parent }) })),
     files,
+    // The export says how many stayed behind, so `ginko export` and `ginko import` can tell.
+    ...(stopped ? { stoppedChanges: stopped } : {}),
   }
 }

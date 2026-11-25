@@ -13,7 +13,7 @@ import { readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import { byteSize, changeIssues, dataOn, entryBytes, MAX_DATED, todayIn, waitingChanges, entryLinkRefs, ENTRY_NAME_RULE, isEntryName, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
 import type { Runner } from './local.ts'
-import { CliError, isObject, parseExport, type ExportEntry, type SiteExport } from './model.ts'
+import { CliError, isObject, parseExport, stoppedLine, type ExportEntry, type SiteExport } from './model.ts'
 import { english, explainRejected, kib } from './report.ts'
 
 /**
@@ -412,6 +412,8 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
     const first = firstWarning ? ` (first: ${firstWarning})` : ''
     log(`${warnings === 1 ? '1 entry holds' : `${warnings} entries hold`} values the Studio would refuse today${first}. They were imported as they were; fix them in the Studio.`)
   }
+  const stopped = stoppedLine(data.stoppedChanges)
+  if (stopped) log(stopped)
   // Originals (local:files-export) go through the upload pipeline after their batch; the bundle serves only ready files.
 
   // 6. References between entries still name the exported IDs. Each part of the pairs goes once through all entries.

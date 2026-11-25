@@ -5,7 +5,7 @@
 // that has it is complete.
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { CliError, pathOf, type SiteExport } from './model.ts'
+import { CliError, pathOf, stoppedLine, type SiteExport } from './model.ts'
 import { PUSH_KEY_FORMAT, type Platform } from './platform.ts'
 
 export interface ExportInput {
@@ -73,5 +73,7 @@ export async function exportSite(input: ExportInput): Promise<{ dir: string; ent
     await rm(dir, { recursive: true, force: true })
     throw error
   }
+  const stopped = stoppedLine(answer.stoppedChanges)
+  if (stopped) input.log(stopped)
   return { dir, entries: answer.entries.length, files: answer.files.length }
 }
