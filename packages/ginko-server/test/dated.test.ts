@@ -460,6 +460,21 @@ describe('a dated change that needs a yes', () => {
     expect((await s.history(s.saibling)).at(-1)).toMatchObject({ msg: { key: 'history.datedAppliedLate' } })
   })
 
+  // Wrong behaviour caught (G3): a field that a change may no longer set since the request (here it became the field
+  // that says until when the dish shows) was written by a late yes, although the run on the day would have stopped it.
+  it('a late yes refuses a field a change may no longer set, as the run would', async () => {
+    const s = await proposed()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.menu as { showUntil?: { field: string } }).showUntil = { field: 'price' }
+      await ctx.db.patch(s.site, { schema })
+    })
+    await s.advanceTo(DAY1 + 3600_000)
+    const answer = await s.as.owner.mutation(api.proposals.approve, { proposal: s.sent.proposal })
+    expect(answer).toMatchObject({ status: 'stale' })
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+  })
+
   // Wrong behaviour caught: staff whose change needs a yes take away someone else's planned price without one, or move
   // a change to another day past the yes; their own approved change they may still cancel.
   it('staff who need a yes cancel only their own change and move none', async () => {

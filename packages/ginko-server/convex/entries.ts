@@ -35,6 +35,12 @@ function liveField(brick: Schema['bricks'][string], key: string): Field {
   return field
 }
 
+/** Refuses `roots` when one may not be in a dated change (`changeRefusal`), naming those fields in the brick's order. */
+function refuseUndatable(schema: Schema, entry: Doc<'entries'>, brick: Schema['bricks'][string], roots: readonly string[]) {
+  const refused = roots.filter((r) => changeRefusal(schema, brick, r) !== undefined).sort((a, b) => fieldOrder(brick, a) - fieldOrder(brick, b))
+  if (refused.length) fail('INVALID', 'errors.fieldsCannotDate', { fields: labelIn(fieldNames(schema, entry.brick, refused), schema.locales[0]!, schema.locales[0]!) }, { fields: refused })
+}
+
 function brickOf(schema: Schema, entry: Doc<'entries'>) {
   const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
   if (!brick || brick.retired) fail('INVALID', 'errors.brickNoLongerEditable')
@@ -186,6 +192,9 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   for (const key of Object.keys(args.fields)) {
     if (liveField(brick, key).type === 'slug') fail('INVALID', 'errors.addressFixed', undefined, { field: key })
   }
+  // A late yes writes what the run would, so it refuses what the run would stop (G3): a field a change may no longer
+  // set (it became fixed, or got text per language) since the request.
+  if (lateDay !== undefined) refuseUndatable(schema, entry, brick, Object.keys(args.fields))
   for (const leaf of confirm) liveField(brick, rootOf(leaf))
   // Confirmed leaves count like a change of their root field: rights and conflicts (SPEC 3).
   const roots = [...new Set([...Object.keys(args.fields), ...confirm.map(rootOf)])]
@@ -567,6 +576,8 @@ async function publishPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entrie
   const lateDay = args.from !== undefined && actor.approvedBy !== undefined && args.from <= todayIn(schema.timeZone)
   if (args.from !== undefined && !lateDay) return await publishPendingDated(ctx, actor, entry, held, args, args.from)
   const late = lateDay
+  // As a late yes of a save (G3): the run would stop a field a change may no longer set.
+  if (late) refuseUndatable(schema, entry, brickOf(schema, entry), Object.keys(held.fields))
   const plan = await pendingPlan(ctx, actor, entry, held)
   const title = labelOf(schema, entry.brick, entry.data as Data)
   const fields = fieldsLabel(schema, plan.brick, plan.roots)
@@ -594,8 +605,7 @@ async function publishPendingDated(ctx: MutationCtx, actor: Actor, entry: Doc<'e
   checkDay(schema, from)
   refuseTaskWithoutDay(schema, args.task)
   const roots = Object.keys(held.fields).sort((a, b) => fieldOrder(brick, a) - fieldOrder(brick, b))
-  const refused = roots.filter((r) => changeRefusal(schema, brick, r) !== undefined)
-  if (refused.length) fail('INVALID', 'errors.fieldsCannotDate', { fields: labelIn(fieldNames(schema, entry.brick, refused), schema.locales[0]!, schema.locales[0]!) }, { fields: refused })
+  refuseUndatable(schema, entry, brick, roots)
   const moved = roots.filter((r) => (entry.fieldRevs[r] ?? 0) > (held.revs[r] ?? 0))
   if (moved.length) fail('CHANGED_SINCE', 'errors.liveChangedMeanwhile', undefined, { ...(current(entry) as object), conflicts: moved })
   const plan = await planDated(ctx, actor.site, entry, from, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
