@@ -31,7 +31,8 @@ vi.stubGlobal('useOps', () => ops)
 const prefill = { live: false, asked: 0, data: shallowRef<unknown>(), error: shallowRef<unknown>() }
 vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   // No own proposal on the entry (proposals.ownFor answers null): the form starts from the prefill.
-  if (String(fn) === 'datedChanges.list') return { data: datedRows, error: ref(undefined) }
+  // A skipped query (no entry to ask for) hears nothing.
+  if (String(fn) === 'datedChanges.list') return { data: computed(() => (toValue(args) === 'skip' ? undefined : datedRows.value)), error: ref(undefined) }
   if (String(fn) !== 'tasks.prefill') return { data: String(fn) === 'proposals.ownFor' ? ownProposal : ref(undefined), error: ref(undefined) }
   watch(() => toValue(args), (now) => {
     prefill.live = now !== 'skip'
@@ -731,6 +732,20 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await flushPromises()
     const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ fields: unknown; from?: string }]
     expect([sent.fields, sent.from]).toEqual([{ title: 'Alt' }, day])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (E4): the sheet of a draft (an entry taken offline) said nothing of its planned changes.
+  test('the sheet of a draft announces its planned changes', async () => {
+    datedRows.value = [{ id: 'd1', from: '2099-03-05', fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: { ...stored, state: 'draft' } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    answer({ data: {} })
+    await flushPromises()
+    expect(wrapper.get('[data-test="dated-waiting"]').text()).toBe('Ab Donnerstag, 5. März: Titel.')
     wrapper.unmount()
   })
 })

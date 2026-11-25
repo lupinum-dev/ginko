@@ -358,7 +358,8 @@ const shortDay = (day: string) => format.date(day, { weekday: 'short', day: 'num
 // Changes of the form's fields that wait for a later day (datedChanges.list): one notice each, so nobody plans over one
 // without knowing. "Bearbeiten" (E3) puts its day and values into the form; cancelling or moving one is done in Alles
 // bearbeiten.
-const datedArgs = () => (props.entry && !isCreate.value && props.entry.state !== 'draft' ? { site: props.site, entry: props.entry._id } : 'skip' as const)
+// A draft too: an entry taken offline keeps its changes, which then go into the draft on their day (D126, E4).
+const datedArgs = () => (props.entry && !isCreate.value ? { site: props.site, entry: props.entry._id } : 'skip' as const)
 const { data: dated } = useConvexQuery(api.datedChanges.list, datedArgs, { server: false })
 const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopped).flatMap((c) => {
   const ours = c.fields.filter((k) => Object.hasOwn(fields.value, k))

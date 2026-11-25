@@ -1,7 +1,8 @@
-<!-- The changes of an online entry that wait for a later day (D125), one notice each (D131): the day and the fields,
+<!-- The changes of an entry that wait for a later day (D125), one notice each (D131): the day and the values,
      the fields changed since it was planned (the planned value still wins on its day), and two steps. "Änderung
      aufheben" asks first, then takes the change out: the entry stays as it is and online (datedChanges.cancel, never
-     unpublish). "Tag ändern" moves it to another day (datedChanges.setDay; a change that stopped on its day starts
+     unpublish). A draft shows them too: an entry taken offline keeps its changes, which go into the draft on their day
+     (D126, E4). "Tag ändern" moves it to another day (datedChanges.setDay; a change that stopped on its day starts
      again). Neither can be undone, so the message after it offers no Rückgängig. -->
 <script setup lang="ts">
 import type { Brick, Currency, Label as LabelText } from '@lupinum/ginko'

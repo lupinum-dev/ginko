@@ -50,6 +50,18 @@ test('a never saved draft is asked about by the title typed so far', async () =>
   expect(wrapper.get('#publish-title').text()).toBe('Wann soll „Herbstfest“ online gehen?')
 })
 
+// Wrong behaviour caught (E4): an entry taken offline keeps its planned changes, which go into the draft on their day,
+// but the draft's editor showed none of them, so nobody could see, move or cancel them.
+test('a draft shows its planned changes', () => {
+  const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 0, data: { title: { de: 'Herbstfest' } }, rev: 3, fieldRevs: {}, lifeRev: 2, prints: {}, state: 'draft' } as const
+  const wrapper = mount(EntryEditor, {
+    props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false },
+    global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true, DatedNotices: true } },
+  })
+  expect(wrapper.findComponent({ name: 'DatedNotices' }).exists()).toBe(true)
+  wrapper.unmount()
+})
+
 // Wrong behaviour caught: opened by a move within the Studio, the panel bar is already shown when the form sets up, and
 // the form crashed reading its right column before the status card it depends on existed.
 test('a draft entry opened with the panel bar already shown gets its right column', async () => {
