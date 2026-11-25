@@ -56,7 +56,7 @@
     "changeShape": "A change is an object with “from” and “set”.",
     "changeDay": "“{value}” is not a day. Write “from” as YYYY-MM-DD, for example 2026-11-01.",
     "changeEmpty": "A change needs at least one field in “set”.",
-    "changeKey": "A change has no “{key}”: it has only “from”, “until” and “set”.",
+    "changeKey": "A change has no “{key}”: it has only “from”, “until”, “yearly”, “name” and “set”.",
     "changeYearly": "“yearly” takes only true and needs an end (until).",
     "changeName": "The name of a change has 1 to 60 characters and needs an end (until).",
     "changeYearlyLong": "A change that comes back every year lasts less than a year: “until” ({until}) is too far after “from” ({from}).",

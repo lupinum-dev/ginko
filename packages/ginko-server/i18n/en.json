@@ -355,6 +355,8 @@
     "datedEnded": "“{title}”: temporary change ({fields}) from {day, date, ::MMMMd} until {until, date, ::MMMMd} ended; the website shows the normal value again",
     "datedEndedNow": "“{title}”: temporary change ({fields}) ended early; the website shows the normal value again",
     "datedStartedYearly": "“{title}”: {what} holds now until {until, date, ::MMMMd}, as every year",
+    "datedEndedYearlyNow": "“{title}”: {what} cancelled; the website shows the normal value again, and the change no longer comes back every year",
+    "datedCancelledYearly": "“{title}”: {what} cancelled; the change no longer comes back every year",
     "datedEndedYearly": "“{title}”: {what} is over for this year and comes back on {next, date, ::MMMMd}; the website shows the normal value again",
     "datedStopped": "The change to “{title}” from {day, date, ::MMMMd} did not take effect, because {why}"
   },

@@ -489,7 +489,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "“ gibt es in einer Änderung nicht: sie hat nur „from“, „until“ und „set“."
+    "“ gibt es in einer Änderung nicht: sie hat nur „from“, „until“, „yearly“, „name“ und „set“."
    ],
    "changeYearly": "„yearly“ hat nur den Wert true und braucht ein Ende (until).",
    "changeName": "Der Name einer Änderung hat 1 bis 60 Zeichen und braucht ein Ende (until).",
@@ -2020,7 +2020,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "”: it has only “from”, “until” and “set”."
+    "”: it has only “from”, “until”, “yearly”, “name” and “set”."
    ],
    "changeYearly": "“yearly” takes only true and needs an end (until).",
    "changeName": "The name of a change has 1 to 60 characters and needs an end (until).",
@@ -3551,7 +3551,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "»: solo tiene «from», «until» y «set»."
+    "»: solo tiene «from», «until», «yearly», «name» y «set»."
    ],
    "changeYearly": "«yearly» solo admite true y necesita un final (until).",
    "changeName": "El nombre de un cambio tiene de 1 a 60 caracteres y necesita un final (until).",
@@ -5084,7 +5084,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    " » : elle n’a que « from », « until » et « set »."
+    " » : elle n’a que « from », « until », « yearly », « name » et « set »."
    ],
    "changeYearly": "« yearly » ne prend que true et a besoin d’une fin (until).",
    "changeName": "Le nom d’une modification a de 1 à 60 caractères et a besoin d’une fin (until).",
@@ -5101,7 +5101,7 @@ export const compiled: Record<string, MessageTree> = {
     ],
     ")."
    ],
-   "changeYearlyLeapDay": "Le 29 février n’existe pas chaque année : un changement qui revient chaque année a besoin d’autres jours, ou pas de « yearly ».",
+   "changeYearlyLeapDay": "Le 29 février n’existe pas chaque année : une modification qui revient chaque année a besoin d’autres jours, ou pas de « yearly ».",
    "changeTwice": [
     "Deux modifications ont le jour ",
     [
@@ -6616,7 +6616,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "»: ha solo «from», «until» e «set»."
+    "»: ha solo «from», «until», «yearly», «name» e «set»."
    ],
    "changeYearly": "«yearly» accetta solo true e richiede una fine (until).",
    "changeName": "Il nome di una modifica ha da 1 a 60 caratteri e richiede una fine (until).",
@@ -8217,7 +8217,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "» في التغيير: فيه «from» و«until» و«set» فقط."
+    "» في التغيير: فيه «from» و«until» و«yearly» و«name» و«set» فقط."
    ],
    "changeYearly": "«yearly» يقبل القيمة true فقط ويحتاج إلى نهاية (until).",
    "changeName": "اسم التغيير من 1 إلى 60 حرفًا ويحتاج إلى نهاية (until).",

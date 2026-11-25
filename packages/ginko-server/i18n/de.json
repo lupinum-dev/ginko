@@ -253,7 +253,7 @@
     "dayBeforeToday": "Der Tag darf nicht vor heute liegen.",
     "datedSameStart": "Am selben Tag beginnt schon eine befristete Änderung für dieses Feld; sie gilt bis {until, date, ::MMMMd}. Ändere diese oder wähle einen anderen ersten Tag.",
     "holdingFromFixed": "Diese Änderung gilt schon. Ihr erster Tag bleibt; ändern lassen sich das Ende und die Werte.",
-    "dayTooFarBack": "Der erste Tag darf höchstens ein Jahr zurück liegen.",
+    "dayTooFarBack": "Der erste Tag darf höchstens ein Jahr zurückliegen.",
     "yearlyTooLong": "Eine Änderung, die jedes Jahr wiederkommt, muss kürzer als ein Jahr sein.",
     "yearlyLeapDay": "Den 29. Februar gibt es nicht jedes Jahr. Wähle weitere Tage dazu oder schalte „Jedes Jahr wiederholen“ aus.",
     "yearlyNeedsUntil": "Eine Änderung, die jedes Jahr wiederkommt, braucht einen letzten Tag.",
@@ -355,6 +355,8 @@
     "datedEnded": "„{title}“: befristete Änderung ({fields}) vom {day, date, ::MMMMd} bis {until, date, ::MMMMd} beendet; die Website zeigt wieder den normalen Wert",
     "datedEndedNow": "„{title}“: befristete Änderung ({fields}) vorzeitig beendet; die Website zeigt wieder den normalen Wert",
     "datedStartedYearly": "„{title}“: {what} gilt jetzt bis {until, date, ::MMMMd}, wie jedes Jahr",
+    "datedEndedYearlyNow": "„{title}“: {what} aufgehoben; die Website zeigt wieder den normalen Wert, und die Änderung kommt nicht mehr jedes Jahr wieder",
+    "datedCancelledYearly": "„{title}“: {what} aufgehoben; die Änderung kommt nicht mehr jedes Jahr wieder",
     "datedEndedYearly": "„{title}“: {what} ist für dieses Jahr vorbei und kommt am {next, date, ::MMMMd} wieder; die Website zeigt wieder den normalen Wert",
     "datedStopped": "Die Änderung an „{title}“ ab {day, date, ::MMMMd} wurde nicht übernommen, weil {why}"
   },

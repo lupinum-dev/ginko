@@ -254,7 +254,7 @@
     "datedSameStart": "Une modification temporaire pour ce champ commence déjà le même jour ; elle dure jusqu’au {until, date, ::MMMMd}. Modifiez-la ou choisissez un autre premier jour.",
     "holdingFromFixed": "Ce changement s’applique déjà. Son premier jour reste ; sa fin et ses valeurs peuvent changer.",
     "dayTooFarBack": "Le premier jour peut être au plus il y a un an.",
-    "yearlyTooLong": "Une modification qui revient chaque année doit durer moins d’un an.",
+    "yearlyTooLong": "Un changement qui revient chaque année doit durer moins d’un an.",
     "yearlyLeapDay": "Le 29 février n’existe pas chaque année. Ajoutez d’autres jours ou désactivez « Répéter chaque année ».",
     "yearlyNeedsUntil": "Une modification qui revient chaque année a besoin d’un dernier jour.",
     "nameNeedsUntil": "Seule une modification temporaire porte un nom. Indiquez le dernier jour.",
@@ -355,6 +355,8 @@
     "datedEnded": "« {title} » : modification temporaire ({fields}) du {day, date, ::MMMMd} au {until, date, ::MMMMd} terminée ; le site affiche à nouveau la valeur normale",
     "datedEndedNow": "« {title} » : modification temporaire ({fields}) terminée plus tôt ; le site affiche à nouveau la valeur normale",
     "datedStartedYearly": "« {title} » : {what} s’applique maintenant jusqu’au {until, date, ::MMMMd}, comme chaque année",
+    "datedEndedYearlyNow": "« {title} » : {what} annulé ; le site affiche à nouveau la valeur normale, et le changement ne revient plus chaque année",
+    "datedCancelledYearly": "« {title} » : {what} annulé ; le changement ne revient plus chaque année",
     "datedEndedYearly": "« {title} » : {what} est terminé pour cette année et revient le {next, date, ::MMMMd} ; le site affiche à nouveau la valeur normale",
     "datedStopped": "Le changement de « {title} » à partir du {day, date, ::MMMMd} n’a pas été appliqué, car {why}"
   },

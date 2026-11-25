@@ -180,9 +180,12 @@ export const cancel = mutation({
       const fields = fieldNames(schema, entry.brick, Object.keys(row.fields))
       const change = await ctx.db.insert('changes', {
         site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'datedCancelled',
-        ...recorded(holding && !row.yearly
-          ? msg('history.datedEndedNow', { title, fields })
-          : msg('history.datedCancelled', { title, day: dayStart((timeOf(row, todayIn(schema.timeZone)) ?? row).from, schema.timeZone), fields }), schema),
+        // A yearly one's line says it does not come back every year any more (round N8).
+        ...recorded(row.yearly
+          ? msg(holding ? 'history.datedEndedYearlyNow' : 'history.datedCancelledYearly', { title, what: row.name ?? fields })
+          : holding
+            ? msg('history.datedEndedNow', { title, fields })
+            : msg('history.datedCancelled', { title, day: dayStart(row.from, schema.timeZone), fields }), schema),
         entryRev: entry.rev, contentRev, at: Date.now(),
       })
       const result: Json = { change, contentRev }

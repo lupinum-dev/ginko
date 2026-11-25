@@ -26,18 +26,23 @@ export function exceptionText(c: ExceptionNotice, changes: string, normal: strin
   const { t } = words
   const name = c.name ?? ''
   if (!c.holds) {
+    // One day is named once: "am 24. Dez." (round N8).
+    const one = c.from === c.until
     if (c.yearly) {
       const days = { day: dayMonth(c.from, words), until: dayMonth(c.until, words), changes, name }
+      if (one) return name ? t('dated.waitingYearlyOnNamed', days) : t('dated.waitingYearlyOn', days)
       return name ? t('dated.waitingYearlyNamed', days) : t('dated.waitingYearly', days)
     }
     const days = { day: shortDay(c.from, words), until: shortDay(c.until, words), changes, name }
+    if (one) return name ? t('dated.waitingOnNamed', days) : t('dated.waitingOn', days)
     return name ? t('dated.waitingUntilNamed', days) : t('dated.waitingUntil', days)
   }
   const params = { until: shortDay(c.until, words), changes, name, normal: normal ?? '' }
   const text = normal
     ? (name ? t('dated.holdingNamed', params) : t('dated.holding', params))
     : (name ? t('dated.holdingPlainNamed', params) : t('dated.holdingPlain', params))
-  return c.yearly ? t('dated.comesBack', { text }) : text
+  // A text that ends with a period gets no second one (round N8).
+  return c.yearly ? t('dated.comesBack', { text: text.replace(/\.$/, '') }) : text
 }
 
 /**

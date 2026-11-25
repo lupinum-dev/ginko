@@ -56,7 +56,7 @@
     "changeShape": "Eine Änderung ist ein Objekt mit „from“ und „set“.",
     "changeDay": "„{value}“ ist kein Tag. Schreibe „from“ als JJJJ-MM-TT, zum Beispiel 2026-11-01.",
     "changeEmpty": "Eine Änderung braucht in „set“ mindestens ein Feld.",
-    "changeKey": "„{key}“ gibt es in einer Änderung nicht: sie hat nur „from“, „until“ und „set“.",
+    "changeKey": "„{key}“ gibt es in einer Änderung nicht: sie hat nur „from“, „until“, „yearly“, „name“ und „set“.",
     "changeYearly": "„yearly“ hat nur den Wert true und braucht ein Ende (until).",
     "changeName": "Der Name einer Änderung hat 1 bis 60 Zeichen und braucht ein Ende (until).",
     "changeYearlyLong": "Eine Änderung, die jedes Jahr wiederkommt, dauert weniger als ein Jahr: „until“ ({until}) liegt zu weit nach „from“ ({from}).",

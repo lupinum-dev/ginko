@@ -355,6 +355,8 @@
     "datedEnded": "“{title}”: cambio temporal ({fields}) del {day, date, ::MMMMd} al {until, date, ::MMMMd} terminado; la web vuelve a mostrar el valor normal",
     "datedEndedNow": "“{title}”: cambio temporal ({fields}) terminado antes de tiempo; la web vuelve a mostrar el valor normal",
     "datedStartedYearly": "“{title}”: {what} vale ahora hasta el {until, date, ::MMMMd}, como cada año",
+    "datedEndedYearlyNow": "“{title}”: {what} anulado; la web vuelve a mostrar el valor normal y el cambio ya no vuelve cada año",
+    "datedCancelledYearly": "“{title}”: {what} anulado; el cambio ya no vuelve cada año",
     "datedEndedYearly": "“{title}”: {what} terminó por este año y vuelve el {next, date, ::MMMMd}; la web vuelve a mostrar el valor normal",
     "datedStopped": "El cambio en “{title}” a partir del {day, date, ::MMMMd} no se aplicó porque {why}"
   },

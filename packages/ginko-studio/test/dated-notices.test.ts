@@ -258,6 +258,24 @@ describe('the notices of a change that comes back every year, and of a named one
     wrapper.unmount()
   })
 
+  // Round N8, one-day forms. Wrong behaviour caught: a change of one day reads "von 24. Dez. bis 24. Dez.".
+  test('a change of one day names that day once', () => {
+    rows.value = [
+      offer('d1', '2099-12-24', '2099-12-24', { yearly: true }),
+      offer('d2', '2099-12-25', '2099-12-25', { yearly: true, name: 'Probetag' }),
+      offer('d3', '2099-12-23', '2099-12-23', { name: 'Probetag' }),
+      offer('d4', '2099-12-22', '2099-12-22'),
+    ]
+    const wrapper = mountNotices()
+    expect(wrapper.findAll('[data-notice]').map((n) => n.find('p').text().replace(/\s/g, ' '))).toEqual([
+      `Jedes Jahr am ${short('2099-12-24')}: Preis 9,90 €`,
+      `Probetag: jedes Jahr am ${short('2099-12-25')}: Preis 9,90 €`,
+      `Probetag: am ${fmt('2099-12-23')}: Preis 9,90 €`,
+      `Am ${fmt('2099-12-22')}: Preis 9,90 €`,
+    ])
+    wrapper.unmount()
+  })
+
   // Row "Änderung aufheben" and decision 2. Wrong behaviour caught: a holding season offers "Jetzt beenden" (as if it
   // ended only this year), or its question hides that it does not come back next year.
   test('a holding season offers "Änderung aufheben", not "Jetzt beenden"; the question names next year', async () => {

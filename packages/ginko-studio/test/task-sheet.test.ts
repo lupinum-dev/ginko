@@ -1661,6 +1661,10 @@ describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slic
     const [from, until] = [inDays(10), inDays(60)]
     await typeSeason(wrapper, from, until, '  Sommer ')
     expect(footer(wrapper)[0]).toBe(`Jedes Jahr ${short(from)} bis ${short(until)} ${verb}`)
+    // Round N8: one day is named once.
+    await wrapper.get('#sheet-until').setValue(from)
+    expect(footer(wrapper)[0]).toBe(`Jedes Jahr am ${short(from)} ${verb}`)
+    await wrapper.get('#sheet-until').setValue(until)
     await press(wrapper, footer(wrapper)[0]!)
     await flushPromises()
     expect(sent().map((s) => [s.from, s.until, s.yearly, s.name])).toEqual([[from, until, true, 'Sommer']])

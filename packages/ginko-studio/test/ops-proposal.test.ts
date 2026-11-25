@@ -90,8 +90,10 @@ test.each([
 // caught: a season's toast names a year or reads like a one-off change; one whose days have passed this year does not say
 // from when (or names this year's day); one that holds now does not say so.
 test.each([
-  ['days ahead', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, ['2028-06-01', '2028-08-31'], 'Saved. On the website every year from 1 Jun to 31 Aug, starting Thursday 1 June.'],
-  ['both days in the past', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, ['2027-06-01', '2027-08-31'], 'Saved. On the website every year from 1 Jun to 31 Aug, starting Thursday 1 June.'],
+  // Round N8: the next time starts in another calendar year than today, so `first` carries its year.
+  ['days ahead', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, ['2028-06-01', '2028-08-31'], 'Saved. On the website every year from 1 Jun to 31 Aug, starting Thursday, 1 June 2028.'],
+  ['both days in the past', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, ['2027-06-01', '2027-08-31'], 'Saved. On the website every year from 1 Jun to 31 Aug, starting Thursday, 1 June 2028.'],
+  ['one day, later this year', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, ['2027-12-24', '2027-12-24'], 'Saved. On the website every year on 24 Dec, starting Friday 24 December.'],
   ['today inside the days', { entry: 'e', rev: 2, change: 'c1', dated: 'd1' }, ['2026-10-01', '2026-10-31'], 'Saved. On the website every year from 1 Oct to 31 Oct, starting today.'],
   ['sent for review', proposal, ['2028-06-01', '2028-08-31'], 'Sent for review. Planned every year from 1 Jun to 31 Aug.'],
 ] as const)('a change that comes back every year: %s', async (_case, answer, [from, until], toast) => {

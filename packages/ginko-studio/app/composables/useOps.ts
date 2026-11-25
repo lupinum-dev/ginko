@@ -358,9 +358,11 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
         })
         // A change that comes back every year (slice 4) names its days without a year, and from when it shows.
         const yearlyDays = args.yearly && args.from !== undefined && args.until !== undefined ? { day: dayMonth(args.from), until: dayMonth(args.until) } : undefined
+        // One day is named once ("am 24. Dez.", round N8).
+        const yearlyOne = args.from === args.until ? 'On' : ''
         // A change that needs a yes writes nothing yet (SPEC 17): say so instead of "Saved".
         if (isProposal(result)) {
-          if (yearlyDays) show(t('dated.sentYearly', yearlyDays))
+          if (yearlyDays) show(t(`dated.sentYearly${yearlyOne}`, yearlyDays))
           else sentForApproval(args.from, args.until, args.timeZone)
           return { proposal: result.proposal }
         }
@@ -372,7 +374,9 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           if (!('dated' in result)) return { proposal: undefined, rev: result.rev, unchanged: true as const }
           const today = args.timeZone === undefined ? args.from : todayIn(args.timeZone)
           const first = yearlyDays && occurrence({ from: args.from, until: args.until, yearly: true, set: {} }, today)
-          const days = first && yearlyDays ? (first.from <= today ? t('dated.liveYearlyToday', yearlyDays) : t('dated.liveYearly', { ...yearlyDays, first: dayText(first.from) }))
+          // `first` carries its year when the next time starts in another calendar year than today (round N8).
+          const firstText = first && (first.from.slice(0, 4) === today.slice(0, 4) ? dayText(first.from) : format.date(first.from, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
+          const days = first && yearlyDays ? (first.from <= today ? t(`dated.liveYearly${yearlyOne}Today`, yearlyDays) : t(`dated.liveYearly${yearlyOne}`, { ...yearlyDays, first: firstText }))
             : args.until === undefined ? liveText({ from: args.from })
             : args.until !== args.from ? t('dated.liveFromUntil', { date: dayText(args.from), until: dayText(args.until) })
             : oneDay(args.from, args.timeZone) ? t('dated.liveToday') : t('dated.liveOn', { date: dayText(args.from) })

@@ -56,7 +56,7 @@
     "changeShape": "Un cambio es un objeto con «from» y «set».",
     "changeDay": "«{value}» no es un día. Escribe «from» como AAAA-MM-DD, por ejemplo 2026-11-01.",
     "changeEmpty": "Un cambio necesita al menos un campo en «set».",
-    "changeKey": "Un cambio no tiene «{key}»: solo tiene «from», «until» y «set».",
+    "changeKey": "Un cambio no tiene «{key}»: solo tiene «from», «until», «yearly», «name» y «set».",
     "changeYearly": "«yearly» solo admite true y necesita un final (until).",
     "changeName": "El nombre de un cambio tiene de 1 a 60 caracteres y necesita un final (until).",
     "changeYearlyLong": "Un cambio que vuelve cada año dura menos de un año: «until» ({until}) está demasiado lejos de «from» ({from}).",

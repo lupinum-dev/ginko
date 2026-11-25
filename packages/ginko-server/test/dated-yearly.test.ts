@@ -421,7 +421,12 @@ describe('moving and removing (state table: Tage ändern, Änderung aufheben)', 
     expect(await s.planned()).toEqual([])
     expect(await s.shownPrice(s.saibling)).toBe(1350)
     expect(await s.contentRev()).toBe(rev + 1)
-    expect((await s.history(s.saibling)).at(-1)).toMatchObject({ kind: 'datedCancelled', msg: { key: 'history.datedCancelled' } })
+    // Round N8: the history says it does not come back every year any more; a waiting season's line says the same.
+    expect((await s.history(s.saibling)).at(-1)).toMatchObject({ kind: 'datedCancelled', msg: { key: 'history.datedEndedYearlyNow', params: { what: { de: 'Preis' } } } })
+    await s.season(990, '2028-06-01', '2028-08-31', { name: 'Sommer' })
+    const [waiting] = await s.dated(s.saibling)
+    await s.as.owner.mutation(api.datedChanges.cancel, { site: 'restaurant', opId: opId(), change: waiting!._id })
+    expect((await s.history(s.saibling)).at(-1)).toMatchObject({ kind: 'datedCancelled', msg: { key: 'history.datedCancelledYearly', params: { what: 'Sommer' } } })
   })
 
   // What the editor shows. Wrong behaviour caught: the list names the days of the first year, so the notice says "bis

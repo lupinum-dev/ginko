@@ -442,7 +442,7 @@ const exceptionDays = computed(() => {
  */
 function exceptionLabel({ from, until }: { from: string; until: string }) {
   const verb = props.approval ? 'review' : 'publish'
-  if (isYearly.value) return t(`dated.${verb}Yearly`, { day: dayMonth(from), until: dayMonth(until) })
+  if (isYearly.value) return t(from === until ? `dated.${verb}YearlyOn` : `dated.${verb}Yearly`, { day: dayMonth(from), until: dayMonth(until) })
   if (until === today.value) return t(from < today.value ? `dated.${verb}UntilToday` : `dated.${verb}Today`)
   if (from <= today.value) return t(`dated.${verb}Until`, { until: dayMonth(until) })
   return t(`dated.${verb}FromUntil`, { day: dayMonth(from), until: dayMonth(until) })
