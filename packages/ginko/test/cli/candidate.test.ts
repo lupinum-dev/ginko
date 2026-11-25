@@ -68,6 +68,16 @@ describe('buildCandidate: migrations over live and deleted entries (SPEC 5.1 ste
     expect(candidate.problems).toContainEqual(expect.stringContaining('title.de'))
   })
 
+  // Wrong behaviour caught (D115): the CLI refuses a release for a half-filled draft that the platform takes, or lets
+  // an incomplete planned entry through.
+  it.each([
+    ['a draft without a time is checked for its shape only', { state: 'draft' as const }, []],
+    ['a planned draft is checked in full', { state: 'draft' as const, publishAt: 1_800_000_000_000 }, [expect.stringContaining('title.de')]],
+  ])('%s', async (_, status, problems) => {
+    const onlyEnglish = { id: 'en-only', brick: 'menu', data: { headline: { en: 'Salad' }, price: { amount: 700 } }, deletedAt: null, ...status }
+    expect((await candidateOf(state([onlyEnglish]), after)).problems).toEqual(problems)
+  })
+
   it('a migration the platform already applied is not run again', async () => {
     const applied = { id: '2026-11-menu-title', brick: 'menu', fills: 'title', fingerprint: migrationFingerprint('menu', 'title', after.migrations['2026-11-menu-title']!.compute), schemaRev: 2 }
     const candidate = await candidateOf(state([live, deleted], [applied]), after)

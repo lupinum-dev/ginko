@@ -252,7 +252,7 @@ describe('f.rows: what the website reads', () => {
   // Wrong: a backup made before a row was retired brings the row back into the stored entry.
   it('a restore drops a row the field no longer has, with its warning', async () => {
     const schema = stored()
-    const { errors, warnings } = await validate(schema, 'lunch', { weekOf: '2026-10-05', days }, { mode: 'restore' })
+    const { errors, warnings } = await validate(schema, 'lunch', { weekOf: '2026-10-05', days }, { mode: 'shape' })
     expect([errors, warnings.map((w) => [w.path, w.code])]).toEqual([[], [['days.sa', 'UNKNOWN_ROW']]])
     expect(Object.keys(withoutUnknownRows(schema.bricks.lunch!.fields, { days }, schema.week).days as object).sort()).toEqual(['fr', 'mo', 'th', 'tu', 'we'])
   })

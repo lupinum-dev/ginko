@@ -10,20 +10,22 @@ import { startOfWeek, weekInfo, type SiteWeek } from './time.ts'
 import type { Brick, Field, FileField, Fields, Issue, Json, Locale, MarkdownField, Schema } from './types.ts'
 
 /**
- * Codes of values the Studio and the site cannot read at all (wrong shape, unknown names). A `restore` refuses only
- * these: a backup brings back what the platform once stored, even where a rule became stricter since.
+ * Codes of values the Studio and the site cannot read at all (wrong shape, unknown names). The `shape` check refuses
+ * only these: a backup brings back what the platform once stored, even where a rule became stricter since, and a draft
+ * may be incomplete (D115).
  */
 export const SHAPE_CODES: ReadonlySet<string> = new Set(['TYPE', 'NOT_OBJECT', 'NOT_LOCALIZED', 'UNKNOWN_FIELD', 'UNKNOWN_LOCALE', 'UNKNOWN_BRICK'])
 
 export interface ValidateOptions {
   /**
    * create/release: everything strict. patch: only paths under `changed` are errors, the rest are warnings.
-   * restore (backup import, never a Studio path): only SHAPE_CODES are errors, the rest are warnings.
+   * shape: only SHAPE_CODES are errors, the rest are warnings (a missing required value, a length, a count). For what
+   * may be incomplete (D115): a draft without a time at create, save, copy and undo, and in a release; a backup import.
    * The rules across fields (`ruleIssues`: a plan set by halves, a week that does not start on its first day) bind
    * what is written now: errors in create, and in patch when the save touches one of their fields. Stored data that
-   * breaks one (release, restore) only warns.
+   * breaks one (release, shape) only warns.
    */
-  mode: 'create' | 'patch' | 'release' | 'restore'
+  mode: 'create' | 'patch' | 'release' | 'shape'
   /** Leaf paths changed by a patch, e.g. `closedNote` or `days.k3Fd9aZ0qx.dish`. */
   changed?: ReadonlySet<string>
   /** Whether entry `id` exists in collection brick `brick`. Without it, referenced IDs are not looked up. */
@@ -69,7 +71,7 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
     if (opts.uploads) issues.push(...fileRefIssues(value.nodes, path, label, locale, schema, opts.uploads, opts.fileAlt))
   }
   const rules = ruleIssues(schema, brick, data)
-  if (opts.mode === 'restore') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: [...issues.filter((i) => !SHAPE_CODES.has(i.code)), ...rules.map((r) => r.issue)] }
+  if (opts.mode === 'shape') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: [...issues.filter((i) => !SHAPE_CODES.has(i.code)), ...rules.map((r) => r.issue)] }
   if (opts.mode === 'release') return { errors: issues, warnings: rules.map((r) => r.issue) }
   if (opts.mode === 'create') return { errors: [...issues, ...rules.map((r) => r.issue)], warnings: [] }
   const changed = opts.changed ?? new Set<string>()

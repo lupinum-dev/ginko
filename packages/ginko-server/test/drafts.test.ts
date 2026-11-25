@@ -239,6 +239,71 @@ describe('the full check where a draft goes online (D101)', () => {
   })
 })
 
+describe('a draft may be incomplete (D115)', () => {
+  const { description: _, ...halfEvent } = event('Halb')
+  const codes = (issues: unknown) => (issues as { path: string; code: string }[]).map((i) => [i.path, i.code])
+
+  // Wrong behaviour caught: a half-filled draft is refused (the person loses the input), or the shape check lets an
+  // unknown field or a wrong type in, or an entry that goes online or gets a time skips the full check.
+  it('a create without a time checks the shape only and returns what is missing; online, planned or misshapen it is refused', async () => {
+    const s = await draftSetup()
+    const create = (data: Record<string, unknown>, publish?: { at?: number }) =>
+      s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data, ...(publish ? { publish } : {}) })
+    const draft = await create(halfEvent)
+    expect(draft).toMatchObject({ state: 'draft' })
+    expect(codes((draft as { warnings: unknown }).warnings)).toEqual([['description', 'REQUIRED']])
+    expect((await s.row(draft.entry))!.data).not.toHaveProperty('description')
+    for (const publish of [{}, { at: NOW + 2 * HOUR }]) {
+      const error = await errorOf(create(halfEvent, publish))
+      expect([error.code, codes((error.details as { errors: unknown }).errors)]).toEqual(['INVALID', [['description', 'REQUIRED']]])
+    }
+    expect(await errorOf(create({ ...halfEvent, nope: 'x' }))).toMatchObject({ code: 'INVALID', key: 'errors.fieldNoLongerExists' })
+    const wrongType = await errorOf(create({ ...halfEvent, title: 7 }))
+    expect([wrongType.code, codes((wrongType.details as { errors: unknown }).errors)]).toEqual(['INVALID', [['title', 'NOT_LOCALIZED']]])
+  })
+
+  // Wrong behaviour caught: clearing a required field of a draft, copying the draft or undoing a save of it is refused.
+  it('a draft without a time saves, copies and undoes with a required field empty', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Voll')
+    const cleared = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 1, fields: { description: null }, sentence: 'Beschreibung' })
+    expect(cleared).toMatchObject({ rev: 2 })
+    expect(codes((cleared as { warnings: unknown }).warnings)).toEqual([['description', 'REQUIRED']])
+    const copy = await s.as.owner.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), entry: draft.entry })
+    expect((await s.row(copy.entry))).toMatchObject({ state: 'draft' })
+    // Filled again, then undone: the undo empties the field once more.
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 2, fields: { description: { de: 'Wieder da' } }, sentence: 'Beschreibung' })
+    const change = await s.t.run(async (ctx) => (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect()).at(-1)!)
+    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id })
+    expect((await s.row(draft.entry))!.data).not.toHaveProperty('description')
+  })
+
+  // Wrong behaviour caught: one half-filled draft blocks every release that rechecks its brick, or a release lets an
+  // incomplete online or planned entry through.
+  it('a release checks a draft without a time for its shape only; online and planned entries stay strict', async () => {
+    const s = await draftSetup()
+    const draft = await s.createDraft('Halb')
+    await breakDraft(s, draft.entry)
+    let n = 0
+    const release = async () => {
+      n += 1
+      const site = (await s.siteRow())!
+      const schema = site.schema as Schema
+      const events = schema.bricks.events!
+      // A new label on a field changes the brick's fields, so the release checks every entry of the brick again.
+      const next = { ...schema, bricks: { ...schema.bricks, events: { ...events, fields: { ...events.fields, description: { ...events.fields.description!, label: { de: `Text ${n}`, en: `Text ${n}` } } } } } }
+      return s.t.mutation(internal.release.release, {
+        site: s.site, actor: 'pushkey:test', commit: crypto.randomUUID().replaceAll('-', ''),
+        expectedSchemaRev: site.schemaRev, expectedContentRev: site.contentRev, schema: next as Schema, writes: [],
+      })
+    }
+    await release()
+    const planned = await s.createDraft('Geplant', { at: NOW + 2 * HOUR })
+    await breakDraft(s, planned.entry)
+    expect(await errorOf(release())).toMatchObject({ code: 'INVALID', details: { entry: planned.entry } })
+  })
+})
+
 describe('the planner of a draft (D102)', () => {
   // Wrong behaviour caught: a plan that stops cannot say whom to tell, or an ended plan still names a planner.
   it('the planner is written with the time and cleared with it: publish now, cancel, remove and the job', async () => {

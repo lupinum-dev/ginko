@@ -351,7 +351,7 @@ export const importExport = internalMutation({
         continue
       }
       const remapped = remapFileIds(def.fields, row.data as Data, uploads)
-      const checked = await validate(schema, row.brick, remapped, { mode: 'restore' })
+      const checked = await validate(schema, row.brick, remapped, { mode: 'shape' })
       // A row its rows field no longer has (retired since the export) is dropped; its warning stays (UNKNOWN_ROW).
       const data = withoutUnknownRows(def.fields, remapped, schema.week)
       // New file IDs change the main-language text a translation was made from, not its meaning.
