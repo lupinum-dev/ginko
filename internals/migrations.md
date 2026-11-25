@@ -49,6 +49,10 @@ Rules for a new migration:
    "it ran on every deployment" can never be known. The major's release notes say "update to the last version before
    it first and wait until `ops:status` shows no pending migration"; contract steps ship with that major.
 7. An entry in this file, and a test that runs it through `migrations:runPending`.
+8. A step that changes sites reads the stored model as it is (raw shapes, never through the new `checkSchema`), leaves
+   a site without the old things as it is, and converts each site in its own transaction (`eachSite`, a nested
+   mutation that throws `notConverted`): a site it cannot convert is logged and listed by slug in `ops:status`
+   (`migrations.skipped`), and the other sites go on. A test for each of the three.
 
 ## Entry storage: trees in `entryTrees`, text-only budget, separate trash (`2026-10-14-entry-storage`)
 
@@ -191,5 +195,11 @@ Rules for a new migration:
   2. Check: `ops:status` shows it done. A site's next `ginko release` with the new gastro preset finds the stored
      schema as the config writes it (no `planned`, `timeline: { public: ['price'] }`); a config that still has
      `planned` is refused with the way to move.
-  3. Contract step (next major, rule 6): remove `pendingChanges.publishAt`, `pendingChanges.publishJob` and
+  3. If `ops:status` lists a site under `migrations.skipped`, read the log line of that site (the error's class or
+     code), fix its stored rows by hand or with a follow-up migration, and run it again.
+  4. Contract step (next major, rule 6): remove `pendingChanges.publishAt`, `pendingChanges.publishJob` and
      `proposals.job` from the schema, the online branch of `publishDue`, and `migrateOlderWays` with its list entry.
+- **Conditions (R3 review), each with a test in `test/migrations.test.ts`:** it works on a stored model in the older
+  format, which the new `checkSchema` refuses; a site without these things is left as it is (same schema, `schemaRev`,
+  `contentRev`, no history row); a site it cannot convert is reported by its slug, nothing of it is half written, and
+  the other sites are converted.

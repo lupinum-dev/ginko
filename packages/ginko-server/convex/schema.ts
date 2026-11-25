@@ -380,6 +380,8 @@ export default defineSchema({
     finishedAt: v.optional(v.number()),
     /** Recorded as done on a fresh deployment: there was nothing to migrate, nothing ran. */
     baseline: v.optional(v.boolean()),
+    /** The sites (by slug) a step could not convert; the others went on. `ops:status` lists them. */
+    skipped: v.optional(v.array(v.string())),
   }),
 
   /** A one-time upload ticket (SPEC 4.3): who may store one file for which site, until when. Only its hash is kept. */

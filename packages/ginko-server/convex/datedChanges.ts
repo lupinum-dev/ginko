@@ -17,7 +17,7 @@ import { errorKind, mailStoppedChange, stoppedBecause } from './lib/stopped'
 import { brokenNewLinks, commitEntry, lookupsFor } from './lib/write'
 import type { StopReason } from './schema'
 import { internal } from './_generated/api'
-import { advance, stepArgs } from './lib/migrations'
+import { advance, eachSite, notConverted, stepArgs } from './lib/migrations'
 import { followName, rootsWith, writeFollowedName } from './entries'
 
 /** A dated change of the actor's site, and its entry; anything else is NOT_FOUND. */
@@ -262,14 +262,30 @@ async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>,
  *   fields go from the data. The stored schema loses `planned` and the two fields (also in tasks), gains
  *   `timeline: { public: [field] }`, and a task that showed the plan gets `when: { from: 'ask' }` when a change may set
  *   all its fields. `schemaRev` and `contentRev` rise.
- * Safe to run again: a site without these has nothing to do.
+ * It reads the stored model as it is, never through the new `checkSchema` (which refuses `planned`). Safe to run again:
+ * a site without these has nothing to do. Each site is a transaction of its own: one it cannot convert is reported by
+ * its slug (`ops:status`), and the others go on.
  */
 export const migrateOlderWays = internalMutation({
   args: stepArgs,
   handler: async (ctx, args): Promise<null> => {
     const page = await ctx.db.query('sites').paginate({ cursor: args.cursor, numItems: 1 })
-    for (const site of page.page) await migrateSite(ctx, site)
+    for (const site of page.page) await eachSite(ctx, args.run, site, () => ctx.runMutation(internal.datedChanges.migrateOneSite, { site: site._id }))
     return advance(ctx, args.run, page.isDone ? null : page.continueCursor)
+  },
+})
+
+/** One site of `migrateOlderWays`, as a transaction of its own (`eachSite`). */
+export const migrateOneSite = internalMutation({
+  args: { site: v.id('sites') },
+  handler: async (ctx, args): Promise<null> => {
+    const site = await ctx.db.get(args.site)
+    try {
+      if (site) await migrateSite(ctx, site)
+    } catch (error) {
+      throw notConverted(error)
+    }
+    return null
   },
 })
 
