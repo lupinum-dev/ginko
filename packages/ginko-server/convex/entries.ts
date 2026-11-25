@@ -661,7 +661,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data, planDay(schema, entry.publishAt)) : data
     // Held to the check of a save (D101): a draft without a time in mode `draft` (well formed, may be incomplete, D115).
     const mode = stateOf(entry) === 'draft' && entry.publishAt === undefined ? 'draft' : 'patch'
-    const { errors } = await validate(schema, entry.brick, checked, { mode, changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+    const { errors, warnings } = await validate(schema, entry.brick, checked, { mode, changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('NOT_UNDOABLE', 'errors.oldVersionNoLongerFitsSchema', undefined, { errors: errors as unknown as Json })
     // An undo of a planned draft is held to the full check, as a save is (D101).
     if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }, planDay(schema, entry.publishAt)))
@@ -678,7 +678,8 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     })
     if (followed) await writeFollowedName(ctx, actor, entry, followed)
     await ctx.db.patch(change._id, { undoneBy: written.change })
-    const result: Json = { entry: entry._id, rev: written.rev, contentRev: written.contentRev, warnings: [], ...(restoredFiles.length ? { restoredFiles: restoredFiles.map((f) => f.name) } : {}) }
+    // A draft's warnings say what it lacks after the undo (D116), as a save's do; a live entry's are not shown.
+    const result: Json = { entry: entry._id, rev: written.rev, contentRev: written.contentRev, warnings: stateOf(entry) === 'draft' ? warnings as unknown as Json : [], ...(restoredFiles.length ? { restoredFiles: restoredFiles.map((f) => f.name) } : {}) }
     return result
   })
 }

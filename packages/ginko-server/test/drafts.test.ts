@@ -266,7 +266,7 @@ describe('a draft may be incomplete (D115)', () => {
   })
 
   // Wrong behaviour caught: clearing a required field of a draft, copying the draft or undoing a save of it is refused,
-  // or a save that changes nothing answers that nothing is missing.
+  // or a save that changes nothing or an undo answers that nothing is missing.
   it('a draft without a time saves, copies and undoes with a required field empty', async () => {
     const s = await draftSetup()
     const draft = await s.createDraft('Voll')
@@ -281,8 +281,9 @@ describe('a draft may be incomplete (D115)', () => {
     // Filled again, then undone: the undo empties the field once more.
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 2, fields: { description: { de: 'Wieder da' } }, sentence: 'Beschreibung' })
     const change = await s.t.run(async (ctx) => (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect()).at(-1)!)
-    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id })
+    const undone = await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id })
     expect((await s.row(draft.entry))!.data).not.toHaveProperty('description')
+    expect(codes((undone as { warnings: unknown }).warnings)).toEqual([['description', 'REQUIRED']])
   })
 
   // The assumptions about a complete draft (inventory-platform D) that an incomplete one could break.
