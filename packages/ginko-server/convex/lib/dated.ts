@@ -159,7 +159,8 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   const roots = Object.keys(set)
   // Every field sent is meant: it leaves the change only when it holds the live value and no earlier waiting change
   // sets it. A value that only an earlier change gives stays, so cancelling that change does not take this one along.
-  const earlier = others.filter((r) => r.from < from)
+  // A stopped change gives nothing (G4).
+  const earlier = others.filter((r) => !r.stopped && r.from < from)
   for (const root of roots) {
     if (sameValue(set[root], live[root]) && !earlier.some((r) => Object.hasOwn(r.fields as object, root))) delete fields[root]
     else fields[root] = set[root] ?? null

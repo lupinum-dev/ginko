@@ -349,6 +349,17 @@ describe('every field sent is meant', () => {
     await act(s)
     expect((await s.dated(s.saibling)).map((r) => [r.from, r.fields]).sort()).toEqual([['2026-10-09', { price: { amount: 1450 } }], ['2026-11-01', { price: { amount: 1450 } }]])
   })
+
+  // Wrong behaviour caught (G4): an earlier change that stopped still counted as setting the field, so a later save of
+  // the online value was stored as a change that changes nothing.
+  it('a stopped earlier change gives nothing: the online value is no change', async () => {
+    const s = await datedSetup()
+    await s.plan(1450, '2026-11-01')
+    const [first] = await s.dated(s.saibling)
+    await s.t.run((ctx) => ctx.db.patch(first!._id, { stopped: { at: DAY1, reason: { code: 'invalid', fields: ['price'] } }, job: undefined }))
+    const result = await s.plan(1350, '2026-12-01')
+    expect(['dated' in (result as object), (await s.dated(s.saibling)).map((r) => r.from)]).toEqual([false, ['2026-11-01']])
+  })
 })
 
 describe('a new change against the changes that wait (round F)', () => {
