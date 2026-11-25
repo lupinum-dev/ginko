@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { addDays, defaultsFor, isShown, leavesOf, NAME_MAX, stableJson, taskAsks, taskEnds as endsByThemselves, todayIn, weeklyTask, yearTooLong, leapDayAlone, type Schema } from '@lupinum/ginko/internal'
+import { defaultsFor, isShown, leavesOf, NAME_MAX, stableJson, taskAsks, taskEnds as endsByThemselves, todayIn, weeklyTask, type Schema } from '@lupinum/ginko/internal'
 import { textIn, TRANSLATION, useToday } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
@@ -34,6 +34,7 @@ import { planOwner } from '../utils/today'
 import { opErrorOf } from '../composables/useOps'
 import type { DatedExtra } from '../composables/useEntryForm'
 import { messageOf } from '../utils/messageOf'
+import { earliestStart, exceptionProblem, latestYearlyUntil } from '../utils/datedDays'
 import { isModKey } from '../utils/keys'
 import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { refDebounced } from '@vueuse/core'
@@ -386,8 +387,6 @@ const asksYearly = computed(() => taskEnds.value && taskAsks(props.task).yearly)
 const asksName = computed(() => taskEnds.value && taskAsks(props.task).name)
 /** The switch is on, where the task asks for it: the days come back every year. */
 const isYearly = computed(() => asksYearly.value && yearly.value)
-/** The same date last year: the earliest start of a yearly change (decision 3). */
-const yearBack = (day: string) => `${Number(day.slice(0, 4)) - 1}${day.slice(4)}`
 /** A today-only task (`when: { from: '@today', until: '@today' }`): one labelled press sends its fixed values for today. */
 const todayOnly = computed(() => !!when.value && when.value.from === '@today' && !isCreate.value && !removedHere.value)
 const today = useToday(computed(() => props.schema.timeZone))
@@ -423,17 +422,13 @@ const exceptionFrom = computed(() => holdingEdit.value?.from ?? (startsOn.value 
  */
 const daysProblem = computed(() => {
   if (!taskEnds.value) return undefined
-  const holding = holdingEdit.value
+  const holding = holdingEdit.value !== undefined
   const from = exceptionFrom.value
   if (!holding && startsOnBad.value) return 'startsBad' as const
-  if (!holding && isYearly.value && from < yearBack(today.value)) return 'startsTooFarBack' as const
-  if (!holding && !isYearly.value && from < today.value) return 'startsPast' as const
+  if (!holding && from < earliestStart(today.value, isYearly.value)) return isYearly.value ? 'startsTooFarBack' as const : 'startsPast' as const
   if (untilBad.value) return 'untilBad' as const
   if (!untilOn.value) return 'untilEmpty' as const
-  if (untilOn.value < from) return 'untilBeforeFrom' as const
-  if (isYearly.value && yearTooLong({ from, until: untilOn.value, yearly: true, set: {} })) return 'yearlyTooLong' as const
-  if (isYearly.value && leapDayAlone({ from, until: untilOn.value, yearly: true, set: {} })) return 'yearlyLeapDay' as const
-  return (!isYearly.value || holding) && untilOn.value < today.value ? 'untilPast' as const : undefined
+  return exceptionProblem({ from, until: untilOn.value, today: today.value, yearly: isYearly.value, holding })
 })
 /** The days an exception save sends; undefined while they are not both valid. */
 const exceptionDays = computed(() => {
@@ -815,8 +810,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
                 <p class="font-semibold">{{ shortDay(holdingEdit.from) }}</p>
                 <p class="text-sm text-muted-foreground">{{ t('dated.fromFixed') }}</p>
               </div>
-              <StartsOnField v-else-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :hint="taskEnds ? t(isYearly ? 'dated.yearlyHint' : 'dated.startsOnHintToday') : undefined" :earliest="taskEnds ? (isYearly ? yearBack(today) : today) : undefined" :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
-              <StartsOnField v-if="asksDay && taskEnds && !foreign" id="sheet-until" v-model="untilOn" v-model:bad="untilBad" :label="t('dated.until')" :earliest="startsOn || (isYearly ? yearBack(today) : today)" :latest="isYearly ? addDays(exceptionFrom, 364) : undefined" :time-zone="schema.timeZone" :error="untilError" />
+              <StartsOnField v-else-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :hint="taskEnds ? t(isYearly ? 'dated.yearlyHint' : 'dated.startsOnHintToday') : undefined" :earliest="taskEnds ? earliestStart(today, isYearly) : undefined" :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
+              <StartsOnField v-if="asksDay && taskEnds && !foreign" id="sheet-until" v-model="untilOn" v-model:bad="untilBad" :label="t('dated.until')" :earliest="startsOn || earliestStart(today, isYearly)" :latest="isYearly ? latestYearlyUntil(exceptionFrom) : undefined" :time-zone="schema.timeZone" :error="untilError" />
               <!-- Slice 4: under "Gilt bis", in this order. While the edited row holds, `yearly` stays as it is both ways
                    (decision 2, round N1); the sentence says why for a yearly row only (the one-off case has none yet). -->
               <FieldFrame v-if="asksDay && asksYearly && !foreign" id="sheet-yearly" inline :label="t('dated.yearly')" :hint="holdingEdit?.yearly ? t('dated.yearlyWhileHolding') : undefined">

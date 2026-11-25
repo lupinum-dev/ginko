@@ -372,6 +372,7 @@
     "changeDays": "Change days",
     "saveDays": "Save days",
     "movedUntil": "The change now applies from {day} to {until}.",
+    "movedYearly": "The change now applies every year from {day} to {until}.",
     "endNow": "End now",
     "endQuestion": "End this change now? The website then shows the normal value again. This cannot be undone.",
     "yearly": "Repeat every year",

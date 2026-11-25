@@ -372,6 +372,7 @@
     "changeDays": "Cambiar días",
     "saveDays": "Guardar días",
     "movedUntil": "El cambio vale ahora del {day} al {until}.",
+    "movedYearly": "El cambio vale ahora cada año del {day} al {until}.",
     "endNow": "Terminar ahora",
     "endQuestion": "¿Terminar este cambio ahora? La web volverá a mostrar el valor normal. No se puede deshacer.",
     "yearly": "Repetir cada año",

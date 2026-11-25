@@ -222,6 +222,20 @@ describe('the same start and overlaps (state table)', () => {
     expect(await s.dated(s.saibling)).toHaveLength(1)
   })
 
+  // Round N6: "Tage ändern" with only a new start keeps the end of the season's time of today, not its stored first end.
+  // Wrong behaviour caught: in a later year the move is refused ("until before from": the first year's end) or ends on it.
+  it('a later year: a move with only a new start keeps this time\'s end', async () => {
+    const s = await yearlySetup()
+    await s.season(990, '2027-11-01', '2027-11-30', { name: 'Herbst' })
+    const [row] = await s.dated(s.saibling)
+    await s.advanceTo(at('2027-11-01') + 1000)
+    await s.advanceTo(at('2027-12-01') + 1000)
+    await s.advanceTo(at('2028-10-15') + 1000)
+    await renewSession(s.t, 'owner')
+    await s.as.owner.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), change: row!._id, from: '2028-11-05' })
+    expect(await s.dated(s.saibling)).toMatchObject([{ _id: row!._id, from: '2028-11-05', until: '2028-11-30', yearly: true }])
+  })
+
   // Row "tie". Wrong behaviour caught: a one-off change that starts on the first day of the season's next time, or a second
   // season from the same month and day, is stored for the same field (which would win?).
   it('refuses a tie with the current time of a season and names it', async () => {

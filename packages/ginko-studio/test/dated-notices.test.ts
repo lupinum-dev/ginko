@@ -3,7 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { describe, expect, test, vi } from 'vitest'
-import { collection, defineSite, f } from '@lupinum/ginko/internal'
+import { addDays, collection, defineSite, f, todayIn } from '@lupinum/ginko/internal'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import DatedNotices from '../app/components/DatedNotices.vue'
@@ -183,14 +183,28 @@ describe('the notices of a change with an end', () => {
     expect([(wrapper.get('#dated-day-d1').element as HTMLInputElement).value, (wrapper.get('#dated-until-d1').element as HTMLInputElement).value]).toEqual(['2099-12-06', '2099-12-31'])
     await wrapper.get('#dated-until-d1').setValue('2100-01-06')
     await press(wrapper, 'Tage speichern')
-    expect(ops.moveChange).toHaveBeenLastCalledWith('d1', '2099-12-06', 'items.price', '2100-01-06')
+    expect(ops.moveChange).toHaveBeenLastCalledWith('d1', '2099-12-06', 'items.price', '2100-01-06', false)
 
     await wrapper.get('#dated-day-d2-open').trigger('click')
     await flushPromises()
     expect([wrapper.find('#dated-day-d2').exists(), (wrapper.get('#dated-until-d2').element as HTMLInputElement).value]).toEqual([false, '2099-12-31'])
     await wrapper.get('#dated-until-d2').setValue('2100-01-10')
     await press(wrapper, 'Tage speichern')
-    expect(ops.moveChange).toHaveBeenLastCalledWith('d2', '2026-11-01', 'items.price', '2100-01-10')
+    expect(ops.moveChange).toHaveBeenLastCalledWith('d2', '2026-11-01', 'items.price', '2100-01-10', false)
+    wrapper.unmount()
+  })
+
+  // Round N6: "Tage ändern" has the limits of the sheet. Wrong behaviour caught: a waiting season moved to days that hold
+  // today (a start some days back, allowed for a yearly change) is refused as "before today".
+  test('"Tage ändern" moves a waiting season to days that hold today', async () => {
+    const today = todayIn('Europe/Vienna')
+    rows.value = [offer('d1', addDays(today, 10), addDays(today, 40), { yearly: true, name: 'Sommer' })]
+    const wrapper = mountNotices()
+    await wrapper.get('#dated-day-d1-open').trigger('click')
+    await flushPromises()
+    await wrapper.get('#dated-day-d1').setValue(addDays(today, -3))
+    await press(wrapper, 'Tage speichern')
+    expect([wrapper.find('[role="alert"]').exists(), ops.moveChange.mock.lastCall]).toEqual([false, ['d1', addDays(today, -3), 'items.price', addDays(today, 40), true]])
     wrapper.unmount()
   })
 

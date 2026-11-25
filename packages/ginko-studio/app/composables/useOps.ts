@@ -230,10 +230,13 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     }
   }
   /** `until`: the new last day of an exception (slice 3). */
-  async function moveChange(change: string, from: string, task?: string, until?: string) {
+  /** `yearly`: the days count for every year, so the message names them without a year, as the notice does (round N6). */
+  async function moveChange(change: string, from: string, task?: string, until?: string, yearly?: boolean) {
     try {
       await moveDated.mutate({ site: site.value, opId: opId(), task, change, from, ...(until === undefined ? {} : { until }) })
-      show(until === undefined ? t('dated.moved', { day: dayText(from) }) : t('dated.movedUntil', { day: dayText(from), until: dayText(until) }))
+      show(until === undefined ? t('dated.moved', { day: dayText(from) })
+        : yearly ? t('dated.movedYearly', { day: dayMonth(from), until: dayMonth(until) })
+        : t('dated.movedUntil', { day: dayText(from), until: dayText(until) }))
     } catch (error) {
       throw opErrorOf(error)
     }

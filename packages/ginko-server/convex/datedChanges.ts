@@ -90,9 +90,12 @@ export const setDay = mutation({
     return idempotent(ctx, actor, args, async () => {
       const { row, entry } = await datedRow(ctx, actor, args.change)
       const schema = actor.site.schema as Schema
-      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: args.from, until: row.until !== undefined ? args.until ?? row.until : args.until, ...rightsOf(row) } })
+      // Without a new end an exception keeps the end of its time of today: a yearly one's stored end is its first year's
+      // (round N6).
+      const until = row.until === undefined ? args.until : args.until ?? timeOf(row, todayIn(schema.timeZone))?.until ?? row.until
+      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: args.from, until, ...rightsOf(row) } })
       if (refused) throw refused
-      if (row.until !== undefined) return await moveException(ctx, actor, schema, entry, row, args.from, args.until ?? row.until, args.opId)
+      if (row.until !== undefined) return await moveException(ctx, actor, schema, entry, row, args.from, until ?? row.until, args.opId)
       if (args.until !== undefined) fail('INVALID', 'errors.taskCannotDate')
       checkDay(schema, args.from)
       const result: Json = { change: row._id, from: args.from, contentRev: actor.site.contentRev }

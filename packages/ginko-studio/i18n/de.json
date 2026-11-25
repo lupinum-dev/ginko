@@ -372,6 +372,7 @@
     "changeDays": "Tage ändern",
     "saveDays": "Tage speichern",
     "movedUntil": "Die Änderung gilt jetzt von {day} bis {until}.",
+    "movedYearly": "Die Änderung gilt jetzt jedes Jahr von {day} bis {until}.",
     "endNow": "Jetzt beenden",
     "endQuestion": "Diese Änderung jetzt beenden? Die Website zeigt dann wieder den normalen Wert. Das lässt sich nicht rückgängig machen.",
     "yearly": "Jedes Jahr wiederholen",
