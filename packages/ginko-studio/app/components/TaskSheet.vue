@@ -154,12 +154,13 @@ const proposedValues = (o: NonNullable<typeof mine.value>): Data =>
   Object.fromEntries(Object.entries(o.fields as Data).filter(([k]) => Object.hasOwn(fields.value, k) && k !== fixedWeek.value))
 /** Starts the form from an own proposal's values over `start`. */
 function loadProposal(start: Data, o: NonNullable<typeof mine.value>) {
-  form.load({ ...start, ...proposedValues(o) })
-  // A dated request keeps its day: sending it again replaces it with a request for that day, not for now (I2).
+  // A dated request keeps its day: sending it again replaces it with a request for that day, not for now (I2). Set
+  // before the load, so the form counts them as where it started, not as input (N4).
   if (o.from) startsOn.value = o.from
   if (o.until) untilOn.value = o.until
   if (o.yearly) yearly.value = true
   if (o.name) changeName.value = o.name
+  form.load({ ...start, ...proposedValues(o) })
   fromProposal.value = true
   proposalWeek.value = fixedWeek.value ? (o.fields as Data)[fixedWeek.value] : undefined
 }

@@ -1750,6 +1750,40 @@ describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slic
     localStorage.clear()
   })
 
+  // Round N4: one "typed" flag (a changed field, a typed day, the switch, the name). Wrong behaviour caught: the input of
+  // a sheet without fields to change ("Saisongericht") is lost on a reload, or closing drops it without asking first.
+  test('days, the switch and the name alone are input: the local copy brings them back', async () => {
+    localStorage.clear()
+    const [from, until] = [inDays(10), inDays(60)]
+    const first = mountTask(3)
+    answer({ data: {} })
+    await flushPromises()
+    await typeSeason(first, from, until)
+    first.unmount()
+    const second = mountTask(3)
+    answer({ data: {} })
+    await flushPromises()
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    expect([value(second, '#sheet-starts-on'), value(second, '#sheet-until'), checked(second), value(second, '#sheet-name')]).toEqual([from, until, 'true', 'Sommer'])
+    second.unmount()
+    localStorage.clear()
+  })
+  test.each([
+    ['only a day typed', true, [true, 0]],
+    ['nothing typed', false, [false, 1]],
+  ] as const)('closing with %s: "Änderungen verwerfen?" only for input', async (_, typeDay, expected) => {
+    const wrapper = mountTask(3)
+    answer({ data: {} })
+    await flushPromises()
+    if (typeDay) await wrapper.get('#sheet-until').setValue(inDays(20))
+    await wrapper.get('button[aria-label="Schließen"]').trigger('click')
+    await flushPromises()
+    expect([wrapper.text().includes('Änderungen verwerfen?'), wrapper.emitted('close')?.length ?? 0]).toEqual(expected)
+    wrapper.unmount()
+    localStorage.clear()
+  })
+
   // Row "same start again", holds. Wrong behaviour caught: the switch of a holding season can be switched off (the paper
   // keeps it: no "only this year"), with no word why; or the save sends a one-off change.
   test('"Bearbeiten" on a holding season: the switch stays on, a sentence says why; the save keeps yearly', async () => {

@@ -129,6 +129,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy(start)
     baseline.value = entry ? copy(storedOf(entry.data)) : {}
     initial.value = copy(start)
+    settleExtras()
     baseRev.value = entry?.rev ?? 0
     issues.value = []
     problem.value = ''
@@ -140,7 +141,13 @@ export function useEntryForm(o: EntryFormOptions) {
   }
 
   const changed = computed(() => changedRoots(baseline.value, draft.value).filter((k) => keys().includes(k)))
-  const dirty = computed(() => changedRoots(initial.value, draft.value).some((k) => keys().includes(k)) || confirm.value.length > 0)
+  // The days, the switch and the name of a task sheet as the form loaded them or last handed them in. Typed over, they
+  // are input like a changed field: the one flag below decides the local copy and every "leave without saving?" (N4).
+  const extrasNow = () => stableJson([o.day?.value ?? '', o.until?.value ?? '', o.yearly?.value ?? false, o.name?.value ?? ''])
+  const extrasAtStart = ref(extrasNow())
+  const settleExtras = () => { extrasAtStart.value = extrasNow() }
+  const extrasTyped = computed(() => extrasNow() !== extrasAtStart.value)
+  const dirty = computed(() => changedRoots(initial.value, draft.value).some((k) => keys().includes(k)) || confirm.value.length > 0 || extrasTyped.value)
 
   // Leaving with unsaved input asks first: the browser's back button, a link such as "Alle Bereiche",
   // closing or reloading the tab (break-it 9). A save on its way needs no question: it goes on.
@@ -274,6 +281,7 @@ export function useEntryForm(o: EntryFormOptions) {
         if (result.entry !== undefined && result.rev !== undefined && notes.value.length) handedNotes.set(result.entry, { rev: result.rev, notes: notes.value })
         // Saved: what was sent no longer counts as open input (a second Speichern would create another).
         initial.value = submitted
+        settleExtras()
       } else {
         // Published at once, the form's fields that wait unpublished go too: the form showed them, so they are the input.
         const held = publishAs === true ? (o.entry()!.pending?.fields ?? []) : []
@@ -303,6 +311,7 @@ export function useEntryForm(o: EntryFormOptions) {
           baseRev.value = result.rev
           draft.value = copy(baseline.value)
           initial.value = copy(baseline.value)
+          settleExtras()
           confirm.value = []
           unconfirmed = undefined
           if (key) clearLocalDraft(key)
@@ -314,6 +323,7 @@ export function useEntryForm(o: EntryFormOptions) {
           baseline.value = copy(storedOf({ ...baseline.value, ...submitted }))
         }
         initial.value = submitted
+        settleExtras()
         confirm.value = []
       }
       unconfirmed = undefined
@@ -473,6 +483,9 @@ export function useEntryForm(o: EntryFormOptions) {
     if (!o.allLanguages && record.base && [...changedTextLanguages(o.brick().fields, record.base, record.fields)].some((l) => l !== record.locale)) return null
     const own = keys().filter((k) => Object.hasOwn(record.fields, k))
     if (own.some((k) => !same(draft.value[k], record.fields[k]))) return record
+    // Days, the switch or a name the form does not hold yet are input too (N4).
+    const extras = [[o.day, record.from], [o.until, record.until], [o.yearly, record.yearly], [o.name, record.name]] as const
+    if (extras.some(([field, kept]) => field && kept !== undefined && !same(field.value, kept))) return record
     // Nothing new in it (saved meanwhile): drop it, unless it holds fields this form does not show.
     if (own.length === Object.keys(record.fields).length) clearLocalDraft(key)
     return null
@@ -483,7 +496,7 @@ export function useEntryForm(o: EntryFormOptions) {
     // While a copy is offered, it stays as it is until the person decides.
     if (!key || localOffer.value) return
     const fields: Data = isCreate.value ? copy(draft.value) : Object.fromEntries(changed.value.map((k) => [k, copy(draft.value[k] ?? null)]))
-    if (!dirty.value || !Object.keys(fields).length) return clearLocalDraft(key)
+    if (!dirty.value || (!Object.keys(fields).length && !extrasTyped.value)) return clearLocalDraft(key)
     const base = isCreate.value ? undefined : Object.fromEntries(Object.keys(fields).map((k) => [k, copy(baseline.value[k] ?? null)]))
     // Area and title name the input on Heute; a single is named by its area.
     const brick = o.brick()
