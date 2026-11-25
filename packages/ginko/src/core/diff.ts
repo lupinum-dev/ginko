@@ -160,6 +160,7 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
   if ((before.layout ?? 'sections') !== (after.layout ?? 'sections')) ok(`${key}.layout`, 'text', msg('diff.textChanged'))
   if (stableJson(before.tasks ?? []) !== stableJson(after.tasks ?? [])) ok(`${key}.tasks`, 'tasks', msg('diff.tasksChanged'))
   // A rule on stored values, not a stored shape: no value changes when it comes, goes or names other fields.
+  if (stableJson(before.timeline ?? null) !== stableJson(after.timeline ?? null)) ok(`${key}.timeline`, 'timeline', msg('diff.valueChanged', { name: 'timeline' }))
   if (stableJson(before.planned ?? null) !== stableJson(after.planned ?? null)) ok(`${key}.planned`, 'planned', msg('diff.valueChanged', { name: 'planned' }))
   // Presentation only, like a label: the Today page's status line reads the data, it stores nothing.
   if (stableJson(before.status ?? null) !== stableJson(after.status ?? null)) ok(`${key}.status`, 'text', msg('diff.textChanged'))

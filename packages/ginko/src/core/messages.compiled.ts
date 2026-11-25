@@ -455,6 +455,74 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "“ ist keine gültige Datei."
+   ],
+   "changesList": "„$changes“ ist eine Liste von Änderungen, jede mit „from“ und „set“.",
+   "changeShape": "Eine Änderung ist ein Objekt mit „from“ und „set“.",
+   "changeDay": [
+    "„",
+    [
+     "a",
+     "value"
+    ],
+    "“ ist kein Tag. Schreibe „from“ als JJJJ-MM-TT, zum Beispiel 2026-11-01."
+   ],
+   "changeEmpty": "Eine Änderung braucht in „set“ mindestens ein Feld.",
+   "changeKey": [
+    "„",
+    [
+     "a",
+     "key"
+    ],
+    "“ gibt es in einer Änderung nicht: sie hat nur „from“ und „set“."
+   ],
+   "changeNotYet": [
+    "„",
+    [
+     "a",
+     "key"
+    ],
+    "“ in einer Änderung ist noch nicht gebaut."
+   ],
+   "changeTwice": [
+    "Zwei Änderungen ab ",
+    [
+     "a",
+     "from"
+    ],
+    " setzen „",
+    [
+     "a",
+     "label"
+    ],
+    "“."
+   ],
+   "changeFixed": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“ kann nicht ab einem Tag gelten: das Feld bestimmt, wann oder wo der Eintrag erscheint."
+   ],
+   "changeTranslated": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“ hat Text pro Sprache. Eine Änderung ab einem Tag ist für ein solches Feld noch nicht gebaut."
+   ],
+   "changeValue": [
+    "Änderung ab ",
+    [
+     "a",
+     "from"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -1865,6 +1933,74 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "” is not a valid file."
+   ],
+   "changesList": "“$changes” is a list of changes, each with “from” and “set”.",
+   "changeShape": "A change is an object with “from” and “set”.",
+   "changeDay": [
+    "“",
+    [
+     "a",
+     "value"
+    ],
+    "” is not a day. Write “from” as YYYY-MM-DD, for example 2026-11-01."
+   ],
+   "changeEmpty": "A change needs at least one field in “set”.",
+   "changeKey": [
+    "A change has no “",
+    [
+     "a",
+     "key"
+    ],
+    "”: it has only “from” and “set”."
+   ],
+   "changeNotYet": [
+    "“",
+    [
+     "a",
+     "key"
+    ],
+    "” in a change is not built yet."
+   ],
+   "changeTwice": [
+    "Two changes from ",
+    [
+     "a",
+     "from"
+    ],
+    " set “",
+    [
+     "a",
+     "label"
+    ],
+    "”."
+   ],
+   "changeFixed": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” cannot start on a day: it decides when or where the entry shows."
+   ],
+   "changeTranslated": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” has text per language. A change from a day is not built yet for such a field."
+   ],
+   "changeValue": [
+    "Change from ",
+    [
+     "a",
+     "from"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -3275,6 +3411,74 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "” no es un archivo válido."
+   ],
+   "changesList": "«$changes» es una lista de cambios, cada uno con «from» y «set».",
+   "changeShape": "Un cambio es un objeto con «from» y «set».",
+   "changeDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» no es un día. Escribe «from» como AAAA-MM-DD, por ejemplo 2026-11-01."
+   ],
+   "changeEmpty": "Un cambio necesita al menos un campo en «set».",
+   "changeKey": [
+    "Un cambio no tiene «",
+    [
+     "a",
+     "key"
+    ],
+    "»: solo tiene «from» y «set»."
+   ],
+   "changeNotYet": [
+    "«",
+    [
+     "a",
+     "key"
+    ],
+    "» en un cambio todavía no está hecho."
+   ],
+   "changeTwice": [
+    "Dos cambios desde el ",
+    [
+     "a",
+     "from"
+    ],
+    " fijan «",
+    [
+     "a",
+     "label"
+    ],
+    "»."
+   ],
+   "changeFixed": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» no puede empezar un día concreto: decide cuándo o dónde aparece la entrada."
+   ],
+   "changeTranslated": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» tiene texto por idioma. Un cambio desde un día todavía no está hecho para un campo así."
+   ],
+   "changeValue": [
+    "Cambio desde el ",
+    [
+     "a",
+     "from"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -4687,6 +4891,74 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     " » n’est pas un fichier valide."
+   ],
+   "changesList": "« $changes » est une liste de modifications, chacune avec « from » et « set ».",
+   "changeShape": "Une modification est un objet avec « from » et « set ».",
+   "changeDay": [
+    "« ",
+    [
+     "a",
+     "value"
+    ],
+    " » n’est pas un jour. Écris « from » sous la forme AAAA-MM-JJ, par exemple 2026-11-01."
+   ],
+   "changeEmpty": "Une modification a besoin d’au moins un champ dans « set ».",
+   "changeKey": [
+    "Une modification n’a pas de « ",
+    [
+     "a",
+     "key"
+    ],
+    " » : elle n’a que « from » et « set »."
+   ],
+   "changeNotYet": [
+    "« ",
+    [
+     "a",
+     "key"
+    ],
+    " » dans une modification n’est pas encore prévu."
+   ],
+   "changeTwice": [
+    "Deux modifications à partir du ",
+    [
+     "a",
+     "from"
+    ],
+    " fixent « ",
+    [
+     "a",
+     "label"
+    ],
+    " »."
+   ],
+   "changeFixed": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » ne peut pas commencer à un jour donné : ce champ décide quand ou où l’entrée apparaît."
+   ],
+   "changeTranslated": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » a un texte par langue. Une modification à partir d’un jour n’est pas encore prévue pour un tel champ."
+   ],
+   "changeValue": [
+    "Modification à partir du ",
+    [
+     "a",
+     "from"
+    ],
+    " : ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -6098,6 +6370,74 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "” non è un file valido."
+   ],
+   "changesList": "«$changes» è un elenco di modifiche, ciascuna con «from» e «set».",
+   "changeShape": "Una modifica è un oggetto con «from» e «set».",
+   "changeDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» non è un giorno. Scrivi «from» come AAAA-MM-GG, per esempio 2026-11-01."
+   ],
+   "changeEmpty": "Una modifica ha bisogno di almeno un campo in «set».",
+   "changeKey": [
+    "Una modifica non ha «",
+    [
+     "a",
+     "key"
+    ],
+    "»: ha solo «from» e «set»."
+   ],
+   "changeNotYet": [
+    "«",
+    [
+     "a",
+     "key"
+    ],
+    "» in una modifica non è ancora disponibile."
+   ],
+   "changeTwice": [
+    "Due modifiche dal ",
+    [
+     "a",
+     "from"
+    ],
+    " impostano «",
+    [
+     "a",
+     "label"
+    ],
+    "»."
+   ],
+   "changeFixed": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» non può iniziare da un giorno: decide quando o dove appare la voce."
+   ],
+   "changeTranslated": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» ha un testo per lingua. Una modifica da un giorno non è ancora disponibile per un campo così."
+   ],
+   "changeValue": [
+    "Modifica dal ",
+    [
+     "a",
+     "from"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {
@@ -7578,6 +7918,74 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "» ليس ملفًّا صالحًا."
+   ],
+   "changesList": "«$changes» قائمة تغييرات، لكل منها «from» و«set».",
+   "changeShape": "التغيير كائن فيه «from» و«set».",
+   "changeDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» ليس يومًا. اكتب «from» بالشكل YYYY-MM-DD، مثل 2026-11-01."
+   ],
+   "changeEmpty": "يحتاج التغيير إلى حقل واحد على الأقل في «set».",
+   "changeKey": [
+    "لا يوجد «",
+    [
+     "a",
+     "key"
+    ],
+    "» في التغيير: فيه «from» و«set» فقط."
+   ],
+   "changeNotYet": [
+    "«",
+    [
+     "a",
+     "key"
+    ],
+    "» في التغيير غير متاح بعد."
+   ],
+   "changeTwice": [
+    "تغييران يبدآن في ",
+    [
+     "a",
+     "from"
+    ],
+    " يضبطان «",
+    [
+     "a",
+     "label"
+    ],
+    "»."
+   ],
+   "changeFixed": [
+    "لا يمكن أن يبدأ «",
+    [
+     "a",
+     "label"
+    ],
+    "» من يوم معيّن: فهو يحدد متى أو أين يظهر الإدخال."
+   ],
+   "changeTranslated": [
+    "في «",
+    [
+     "a",
+     "label"
+    ],
+    "» نص لكل لغة. التغيير من يوم معيّن غير متاح بعد لمثل هذا الحقل."
+   ],
+   "changeValue": [
+    "التغيير من ",
+    [
+     "a",
+     "from"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
    ]
   },
   "file": {

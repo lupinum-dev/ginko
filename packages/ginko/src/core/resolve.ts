@@ -3,7 +3,8 @@ import { addDays, type SiteWeek } from './time.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { resolveRouteLinks } from './links.ts'
 import { resolveFileRefs } from './file-refs.ts'
-import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type MarkdownTrees } from './bundle.ts'
+import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type MarkdownTrees, type Upcoming } from './bundle.ts'
+import { waitingChanges, type Change } from './changes.ts'
 import type { MarkdownTree } from './markdown.ts'
 import type { Brick, CollectionBrick, Field, Fields, Json, Locale, Schema } from './types.ts'
 
@@ -22,6 +23,12 @@ export interface StoredEntry {
   sources?: Partial<Record<Locale, string>>
   /** Old paths of a file entry (`$redirectFrom`); the bundle forwards them to the entry's page in every language (`oldUrls`). */
   redirectFrom?: string[]
+  /**
+   * The entry's waiting dated changes (a file's `$changes`, the platform's rows that are not stopped). `data` already
+   * holds the values of today (D120): the bundle reads only the fields of `timeline.public` from the changes still
+   * ahead, for `upcoming`; nothing else of them leaves the server.
+   */
+  changes?: Change[]
 }
 
 export interface FileInfo {
@@ -354,7 +361,8 @@ export function buildBundle(input: BuildBundleInput): Bundle {
     if (brick.kind === 'single') {
       const entry = stored[0] ?? { id: `default:${key}`, data: defaultsFor(brick.fields, schema.week) }
       const r = resolveEntry(schema, key, entry, ctx)
-      bricks[key] = { kind: 'single', data: r.data, fallback: r.fallback }
+      const upcoming = upcomingOf(schema, key, entry, ctx, input.today)
+      bricks[key] = { kind: 'single', data: r.data, fallback: r.fallback, ...(upcoming ? { upcoming } : {}) }
       continue
     }
     const items: BundleItem[] = []
@@ -371,6 +379,8 @@ export function buildBundle(input: BuildBundleInput): Bundle {
       const source = entry.sources?.[locale] ?? entry.sources?.[main]
       if (source !== undefined) item.source = source
       if (brick.route && !ended) item.urls = urlsFor(schema, key, brick, entry)
+      const upcoming = upcomingOf(schema, key, entry, ctx, input.today)
+      if (upcoming) item.upcoming = upcoming
       items.push(item)
     }
     bricks[key] = { kind: 'collection', items }
@@ -388,6 +398,25 @@ export function buildBundle(input: BuildBundleInput): Bundle {
     generatedAt: input.generatedAt,
     bricks,
   }
+}
+
+/**
+ * What a page may read ahead of an entry (D121): each change after `today` that sets a field of the brick's
+ * `timeline.public`, with only those fields, resolved like the entry's own values. Undefined when there is none.
+ */
+function upcomingOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): Upcoming[] | undefined {
+  const shown = schema.bricks[key]!.timeline?.public
+  if (!shown?.length || !entry.changes?.length) return undefined
+  const out: Upcoming[] = []
+  for (const change of waitingChanges(entry.changes, today)) {
+    const names = Object.keys(change.set).filter((name) => shown.includes(name))
+    if (!names.length) continue
+    // Only the public values go into the resolver: nothing else of the change can reach the result.
+    const values = Object.fromEntries(names.map((name) => [name, change.set[name]!]))
+    const { data } = resolveEntry(schema, key, { id: entry.id, data: values }, ctx)
+    out.push({ from: change.from, data: Object.fromEntries(names.map((name) => [name, Object.hasOwn(data, name) ? data[name] : null])) })
+  }
+  return out.length ? out : undefined
 }
 
 /**

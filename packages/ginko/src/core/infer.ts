@@ -58,10 +58,21 @@ export type DataOf<F extends Fields> = {
   [K in OptionalKeys<F>]?: ValueOf<F[K]>
 }
 
+/**
+ * A change that starts later (`upcoming`): its day and the values of the brick's `timeline.public` fields it sets. A
+ * field it clears is `null`.
+ */
+export interface UpcomingOf<F extends Fields> {
+  from: string
+  data: { [K in keyof DataOf<F>]?: DataOf<F>[K] | null }
+}
+
 export type ItemOf<F extends Fields, Routed extends boolean = boolean> = {
   id: string
   data: DataOf<F>
   fallback: string[]
+  /** The waiting changes of the fields in the brick's `timeline.public`, in the order of their days. Absent when none waits. */
+  upcoming?: UpcomingOf<F>[]
   /** The address in every language the entry exists in (language switcher, hreflang). Routed bricks only. */
   urls?: Partial<Record<string, string>>
   /** When the entry last changed (ISO 8601, UTC). Absent when unknown. */
@@ -72,6 +83,6 @@ export type ItemOf<F extends Fields, Routed extends boolean = boolean> = {
 } : unknown)
 
 export type BrickValue<B> =
-  B extends SingleBrick<infer F> ? { data: DataOf<F>; fallback: string[] }
+  B extends SingleBrick<infer F> ? { data: DataOf<F>; fallback: string[]; upcoming?: UpcomingOf<F>[] }
   : B extends CollectionBrick<infer F, infer R> ? { items: ItemOf<F, undefined extends R ? false : true>[] }
   : never

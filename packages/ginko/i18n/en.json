@@ -49,7 +49,17 @@
     "fileRefPdf": "A PDF cannot be shown as a picture. Link it instead: [text]($file.…).",
     "markdownImageAltMissing": "“{label}”: An image in the text has no description. Describe it briefly for people who cannot see it.",
     "altTooLong": "“{label}”: Alt text is too long.",
-    "notFile": "“{label}” is not a valid file."
+    "notFile": "“{label}” is not a valid file.",
+    "changesList": "“$changes” is a list of changes, each with “from” and “set”.",
+    "changeShape": "A change is an object with “from” and “set”.",
+    "changeDay": "“{value}” is not a day. Write “from” as YYYY-MM-DD, for example 2026-11-01.",
+    "changeEmpty": "A change needs at least one field in “set”.",
+    "changeKey": "A change has no “{key}”: it has only “from” and “set”.",
+    "changeNotYet": "“{key}” in a change is not built yet.",
+    "changeTwice": "Two changes from {from} set “{label}”.",
+    "changeFixed": "“{label}” cannot start on a day: it decides when or where the entry shows.",
+    "changeTranslated": "“{label}” has text per language. A change from a day is not built yet for such a field.",
+    "changeValue": "Change from {from}: {problem}"
   },
   "file": {
     "typeNotAllowed": "This file type is not allowed (allowed: {allowed}).",

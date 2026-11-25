@@ -289,6 +289,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     const report = result.errors.map((e) => `- ${content.errorLine(e)}`).join('\n')
     if (result.errors.length && !nuxt.options.dev) throw new Error(`[ginko] Errors in content/:\n${report}`)
     if (result.errors.length) console.error(`[ginko] Errors in content/ (these files are missing from the site):\n${report}`)
+    if (result.warnings.length) console.warn(`[ginko] Warnings in content/:\n${result.warnings.map((w) => `- ${content.errorLine(w)}`).join('\n')}`)
     // Link check (CONTENT.md): errors fail the build, warnings are printed. External links (opt-in) ask other servers,
     // so only on build / generate, never in dev.
     const links = await fileLinkIssues({ bundles: Object.values(result.bundles) as Bundle[], schema, site, publicDir, root: nuxt.options.rootDir, log: console.log, external: !nuxt.options.dev })

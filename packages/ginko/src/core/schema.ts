@@ -13,6 +13,7 @@ import { isPrefillToken, LISTING_DETAIL_TYPES, LISTING_TITLE_TYPES, PREFILL_TOKE
 import { coreMessage } from './messages.ts'
 import { aspectProblems } from './frames.ts'
 import { checkValue } from './validate.ts'
+import { changeRefusal } from './changes.ts'
 import type { RuleField, StatusRules } from './status.ts'
 
 // Keys that would resolve to Object.prototype members in plain-object lookups, plus `prototype`.
@@ -27,7 +28,7 @@ export const SCHEMA_KEYS = new Set(['format', 'site', 'name', 'url', 'timeZone',
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'showUntil', 'untranslated', 'publishedOn', 'plans', 'planned', 'drafts', 'status', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'showUntil', 'untranslated', 'publishedOn', 'plans', 'planned', 'timeline', 'drafts', 'status', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'rows', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
@@ -425,6 +426,7 @@ function schemaProblems(schema: Schema, rules: StatusRules): string[] {
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
     }
     if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
+    if (brick.timeline !== undefined) problems.push(...timelineProblems(key, brick, schema))
     if (brick.status !== undefined) problems.push(...statusProblems(key, brick, schema, rules))
     if (brick.kind === 'single' && 'plans' in brick) problems.push(`${key}: plans are only allowed for collections.`)
     if (brick.kind === 'single' && 'publishedOn' in brick) problems.push(`${key}: publishedOn is only allowed for collections.`)
@@ -751,6 +753,27 @@ function ruleProblems(key: string, brick: Brick, schema: Schema, rules: StatusRu
     else if (target.kind !== 'collection' || !Object.entries(rule.plans).every(([field, need]) => meets(Object.hasOwn(target.fields, field) ? target.fields[field] : undefined, need))) {
       problems.push(`${key}: status.plans names “${plans}”, which is not a collection with the fields the rule “${name}” needs (${Object.entries(rule.plans).map(([field, need]) => `${field}: ${ruleFieldText(need)}`).join(', ')}).`)
     }
+  }
+  return problems
+}
+
+/**
+ * `timeline: { public: [fields] }` (D121): the fields whose waiting changes a page may read. Each is a live field that a
+ * dated change may set (`changeRefusal`), named once.
+ */
+function timelineProblems(key: string, brick: Brick, schema: Pick<Schema, 'locales'>): string[] {
+  const timeline: unknown = brick.timeline
+  if (typeof timeline !== 'object' || timeline === null || Array.isArray(timeline)) return [`${key}: timeline must be an object { public: [fields] }, such as \`{ public: ['price'] }\`.`]
+  const problems: string[] = []
+  for (const k of Object.keys(timeline)) if (k !== 'public') problems.push(`${key}.timeline: unknown property “${k}”.`)
+  const names: unknown = (timeline as Record<string, unknown>).public
+  if (!Array.isArray(names) || !names.length || names.some((name) => typeof name !== 'string')) return [...problems, `${key}.timeline.public must list field names, such as \`['price']\`.`]
+  if (new Set(names).size !== names.length) problems.push(`${key}.timeline.public names a field twice.`)
+  for (const name of names as string[]) {
+    const refusal = changeRefusal(schema, brick, name)
+    if (refusal === 'unknownField') problems.push(`${key}.timeline.public: “${name}” is not a field of the brick.`)
+    else if (refusal === 'changeFixed') problems.push(`${key}.timeline.public: “${name}” decides when or where an entry shows, so it cannot change on a day.`)
+    else if (refusal === 'changeTranslated') problems.push(`${key}.timeline.public: “${name}” has text per language; a dated change of such a field is not built yet on a site with several languages.`)
   }
   return problems
 }
