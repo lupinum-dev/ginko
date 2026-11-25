@@ -18,7 +18,7 @@ You cannot do more than they can, and everything you change is shown in their hi
 ## Read before you write
 
 - `ginko_read({ brick, locale? })` shows the published content, with the entry IDs.
-  Drafts are not in it.
+  Drafts and entries that ended (their end date passed) are not in it; `ginko_search` finds them.
 - `ginko_search({ query })` finds entries by words in their texts (also drafts). Umlauts do not matter.
 - Never guess an entry ID. Take it from `ginko_read` or `ginko_search`.
 - `ginko_history` lists the latest changes. `ginko_version_at({ entry, change })` shows an older state.
