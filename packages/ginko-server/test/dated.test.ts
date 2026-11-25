@@ -217,6 +217,28 @@ describe('moving and cancelling', () => {
   })
 })
 
+describe('every field sent is meant', () => {
+  // Wrong behaviour caught: a value equal to what an earlier waiting change gives was dropped, so the second change was
+  // lost (or moved away) and cancelling the first took the price back to the old one.
+  it.each([
+    ['a save', async (s: Awaited<ReturnType<typeof datedSetup>>) => { await s.plan(1450, '2026-11-01') }],
+    ['a publish from a day', async (s: Awaited<ReturnType<typeof datedSetup>>) => {
+      await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } } })
+      await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: (await s.row(s.saibling))!.lifeRev, from: '2026-11-01' })
+    }],
+    ['a moved change', async (s: Awaited<ReturnType<typeof datedSetup>>) => {
+      await s.plan(1450, '2026-12-01')
+      const later = (await s.dated(s.saibling)).find((r) => r.from === '2026-12-01')!
+      await s.as.owner.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), change: later._id, from: '2026-11-01' })
+    }],
+  ])('%s keeps a value that an earlier change already gives', async (_, act) => {
+    const s = await datedSetup()
+    await s.plan(1450)
+    await act(s)
+    expect((await s.dated(s.saibling)).map((r) => [r.from, r.fields]).sort()).toEqual([['2026-10-09', { price: { amount: 1450 } }], ['2026-11-01', { price: { amount: 1450 } }]])
+  })
+})
+
 describe('publishing unpublished changes on a day', () => {
   it('turns the unpublished changes into one dated change and refuses a time for an online entry', async () => {
     const s = await datedSetup()
