@@ -350,7 +350,8 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
   const { until } = args
   // The main language is the whole value on a site where a change may hold text (one language, D119).
   if (args.publish || (args.locale !== undefined && args.locale !== schema.locales[0]) || args.confirm?.length) fail('INVALID', 'errors.datedNotWith')
-  if (stateOf(entry) !== 'live') fail('INVALID', 'errors.datedOnlyOnline')
+  // An offer cannot fall back to a save without a day (its task has an end): its refusal says to publish first (L10).
+  if (stateOf(entry) !== 'live') fail('INVALID', until !== undefined ? 'errors.exceptionOnlyOnline' : 'errors.datedOnlyOnline')
   const rows = await datedOf(ctx, entry._id)
   // "Bearbeiten" on an exception edits that row: its end and values may change (decision 4). A holding one's start may
   // not; a waiting one is edited while the save keeps its start, and another start is a second exception (H1.4, L7).

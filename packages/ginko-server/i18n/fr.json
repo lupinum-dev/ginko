@@ -240,6 +240,7 @@
     "datedNotWith": "Un jour ne peut pas aller avec une publication, une langue ou des traductions confirmées.",
     "datedOnlyOnline": "Seule une entrée en ligne peut recevoir un changement à partir d’un jour. Un brouillon prend la valeur tout de suite : enregistrez-le sans jour.",
     "exceptionNotOnline": "L’entrée n’était pas en ligne le premier jour de l’exception. Mettez-la en ligne et planifiez à nouveau l’exception.",
+    "exceptionOnlyOnline": "Seule une entrée en ligne peut avoir des valeurs pour certains jours. Publiez-la d’abord.",
     "dayInvalid": "Ce n’est pas un jour valide.",
     "dayNotAhead": "Le jour doit être après aujourd’hui.",
     "dayTooFarAhead": "Le jour peut être au plus dans un an.",

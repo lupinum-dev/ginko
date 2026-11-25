@@ -258,7 +258,7 @@ async function startException(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'
   if (until < today) return await endException(ctx, site, entry, row, until)
   const rows = await datedOf(ctx, entry._id)
   const others = rows.filter((r) => r._id !== row._id && isHolding(r))
-  // An entry that is not online gets no exception (as a save refuses one, `datedOnlyOnline`): it would show unchecked the
+  // An entry that is not online gets no exception (as a save refuses one, `exceptionOnlyOnline`): it would show unchecked the
   // moment the entry goes online again (ruling 3 after step 1).
   let reason: StopReason | undefined = entry.state === 'draft' ? { code: 'invalid', fields: Object.keys(row.fields), cause: { key: 'errors.exceptionNotOnline' } } : undefined
   if (!reason) try {

@@ -407,11 +407,12 @@ describe('moving and ending (state table: Tage ändern, Änderung aufheben, Jetz
 
 describe('the entry around a holding offer (state table)', () => {
   // Row "the entry went offline meanwhile". Wrong behaviour caught: an offer for a draft is stored; a holding offer is
-  // lost when the entry goes offline, or shows again after its end.
-  it('waits: a draft refuses an offer, as built', async () => {
+  // lost when the entry goes offline, or shows again after its end. Round L10: the refusal of an offer told the person
+  // to save without a day, which a task with an end cannot do; it has its own sentence.
+  it('waits: a draft refuses an offer with its own sentence', async () => {
     const s = await untilSetup()
     await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: (await s.row(s.saibling))!.lifeRev })
-    expect(await errorOf(s.offer(990, '2026-10-20', '2026-12-31'))).toMatchObject({ key: 'errors.datedOnlyOnline' })
+    expect(await errorOf(s.offer(990, '2026-10-20', '2026-12-31'))).toMatchObject({ key: 'errors.exceptionOnlyOnline', message: 'Nur ein Eintrag, der online ist, bekommt Werte für bestimmte Tage. Stelle ihn zuerst online.' })
   })
 
   it('holds: offline the row stays and shows nothing; online again inside its days it shows again', async () => {

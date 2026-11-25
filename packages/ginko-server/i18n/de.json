@@ -240,6 +240,7 @@
     "datedNotWith": "Ein Tag geht nicht zusammen mit Veröffentlichen, einer Sprache oder bestätigten Übersetzungen.",
     "datedOnlyOnline": "Nur ein Eintrag, der online ist, bekommt eine Änderung ab einem Tag. Ein Entwurf übernimmt den Wert gleich: Speichere ihn ohne Tag.",
     "exceptionNotOnline": "Der Eintrag war am ersten Tag der Ausnahme nicht online. Stelle ihn online und plane die Ausnahme neu.",
+    "exceptionOnlyOnline": "Nur ein Eintrag, der online ist, bekommt Werte für bestimmte Tage. Stelle ihn zuerst online.",
     "dayInvalid": "Das ist kein gültiger Tag.",
     "dayNotAhead": "Der Tag muss nach heute liegen.",
     "dayTooFarAhead": "Der Tag darf höchstens ein Jahr voraus liegen.",
