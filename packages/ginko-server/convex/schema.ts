@@ -147,7 +147,9 @@ export default defineSchema({
     .index('by_site_brick_deleted', ['site', 'brick', 'deletedAt'])
     .index('by_site_deleted', ['site', 'deletedAt'])
     // Today's stopped plans (entries `stoppedPlans`).
-    .index('by_site_stopped', ['site', 'stopped.at']),
+    .index('by_site_stopped', ['site', 'stopped.at'])
+    // A staff member's own stopped plans (entries.stoppedPlans), without reading those of others.
+    .index('by_site_stopped_by', ['site', 'stopped.by', 'stopped.at']),
 
   /**
    * The trees of an entry's Markdown texts (core `markdownTrees`) as JSON text, split into parts below Convex's 1 MiB

@@ -1860,12 +1860,13 @@ export const stoppedPlans = query({
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     const schema = actor.site.schema as Schema
-    // Absent `stopped` sorts before numbers, so the lower bound keeps every other entry out. Removed rows and, for staff,
-    // the plans of others are left out before the 50 are taken, so newer ones of others never hide a person's own.
-    const staff = actor.role === 'staff'
-    const rows = await ctx.db.query('entries').withIndex('by_site_stopped', (q) => q.eq('site', actor.site._id).gt('stopped.at', 0))
-      .filter((q) => q.and(q.eq(q.field('deletedAt'), undefined), staff ? q.eq(q.field('stopped.by'), actor.user.id) : true))
-      .order('desc').take(50)
+    // Absent `stopped` sorts before numbers, so the lower bound keeps every other entry out. A staff member reads only
+    // their own (`by_site_stopped_by`), so newer plans of others never hide them; removed rows are left out before the
+    // 50 are taken.
+    const query = actor.role === 'staff'
+      ? ctx.db.query('entries').withIndex('by_site_stopped_by', (q) => q.eq('site', actor.site._id).eq('stopped.by', actor.user.id).gt('stopped.at', 0))
+      : ctx.db.query('entries').withIndex('by_site_stopped', (q) => q.eq('site', actor.site._id).gt('stopped.at', 0))
+    const rows = await query.filter((q) => q.eq(q.field('deletedAt'), undefined)).order('desc').take(50)
     return rows.flatMap((row) => {
       const stopped = row.stopped
       if (!stopped) return []
