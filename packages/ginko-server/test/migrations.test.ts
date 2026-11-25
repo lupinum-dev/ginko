@@ -369,7 +369,8 @@ describe('2026-11-25-dated-changes (D130)', () => {
   })
 
   // Wrong behaviour caught: the migration cancels a job that already ran or failed, which rewrites its record in
-  // `_scheduled_functions` (the only place a failed run is remembered) as cancelled.
+  // `_scheduled_functions` (the only place a failed run is remembered) as cancelled. This guards the record under
+  // convex-test, which rewrites it; the real backend leaves a finished job as it is.
   it('cancels only a job that still waits', async () => {
     vi.useFakeTimers()
     const s = await setup()
