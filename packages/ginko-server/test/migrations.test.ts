@@ -161,13 +161,15 @@ describe('2026-11-25-dated-changes (D130)', () => {
       jobs: (await ctx.db.system.query('_scheduled_functions').collect()).filter((j) => j.name === 'entries:publishDue' && j.state.kind === 'pending'),
       entries: Object.fromEntries(await Promise.all([schnitzel, saibling].map(async (id) => [id, (await ctx.db.get(id))!.data]))),
     }))
-    // The risotto's time is a dated change of 20 October by the person who saved it; the contact's had passed: it
-    // stays unpublished without a time. No old job is left.
+    // The risotto's time is a dated change of 20 October by the person who saved it; the contact's had passed: it is
+    // online now, in the planner's name. No old job is left.
     expect(after.dated.map((d) => [d.entry, d.from, d.fields, d.by ?? null]).sort()).toEqual([
       [risotto, '2026-10-20', { price: { amount: 1500 } }, people.owner],
       [schnitzel, '2026-10-18', { price: { amount: 2290 } }, null],
     ].sort())
-    expect(after.pending.map((p) => [p.entry, p.publishAt ?? null])).toEqual([[contact, null]])
+    expect(after.pending).toEqual([])
+    expect(await s.t.run(async (ctx) => (await ctx.db.get(contact))!.data)).toMatchObject({ city: 'Graz' })
+    expect((await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', contact)).collect())).at(-1)).toMatchObject({ kind: 'save', msg: { key: 'history.publishedChanges' }, plannedBy: people.owner })
     expect(after.jobs).toEqual([])
     // The request is open again for a new decision.
     expect([after.proposal.status, after.proposal.at, after.proposal.job, after.proposal.decidedBy]).toEqual(['open', undefined, undefined, undefined])
@@ -181,8 +183,8 @@ describe('2026-11-25-dated-changes (D130)', () => {
     expect(menu.tasks.find((t: { id: string }) => t.id === 'price')).toEqual({ id: 'price', label: 'Preis ändern', kind: 'edit', pick: true, fields: ['price'], when: { from: 'ask' } })
     expect(menu.tasks.find((t: { id: string }) => t.id === 'edit').when).toBeUndefined()
     expect(checkSchema(after.site.schema as Schema, statusRules)).toEqual([])
-    // The model converts first; the risotto's change then touches a public field, so contentRev rises once more.
-    expect([after.site.schemaRev, after.site.contentRev]).toEqual([before.schemaRev + 1, before.contentRev + 2])
+    // contentRev rises with the converted model, the risotto's change of a public field and the contact going online.
+    expect([after.site.schemaRev, after.site.contentRev]).toEqual([before.schemaRev + 1, before.contentRev + 3])
     // The coming price is on the website's bundle the way a new dated change is.
     const bundle = await (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json() as { bricks: { menu: { items: { id: string; upcoming?: unknown }[] } } }
     expect(bundle.bricks.menu.items.find((i) => i.id === schnitzel)?.upcoming).toEqual([{ from: '2026-10-18', data: { price: { amount: 2290, currency: 'EUR' } } }])
@@ -215,6 +217,41 @@ describe('2026-11-25-dated-changes (D130)', () => {
     await runThisOne(s)
     expect(await datedRows(s)).toEqual([[risotto, '2026-10-20', { price: { amount: 1500 } }]])
     expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).toEqual([])
+  })
+
+  // A3. Wrong behaviour caught: a time whose day had come (also one that passed between the deploy and the step) left
+  // the changes unpublished, though the person had planned them for then; or the day was read in UTC, not the site's.
+  it.each([
+    ['later today', '2026-10-08T18:00:00Z', 'online'],
+    ['an hour ago', '2026-10-08T09:00:00Z', 'online'],
+    ['20 October 01:30 in Vienna, still 19 October in UTC', '2026-10-19T23:30:00Z', '2026-10-20'],
+  ])('a time %s', async (_, at, expected) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const risotto = s.entries['menu-risotto']!
+    await timedRow(s, risotto, { price: { amount: 1500 } }, Date.parse(at))
+    await runThisOne(s)
+    const price = (await s.t.run((ctx) => ctx.db.get(risotto)))!.data as { price: unknown }
+    if (expected === 'online') {
+      expect([price.price, await datedRows(s)]).toEqual([{ amount: 1500 }, []])
+    } else {
+      expect(await datedRows(s)).toEqual([[risotto, expected, { price: { amount: 1500 } }]])
+    }
+    expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).toEqual([])
+  })
+
+  // A3. Wrong behaviour caught: a change whose day has come goes online although the check refuses it.
+  it('keeps a due change the check refuses unpublished, with a history line', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const risotto = s.entries['menu-risotto']!
+    await timedRow(s, risotto, { price: { amount: -5 } }, Date.parse('2026-10-08T09:00:00Z'))
+    await runThisOne(s)
+    expect(((await s.t.run((ctx) => ctx.db.get(risotto)))!.data as { price: unknown }).price).not.toEqual({ amount: -5 })
+    expect((await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).map((p) => [p.fields, p.publishAt ?? null])).toEqual([[{ price: { amount: -5 } }, null]])
+    expect((await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', risotto)).collect())).at(-1)).toMatchObject({ kind: 'unschedule' })
   })
 
   // G1. Wrong behaviour caught: a planned price and another change of the same day became two rows of one day, and every

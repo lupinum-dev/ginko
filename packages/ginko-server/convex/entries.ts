@@ -541,6 +541,17 @@ function fieldsLabel(schema: Schema, brick: Brick, roots: string[]): Label {
 }
 
 /**
+ * Puts an entry's unpublished changes online now, as "Publish" does (the same check and write), for a caller that
+ * already decided (the dated-changes migration of a time that has come). Refusals throw as for a person.
+ */
+export async function publishHeldNow(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, held: Pending, opId: string) {
+  const schema = actor.site.schema as Schema
+  const plan = await pendingPlan(ctx, actor, entry, held)
+  const history = recorded(msg('history.publishedChanges', { title: labelOf(schema, entry.brick, entry.data as Data), fields: fieldsLabel(schema, plan.brick, plan.roots) }), schema)
+  return await applyPending(ctx, actor, entry, held, plan, history, opId)
+}
+
+/**
  * `publish` of a live entry: its unpublished changes, now or, with `from`, as a dated change of that day (D125). A time
  * (`at`) is for a draft only (D130); an approved request whose day has passed publishes at once. `rev` (optional) is
  * the version the person saw.

@@ -18,7 +18,7 @@ import { brokenNewLinks, commitEntry, lookupsFor } from './lib/write'
 import type { StopReason } from './schema'
 import { internal } from './_generated/api'
 import { advance, eachSite, notConverted, stepArgs } from './lib/migrations'
-import { followName, rootsWith, writeFollowedName } from './entries'
+import { followName, publishHeldNow, rootsWith, writeFollowedName } from './entries'
 
 /** A dated change of the actor's site, and its entry; anything else is NOT_FOUND. */
 async function datedRow(ctx: QueryCtx, actor: Actor, id: string): Promise<{ row: Dated; entry: Doc<'entries'> }> {
@@ -253,8 +253,9 @@ async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>,
  * The migration `2026-11-25-dated-changes` (D130), one site per page. What planned values for a later time with the
  * older ways becomes after this release:
  * - Unpublished changes with a time (`pendingChanges.publishAt`): its run is cancelled. A day after today becomes a
- *   dated change of that day (checked like "Publish on a day", planner = who saved them); otherwise, or when the check
- *   refuses it, the changes stay unpublished without a time, with a history line.
+ *   dated change of that day (checked like "Publish on a day", planner = who saved them); today or a past day goes
+ *   online now (like "Publish", planner on the history row). When the check refuses it, or anything else fails for
+ *   that row, the changes stay unpublished without a time, with a history line.
  * - A single request approved for a time (status `scheduled`, no release): its run is cancelled and it is open again,
  *   so an approver decides it anew. Release members keep their schedule.
  * - A brick with `planned` in the stored schema: per entry, a planned value whose day is after today becomes a dated
@@ -346,8 +347,9 @@ function titleOr(schema: Schema, entry: Doc<'entries'>): string {
 
 /**
  * One timed unpublished change of the migration, as a transaction of its own, so a row that fails leaves nothing half
- * written. A day after today becomes a dated change of that day, planned by who saved the changes; otherwise it throws
- * and the caller keeps the changes unpublished.
+ * written. Its time's day in the site's zone decides (a time of day becomes the start of that day): a later day becomes
+ * a dated change of that day, planned by who saved the changes; today or a past day goes online now as "Publish" does,
+ * with the planner on the history row. A check that refuses throws, and the caller keeps the changes unpublished.
  */
 export const migrateTimedRow = internalMutation({
   args: { held: v.id('pendingChanges'), publishAt: v.number() },
@@ -368,8 +370,14 @@ async function convertTimedRow(ctx: MutationCtx, id: Id<'pendingChanges'>, publi
   const entry = (await ctx.db.get(held.entry))!
   const schema = site.schema as Schema
   const day = todayIn(schema.timeZone, new Date(publishAt))
-  if (day <= todayIn(schema.timeZone) || Object.keys(held.fields).some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
   const actor: Actor = { user: { id: SYSTEM.actor }, site, role: 'admin', grants: [] }
+  // Its day has come (also between the deploy and this step): online now, as "Publish" does, in the planner's name.
+  if (day <= todayIn(schema.timeZone)) {
+    const written = await publishHeldNow(ctx, actor, entry, held, migrateOpId(held._id))
+    await ctx.db.patch(written.change, { plannedBy: held.by })
+    return
+  }
+  if (Object.keys(held.fields).some((root) => changeRefusal(schema, schema.bricks[entry.brick]!, root))) throw new ConvexError({ code: 'INVALID' })
   const words = { title: titleOr(schema, entry), fields: fieldNames(schema, entry.brick, Object.keys(held.fields)), day: dayStart(day, schema.timeZone) }
   const plan = await planDated(ctx, site, entry, day, held.fields as Record<string, Json>, await datedOf(ctx, entry._id))
   const written = await writeDated(ctx, actor, entry, plan, held.revs, recorded(msg('history.datedFromPending', words), schema), migrateOpId(held._id))
