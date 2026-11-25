@@ -137,6 +137,32 @@ describe('timeline in the schema', () => {
   })
 })
 
+describe('when on a task (D123)', () => {
+  const problems = (tasks: unknown[]) => {
+    const s = schema()
+    ;(s.bricks.dishes as { tasks?: unknown }).tasks = tasks
+    return checkSchema(s, statusRules).filter((p) => p.includes('when'))
+  }
+  const edit = (fields: string[], when: unknown) => ({ id: 'price', label: 'Preis', kind: 'edit', pick: true, fields, when })
+
+  it.each([
+    ['a field a change may set', edit(['price', 'note'], { from: 'ask' }), []],
+    ['now', edit(['slug'], { from: 'now' }), []],
+    ['another value', edit(['price'], { from: 'later' }), ["dishes.price.when must be { from: 'now' } or { from: 'ask' }."]],
+    ['another key', edit(['price'], { from: 'ask', until: 'ask' }), ["dishes.price.when must be { from: 'now' } or { from: 'ask' }."]],
+    ['a create task', { id: 'add', label: 'Neu', kind: 'create', when: { from: 'ask' } }, ['dishes.add: when is only for an edit task.']],
+    ['the slug', edit(['price', 'slug'], { from: 'ask' }), ['dishes.price.when: “slug” decides when or where an entry shows, so it cannot start on a day. Leave it out of the task or drop when.']],
+  ])('in the stored model: %s', (_, task, expected) => {
+    expect(problems([task])).toEqual(expected)
+  })
+
+  it('refuses a text field on a site with several languages', () => {
+    const s = schema({ locales: ['de', 'en'], bricks: { dishes: { ...dishes, untranslated: 'fallback', route: { de: '/karte/[slug]', en: '/menu/[slug]' } }, practice } })
+    ;(s.bricks.dishes as { tasks?: unknown }).tasks = [edit(['price', 'note'], { from: 'ask' })]
+    expect(checkSchema(s, statusRules).filter((p) => p.includes('when'))).toEqual(['dishes.price.when: “note” has text per language, and a translated value in a change is not built yet.'])
+  })
+})
+
 describe('upcoming in the bundle', () => {
   const files = (id: string) => (id === 'f2' ? { url: 'https://cdn.example/f2.jpg', name: 'f2.jpg', size: 1, width: 4, height: 3 } : undefined)
   const changes: Change[] = [

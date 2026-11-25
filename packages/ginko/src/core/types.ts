@@ -134,12 +134,19 @@ export const isPrefillToken = (value: unknown): value is PrefillToken => PREFILL
  * reports a token on a field that is not a `date`. A `create` task may list `fields`: it then asks for and writes only
  * those (besides its prefill and the fields' defaults), like an `edit` task. Without `fields` it asks for every field
  * but the slug and the plan of a planned change. The release check wants every required field without a default
- * (and not a slug) in `fields` or in the prefill.
+ * (and not a slug) in `fields` or in the prefill. `when` on an `edit` task says whether its form asks from which day the
+ * values hold (`TaskWhen`).
  */
 export type Task<F extends Fields = Fields> =
-  | { id: string; label: Label; kind: 'edit'; fields: readonly (keyof F & string)[]; pick?: boolean; prefill?: Prefill<F>; needsApproval?: boolean }
+  | { id: string; label: Label; kind: 'edit'; fields: readonly (keyof F & string)[]; pick?: boolean; prefill?: Prefill<F>; needsApproval?: boolean; when?: TaskWhen }
   | { id: string; label: Label; kind: 'create'; fields?: readonly (keyof F & string)[]; prefill?: Prefill<F>; needsApproval?: boolean }
   | { id: string; label: Label; kind: 'remove'; needsApproval?: boolean }
+
+/**
+ * From when the values of an edit task hold (D123): `'now'` (the default when absent) at once; `'ask'` the form asks for
+ * a day, and a day ahead saves them as a dated change (`Change`). Every field of the task must be one a change may set.
+ */
+export interface TaskWhen { from: 'now' | 'ask' }
 
 /** Prefill values by field name. Without known fields (the stored schema) any JSON or token. */
 type Prefill<F extends Fields> = Fields extends F

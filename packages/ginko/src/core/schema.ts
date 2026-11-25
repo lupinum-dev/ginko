@@ -424,6 +424,7 @@ function schemaProblems(schema: Schema, rules: StatusRules): string[] {
       }
       if (task.kind === 'create' && task.fields !== undefined) problems.push(...createFieldsProblems(`${key}.${task.id}.fields`, task, brick))
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
+      if ('when' in task && task.when !== undefined) problems.push(...whenProblems(`${key}.${task.id}`, task, task.when, brick, schema))
     }
     if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
     if (brick.timeline !== undefined) problems.push(...timelineProblems(key, brick, schema))
@@ -661,6 +662,25 @@ function taskIdProblems(key: string, brick: Brick): string[] {
  * value: the slug is made from the title, the plan of a planned change belongs to a dish that already has a price, a
  * retired field is gone, and a field with a default or a prefill has a value.
  */
+/**
+ * `when` of a task (D123): an edit task only, `{ from: 'now' | 'ask' }`, and with `'ask'` every field of the task is one
+ * a change may set (`changeRefusal`), so the form never offers a day for a field that cannot take one.
+ */
+function whenProblems(path: string, task: Task, when: unknown, brick: Brick, schema: Schema): string[] {
+  if (task.kind !== 'edit') return [`${path}: when is only for an edit task.`]
+  if (typeof when !== 'object' || when === null || Array.isArray(when) || !('from' in when) || (when.from !== 'now' && when.from !== 'ask') || Object.keys(when).some((k) => k !== 'from')) {
+    return [`${path}.when must be { from: 'now' } or { from: 'ask' }.`]
+  }
+  if (when.from !== 'ask') return []
+  const out: string[] = []
+  for (const name of task.fields) {
+    const refusal = changeRefusal(schema, brick, name)
+    if (refusal === 'changeFixed') out.push(`${path}.when: “${name}” decides when or where an entry shows, so it cannot start on a day. Leave it out of the task or drop when.`)
+    else if (refusal === 'changeTranslated') out.push(`${path}.when: “${name}” has text per language, and a translated value in a change is not built yet.`)
+  }
+  return out
+}
+
 function createFieldsProblems(path: string, task: Extract<Task, { kind: 'create' }>, brick: Brick): string[] {
   if (!Array.isArray(task.fields)) return [`${path}: must be a list of field names.`]
   const fields = brick.fields
