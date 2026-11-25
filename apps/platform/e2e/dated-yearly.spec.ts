@@ -6,7 +6,7 @@
 import { addDays, todayIn } from '@lupinum/ginko/internal'
 import { expect, test, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
-import { openQuick, resetContent, shownDish, storedDish } from './local'
+import { datedRowsOf, openQuick, resetContent, shownDish, storedDish } from './local'
 
 const DISH = 'Marillenknödel'
 const today = () => todayIn('Europe/Vienna')
@@ -108,37 +108,43 @@ test('"Änderung aufheben" on a holding season: the question names next year; th
 })
 
 // Browser test 4 (row "save with a name only"). Wrong behaviour caught: the name of a one-off change is dropped, so the
-// notice cannot lead with it and the page cannot show "Probewoche bis …".
-test('a named one-off change: the notice leads with the name; the page\'s holding carries it', async ({ page }) => {
+// notice cannot lead with it; or the change does not show on the page while its days hold. (`holding` carries the name
+// only for a field of `timeline.public`, which onMenu is not: that is the server test "a name without yearly".)
+test('a named one-off change: the notice leads with the name; the page shows the dish while the days hold', async ({ page }) => {
   await setOnMenu(page, false)
   const until = addDays(today(), 5)
   await (await typeSeason(page, '', until, false, 'Probewoche')).getByRole('button', { name: `Bis ${short(until)} veröffentlichen` }).click()
   await expect.poll(shownOnMenu).toBe(true)
-  expect(shownDish(DISH)?.holding).toMatchObject([{ until, name: 'Probewoche' }])
   await expect((await notices(page)).locator('p').first()).toContainText(`Probewoche: bis ${withDay(until)} zeigt die Website:`)
 })
 
-// Browser test 5 (row "someone else saved meanwhile"). Wrong behaviour caught: the answer to a conflict saved the season,
-// or lost a day, the switch or the name.
-test('a conflict while typing a season: the answer writes nothing; both days, the switch and the name stay', async ({ page, browser }) => {
-  await setOnMenu(page, false)
-  const [from, until] = [addDays(today(), 20), addDays(today(), 30)]
-  const sheet = await typeSeason(page, from, until, true, 'Marillenzeit')
+// Browser test 5 (row "someone else saved meanwhile"), for a task with only fixed values: it sends no typed field, so a
+// save meanwhile is no conflict (as the today-only task of slice 3). The conflict panel with days, switch and name typed
+// is the Studio test "a conflict answer saves nothing; the days, the switch and the name stay". Wrong behaviour caught:
+// the meanwhile save blocks the season, makes it twice, or the season writes into the entry or loses the other save.
+const meanwhile: [string, (other: Page) => Promise<void>][] = [
+  ['the price (a field the season does not touch)', async (other) => {
+    const priceSheet = await openTask(other, 'Preis ändern')
+    await priceSheet.getByRole('textbox', { name: 'Preis', exact: true }).fill('23')
+    await priceSheet.getByRole('button', { name: 'Veröffentlichen', exact: true }).click()
+    await expect(toast(other)).toBeVisible()
+  }],
+  ['"Auf der Karte" itself', (other) => setOnMenu(other, true)],
+]
+for (const [what, save] of meanwhile) {
+  test(`someone else saves ${what} while a season is typed: the season saves once; the entry is theirs`, async ({ page, browser }) => {
+    await setOnMenu(page, false)
+    const [from, until] = [addDays(today(), 20), addDays(today(), 30)]
+    const sheet = await typeSeason(page, from, until, true, 'Marillenzeit')
 
-  // Meanwhile the owner puts the dish on the menu for good on her phone.
-  const other = await browser.newPage({ storageState: STATE.owner, viewport: { width: 390, height: 844 } })
-  await setOnMenu(other, true)
-  await other.close()
+    const other = await browser.newPage({ storageState: STATE.owner, viewport: { width: 390, height: 844 } })
+    await save(other)
+    await other.close()
+    const theirs = storedDish(DISH)
 
-  await sheet.getByRole('button', { name: `Jedes Jahr ${short(from)} bis ${short(until)} veröffentlichen` }).click()
-  const conflict = sheet.getByRole('alert')
-  await expect(conflict).toBeVisible()
-  await conflict.getByRole('button', { name: 'Meine Eingaben behalten' }).click()
-  await expect(sheet.getByText('Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.')).toBeVisible()
-  await expect(sheet.locator('#sheet-starts-on')).toHaveValue(from)
-  await expect(sheet.locator('#sheet-until')).toHaveValue(until)
-  await expect(sheet.locator('#sheet-yearly')).toHaveAttribute('aria-checked', 'true')
-  await expect(sheet.locator('#sheet-name')).toHaveValue('Marillenzeit')
-  expect(storedDish(DISH)?.onMenu ?? true).toBe(true)
-  await expect(sheet.locator('[data-test="dated-waiting"]')).toHaveCount(0)
-})
+    await sheet.getByRole('button', { name: `Jedes Jahr ${short(from)} bis ${short(until)} veröffentlichen` }).click()
+    await expect(toast(page)).toBeVisible()
+    await expect(sheet).toHaveCount(0)
+    expect([datedRowsOf(DISH).length, storedDish(DISH)]).toEqual([1, theirs])
+  })
+}
