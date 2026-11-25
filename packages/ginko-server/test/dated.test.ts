@@ -264,3 +264,24 @@ describe('a dated change that needs a yes', () => {
     expect((await s.history(s.saibling)).at(-1)).toMatchObject({ msg: { key: 'history.datedAppliedLate' } })
   })
 })
+
+describe('export and import', () => {
+  it('a backup carries the waiting changes; an import writes a passed day into the fields and plans the rest', async () => {
+    const s = await datedSetup()
+    await s.plan(1450)
+    const snapshot = await s.t.query(internal.backup.snapshot, { site: s.site })
+    expect(snapshot.entries.find((e) => e.id === s.saibling)).toMatchObject({ changes: [{ from: '2026-10-09', set: { price: { amount: 1450 } } }] })
+
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const dish = { category: 'starters', name: { de: 'Forelle' }, price: { amount: 1200 }, allergens: ['D'], veg: 'none' }
+    await s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [],
+      entries: [{ id: 'm1', brick: 'menu', kind: 'item', order: 99, prints: {}, rev: 1, data: dish, changes: [{ from: '2026-10-01', set: { price: { amount: 1250 } } }, { from: '2026-12-01', set: { price: { amount: 1300 } } }] }],
+    })
+    const menu = await s.t.run((ctx) => ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'menu')).collect())
+    const trout = menu.find((e) => (e.data as { name: { de: string } }).name.de === 'Forelle')!
+    expect(trout.data).toMatchObject({ price: { amount: 1250 } })
+    expect(await s.dated(trout._id)).toMatchObject([{ from: '2026-12-01', fields: { price: { amount: 1300 } } }])
+    expect((await s.dated(trout._id))[0]!.by).toBeUndefined()
+  })
+})

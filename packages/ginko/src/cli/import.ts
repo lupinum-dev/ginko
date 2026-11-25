@@ -11,7 +11,7 @@
 // storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import { byteSize, entryBytes, entryLinkRefs, ENTRY_NAME_RULE, isEntryName, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
+import { byteSize, changeIssues, entryBytes, entryLinkRefs, ENTRY_NAME_RULE, isEntryName, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
 import type { Runner } from './local.ts'
 import { CliError, isObject, parseExport, type ExportEntry, type SiteExport } from './model.ts'
 import { english, explainRejected, kib } from './report.ts'
@@ -147,7 +147,7 @@ async function readFileOf(dir: string, file: SiteExport['files'][number]): Promi
  */
 function referencedIds(entries: ExportEntry[], ids: Map<string, string>): { from: string; to: string }[] {
   const linked = new Set<string>()
-  const text = JSON.stringify(entries.map((e) => e.data), (_key, value: unknown) => {
+  const text = JSON.stringify(entries.map((e) => [e.data, e.changes]), (_key, value: unknown) => {
     if (typeof value === 'string') for (const ref of entryLinkRefs(value)) linked.add(ref)
     return value
   })
@@ -211,6 +211,12 @@ export async function checkImport(schema: Schema, entries: ExportEntry[]): Promi
     }
     for (const issue of (await validate(schema, entry.brick, entry.data, { mode: 'shape' })).errors) {
       problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
+    }
+    // A waiting change is checked as a save makes it (D128); removing an entry cancelled its changes.
+    if (entry.changes?.length && entry.deletedAt === undefined) {
+      for (const issue of await changeIssues(schema, entry.brick, entry.data, entry.changes)) {
+        problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path}: ${english(issue)}`)
+      }
     }
     const size = entryBytes(withNewIds(entry.data), entry.prints)
     if (size > SITE_BUDGET.entryBytes) problems.push(`Entry ${entry.id} (${entry.brick}) is ${kib(size)}; the limit is ${kib(SITE_BUDGET.entryBytes)}.`)
@@ -317,14 +323,14 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   })
   // Every call carries all folders (a few rows; the platform matches them by name and parent).
   const toArgs = (entries: ExportEntry[]) => {
-    const text = JSON.stringify(entries.map((e) => e.data))
+    const text = JSON.stringify(entries.map((e) => [e.data, e.changes]))
     return { site, files: data.files.filter((file) => text.includes(file.id)).map(toFile), folders, entries }
   }
   const size = (entries: ExportEntry[]) => Buffer.byteLength(JSON.stringify(toArgs(entries)))
   const batches: { args: ReturnType<typeof toArgs>; count: number }[] = []
 
   // Library files that no entry mentions (kept or in a folder) and the folders themselves go in a first batch without entries.
-  const allText = JSON.stringify(data.entries.map((e) => e.data))
+  const allText = JSON.stringify(data.entries.map((e) => [e.data, e.changes]))
   const library = data.files.filter((file) => !allText.includes(file.id) && (file.kept || file.folder !== undefined))
   if (library.length > 0 || folders.length > 0) batches.push({ args: { site, files: library.map(toFile), folders, entries: [] }, count: 0 })
 

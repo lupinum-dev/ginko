@@ -71,7 +71,11 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
       const item = plain.bricks[brick]!.kind !== 'single'
       // An item's name is its file name (`posts/hello` → `hello`), and it is fixed: the file name is the name (D96).
       const named = item ? { name: rest.id.slice(brick.length + 1), nameFixed: true as const } : {}
-      entries.push({ id: rest.id, brick, kind: item ? 'item' : 'single', order: index, data: rest.data, prints: (rest.prints ?? {}) as ExportEntry['prints'], rev: 1, ...named })
+      entries.push({
+        id: rest.id, brick, kind: item ? 'item' : 'single', order: index, data: rest.data, prints: (rest.prints ?? {}) as ExportEntry['prints'], rev: 1, ...named,
+        // The changes still ahead travel along; the read already wrote those whose day has come into the values (D128).
+        ...(rest.changes?.length ? { changes: rest.changes } : {}),
+      })
     })
   }
 
@@ -141,6 +145,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
     entry.data = mapMarkdownTexts(fields, remapFileIds(fields, entry.data, ids), (text) => toFileRefs(text, refs, imageProps))
     // The same pictures under their file IDs: translations read from the files stay current.
     entry.prints = carryPrints(fields, before, entry.data, entry.prints, schema.locales[0]!)
+    if (entry.changes) entry.changes = entry.changes.map((change) => ({ ...change, set: remapFileIds(fields, change.set as Record<string, Json>, ids) }))
     for (const text of markdownTexts(fields, entry.data)) kept += [...await localSources(text, imageProps)].filter((src) => ids.has(src)).length
   }
   if (kept > 0) input.log(`Warning: ${kept} image(s) inside Markdown texts keep their public/ path, written in a form this export cannot rewrite; the site must keep serving them.`)

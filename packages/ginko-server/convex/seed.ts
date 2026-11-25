@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { carryPrints, defaultsFor, entryBytes, fitsBudget, isEntryName, namesOf, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, withoutUnknownRows, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { carryPrints, changeIssues, dataOn, todayIn, waitingChanges, type Change, defaultsFor, entryBytes, fitsBudget, isEntryName, namesOf, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, withoutUnknownRows, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -20,6 +20,7 @@ import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { cleanName, kindOf, WRONG_TYPE } from './lib/files'
 import { deleteStorage } from './lib/library'
 import { dropTrees, putTrees } from './lib/trees'
+import { datedOf, dayStart, syncDatedRefs } from './lib/dated'
 import { BUDGET, same, sizeText, syncEntryRefs, uploadIdsOf } from './lib/write'
 import { stopReason } from './schema'
 
@@ -255,6 +256,8 @@ export const importExport = internalMutation({
       /** A collection entry's name and whether it is fixed (D96); absent in older exports, then made like the upgrade does. */
       name: v.optional(v.string()),
       nameFixed: v.optional(v.literal(true)),
+      /** Its waiting dated changes (D128, `$changes` in a file); absent in older exports. */
+      changes: v.optional(v.array(v.object({ from: v.string(), set: v.record(v.string(), v.any()) }))),
     })),
   },
   handler: async (ctx, args) => {
@@ -342,7 +345,8 @@ export const importExport = internalMutation({
     // removed ones too (a restore must be able to save them), the live entries against the site, the removed ones
     // against the trash.
     const problems: ImportProblem[] = []
-    const rows: { row: (typeof args.entries)[number]; fields: Fields; data: Data; prints: Prints; size: number; trees: { json: string; bytes: number } }[] = []
+    const rows: { row: (typeof args.entries)[number]; fields: Fields; data: Data; prints: Prints; size: number; trees: { json: string; bytes: number }; changes: Change[] }[] = []
+    const today = todayIn(schema.timeZone)
     let bytes = 0
     let trashBytes = 0
     let treeBytes = 0
@@ -356,7 +360,14 @@ export const importExport = internalMutation({
         problems.push({ code: 'INVALID', key: 'errors.entryBrickMissingFromSchema', params: { id: row.id, brick: row.brick } })
         continue
       }
-      const remapped = remapFileIds(def.fields, row.data as Data, uploads)
+      // Dated changes (D128) are checked like a save makes them; a change whose day has passed is written into the fields
+      // before the entry is stored, the others wait. A removed entry has none (removing it cancelled them).
+      const exported = (row.changes ?? []).map((c) => ({ from: c.from, set: remapFileIds(def.fields, c.set as Data, uploads) }))
+      const stored = remapFileIds(def.fields, row.data as Data, uploads)
+      const changeProblem = exported.length && row.deletedAt === undefined ? (await changeIssues(schema, row.brick, stored, exported))[0] : undefined
+      if (changeProblem) problems.push({ code: 'INVALID', key: 'errors.importEntryInvalid', params: { id: row.id, path: changeProblem.path, count: 1 } })
+      const remapped = row.deletedAt === undefined ? dataOn(stored, exported, today) : stored
+      const changes = row.deletedAt === undefined ? waitingChanges(exported, today) : []
       const checked = await validate(schema, row.brick, remapped, { mode: 'shape' })
       // A row its rows field no longer has (retired since the export) is dropped; its warning stays (UNKNOWN_ROW).
       const data = withoutUnknownRows(def.fields, remapped, schema.week)
@@ -377,7 +388,7 @@ export const importExport = internalMutation({
         bytes += size
         treeBytes += trees.bytes
       } else trashBytes += size
-      rows.push({ row, fields: def.fields, data, prints, size, trees })
+      rows.push({ row, fields: def.fields, data, prints, size, trees, changes })
     }
     // What the Studio keeps true: every entry once, a collection within its max, one entry per address. An export that
     // breaks it gives two pages one URL, or a collection whose removed entries cannot come back. The CLI checks the
@@ -452,7 +463,7 @@ export const importExport = internalMutation({
     const ids: [string, Id<'entries'>][] = []
     const known = new Set<string>(uploads.values())
     for (const item of rows) {
-      const { row, fields, data, prints, size, trees } = item
+      const { row, fields, data, prints, size, trees, changes } = item
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
         fieldRevs: Object.fromEntries(Object.keys(fields).map((f) => [f, row.rev])),
@@ -472,6 +483,15 @@ export const importExport = internalMutation({
         } else if (row.stopped) {
           await ctx.db.patch(id, { stopped: row.stopped })
         }
+      }
+      // Each waiting change gets its row and its run, without a person.
+      for (const change of changes) {
+        const dated = await ctx.db.insert('datedChanges', {
+          site: site._id, entry: id, brick: row.brick, from: change.from, fields: change.set, prints: {},
+          revs: Object.fromEntries(Object.keys(change.set).map((root) => [root, row.rev])), at: Date.now(),
+        })
+        await ctx.db.patch(dated, { job: await ctx.scheduler.runAt(dayStart(change.from, schema.timeZone), internal.datedChanges.applyDue, { change: dated, from: change.from }) })
+        await syncDatedRefs(ctx, schema, { _id: dated, site: site._id, brick: row.brick, fields: change.set })
       }
       ids.push([row.id, id])
       for (const [name, field] of Object.entries(fields)) {
@@ -547,6 +567,11 @@ export const importRefs = internalMutation({
     for (const entry of page.page) {
       const def = schema.bricks[entry.brick]
       if (!def) continue
+      // The entry references in its dated changes name exported IDs too.
+      for (const dated of await datedOf(ctx, entry._id)) {
+        const fields = mapMarkdownTexts(def.fields, remapEntryRefs(def.fields, dated.fields as Data, ids), (text) => rewriteEntryLinks(text, ids)) as Data
+        if (!same(fields, dated.fields)) await ctx.db.patch(dated._id, { fields })
+      }
       const refs = remapEntryRefs(def.fields, entry.data as Data, ids)
       const data = mapMarkdownTexts(def.fields, refs, (text) => rewriteEntryLinks(text, ids)) as Data
       if (same(data, entry.data)) continue

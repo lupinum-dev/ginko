@@ -1,6 +1,6 @@
 // Shared shapes of the CLI: what the platform's release state looks like, what the CLI sends
 // back, and the error type that ends a command with an English message and a coded failure.
-import type { Json, Schema } from '../core/index.ts'
+import type { Change, Json, Schema } from '../core/index.ts'
 
 /** GET /release/state (SPEC 5.1 step 2): the stored schema and the data of every entry, deleted ones too. */
 export interface ReleaseState {
@@ -107,6 +107,8 @@ export interface ExportEntry {
   name?: string
   /** The name no longer follows the title: the entry was planned or online. */
   nameFixed?: true
+  /** Its waiting dated changes (D128): `$changes` of a file, the waiting rows of a platform entry. */
+  changes?: Change[]
 }
 
 /** GET /export (SPEC 9, 12): the site with every entry (deleted ones too) and a signed URL per file. */
@@ -161,7 +163,8 @@ export function parseExport(value: unknown, locator: 'url' | 'path', problem: st
     && Array.isArray(value.entries) && value.entries.every((e) => isObject(e)
       && typeof e.id === 'string' && typeof e.brick === 'string' && (e.kind === 'single' || e.kind === 'item')
       && typeof e.order === 'number' && isObject(e.data) && isObject(e.prints) && typeof e.rev === 'number' && optionalNumber(e.deletedAt)
-      && optionalString(e.name) && (e.nameFixed === undefined || e.nameFixed === true))
+      && optionalString(e.name) && (e.nameFixed === undefined || e.nameFixed === true)
+      && (e.changes === undefined || (Array.isArray(e.changes) && e.changes.every((c) => isObject(c) && typeof c.from === 'string' && isObject(c.set)))))
     && Array.isArray(value.files) && value.files.every((f) => isObject(f)
       && typeof f.id === 'string' && typeof f.name === 'string' && typeof f.mime === 'string' && typeof f.size === 'number'
       && typeof f[locator] === 'string' && optionalNumber(f.width) && optionalNumber(f.height)

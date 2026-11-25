@@ -256,6 +256,14 @@ export async function prepareImport(input: PrepareInput): Promise<PrepareResult>
       const after = await walk(field, before)
       if (JSON.stringify(after) !== JSON.stringify(before)) { entry.data[name] = after; changed = true }
     }
+    // A dated change names images and links like the fields it sets (D128).
+    for (const change of entry.changes ?? []) {
+      for (const [name, before] of Object.entries(change.set as Record<string, Json>)) {
+        if (!Object.hasOwn(fields, name) || before === null) continue
+        const after = await walk(fields[name]!, before)
+        if (JSON.stringify(after) !== JSON.stringify(before)) { (change.set as Record<string, Json>)[name] = after; changed = true }
+      }
+    }
   }
   result.images.failed.sort((a, b) => a.url.localeCompare(b.url))
   result.components.unknown = [...unknown].sort()

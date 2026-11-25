@@ -22,7 +22,7 @@ const config = defineSite({
     faq: collection({
       listing: { title: 'question' },
       label: 'FAQ', source: 'files', max: 50, order: 'manual',
-      fields: { question: f.text('Frage'), answer: f.longtext('Antwort') },
+      fields: { question: f.text('Frage'), answer: f.longtext('Antwort'), price: f.money('Preis', { optional: true }) },
     }),
     authors: collection({ body: 'bio',
       listing: { title: 'name' },
@@ -56,6 +56,14 @@ function site(extra: Record<string, string | Uint8Array> = {}) {
 }
 
 describe('local:files-export', () => {
+  // Wrong behaviour caught: a dated change in a file is lost on the way to the platform, or a passed one stays a change.
+  it('carries the changes still ahead and writes a passed one into the values', async () => {
+    const s = site({ 'content/faq/2.kurs.yml': 'question: Was kostet der Kurs?\nanswer: Siehe Preis.\nprice: 90\n$changes:\n  - from: 2020-01-01\n    set: { price: 95 }\n  - from: 2099-01-01\n    set: { price: 99 }\n' })
+    expect((await run(['files-export', '--config', s.config, s.out])).code).toBe(0)
+    const exported = parseExport(JSON.parse(readFileSync(join(s.out, 'export.json'), 'utf8')), 'path', 'invalid')
+    expect(exported.entries.find((e) => e.id === 'faq/kurs')).toMatchObject({ data: { price: { amount: 9500 } }, changes: [{ from: '2099-01-01', set: { price: { amount: 9900 } } }] })
+  })
+
   it('turns content files into an export that parseExport accepts, translations included', async () => {
     const s = site()
     const { code, json } = await run(['files-export', '--config', s.config, s.out])
