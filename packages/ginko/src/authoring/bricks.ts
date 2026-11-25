@@ -55,8 +55,14 @@ interface TaskOptions<F extends Fields> {
   prefill?: Prefill<F>
   /** A staff change waits for an owner's yes. */
   needsApproval?: boolean
-  /** An edit task only: `{ from: 'ask' }` lets the form ask from which day the values hold. Default `{ from: 'now' }`. */
+  /**
+   * An edit task only: `{ from: 'ask' }` lets the form ask from which day the values hold; `{ from: 'ask', until: 'ask' }`
+   * asks both days of an offer that ends by itself; `{ from: '@today', until: '@today' }` holds for today only. Default
+   * `{ from: 'now' }`.
+   */
   when?: TaskWhen
+  /** An edit task only: fixed values every save of the task writes, not shown as fields, such as `{ onMenu: false }`. */
+  set?: Prefill<F>
 }
 
 /**
