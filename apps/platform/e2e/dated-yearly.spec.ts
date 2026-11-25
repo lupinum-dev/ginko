@@ -73,6 +73,10 @@ test('a season whose days hold today: the page shows the dish, the entry stays o
   const line = (await notices(page)).locator('p').first()
   await expect(line).toContainText(`Marillenzeit: bis ${withDay(until)} zeigt die Website:`)
   await expect(line).toContainText('Kommt jedes Jahr wieder.')
+  // Round N3: the sheet that made it (it shows no field, only sets one) shows it too.
+  const again = (await openTask(page, 'Saisongericht')).locator('[data-test="dated-waiting"]')
+  await expect(again).toContainText('Marillenzeit: bis')
+  await expect(again).toContainText('Kommt jedes Jahr wieder.')
 })
 
 // Browser test 2 (row "save, yearly on, days ahead"). Wrong behaviour caught: a season for later days goes online at

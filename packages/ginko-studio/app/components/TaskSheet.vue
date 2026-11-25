@@ -28,7 +28,7 @@ import { XIcon } from '@lucide/vue'
 import { ConfigProvider, injectConfigProviderContext } from 'reka-ui'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
-import { changesText, valuesText, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
+import { changesText, valuesText, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, taskTouches, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { planOwner } from '../utils/today'
 import { opErrorOf } from '../composables/useOps'
@@ -79,6 +79,8 @@ provideSiteRefs(() => props.site, () => props.schema, () => props.main)
 const factUses = useFactUses(() => props.site, () => props.schema, () => props.brickKey)
 const factQuotes = (key: string) => factUses.quotes()?.[key]
 const fields = computed(() => taskFields(props.brick, props.task))
+/** The fields the task's dated notices are about: those it shows and those it sets (round N3). */
+const touched = computed(() => taskTouches(props.brick, props.task))
 const isCreate = computed(() => props.task.kind === 'create')
 const ref_ = computed(() => taskRef(props.brickKey, props.task))
 /** The weekly task ("Mittagsmenü dieser Woche") always covers this week: its week is shown, not asked (the server holds it to that). */
@@ -471,16 +473,16 @@ const datedArgs = () => (props.entry && !isCreate.value ? { site: props.site, en
 const { data: dated } = useConvexQuery(api.datedChanges.list, datedArgs, { server: false })
 const valueWords = computed(() => ({ t, format, currency: props.schema.currency }))
 const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopped).flatMap((c) => {
-  const ours = c.fields.filter((k) => Object.hasOwn(fields.value, k))
+  const ours = c.fields.filter((k) => Object.hasOwn(touched.value, k))
   if (!ours.length) return []
   const values = c.values as Data
-  const changes = changesText(fields.value, ours, values, props.main, valueWords.value)
+  const changes = changesText(touched.value, ours, values, props.main, valueWords.value)
   const holds = c.holds === true
   let text: string
   if (c.until === undefined) text = t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), changes })
   else {
     // What visitors see now, and the normal value it covers ("sonst 12,90 €") when that has a short form.
-    const normal = holds && c.normal ? valuesText(fields.value, ours, c.normal as Data, props.main, valueWords.value) : undefined
+    const normal = holds && c.normal ? valuesText(touched.value, ours, c.normal as Data, props.main, valueWords.value) : undefined
     text = exceptionText({ ...c, until: c.until, holds }, changes, normal, valueWords.value)
   }
   return [{ id: c.id, from: c.from, until: c.until, holds, yearly: c.yearly === true, name: c.name, fields: ours, values, text }]
@@ -489,7 +491,7 @@ type Notice = (typeof waitingNotices.value)[number]
 /** The line under a notice: two offers on the same days, a change that waits for an offer's end (datedLines). */
 const lineOf = (n: Notice) => datedLine(waitingNotices.value, n, valueWords.value)
 /** Under a field an exception covers today: what the website shows instead, and until when (spec rule 5). */
-const coveredHint = (key: string) => coveredText(waitingNotices.value, key, fields.value, props.main, valueWords.value)
+const coveredHint = (key: string) => coveredText(waitingNotices.value, key, touched.value, props.main, valueWords.value)
 /**
  * "Bearbeiten" on a notice of the kind the task makes (an exception for a task that asks both days, else a change
  * without an end): its days and values go into the form. A holding exception keeps its start (decision 4).
@@ -505,8 +507,10 @@ function editChange(n: Notice) {
     yearly.value = n.yearly
     changeName.value = n.name ?? ''
   }
-  for (const key of n.fields) form.setField(key, n.values[key] ?? undefined)
-  editing.value = { id: n.id, fields: n.fields }
+  // Only the fields the form shows take values; the ones the task sets it sends anyway (round N3).
+  const shownKeys = n.fields.filter((key) => Object.hasOwn(fields.value, key))
+  for (const key of shownKeys) form.setField(key, n.values[key] ?? undefined)
+  editing.value = { id: n.id, fields: shownKeys }
   nextTick(() => document.getElementById(n.holds ? 'sheet-until' : 'sheet-starts-on')?.focus())
 }
 /**

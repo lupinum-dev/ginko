@@ -1813,6 +1813,21 @@ describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slic
     wrapper.unmount()
   })
 
+  // Round N3. A task's notices are about the fields it shows and the ones it sets. Wrong behaviour caught: the
+  // "Saisongericht" sheet hides its own holding season (it shows no field), so nobody sees it and a second one is planned.
+  test('a task with only fixed values shows its holding season; "Bearbeiten" fills the days, the switch and the name', async () => {
+    datedRows.value = [row({ id: 'd2', from: inDays(-5), until: inDays(20), holds: true, fields: ['onMenu'], values: { onMenu: true }, normal: { onMenu: false } })]
+    const wrapper = mountTask(3)
+    answer({ data: {} })
+    await flushPromises()
+    expect(['Sommer', 'Kommt jedes Jahr wieder'].map((part) => wrapper.text().includes(part))).toEqual([true, true])
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    // A holding season keeps its start: "Gilt ab" is fixed text (decision 4).
+    expect([wrapper.find('[data-test="fixed-from"]').exists(), value(wrapper, '#sheet-until'), checked(wrapper), value(wrapper, '#sheet-name')]).toEqual([true, inDays(20), 'true', 'Sommer'])
+    wrapper.unmount()
+  })
+
   // Lead's cell 1, the sheet's half (the server's: dated-yearly.test.ts "a later year"). The list gives a season the days
   // of its current or next time, which in a later year are not its stored first days. Wrong behaviour caught: "Bearbeiten"
   // and a new value only read as a second change on other days ("Es gibt schon eine Änderung ab …"), or the save goes

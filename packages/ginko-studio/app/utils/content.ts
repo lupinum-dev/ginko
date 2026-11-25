@@ -104,6 +104,19 @@ export function taskFields(brick: Brick, task: Task): Fields {
   return out
 }
 
+/**
+ * The fields a task's dated changes are about: those it shows and those it sets (`set`). Its notices, the hints under
+ * fields and the lines about overlaps read these, so a task with only fixed values still sees its own changes (round N3).
+ */
+export function taskTouches(brick: Brick, task: Task): Fields {
+  const out = taskFields(brick, task)
+  for (const key of Object.keys((task.kind === 'edit' ? task.set : undefined) ?? {})) {
+    const field = brick.fields[key]
+    if (field && !field.retired) out[key] = field
+  }
+  return out
+}
+
 /** A field with text to translate: translatable itself, an image (alt text), or a list or rows field with such columns (Astra phase 8). */
 export function hasTranslation(f: Field): boolean {
   if (f.type === 'list' || f.type === 'rows') return Object.values(f.of).some(hasTranslation)
