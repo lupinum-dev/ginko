@@ -239,6 +239,7 @@
     "liveChangedMeanwhile": "La versión publicada ha cambiado mientras tanto. Descarta los cambios sin publicar y vuelve a hacerlos.",
     "datedNotWith": "Un día no puede ir junto con publicar, un idioma o traducciones confirmadas.",
     "datedOnlyOnline": "Solo una entrada en línea admite un cambio a partir de un día. Un borrador toma el valor enseguida: guárdalo sin día.",
+    "exceptionNotOnline": "La entrada no estaba en línea el primer día de la excepción. Ponla en línea y vuelve a planificar la excepción.",
     "dayInvalid": "No es un día válido.",
     "dayNotAhead": "El día debe ser posterior a hoy.",
     "dayTooFarAhead": "El día puede estar como máximo a un año.",

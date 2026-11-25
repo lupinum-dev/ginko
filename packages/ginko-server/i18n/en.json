@@ -239,6 +239,7 @@
     "liveChangedMeanwhile": "The online version has changed in the meantime. Discard the unpublished changes and make them again.",
     "datedNotWith": "A day cannot go with publishing, a language or confirmed translations.",
     "datedOnlyOnline": "Only an entry that is online takes a change from a day on. A draft takes the value at once: save it without a day.",
+    "exceptionNotOnline": "The entry was not online on the first day of the exception. Put it online and plan the exception again.",
     "dayInvalid": "That is not a valid day.",
     "dayNotAhead": "The day must be after today.",
     "dayTooFarAhead": "The day can be at most a year ahead.",

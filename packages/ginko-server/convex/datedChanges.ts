@@ -249,8 +249,10 @@ async function startException(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'
   // Its days passed before it could start (the run came late): it ends without ever holding.
   if (until < today) return await endException(ctx, site, entry, row, until)
   const others = (await datedOf(ctx, entry._id)).filter((r) => r._id !== row._id && isHolding(r))
-  let reason: StopReason | undefined
-  try {
+  // An entry that is not online gets no exception (as a save refuses one, `datedOnlyOnline`): it would show unchecked the
+  // moment the entry goes online again (ruling 3 after step 1).
+  let reason: StopReason | undefined = entry.state === 'draft' ? { code: 'invalid', fields: Object.keys(row.fields), cause: { key: 'errors.exceptionNotOnline' } } : undefined
+  if (!reason) try {
     reason = await dueRefusal(ctx, site, { ...entry, data: dataOn(entry.data as Data, asChanges(others), today) }, row)
   } catch (error) {
     reason = { code: 'failed' }

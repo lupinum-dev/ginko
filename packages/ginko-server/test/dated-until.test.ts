@@ -210,6 +210,20 @@ describe('the runs (start and end)', () => {
     expect((await s.t.run((ctx) => ctx.db.query('outbox').collect())).map((m) => m.to)).toEqual(['wirtin@example.com'])
   })
 
+  // Ruling (3) after step 1. Wrong behaviour caught: an offer whose start comes while the entry is offline holds anyway,
+  // so it shows the moment someone puts the entry online again, without a check or a word.
+  it('a start run on an entry that is not online stops the row with a reason and a mail', async () => {
+    const s = await untilSetup()
+    await s.offer(990, '2026-10-09', '2026-10-12')
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: (await s.row(s.saibling))!.lifeRev })
+    await s.advanceTo(at('2026-10-09') + 1000)
+    const [row] = await s.dated(s.saibling)
+    expect([row!.holds, row!.stopped?.reason]).toEqual([undefined, { code: 'invalid', fields: ['price'], cause: { key: 'errors.exceptionNotOnline' } }])
+    expect((await s.t.run((ctx) => ctx.db.query('outbox').collect())).map((m) => m.to)).toEqual(['wirtin@example.com'])
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: (await s.row(s.saibling))!.lifeRev })
+    expect(await s.shownPrice(s.saibling)).toBe(1350)
+  })
+
   // Number 4. Wrong behaviour caught: the read lays over a row whose day has come but whose start run has not passed
   // (between midnight and the run, or a run that is still to stop it).
   it('a row whose start run has not passed shows on no day', async () => {
