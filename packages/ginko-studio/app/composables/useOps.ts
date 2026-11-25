@@ -375,7 +375,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           : t('ops.draftCreated')
         // A new entry starts at lifeRev 1; undo removes it (a draft or a scheduled one was never on the website).
         show(text, { action: { label: t('ops.undo'), run: async () => { await removeEntry(result.entry, 1, args.removeTask, t('ops.removed'), result.state !== 'live').catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
-        return { proposal: undefined, entry: result.entry, warnings: warningsOf(result) }
+        return { proposal: undefined, entry: result.entry, rev: result.rev, warnings: warningsOf(result) }
       } catch (error) {
         throw opErrorOf(error)
       }

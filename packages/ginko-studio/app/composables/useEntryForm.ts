@@ -17,10 +17,11 @@ import { useOnline } from '@vueuse/core'
 export type FieldIssue = Issue & { note?: true }
 
 /**
- * The notes of a draft just created, by entry id: its page opens a new form for the stored entry, which takes them over
- * once (`load`), so "save as draft" shows what is missing also on the first save of a new entry.
+ * The notes of a draft just created, by entry id, with the entry's revision they belong to: its page opens a new form for
+ * the stored entry, which takes them over once (`load`), so "save as draft" shows what is missing also on the first save
+ * of a new entry. Taken only while the entry still has that revision; a later save (also someone else's) makes them stale.
  */
-const handedNotes = new Map<string, Issue[]>()
+const handedNotes = new Map<string, { rev: number; notes: Issue[] }>()
 
 /** Stored values are JSON; a JSON copy also unwraps Vue's proxies (structuredClone cannot). */
 export const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value ?? null)) ?? value
@@ -104,7 +105,7 @@ export function useEntryForm(o: EntryFormOptions) {
     // The same entry again (a language switch) keeps its notes; a just created one takes those of its create.
     const handed = entry ? handedNotes.get(entry._id) : undefined
     if (entry) handedNotes.delete(entry._id)
-    notes.value = handed ?? (entry !== undefined && entry._id === loadedId.value ? notes.value : [])
+    notes.value = entry && handed?.rev === entry.rev ? handed.notes : entry !== undefined && entry._id === loadedId.value ? notes.value : []
     loadedId.value = entry?._id
     draft.value = copy(start)
     baseline.value = entry ? copy(storedOf(entry.data)) : {}
@@ -242,7 +243,7 @@ export function useEntryForm(o: EntryFormOptions) {
         else created.value = result.entry
         // A new draft without a time: what it lacks shows as notes, here and on its own page (`handedNotes`).
         notes.value = publish === undefined ? result.warnings ?? [] : []
-        if (result.entry !== undefined && notes.value.length) handedNotes.set(result.entry, notes.value)
+        if (result.entry !== undefined && result.rev !== undefined && notes.value.length) handedNotes.set(result.entry, { rev: result.rev, notes: notes.value })
         // Saved: what was sent no longer counts as open input (a second Speichern would create another).
         initial.value = submitted
       } else {

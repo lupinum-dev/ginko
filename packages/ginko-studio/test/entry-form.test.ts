@@ -58,7 +58,7 @@ vi.stubGlobal('useOps', () => ({
     calls.push(['create', args.data])
     const warnings = warnNext ?? []
     warnNext = undefined
-    return { entry: 'e2', warnings }
+    return { entry: 'e2', rev: 1, warnings }
   },
   restoreEntry: async (entry: string, lifeRev: number) => {
     calls.push(['restore', entry, lifeRev])
@@ -196,16 +196,23 @@ describe('notes of a draft (D116)', () => {
     expect(liveForm.fieldIssues.value).toEqual([])
   })
 
-  // Wrong behaviour caught: the first save of a new draft opens its own page, whose new form has lost the notes.
-  test('a new draft hands its notes once to the form of its own page; a publish at create has none', async () => {
-    const create = mountForm({ entry: () => undefined })
-    create.setField('name', 'Neu')
-    warnNext = [missing]
-    await create.save()
-    expect(create.notes.value).toEqual([missing])
-    const page = () => mountForm({ entry: () => ({ ...stored, _id: 'e2' }) })
-    expect(page().notes.value).toEqual([missing])
-    expect(page().notes.value).toEqual([])
+  // Wrong behaviour caught: the first save of a new draft opens its own page, whose new form has lost the notes; or a
+  // form opened after the entry was saved again (a sheet that never opened its page) shows the notes of its create.
+  test('a new draft hands its notes once to the form of its own page, while its revision is unchanged; a publish at create has none', async () => {
+    const createDraft = async () => {
+      const create = mountForm({ entry: () => undefined })
+      create.setField('name', 'Neu')
+      warnNext = [missing]
+      await create.save()
+      expect(create.notes.value).toEqual([missing])
+    }
+    const page = (rev: number) => mountForm({ entry: () => ({ ...stored, _id: 'e2', rev }) })
+    await createDraft()
+    expect(page(1).notes.value).toEqual([missing])
+    expect(page(1).notes.value).toEqual([])
+    await createDraft()
+    expect(page(2).notes.value).toEqual([])
+    expect(page(1).notes.value).toEqual([])
 
     const published = mountForm({ entry: () => undefined })
     published.setField('name', 'Online')
