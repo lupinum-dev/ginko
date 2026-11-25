@@ -1,7 +1,7 @@
 <!-- Choose the entry for a pick task (UI.md 3): search by name, grouped by `listing.group`, the detail beside each name. -->
 <script setup lang="ts">
 import type { Brick, Locale } from '@lupinum/ginko'
-import { duePlan, searchable } from '@lupinum/ginko/internal'
+import { searchable } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { displayValue, groupField, titleOf, type Task } from '../utils/content'
 import { useStudioSite } from '../utils/labels'
@@ -10,7 +10,7 @@ import { XIcon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
 import { SHEET_DIALOG } from '../utils/sheetDialog'
 
-const props = defineProps<{ brick: Brick; task: Task; entries: Entry[]; main: Locale; /** Today in the site's time zone: a planned price from today on is the price. */ today: string }>()
+const props = defineProps<{ brick: Brick; task: Task; entries: Entry[]; main: Locale }>()
 const emit = defineEmits<{ pick: [entry: Entry]; close: [] }>()
 
 const { shown, currency } = useStudioSite()
@@ -26,11 +26,10 @@ const detailKey = computed(() => {
   const key = props.brick.kind === 'collection' ? props.brick.listing.detail : undefined
   return key !== undefined && props.brick.fields[key] && !props.brick.fields[key]!.retired ? key : undefined
 })
-// From the day of a planned price (`planned`) on, the site shows that one, so the list does too.
 const detailOf = (e: Entry) => {
   const key = detailKey.value
   if (!key) return ''
-  const value = (key === props.brick.planned?.field ? duePlan(props.brick, e.data, props.today) : undefined) ?? e.data[key]
+  const value = e.data[key]
   return value != null ? displayValue(props.brick.fields[key]!, value, props.main, { t, format, currency: currency() }) : ''
 }
 const matches = computed(() => {

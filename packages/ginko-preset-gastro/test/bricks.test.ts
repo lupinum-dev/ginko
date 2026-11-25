@@ -15,7 +15,7 @@ describe('labels', () => {
     expect(schema).toContain('{"de":"Heute geschlossen","en":"Closed today"}')
     expect(schema).toContain('{"de":"Mittagsmenü","en":"Lunch menu"}')
     expect(schema).toContain('{"de":"Wochenplan","en":"Weekly hours"}')
-    expect(schema).toContain('{"de":"Geplanter Preis","en":"Planned price"}')
+    expect(schema).toContain('{"de":"Preis ändern","en":"Change a price"}')
   })
   it('the lunch plan task has both languages', () => {
     expect(JSON.stringify(serializeSchema(siteWith({ lunchPlans: lunchPlans() })))).toContain('{"de":"Nächste Woche planen","en":"Plan next week"}')

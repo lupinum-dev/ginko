@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { formatMoney, type Money } from '@lupinum/ginko'
-import { dishOn, priceOn, upcomingPrice } from '@lupinum/ginko-preset-gastro'
+import { formatMoney } from '@lupinum/ginko'
+import { dishOn } from '@lupinum/ginko-preset-gastro'
 
 const langOf = useGinkoLang()
 
 const { labels, lang, today } = useSite()
 const { t, format, language } = useI18n()
 const menu = useGinko('menu')
-/** "ab 1. November 19,50 €" when the price changes within 14 days. */
-function nextPriceLine(data: { price: Money; nextPrice?: Money; priceFrom?: string }) {
-  const next = upcomingPrice(data, today.value, 14)
-  return next && t('priceFrom', { date: format.date(next.from, { day: 'numeric', month: 'long' }), price: formatMoney(next.price, language.value) })
+const in14Days = computed(() => new Date(Date.parse(`${today.value}T12:00:00Z`) + 14 * 86_400_000).toISOString().slice(0, 10))
+/** "ab 1. November 19,50 €" when a new price starts within 14 days (the dish's `upcoming`, a dated change). */
+function nextPriceLine(item: (typeof menu.value.items)[number]) {
+  const next = item.upcoming?.find((change) => change.data.price && change.from > today.value && change.from <= in14Days.value)
+  return next?.data.price && t('priceFrom', { date: format.date(next.from, { day: 'numeric', month: 'long' }), price: formatMoney(next.data.price, language.value) })
 }
 const order = ['starters', 'soups', 'mains', 'desserts', 'drinks']
 // Dishes taken off the menu (after their season) are left out; a dish sold out today stays, marked "heute aus".
@@ -33,9 +34,9 @@ useSeoMeta({ title: () => `${t('menu')} | Gasthaus zur Linde` })
           <div class="line">
             <!-- The space keeps "heute aus" a word of its own for screen readers ("…vom Kalb heute aus"). -->
             <h3><span :lang="langOf(item, 'name')">{{ item.data.name }}</span><template v-if="item.soldOut">{{ ' ' }}<span class="out" data-test="sold-out">{{ t('soldOutToday') }}</span></template></h3>
-            <span class="price">{{ formatMoney(priceOn(item.data, today), language) }}</span>
+            <span class="price">{{ formatMoney(item.data.price, language) }}</span>
           </div>
-          <p v-if="nextPriceLine(item.data)" class="next-price" data-test="next-price">{{ nextPriceLine(item.data) }}</p>
+          <p v-if="nextPriceLine(item)" class="next-price" data-test="next-price">{{ nextPriceLine(item) }}</p>
           <p v-if="item.data.description" class="desc" :lang="langOf(item, 'description')">{{ item.data.description }}</p>
           <p class="meta">
             <span v-if="item.data.veg !== 'none'" class="veg">{{ labels.veg[item.data.veg] }}</span>

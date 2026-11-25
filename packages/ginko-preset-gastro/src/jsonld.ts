@@ -4,7 +4,8 @@ import { eventJsonLd as patternEventJsonLd, openingHoursJsonLd, type EventJsonLd
 import { offerPrice, postalAddress } from '@lupinum/ginko/internal'
 import type { MarkdownTree } from '@lupinum/ginko'
 import { withDefault } from './hours.ts'
-import type { Money } from './prices.ts'
+/** A price as the bundle serves it. */
+export interface Money { amount: number; currency?: string }
 
 export interface JsonLdMenuSection { name: string; items: Array<{ name: string; description?: string; price: Money }> }
 export interface RestaurantJsonLdInput {

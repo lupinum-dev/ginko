@@ -217,7 +217,8 @@
       "review": "Zur Prüfung senden",
       "asDraft": "Als Entwurf speichern",
       "laterOpen": "Später veröffentlichen",
-      "changesWhen": "Wann sollen die Änderungen an „{title}“ online gehen?"
+      "changesWhen": "Wann sollen die Änderungen an „{title}“ online gehen?",
+      "laterDay": "Ab einem späteren Tag"
     },
     "unpublish": {
       "button": "Zurückziehen",
@@ -309,10 +310,25 @@
       "draftNote": "Noch nicht auf der Website. Veröffentliche es, wenn es fertig ist.",
       "scheduledNote": "Es geht zu diesem Zeitpunkt von selbst online.",
       "liveNote": "Speichern ändert die Website noch nicht. Das macht erst „Veröffentlichen …“.",
-      "changesNote": "Gespeichert, aber noch nicht auf der Website. Dort steht die vorige Fassung, bis du veröffentlichst.",
-      "changesScheduledNote": "Die Änderungen gehen zu diesem Zeitpunkt von selbst online."
+      "changesNote": "Gespeichert, aber noch nicht auf der Website. Dort steht die vorige Fassung, bis du veröffentlichst."
     },
     "savedNotLive": "Gespeichert, noch nicht online"
+  },
+  "dated": {
+    "startsOn": "Gilt ab",
+    "startsOnHint": "Leer: ab sofort",
+    "publishFrom": "Ab {day} veröffentlichen",
+    "waiting": "Ab {day} gilt eine geplante Änderung: {fields}.",
+    "stopped": "Die geplante Änderung für {day} ist nicht gestartet: {fields}.",
+    "changedSince": "Seit der Planung geändert: {fields}. Ab dem geplanten Tag gilt trotzdem der geplante Wert.",
+    "cancel": "Änderung aufheben",
+    "cancelQuestion": "Diese geplante Änderung aufheben? Das lässt sich nicht rückgängig machen.",
+    "keep": "Behalten",
+    "changeDay": "Tag ändern",
+    "saveDay": "Tag speichern",
+    "dayRequired": "Bitte einen Tag wählen.",
+    "cancelled": "Geplante Änderung aufgehoben. Die Website bleibt, wie sie ist.",
+    "moved": "Die Änderung gilt jetzt ab {day}."
   },
   "site": {
     "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",
@@ -648,8 +664,7 @@
       "since": "Entwurf seit {date}",
       "goesLive": "Geht online {date}",
       "all": "Alle Entwürfe in Inhalte",
-      "changesSince": "Unveröffentlichte Änderungen seit {date}",
-      "changesGoLive": "Änderungen gehen online {date}"
+      "changesSince": "Unveröffentlichte Änderungen seit {date}"
     }
   },
   "editor": {
@@ -1031,7 +1046,6 @@
     "savedLikeLive": "Gespeichert. Es gleicht wieder der Fassung auf der Website.",
     "changesPublished": "Änderungen veröffentlicht.",
     "changesScheduled": "Geplant: Änderungen online ab {time}.",
-    "changesScheduleCleared": "Zeitplan aufgehoben. Die Änderungen bleiben gespeichert, aber noch nicht online.",
     "changesDiscarded": "Änderungen verworfen. Es gilt wieder die Fassung auf der Website."
   },
   "review": {
@@ -1045,7 +1059,6 @@
     "removeFromRelease": "Aus Release nehmen",
     "releaseApproved": "Release freigegeben. Auf der Website in etwa einer Minute.",
     "approve": "Freigeben",
-    "approveLater": "Für später freigeben…",
     "reject": "Ablehnen…",
     "rejectConfirm": "Ablehnen",
     "reason": "Warum? Das sieht, wer die Änderung vorgeschlagen hat.",

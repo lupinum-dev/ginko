@@ -2,16 +2,17 @@
 // create/publish/unpublish/publishDue, the bundle, revisions, rights, and the readers that must treat a draft apart
 // (retention, backup).
 import type { Schema } from '@lupinum/ginko/internal'
+import { ConvexError } from 'convex/values'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import { errorOf, opId, people, setup, upload } from './setup'
 
-// Mail is the one thing mocked: `mail.failing` makes queueing throw, as a broken mail setup would.
-const mail = vi.hoisted(() => ({ failing: false }))
+// Mail is the one thing mocked: `mail.throws` makes queueing throw it, as a broken mail setup would.
+const mail = vi.hoisted(() => ({ throws: undefined as unknown }))
 vi.mock('../convex/mail', async (original) => {
   const real = await original<typeof import('../convex/mail')>()
-  return { ...real, queueMail: (...args: Parameters<typeof real.queueMail>) => (mail.failing ? Promise.reject(new TypeError('mail down')) : real.queueMail(...args)) }
+  return { ...real, queueMail: (...args: Parameters<typeof real.queueMail>) => (mail.throws !== undefined ? Promise.reject(mail.throws) : real.queueMail(...args)) }
 })
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
@@ -243,9 +244,9 @@ describe('a draft may be incomplete (D115)', () => {
   const { description: _, ...halfEvent } = event('Halb')
   const codes = (issues: unknown) => (issues as { path: string; code: string }[]).map((i) => [i.path, i.code])
 
-  // Wrong behaviour caught: a half-filled draft is refused (the person loses the input), or the shape check lets an
-  // unknown field or a wrong type in, or an entry that goes online or gets a time skips the full check.
-  it('a create without a time checks the shape only and returns what is missing; online, planned or misshapen it is refused', async () => {
+  // Wrong behaviour caught: a half-filled draft is refused (the person loses the input), or the draft check lets an
+  // unknown field, a wrong type or a badly formed date in, or an entry that goes online or gets a time skips the full check.
+  it('a create without a time is checked as a draft and returns what is missing; online, planned or badly formed it is refused', async () => {
     const s = await draftSetup()
     const create = (data: Record<string, unknown>, publish?: { at?: number }) =>
       s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data, ...(publish ? { publish } : {}) })
@@ -260,22 +261,30 @@ describe('a draft may be incomplete (D115)', () => {
     expect(await errorOf(create({ ...halfEvent, nope: 'x' }))).toMatchObject({ code: 'INVALID', key: 'errors.fieldNoLongerExists' })
     const wrongType = await errorOf(create({ ...halfEvent, title: 7 }))
     expect([wrongType.code, codes((wrongType.details as { errors: unknown }).errors)]).toEqual(['INVALID', [['title', 'NOT_LOCALIZED']]])
+    // A value must be well formed to be stored: a "date" that is a number is no draft content (D115, mode `draft`).
+    const badDay = await errorOf(create({ ...halfEvent, when: 42 }))
+    expect([badDay.code, codes((badDay.details as { errors: unknown }).errors)]).toEqual(['INVALID', [['when', 'DATE']]])
   })
 
-  // Wrong behaviour caught: clearing a required field of a draft, copying the draft or undoing a save of it is refused.
+  // Wrong behaviour caught: clearing a required field of a draft, copying the draft or undoing a save of it is refused,
+  // or a save that changes nothing or an undo answers that nothing is missing.
   it('a draft without a time saves, copies and undoes with a required field empty', async () => {
     const s = await draftSetup()
     const draft = await s.createDraft('Voll')
     const cleared = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 1, fields: { description: null }, sentence: 'Beschreibung' })
     expect(cleared).toMatchObject({ rev: 2 })
     expect(codes((cleared as { warnings: unknown }).warnings)).toEqual([['description', 'REQUIRED']])
+    // Saved again unchanged: nothing is written, and it still says what is missing (the form keeps its notes).
+    const again = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 2, fields: { description: null }, sentence: 'Beschreibung' })
+    expect([(again as { rev: number }).rev, codes((again as { warnings: unknown }).warnings)]).toEqual([2, [['description', 'REQUIRED']]])
     const copy = await s.as.owner.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), entry: draft.entry })
     expect((await s.row(copy.entry))).toMatchObject({ state: 'draft' })
     // Filled again, then undone: the undo empties the field once more.
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: draft.entry, baseRev: 2, fields: { description: { de: 'Wieder da' } }, sentence: 'Beschreibung' })
     const change = await s.t.run(async (ctx) => (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect()).at(-1)!)
-    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id })
+    const undone = await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id })
     expect((await s.row(draft.entry))!.data).not.toHaveProperty('description')
+    expect(codes((undone as { warnings: unknown }).warnings)).toEqual([['description', 'REQUIRED']])
   })
 
   // The assumptions about a complete draft (inventory-platform D) that an incomplete one could break.
@@ -309,7 +318,7 @@ describe('a draft may be incomplete (D115)', () => {
 
   // Wrong behaviour caught: one half-filled draft blocks every release that rechecks its brick, or a release lets an
   // incomplete online or planned entry through.
-  it('a release checks a draft without a time for its shape only; online and planned entries stay strict', async () => {
+  it('a release checks a draft without a time as a draft; online and planned entries stay strict', async () => {
     const s = await draftSetup()
     const draft = await s.createDraft('Halb')
     await breakDraft(s, draft.entry)
@@ -486,16 +495,33 @@ describe('people are told when a plan stops (D104)', () => {
   })
 
   // Wrong behaviour caught: a mail step that threw inside the job rolled the job back: the entry stayed planned for
-  // ever with a finished job, no stopped state, no history, nobody told.
-  it('a mail step that throws leaves the entry stopped, with its history row', async () => {
-    mail.failing = true
+  // ever with a finished job, no stopped state, no history, nobody told. Also when the error is a ConvexError without
+  // data, which the log line read a code from.
+  it.each([
+    ['a TypeError', new TypeError('mail down'), 'TypeError'],
+    ['a ConvexError without data', new ConvexError(null), 'undefined'],
+  ])('a mail step that throws %s leaves the entry stopped, with its history row', async (_, thrown, kind) => {
+    mail.throws = thrown
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const s = await stoppedBy(people.cook).finally(() => { mail.failing = false })
-    expect(error.mock.calls.map((call) => String(call[0]))).toEqual([`Mail stopped ${s.draft.entry} not queued (TypeError).`])
+    const s = await stoppedBy(people.cook).finally(() => { mail.throws = undefined })
+    expect(error.mock.calls.map((call) => String(call[0]))).toEqual([`Mail stopped ${s.draft.entry} not queued (${kind}).`])
     error.mockRestore()
     const row = (await s.row(s.draft.entry))!
     expect(row).toMatchObject({ state: 'draft', stopped: { at: s.at, reason: { code: 'invalid' } } })
     expect(row.publishAt).toBeUndefined()
+    const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', s.draft.entry as Id<'entries'>)).collect())
+    expect(changes.map((c) => c.kind)).toContain('publishStopped')
+    expect(await outbox(s)).toEqual([])
+  })
+
+  // Wrong behaviour caught: with mail on and no SITE_URL (no link for the mail), the mail step threw inside the job, so
+  // the job rolled back: the entry stayed planned for ever, with no stopped state and no history.
+  it('mail on without SITE_URL: the entry is stopped with its history row, and no mail is queued', async () => {
+    vi.stubEnv('GINKO_MAIL', 'outbox')
+    vi.stubEnv('SITE_URL', '')
+    const s = await stoppedBy(people.cook, false)
+    const row = (await s.row(s.draft.entry))!
+    expect(row).toMatchObject({ state: 'draft', stopped: { at: s.at, reason: { code: 'invalid' } } })
     const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', s.draft.entry as Id<'entries'>)).collect())
     expect(changes.map((c) => c.kind)).toContain('publishStopped')
     expect(await outbox(s)).toEqual([])
@@ -1175,5 +1201,41 @@ describe('the day it went online (D108)', () => {
     const row = (await s.row(entry))!
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: row.rev, fields: { postedOn: null }, sentence: 'Datum' })
     expect((await s.row(entry))!.publishAt).toBe(NOW + 3 * HOUR)
+  })
+
+  // Wrong behaviour caught: a release that rechecks the brick refuses a planned draft whose date waits for its day,
+  // though the plan fills it; or the fill lets an online entry (also one in the trash) through without a date.
+  it('a release fills the date of a planned draft by its day; online entries stay strict', async () => {
+    const s = await postedSetup()
+    let n = 0
+    const release = async () => {
+      n += 1
+      const site = (await s.siteRow())!
+      const schema = site.schema as Schema
+      const events = schema.bricks.events!
+      // A new label on a field changes the brick's fields, so the release checks every entry of the brick again.
+      const next = { ...schema, bricks: { ...schema.bricks, events: { ...events, fields: { ...events.fields, description: { ...events.fields.description!, label: { de: `Text ${n}`, en: `Text ${n}` } } } } } }
+      return s.t.mutation(internal.release.release, {
+        site: s.site, actor: 'pushkey:test', commit: crypto.randomUUID().replaceAll('-', ''),
+        expectedSchemaRev: site.schemaRev, expectedContentRev: site.contentRev, schema: next as Schema, writes: [],
+      })
+    }
+    // The seeded events went online before the brick had the date: give them one, as their publish would have.
+    await s.t.run(async (ctx) => {
+      for (const row of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'events')).collect()) {
+        await ctx.db.patch(row._id, { data: { ...(row.data as object), postedOn: '2026-09-01' } })
+      }
+    })
+    await s.create('Geplant', {}, { at: NOW + 3 * HOUR })
+    await release()
+    const { entry } = await s.create('Online', {}, {})
+    const clear = (patch: object) => s.t.run(async (ctx) => {
+      const { postedOn: _, ...data } = (await ctx.db.get(entry as Id<'entries'>))!.data as Record<string, unknown>
+      await ctx.db.patch(entry as Id<'entries'>, { data, ...patch })
+    })
+    await clear({})
+    expect(await errorOf(release())).toMatchObject({ code: 'INVALID', details: { entry } })
+    await clear({ deletedAt: NOW })
+    expect(await errorOf(release())).toMatchObject({ code: 'INVALID', details: { entry } })
   })
 })

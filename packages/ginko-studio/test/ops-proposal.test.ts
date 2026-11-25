@@ -88,12 +88,16 @@ describe('when it shows on the website', () => {
   test.each([
     ['a save', 'entries.save', { entry: 'e', rev: 2, change: 'c1', liveFrom: '2026-10-17' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o' }), 'Saved. On the website from Saturday 17 October.'],
     ['a new planned week', 'entries.create', { entry: 'e', state: 'live', liveFrom: '2026-10-17' }, () => ops.createEntry({ brick: 'b', data: {}, op: 'o' }), 'Created. On the website from Saturday 17 October.'],
+    // D131: a change for a later day says its day and offers no Rückgängig (it is cancelled in the editor's notice).
+    ['a save for a later day', 'entries.save', { entry: 'e', rev: 2, change: 'c1', dated: 'd1', from: '2026-10-17' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o', from: '2026-10-17' }), 'Saved. On the website from Saturday 17 October.'],
+    ['changes published for a later day', 'entries.publish', { entry: 'e', state: 'live', from: '2026-10-17' }, () => ops.publishChanges('e', 1, 2, { from: '2026-10-17', main: 'de' }), 'Scheduled: changes online from Saturday 17 October.'],
     ['a save that shows now', 'entries.save', { entry: 'e', rev: 2, change: 'c1' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o' }), 'Saved. On the website in about a minute.'],
   ])('%s', async (_name, mutation, result, run, text) => {
     mocks.toasts.length = 0
     mocks.results.set(mutation, result)
     await run()
     expect(mocks.toasts.map((t) => t.text)).toEqual([text])
+    if (_name.includes('later day')) expect(mocks.toasts[0]!.action).toBeUndefined()
   })
 })
 

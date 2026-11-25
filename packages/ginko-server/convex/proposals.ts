@@ -154,20 +154,16 @@ async function staleReason(ctx: QueryCtx, p: Doc<'proposals'>, touched: Touched 
     if (entry.rev !== args.rev || !(await pendingOf(ctx, entry._id))) return retry
   }
   if (p.op === 'unpublish' && (entry.state ?? 'live') === 'draft' && entry.publishAt === undefined && !entry.stopped) return staleBecause('history.staleAlreadyDraft')
-  // Taking the time off unpublished changes (the entry stays online): only while they still have one.
-  if (p.op === 'unpublish' && (p.after as { state?: string } | undefined)?.state === 'live' && (await pendingOf(ctx, entry._id))?.publishAt === undefined) return retry
   touched.set(entry._id, { roots: seen?.roots ?? new Set(), life: true })
   return null
 }
 
-/** `running`: the call comes from the proposal's own scheduled job, which has nothing left to cancel. */
-async function markStale(ctx: MutationCtx, p: Doc<'proposals'>, why: Stale, by: string, running = false) {
-  if (p.job && !running) await ctx.scheduler.cancel(p.job)
-  await ctx.db.patch(p._id, { status: 'stale', reason: why.reason, reasonMsg: why.msg, decidedBy: by, decidedAt: Date.now(), job: undefined })
+async function markStale(ctx: MutationCtx, p: Doc<'proposals'>, why: Stale, by: string) {
+  await ctx.db.patch(p._id, { status: 'stale', reason: why.reason, reasonMsg: why.msg, decidedBy: by, decidedAt: Date.now() })
 }
 
 async function markApplied(ctx: MutationCtx, p: Doc<'proposals'>, by: string, change: Id<'changes'> | undefined) {
-  await ctx.db.patch(p._id, { status: 'applied', decidedBy: by, decidedAt: Date.now(), job: undefined, ...(change ? { change } : {}) })
+  await ctx.db.patch(p._id, { status: 'applied', decidedBy: by, decidedAt: Date.now(), ...(change ? { change } : {}) })
 }
 
 /** Release member status back to open (a scheduled release that could not run). */
@@ -177,8 +173,12 @@ async function reopen(ctx: MutationCtx, p: Doc<'proposals'>) {
 
 // ---- Deciding one proposal ----
 
+/**
+ * A yes to one proposal applies it now. A later time is a release's (`approveRelease`); a single change for a later
+ * day is a dated change, which its author asks for with the day (D130).
+ */
 export const approve = mutation({
-  args: { proposal: v.string(), at: v.optional(v.number()) },
+  args: { proposal: v.string() },
   handler: async (ctx, args): Promise<Json> => {
     const { actor, proposal: p } = await actorForProposal(ctx, args.proposal)
     requireDecide(actor, p)
@@ -186,49 +186,14 @@ export const approve = mutation({
     if (p.release) fail('INVALID', 'errors.proposalInReleaseApproveRelease')
     const by = actor.user.id
 
-    if (args.at !== undefined) {
-      checkFuture(args.at)
-      const reason = await staleReason(ctx, p)
-      if (reason) {
-        await markStale(ctx, p, reason, by)
-        return { proposal: p._id, status: 'stale', reason: reason.reason, reasonMsg: reason.msg }
-      }
-      const job = await ctx.scheduler.runAt(args.at, internal.proposals.applyScheduled, { proposal: p._id, at: args.at })
-      await ctx.db.patch(p._id, { status: 'scheduled', at: args.at, job, decidedBy: by, decidedAt: Date.now() })
-      return { proposal: p._id, status: 'scheduled', at: args.at }
-    }
-
     const applied = await applyNow(ctx, p, by)
     if (!applied.ok) {
       await markStale(ctx, p, applied, by)
       return { proposal: p._id, status: 'stale', reason: applied.reason, reasonMsg: applied.msg }
     }
     await markApplied(ctx, p, by, applied.change)
-    // A week planned ahead or a planned price: the approver is told from when it shows.
+    // A week planned ahead: the approver is told from when it shows.
     return { proposal: p._id, status: 'applied', change: applied.change ?? null, ...(applied.liveFrom ? { liveFrom: applied.liveFrom } : {}) }
-  },
-})
-
-/** The run of a scheduled approval: re-checks everything now. A change in between makes the proposal stale. */
-export const applyScheduled = internalMutation({
-  args: { proposal: v.id('proposals'), at: v.number() },
-  handler: async (ctx, args): Promise<null> => {
-    const p = await ctx.db.get(args.proposal)
-    if (!p || p.status !== 'scheduled' || p.at !== args.at || !p.decidedBy) return null
-    const site = await ctx.db.get(p.site)
-    const approver = site && await memberOf(ctx, site, { id: p.decidedBy })
-    if (!approver || !isApprover(approver) || (p.author === p.decidedBy && p.via !== 'agent')) {
-      await markStale(ctx, p, staleBecause('history.staleApproverNotAllowed'), p.decidedBy, true)
-      return null
-    }
-    const applied = await applyNow(ctx, p, p.decidedBy)
-    if (applied.ok) {
-      await markApplied(ctx, p, p.decidedBy, applied.change)
-      return null
-    }
-    await markStale(ctx, p, applied, p.decidedBy, true)
-    await mailNotLive(ctx, p.site, p.decidedBy, (p.msg as HistoryMsg | undefined) ?? p.sentence)
-    return null
   },
 })
 
@@ -239,9 +204,8 @@ export const reject = mutation({
     requireDecide(actor, p)
     const reason = args.reason.trim()
     if (reason.length < 1 || reason.length > REASON_MAX) fail('INVALID', 'errors.reasonOneSentence', { reasonMax: REASON_MAX })
-    if (p.status !== 'open' && !(p.status === 'scheduled' && !p.release)) fail('CHANGED_SINCE', 'errors.proposalNoLongerOpen', undefined, { status: p.status })
-    if (p.job) await ctx.scheduler.cancel(p.job)
-    await ctx.db.patch(p._id, { status: 'rejected', reason, decidedBy: actor.user.id, decidedAt: Date.now(), job: undefined, release: undefined })
+    if (p.status !== 'open') fail('CHANGED_SINCE', 'errors.proposalNoLongerOpen', undefined, { status: p.status })
+    await ctx.db.patch(p._id, { status: 'rejected', reason, decidedBy: actor.user.id, decidedAt: Date.now(), release: undefined })
     // A rejection needs the author to act, often the same day; an approval needs nothing (decisions: email on rejection only).
     if (p.author !== actor.user.id) await mailRejected(ctx, p, reason)
     return { proposal: p._id, status: 'rejected' }
@@ -342,8 +306,8 @@ const RECENT_MS = 14 * 24 * 60 * 60 * 1000
 
 /**
  * The top of History (UI.md 10.4), also for an approver: the person's own open proposals (`open`), their own
- * proposals rejected in the last two weeks (`rejected`), and planned changes that did not go live in the last
- * two weeks because they no longer fitted at their time (`notLive`): for an approver of the whole site, who
+ * proposals rejected in the last two weeks (`rejected`), and members of a planned release that did not go live in the
+ * last two weeks because they no longer fitted at its time (`notLive`): for an approver of the whole site, who
  * planned them, else their own. Each list reads at most 50 rows through an index.
  */
 export const mine = query({
@@ -659,7 +623,7 @@ async function blockRelease(ctx: MutationCtx, release: Doc<'releases'>, members:
   const by = release.decidedBy!
   for (const p of members) {
     const s = stale.find((x) => x.proposal === p._id)
-    if (s) await markStale(ctx, p, { reason: s.reason, msg: s.reasonMsg }, by, true)
+    if (s) await markStale(ctx, p, { reason: s.reason, msg: s.reasonMsg }, by)
     else await reopen(ctx, p)
   }
   await ctx.db.patch(release._id, { status: 'stale', job: undefined })
@@ -667,8 +631,8 @@ async function blockRelease(ctx: MutationCtx, release: Doc<'releases'>, members:
 }
 
 /**
- * Tells the approver that a change they planned did not go live (SPEC 17). Without this, a planned
- * change that no longer fits fails at night and the inbox still says "scheduled".
+ * Tells the approver that a release they planned did not go live (SPEC 17). Without this, a planned
+ * release that no longer fits fails at night and the inbox still says "scheduled".
  */
 async function mailNotLive(ctx: MutationCtx, siteId: Id<'sites'>, approver: string, what: HistoryMsg | string) {
   const site = await ctx.db.get(siteId)

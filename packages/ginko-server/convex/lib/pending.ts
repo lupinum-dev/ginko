@@ -41,13 +41,12 @@ export function overlay(entry: Pick<Doc<'entries'>, 'data' | 'prints'>, pending:
   return { data, prints }
 }
 
-/** What the Studio shows about unpublished changes: since when, the last save, the fields, a planned time. */
+/** What the Studio shows about unpublished changes: since when, the last save, the fields. */
 export function pendingInfo(pending: Pending, user?: string) {
   return {
     since: pending.since,
     at: pending.at,
     fields: Object.keys(pending.fields),
-    ...(pending.publishAt === undefined ? {} : { publishAt: pending.publishAt }),
     ...(user !== undefined && pending.by === user ? { own: true } : {}),
   }
 }
@@ -64,7 +63,7 @@ export async function syncPendingRefs(ctx: MutationCtx, schema: Schema, pending:
 
 /**
  * Takes `roots` out of the unpublished changes after a save put them online at once (`entries.save` with `publish`):
- * the published value replaces what waited, the other fields keep waiting. An empty set goes with its planned publish.
+ * the published value replaces what waited, the other fields keep waiting. An empty set goes.
  */
 export async function dropPendingRoots(ctx: MutationCtx, schema: Schema, held: Pending, roots: readonly string[]) {
   if (!roots.some((r) => Object.hasOwn(held.fields, r))) return
@@ -76,9 +75,8 @@ export async function dropPendingRoots(ctx: MutationCtx, schema: Schema, held: P
   await syncPendingRefs(ctx, schema, { ...held, fields })
 }
 
-/** Deletes unpublished changes with their planned publish (unless that run is the one calling) and file references. */
-export async function dropPending(ctx: MutationCtx, held: Pending, running = false) {
-  if (held.publishJob && !running) await ctx.scheduler.cancel(held.publishJob)
+/** Deletes unpublished changes with their file references. */
+export async function dropPending(ctx: MutationCtx, held: Pending) {
   await syncFileRefs(ctx, held.site, 'pending', held.entry, new Set())
   await ctx.db.delete(held._id)
 }

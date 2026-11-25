@@ -68,12 +68,6 @@ export type TaskInput<F extends Fields = Fields> =
   | ({ id: StandardTask; label?: Label } & TaskOptions<F>)
   | ({ id: string; label: Label } & TaskOptions<F>)
 
-/**
- * A planned change of one field: from the date in the date field `from` on, `next` replaces `field`. A task that
- * lists `field` shows `next` and `from` with it.
- */
-type Planned<F> = { field: keyof F & string; next: keyof F & string; from: keyof F & string }
-
 /** The entry is shown until the date in this field has passed; `plusDays` more days, `thenDelete` removes it after. */
 export type ShowUntil<K extends string = string> = K | { field: K; plusDays?: number; thenDelete?: boolean }
 
@@ -114,7 +108,6 @@ interface Common<F extends Fields> {
   layout?: 'sections' | 'tabs'
   /** The owner's buttons, in order; the first is the main one. A Studio brick with a task is on the Today page. */
   tasks?: readonly TaskInput<F>[]
-  planned?: Planned<F>
   /** The fields whose dated changes a page may read ahead (`upcoming`): `{ public: ['price'] }`. Other waiting values stay private. */
   timeline?: BrickTimeline<keyof F & string>
 }
@@ -144,7 +137,7 @@ export interface CollectionInput<F extends Fields> extends Common<F> {
 }
 
 /** What `single` and `collection` return. The names in tasks and keys are typed by `F` where they are written and kept as plain names. */
-interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; body?: string; preview?: string; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; planned?: Planned<Fields>; timeline?: BrickTimeline }
+interface Def<F extends Fields> { [DEF]: true; label: Label; describe?: Label; item?: Label; fields: F; body?: string; preview?: string; layout?: 'sections' | 'tabs'; tasks?: readonly TaskInput[]; timeline?: BrickTimeline }
 export interface SingleDef<F extends Fields = Fields> extends Def<F> { kind: 'single'; status?: SingleStatusInput }
 export interface CollectionDef<F extends Fields = Fields> extends Def<F> {
   kind: 'collection'
@@ -162,7 +155,7 @@ export type BrickDef = SingleDef | CollectionDef
 
 /** A brick with one entry, such as the home page or the contact details. */
 export function single<const F extends Fields>(input: SingleInput<F>): SingleDef<F> {
-  // The names in tasks and `planned` are typed by `F` in the input and kept as plain names.
+  // The names in tasks and `timeline` are typed by `F` in the input and kept as plain names.
   return { [DEF]: true, kind: 'single', ...input } as SingleDef<F>
 }
 

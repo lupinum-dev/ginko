@@ -3,7 +3,7 @@
 // single, titles, ofBricks), so a save elsewhere does not send the whole site again.
 import { api } from '#convex/api'
 import type { Brick } from '@lupinum/ginko'
-import { ordered, type Schema } from '@lupinum/ginko/internal'
+import { ordered, type Schema, type StatusInput } from '@lupinum/ginko/internal'
 import { useToday } from '@lupinum/ginko-editor'
 import { taskRef, type Data, type StoredTranslation, type Task } from '../utils/content'
 
@@ -31,9 +31,11 @@ export interface Entry {
   since?: number
   /**
    * A live entry's unpublished changes (save without publishing): `data` and `prints` already show them. Since when,
-   * the last save, the changed fields, a planned publish, and `own` when the person saved last.
+   * the last save, the changed fields, and `own` when the person saved last.
    */
-  pending?: { since: number; at: number; fields: string[]; publishAt?: number; own?: boolean }
+  pending?: { since: number; at: number; fields: string[]; own?: boolean }
+  /** Its changes for a later day, waiting or stopped (D124; the input of `statusOf`); their values are in datedChanges.list. */
+  changes?: StatusInput['changes']
 }
 
 export async function useSiteData() {

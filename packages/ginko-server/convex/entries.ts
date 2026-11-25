@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { changeRefusal, dataOn, blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesEnded, shownOn, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, shownUntil, weeklyTask, type Schema, type StoredEntry, type ValidationResult } from '@lupinum/ginko/internal'
+import { changeRefusal, dataOn, blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesEnded, shownOn, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, shownUntil, weeklyTask, withPublishedOn, planDay, type Schema, type StoredEntry, type ValidationResult } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -12,7 +12,7 @@ import { actorFor, authorize, authorizeWriter, byOf, checkRev, createdBy, entryO
 import { fieldLabelAt, fileIdsOf, mergeField, newOrder, nextPrints, refIdsIn, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { labeler, type Who } from './lib/names'
 import { historyText, msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
-import { DEFAULT_LOCALE, isLocale, t, type MessageKey } from './lib/i18n'
+import { DEFAULT_LOCALE, isLocale, t } from './lib/i18n'
 import { dropPending, dropPendingRoots, keepsPending, overlay, pendingBySite, pendingInfo, pendingOf, syncPendingRefs, type Pending } from './lib/pending'
 import { countersOf, DELETED_KEPT, NO_PLAN, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
@@ -232,19 +232,22 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
 
   // A root counts as changed when its value or one of its prints changed.
   const changed = roots.filter((r) => !same(data[r], before[r]) || !same(printsOf(prints, r), printsOf(base.prints, r)))
-  if (!changed.length) {
-    // Published as it is online: what waited for these fields is no longer wanted.
-    if (held && !toPending) await dropPendingRoots(ctx, schema, held, roots)
-    const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
-    return unchanged
-  }
-
   // A draft's empty `publishedOn` field is filled when it goes online, so it counts as filled (D108): with the day of
   // its plan, else today.
   const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data, planDay(schema, entry.publishAt)) : data
-  // A draft without a time may be incomplete (D115): only its shape is checked; a revert saves through here too.
-  const mode = stateOf(entry) === 'draft' && entry.publishAt === undefined ? 'shape' : 'patch'
-  const { errors, warnings } = await validate(schema, entry.brick, checked, { mode, changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+  // A draft without a time may be incomplete, not badly formed (D115, mode `draft`); a revert saves through here too.
+  const mode = stateOf(entry) === 'draft' && entry.publishAt === undefined ? 'draft' : 'patch'
+  const check = async () => await validate(schema, entry.brick, checked, { mode, changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+  if (!changed.length) {
+    // Published as it is online: what waited for these fields is no longer wanted.
+    if (held && !toPending) await dropPendingRoots(ctx, schema, held, roots)
+    // A draft saved unchanged still lacks what it lacked: its warnings come back, so the form keeps its notes (D116).
+    const warnings = stateOf(entry) === 'draft' ? (await check()).warnings as unknown as Json[] : []
+    const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings }
+    return unchanged
+  }
+
+  const { errors, warnings } = await check()
   if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
   // A planned draft goes online at its time without a person: a save that leaves it failing the full check is refused
   // now, not stopped then (D101). The person fills the field or cancels the plan first.
@@ -285,8 +288,8 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   if (held) await dropPendingRoots(ctx, schema, held, changed)
   // What the other languages show now (the Studio's message after saving); a draft is not on the website.
   const translation = stateOf(entry) === 'draft' ? [] : translationNotes(schema, entry.brick, { _id: entry._id, data, prints }, before, changed, locale)
-  // A week planned ahead or a planned price shows later than "in about a minute": the Studio says from when.
-  const from = stateOf(entry) === 'live' ? liveFrom(schema, entry.brick, data, changed, todayIn(schema.timeZone)) : undefined
+  // A week planned ahead shows later than "in about a minute": the Studio says from when.
+  const from = stateOf(entry) === 'live' ? liveFrom(schema, entry.brick, data, todayIn(schema.timeZone)) : undefined
   return { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json, translation, ...(from ? { liveFrom: from } : {}) }
 }
 
@@ -511,10 +514,10 @@ const fieldOrder = (brick: Brick, key: string) => {
 type PendingPlan = Awaited<ReturnType<typeof pendingPlan>>
 
 /** Puts the unpublished changes online through the normal write path: one undoable change with the diff to the live version. */
-async function applyPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, held: Pending, plan: PendingPlan, history: Recorded, opId: string, running = false) {
+async function applyPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, held: Pending, plan: PendingPlan, history: Recorded, opId: string) {
   const written = await commitEntry(ctx, { actor, entry, fields: plan.brick.fields, roots: plan.roots, data: plan.data, prints: plan.prints, kind: 'save', history, opId })
   for (const s of plan.slugs) await moveSlugRows(ctx, actor, entry, s.locale, s.moved)
-  await dropPending(ctx, held, running)
+  await dropPending(ctx, held)
   return written
 }
 
@@ -528,8 +531,8 @@ function fieldsLabel(schema: Schema, brick: Brick, roots: string[]): Label {
 
 /**
  * `publish` of a live entry: its unpublished changes, now or, with `from`, as a dated change of that day (D125). A time
- * (`at`) is for a draft; an approved request whose time or day has passed publishes at once. `rev` (optional) is the
- * version the person saw.
+ * (`at`) is for a draft only (D130); an approved request whose day has passed publishes at once. `rev` (optional) is
+ * the version the person saw.
  */
 async function publishPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, args: ObjectType<typeof publishArgs>) {
   const schema = actor.site.schema as Schema
@@ -540,8 +543,8 @@ async function publishPending(ctx: MutationCtx, actor: Actor, entry: Doc<'entrie
   if (args.rev !== undefined && args.rev !== entry.rev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
   const lateDay = args.from !== undefined && actor.approvedBy !== undefined && args.from <= todayIn(schema.timeZone)
   if (args.from !== undefined && !lateDay) return await publishPendingDated(ctx, actor, entry, held, args, args.from)
-  const late = lapsed(actor, args.at) || lateDay
-  if (args.at !== undefined && !late) fail('INVALID', 'errors.liveTakesDay')
+  if (args.at !== undefined) fail('INVALID', 'errors.liveTakesDay')
+  const late = lateDay
   const plan = await pendingPlan(ctx, actor, entry, held)
   const title = labelOf(schema, entry.brick, entry.data as Data)
   const fields = fieldsLabel(schema, plan.brick, plan.roots)
@@ -584,34 +587,6 @@ async function publishPendingDated(ctx: MutationCtx, actor: Actor, entry: Doc<'e
   const written = await writeDated(ctx, actor, entry, plan, held.revs, recorded(msg('history.datedFromPending', words), schema), args.opId)
   await dropPending(ctx, held)
   return { entry: entry._id, lifeRev: entry.lifeRev, rev: entry.rev, contentRev: written.contentRev, change: written.change, state: 'live', from, translation: [] }
-}
-
-/** The scheduled run of unpublished changes: applies them as the system, or stops with a history line that says why. */
-async function publishPendingDue(ctx: MutationCtx, entry: Doc<'entries'>, at: number) {
-  const held = await pendingOf(ctx, entry._id)
-  if (!held || held.publishAt !== at) return
-  const site = await ctx.db.get(entry.site)
-  if (!site || site.deleting) return
-  const actor: Actor = { user: { id: SYSTEM.actor }, site, role: 'admin', grants: [] }
-  const schema = site.schema as Schema
-  const title = labelOf(schema, entry.brick, entry.data as Data)
-  const opId = `publish:${entry._id}:${at}`
-  let plan: PendingPlan
-  try {
-    plan = await pendingPlan(ctx, actor, entry, held)
-  } catch (error) {
-    // A throwing job would fail silently: the changes stay unpublished and the history says why.
-    if (!(error instanceof ConvexError) || typeof error.data !== 'object' || error.data === null) throw error
-    const data = error.data as { key?: string; params?: Record<string, string | number> }
-    const why = data.key ? msg(data.key as MessageKey, data.params) : msg('history.staleNoLonger')
-    await ctx.db.patch(held._id, { publishAt: undefined, publishJob: undefined })
-    await ctx.db.insert('changes', {
-      site: entry.site, entry: entry._id, brick: entry.brick, ...SYSTEM, opId, kind: 'publishStopped',
-      ...recorded(msg('history.changesPublishStopped', { title, why }), schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),
-    })
-    return
-  }
-  await applyPending(ctx, actor, entry, held, plan, recorded(msg('history.publishedChangesDue', { title, fields: fieldsLabel(schema, plan.brick, plan.roots) }), schema), opId, true)
 }
 
 const discardArgs = { site: v.string(), opId: v.string(), task: v.optional(v.string()), entry: v.string(), rev: v.optional(v.number()) }
@@ -684,9 +659,9 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
 
     const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     const checked = stateOf(entry) === 'draft' ? withPublishedOn(schema, entry.brick, data, planDay(schema, entry.publishAt)) : data
-    // Held to the check of a save (D101): a draft without a time for its shape only (D115).
-    const mode = stateOf(entry) === 'draft' && entry.publishAt === undefined ? 'shape' : 'patch'
-    const { errors } = await validate(schema, entry.brick, checked, { mode, changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+    // Held to the check of a save (D101): a draft without a time in mode `draft` (well formed, may be incomplete, D115).
+    const mode = stateOf(entry) === 'draft' && entry.publishAt === undefined ? 'draft' : 'patch'
+    const { errors, warnings } = await validate(schema, entry.brick, checked, { mode, changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('NOT_UNDOABLE', 'errors.oldVersionNoLongerFitsSchema', undefined, { errors: errors as unknown as Json })
     // An undo of a planned draft is held to the full check, as a save is (D101).
     if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }, planDay(schema, entry.publishAt)))
@@ -703,7 +678,8 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     })
     if (followed) await writeFollowedName(ctx, actor, entry, followed)
     await ctx.db.patch(change._id, { undoneBy: written.change })
-    const result: Json = { entry: entry._id, rev: written.rev, contentRev: written.contentRev, warnings: [], ...(restoredFiles.length ? { restoredFiles: restoredFiles.map((f) => f.name) } : {}) }
+    // A draft's warnings say what it lacks after the undo (D116), as a save's do; a live entry's are not shown.
+    const result: Json = { entry: entry._id, rev: written.rev, contentRev: written.contentRev, warnings: stateOf(entry) === 'draft' ? warnings as unknown as Json : [], ...(restoredFiles.length ? { restoredFiles: restoredFiles.map((f) => f.name) } : {}) }
     return result
   })
 }
@@ -1052,9 +1028,9 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const data = draft ? slugged.data : withPublishedOn(schema, args.brick, slugged.data)
     // Translations sent with a new entry are fresh: every foreign leaf gets the print of its main value.
     const prints = nextPrints({ fields: brick.fields, roots: Object.keys(brick.fields), before: {}, after: data, prints: {}, main: schema.locales[0]!, confirm: undefined })
-    // A draft without a time may be incomplete (D115): only its shape is checked, and what it lacks comes back as
+    // A draft without a time may be incomplete, not badly formed (D115, mode `draft`), and what it lacks comes back as
     // warnings. Online at once or planned, it is checked in full.
-    const { errors, warnings } = await validate(schema, args.brick, withPublishedOn(schema, args.brick, data, planDay(schema, at)), { mode: draft && at === undefined ? 'shape' : 'create', ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
+    const { errors, warnings } = await validate(schema, args.brick, withPublishedOn(schema, args.brick, data, planDay(schema, at)), { mode: draft && at === undefined ? 'draft' : 'create', ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
     await refuseSecondPlan(ctx, actor, args.brick, brick, data)
 
@@ -1120,7 +1096,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     // What the other languages show of the new entry (the Studio's message after saving); a draft is not on the website.
     const translation = draft ? [] : translationNotes(schema, args.brick, { _id: entry, data, prints }, {}, Object.keys(brick.fields))
     // A new planned week shows from its first day; the Studio says from when.
-    const from = draft ? undefined : liveFrom(schema, args.brick, data, Object.keys(data), todayIn(schema.timeZone))
+    const from = draft ? undefined : liveFrom(schema, args.brick, data, todayIn(schema.timeZone))
     return { entry, rev: 1, contentRev: c.contentRev, state: draft ? 'draft' : 'live', ...(at === undefined ? {} : { publishAt: at }), translation, ...(from ? { liveFrom: from } : {}), warnings: warnings as unknown as Json }
   })
 }
@@ -1347,7 +1323,7 @@ type Issue = ValidationResult['errors'][number]
 
 /**
  * The full check of a draft that goes online or gets a time (D101): every rule of the schema, as a create runs it.
- * A draft may hold what a create refuses (a draft without a time is checked for its shape only, D115; an import keeps
+ * A draft may hold what a create refuses (a draft without a time may be incomplete, D115; an import keeps
  * what fits the shape; a referenced entry was removed since; a field became required), so passing as a draft says
  * nothing about going online. The field errors; empty: it passes.
  * `publishedOn`: the day an empty `publishedOn` field gets on the way online, so it counts as filled (D108); `false`
@@ -1357,23 +1333,6 @@ async function onlineErrors(ctx: QueryCtx, site: Id<'sites'>, schema: Schema, en
   const fields = structuralBrick(schema, entry.brick).fields
   const data = publishedOn === false ? entry.data as Data : withPublishedOn(schema, entry.brick, entry.data as Data, publishedOn)
   return (await validate(schema, entry.brick, data, { mode: 'create', ...(await lookupsFor(ctx, site, fields, data)) })).errors
-}
-
-/**
- * Rule 9 (D108): an empty `publishedOn` field means "the day the entry goes online". Returns `data` with the site's day
- * in that field, or `data` itself when the brick states no such field or the field holds a day (a typed date stays).
- */
-function withPublishedOn(schema: Schema, brickKey: string, data: Data, day = todayIn(schema.timeZone)): Data {
-  const brick = schema.bricks[brickKey]
-  const field = brick?.kind === 'collection' ? brick.publishedOn : undefined
-  const value = field === undefined ? undefined : data[field]
-  if (field === undefined || (value !== undefined && value !== null && value !== '')) return data
-  return { ...data, [field]: day }
-}
-
-/** The day an empty `publishedOn` field gets: the day of the plan's time `at` in the site's zone, or today without one. */
-function planDay(schema: Schema, at: number | undefined): string {
-  return todayIn(schema.timeZone, at === undefined ? undefined : new Date(at))
 }
 
 /** Refuses a write with the field errors of `onlineErrors`, as the form shows them. */
@@ -1519,9 +1478,7 @@ export async function unpublishAs(ctx: MutationCtx, actor: Actor, args: ObjectTy
     // A draft with a time or a stopped plan can be cancelled; a plain draft has nothing to cancel.
     if (!wasLive && entry.publishAt === undefined && !entry.stopped) fail('INVALID', 'errors.entryAlreadyDraft', undefined, lifeStateOf(entry))
     const held = wasLive ? await pendingOf(ctx, entry._id) : null
-    // One step back: planned unpublished changes lose their time first, as a scheduled draft does; the entry stays online.
-    if (held?.publishAt !== undefined) return await unschedulePending(ctx, actor, entry, held, args)
-    // A single has no draft state: it can lose a planned time, never go offline.
+    // A single has no draft state: it never goes offline.
     if (brick.kind === 'single') fail('INVALID', 'errors.singleStaysOnline', undefined, lifeStateOf(entry))
 
     const label = labelOf(schema, entry.brick, entry.data as Data)
@@ -1557,25 +1514,6 @@ export async function unpublishAs(ctx: MutationCtx, actor: Actor, args: ObjectTy
   })
 }
 
-/** `unpublish` of a live entry whose unpublished changes have a time: only the time goes. */
-async function unschedulePending(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, held: Pending, args: ObjectType<typeof unpublishArgs>) {
-  const schema = actor.site.schema as Schema
-  const title = labelOf(schema, entry.brick, entry.data as Data)
-  if (await needsProposal(ctx, actor, 'unpublish', args.task, entry.brick, entry)) {
-    return await propose(ctx, actor, {
-      op: 'unpublish', brick: entry.brick, entry: entry._id, args: args as unknown as Json, base: { lifeRev: entry.lifeRev },
-      before: { state: 'live', publishAt: held.publishAt! }, after: { state: 'live' }, ...recorded(msg('history.unscheduleProposal', { title }), schema),
-    })
-  }
-  if (held.publishJob) await ctx.scheduler.cancel(held.publishJob)
-  await ctx.db.patch(held._id, { publishAt: undefined, publishJob: undefined })
-  const change = await ctx.db.insert('changes', {
-    site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'unschedule',
-    ...recorded(msg('history.changesUnscheduled', { title }), schema), entryRev: entry.rev, contentRev: actor.site.contentRev, at: Date.now(),
-  })
-  return { entry: entry._id, lifeRev: entry.lifeRev, rev: entry.rev, contentRev: actor.site.contentRev, change, state: 'live' }
-}
-
 /**
  * The scheduled job of a draft (SPEC 15): publishes it when it is still a draft with exactly this
  * `publishAt` (a rescheduled, unpublished or removed entry does nothing). The actor is `system`.
@@ -1584,13 +1522,8 @@ export const publishDue = internalMutation({
   args: { entry: v.id('entries'), at: v.number() },
   handler: async (ctx, args): Promise<null> => {
     const entry = await ctx.db.get(args.entry)
-    if (!entry || entry.deletedAt) return null
-    // A live entry's job publishes its unpublished changes.
-    if (stateOf(entry) === 'live') {
-      await publishPendingDue(ctx, entry, args.at)
-      return null
-    }
-    if (entry.publishAt !== args.at) return null
+    // An online entry has no job of its own: unpublished changes for a later day are a dated change (D130).
+    if (!entry || entry.deletedAt || stateOf(entry) === 'live' || entry.publishAt !== args.at) return null
     const site = await ctx.db.get(entry.site)
     if (!site || site.deleting) return null
     const c = countersOf(site)
@@ -1607,7 +1540,7 @@ export const publishDue = internalMutation({
         await mailStopped(ctx, site, { _id: entry._id, brick: entry.brick, stopped, title: label })
       } catch (error) {
         // The code or the class only: an error's message can hold an address or a title.
-        const kind = error instanceof ConvexError ? String((error.data as { code?: unknown }).code) : error instanceof Error ? error.constructor.name : typeof error
+        const kind = error instanceof ConvexError ? String((error.data as { code?: unknown } | null)?.code) : error instanceof Error ? error.constructor.name : typeof error
         console.error(`Mail stopped ${entry._id} not queued (${kind}).`)
       }
       await ctx.db.insert('changes', {

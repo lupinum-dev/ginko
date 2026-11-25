@@ -55,19 +55,15 @@ describe('staleOf (weekly upkeep)', () => {
 
 describe('liveFrom (when a save shows on the website)', () => {
   const schema = serializeSchema(restaurant)
-  const plan = { price: { amount: 2190 }, nextPrice: { amount: 2290 }, priceFrom: '2026-11-01' }
-  // Wrong behaviour caught: a week planned for 19 October or a price planned for 1 November is saved with "On the
-  // website in about a minute", so the owner believes it is live now; or a change that is live now gets a later date.
+  // Wrong behaviour caught: a week planned for 19 October is saved with "On the website in about a minute", so the owner
+  // believes it is live now; or a change that is live now gets a later date.
   it.each([
-    ['a planned week, saved on Wednesday', 'lunchPlans', { weekOf: '2026-10-19' }, ['days'], '2026-10-14', '2026-10-17'],
-    ['a planned week, saved on the Saturday it starts to show', 'lunchPlans', { weekOf: '2026-10-19' }, ['days'], '2026-10-17', undefined],
-    ['only the planned price', 'menu', plan, ['nextPrice', 'priceFrom'], '2026-10-14', '2026-11-01'],
-    ['the price and its plan', 'menu', plan, ['price', 'nextPrice', 'priceFrom'], '2026-10-14', undefined],
-    ['a planned price due today', 'menu', { ...plan, priceFrom: '2026-10-14' }, ['nextPrice', 'priceFrom'], '2026-10-14', undefined],
-    ['a plan removed', 'menu', { price: plan.price }, ['nextPrice', 'priceFrom'], '2026-10-14', undefined],
-    ['this week\'s lunch', 'lunch', { weekOf: '2026-10-19' }, ['weekOf'], '2026-10-17', undefined],
-  ] as const)('%s', (_name, brick, data, changed, today, expected) => {
-    expect(liveFrom(schema, brick, data, changed, today)).toBe(expected)
+    ['a planned week, saved on Wednesday', 'lunchPlans', { weekOf: '2026-10-19' }, '2026-10-14', '2026-10-17'],
+    ['a planned week, saved on the Saturday it starts to show', 'lunchPlans', { weekOf: '2026-10-19' }, '2026-10-17', undefined],
+    ['this week\'s lunch', 'lunch', { weekOf: '2026-10-19' }, '2026-10-17', undefined],
+    ['a dish', 'menu', { price: { amount: 2190 } }, '2026-10-14', undefined],
+  ] as const)('%s', (_name, brick, data, today, expected) => {
+    expect(liveFrom(schema, brick, data, today)).toBe(expected)
   })
 })
 
@@ -75,9 +71,9 @@ describe('createAsks (what a create task asks)', () => {
   const dishes = serializeSchema(restaurant).bricks.menu!
 
   // Wrong behaviour caught: a create task with `fields` still asks for (and the assistant still offers) every field.
-  it('asks only the listed fields, never the slug or the plan; without a list, every field but those', () => {
+  it('asks only the listed fields; without a list, every field but the slug', () => {
     const asked = (task?: { fields?: readonly string[] }) => Object.keys(dishes.fields).filter((key) => createAsks(dishes, key, task as never))
-    expect(asked({ fields: ['name', 'price', 'soldOutOn', 'nextPrice'] })).toEqual(['name', 'price', 'soldOutOn'])
+    expect(asked({ fields: ['name', 'price', 'soldOutOn'] })).toEqual(['name', 'price', 'soldOutOn'])
     expect(asked({ fields: ['name'] })).toEqual(['name'])
     expect(asked()).toEqual(asked({}))
     expect(asked()).toEqual(['category', 'name', 'description', 'price', 'allergens', 'veg', 'onMenu', 'soldOutOn'])

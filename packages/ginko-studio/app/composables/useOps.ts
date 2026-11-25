@@ -114,6 +114,8 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   const create = useConvexMutation(api.entries.create)
   const revert = useConvexMutation(api.entries.revert)
   const purge = useConvexMutation(api.entries.purge)
+  const cancelDated = useConvexMutation(api.datedChanges.cancel)
+  const moveDated = useConvexMutation(api.datedChanges.setDay)
   const lasting = inject(LASTING)
   if (!lasting) throw new Error('provideLastingOps() is missing in app.vue')
   const { remove, restore, undo, publish, unpublish, discard, move, place: moveInTree, setHeading: headingInTree } = lasting
@@ -124,13 +126,16 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
 
   /** What the other languages show after a save, create or publish (the server's `translation`); `main` is the site's main locale. */
   const noteOf = (notes: Parameters<typeof translationNote>[0], main: string) => translationNote(notes, t, language.value, main)
+  /** "Samstag, 17. Oktober": the day a dated change or a week planned ahead starts on. */
+  const dayText = (day: string) => format.date(day, { weekday: 'long', day: 'numeric', month: 'long' })
   /**
-   * When a write shows on the website: "in about a minute", or the day the server names (`liveFrom`) for a week planned
-   * ahead or a planned price, so nobody takes it for live now.
+   * When a write shows on the website: "in about a minute", or the day the server names, so nobody takes it for live
+   * now: `liveFrom` for a week planned ahead, `from` for a dated change (D125).
    */
   const liveText = (result: unknown) => {
-    const from = typeof result === 'object' && result !== null && 'liveFrom' in result && typeof result.liveFrom === 'string' ? result.liveFrom : undefined
-    return from ? t('ops.liveFrom', { date: format.date(from, { weekday: 'long', day: 'numeric', month: 'long' }) }) : t('ops.liveHint')
+    const day = (key: string) => (typeof result === 'object' && result !== null && key in result ? (result as Record<string, unknown>)[key] : undefined)
+    const from = [day('liveFrom'), day('from')].find((d): d is string => typeof d === 'string')
+    return from ? t('ops.liveFrom', { date: dayText(from) }) : t('ops.liveHint')
   }
 
   /** `text` and a sentence per picture that came back from the Files trash with the old version. */
@@ -189,28 +194,38 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   }
 
   /**
-   * Puts a live entry's unpublished changes online, now or at `at`; `rev` is the version the person saw. A planned
-   * publish offers Rückgängig (the time goes, the changes stay); one done now is undone from the history.
+   * Puts a live entry's unpublished changes online, now or, with `from`, as a dated change of that day (D125); `rev`
+   * is the version the person saw. One done now is undone from the history; a dated one is cancelled or moved in the
+   * editor's notice of it (D131), so the message offers no Rückgängig.
    */
-  async function publishChanges(entry: string, lifeRev: number, rev: number, opts: { at?: number; task?: string; timeZone: string; main: string }) {
-    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, rev, at: opts.at })
+  async function publishChanges(entry: string, lifeRev: number, rev: number, opts: { from?: string; task?: string; main: string }) {
+    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, rev, ...(opts.from === undefined ? {} : { from: opts.from }) })
     if (isProposal(result)) { sentForApproval(); return result }
-    if (opts.at === undefined) {
-      show([t('ops.changesPublished'), t('ops.liveHint'), noteOf(result.translation, opts.main)].filter(Boolean).join(' '))
-      return result
-    }
-    show(t('ops.changesScheduled', { time: whenText(opts.at, opts.timeZone, format) }), {
-      action: { label: t('ops.undo'), run: async () => { await clearChangesSchedule(entry, lifeRev, opts.task).catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } },
-    })
+    show(opts.from === undefined
+      ? [t('ops.changesPublished'), t('ops.liveHint'), noteOf(result.translation, opts.main)].filter(Boolean).join(' ')
+      : t('ops.changesScheduled', { time: dayText(opts.from) }))
     return result
   }
 
-  /** Takes the time off planned unpublished changes; the entry stays online and the changes stay saved. */
-  async function clearChangesSchedule(entry: string, lifeRev: number, task?: string) {
-    const result = await unpublish.mutate({ site: site.value, opId: opId(), task, entry, lifeRev })
-    if (isProposal(result)) { sentForApproval(); return result }
-    show(t('ops.changesScheduleCleared'))
-    return result
+  /**
+   * A change waiting for a later day (D131): `cancel` takes it out (the entry stays as it is, nothing goes offline),
+   * `setDay` moves it to another day (a stopped one starts again). Throw OpError for the notice to show.
+   */
+  async function cancelChange(change: string, task?: string) {
+    try {
+      await cancelDated.mutate({ site: site.value, opId: opId(), task, change })
+      show(t('dated.cancelled'))
+    } catch (error) {
+      throw opErrorOf(error)
+    }
+  }
+  async function moveChange(change: string, from: string, task?: string) {
+    try {
+      await moveDated.mutate({ site: site.value, opId: opId(), task, change, from })
+      show(t('dated.moved', { day: dayText(from) }))
+    } catch (error) {
+      throw opErrorOf(error)
+    }
   }
 
   /** Verwerfen: the unpublished changes go, the website keeps its version. Not undoable, so the editor asks first. */
@@ -308,21 +323,30 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     placeEntry,
     setHeading,
     publishChanges,
-    clearChangesSchedule,
+    cancelChange,
+    moveChange,
+    dayText,
     discardChanges,
     /**
      * Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. The message also says
      * what the other languages show now (the server's `translation`), named from the site's `main` locale.
      */
-    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string; publish?: true }) {
+    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string; publish?: true; from?: string }) {
       try {
-        const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm, publish: args.publish })
+        const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm, publish: args.publish, ...(args.from === undefined ? {} : { from: args.from }) })
         // A change that needs a yes writes nothing yet (SPEC 17): say so instead of "Saved".
         if (isProposal(result)) {
           sentForApproval()
           return { proposal: result.proposal }
         }
         const change = 'change' in result ? result.change : undefined
+        // A change for a later day (D125): the day it starts on. It is cancelled or moved in the editor's notice of it,
+        // not undone from the history, so no Rückgängig.
+        if (args.from !== undefined) {
+          // The same change already waits for that day when the server wrote nothing: still true.
+          show(`${t('ops.saved')} ${liveText({ from: args.from })}`)
+          return { proposal: undefined, rev: result.rev }
+        }
         // A live entry keeps the save unpublished unless `publish`: the message says so, and there is nothing to undo on the website.
         if ('pending' in result) {
           show(result.pending ? t('ops.changesSaved') : t('ops.savedLikeLive'))
@@ -351,7 +375,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           : t('ops.draftCreated')
         // A new entry starts at lifeRev 1; undo removes it (a draft or a scheduled one was never on the website).
         show(text, { action: { label: t('ops.undo'), run: async () => { await removeEntry(result.entry, 1, args.removeTask, t('ops.removed'), result.state !== 'live').catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
-        return { proposal: undefined, entry: result.entry, warnings: warningsOf(result) }
+        return { proposal: undefined, entry: result.entry, rev: result.rev, warnings: warningsOf(result) }
       } catch (error) {
         throw opErrorOf(error)
       }

@@ -209,7 +209,7 @@ export async function checkImport(schema: Schema, entries: ExportEntry[]): Promi
       else if (names.has(`${entry.brick}/${entry.name}`)) problems.push(`Two entries of “${entry.brick}” have the name “${entry.name}”. A name is unique in its brick, the trash included.`)
       names.add(`${entry.brick}/${entry.name}`)
     }
-    for (const issue of (await validate(schema, entry.brick, entry.data, { mode: 'shape' })).errors) {
+    for (const issue of (await validate(schema, entry.brick, entry.data, { mode: 'restore' })).errors) {
       problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
     }
     // A waiting change is checked as a save makes it (D128); removing an entry cancelled its changes.

@@ -569,32 +569,15 @@ describe('plans (weeks planned ahead)', () => {
   })
 })
 
-describe('planned (a change from a date on)', () => {
-  const dish = (planned: unknown, priceTask: readonly string[] = ['price', 'nextPrice', 'priceFrom']) => site({}, {
-    bricks: {
-      menu: collection({ untranslated: 'fallback',
-        listing: { title: 'name' },
-        label: 'Karte', max: 20, order: 'manual',
-        fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), nextPrice: f.money('Geplanter Preis', optional), priceFrom: f.date('Gilt ab', optional), note: f.text('Hinweis', { max: 20, optional: true }), old: f.text('Alt', { max: 20, optional: true }) },
-        planned: planned as never,
-        tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', pick: true, fields: priceTask as never }],
-      }),
-    },
-  })
-  const rule = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
-
-  // Wrong behaviour caught: a task changes the price without seeing the planned one, so the new price is replaced on
-  // the plan's date and nobody saw it coming; or a rule naming fields that cannot hold a plan ships and never applies.
-  it.each([
-    ['a valid rule', rule, undefined, []],
-    ['a price task blind to its plan', rule, ['price'], ['menu.price: the task changes “price”, so it must also show its plan “nextPrice” and “priceFrom”.']],
-    ['a missing field', { ...rule, next: 'nope' }, undefined, ['menu: planned.next names “nope”, which is not a field of the brick.']],
-    ['a next of another type', { ...rule, next: 'note' }, ['price', 'note', 'priceFrom'], ['menu: planned.next “note” needs the type of “price” (money).']],
-    ['a from that is not a date', { ...rule, from: 'note' }, ['price', 'nextPrice', 'note'], ['menu: planned.from “note” must be a date field.']],
-    ['a required next', { ...rule, next: 'price', field: 'nextPrice' }, undefined, ['menu: planned.next “price” and planned.from “priceFrom” must be optional.']],
-    ['one field twice', { ...rule, next: 'price' }, undefined, ['menu: planned needs three different fields.', 'menu: planned.next “price” and planned.from “priceFrom” must be optional.']],
-  ])('%s', (_name, planned, priceTask, expected) => {
-    expect(problemsOf(dish(planned, priceTask))).toEqual(expected)
+describe('planned, a brick key before dated changes', () => {
+  // Wrong behaviour caught: a stored schema that still has `planned` gets only "unknown key" (or passes), and the site
+  // owner does not learn that the field's plan now is a dated change with `timeline` and `when`.
+  it('names the way to dated changes', () => {
+    const schema = base()
+    Object.assign(schema.bricks.menu!, { planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' } })
+    expect(checkSchema(schema, statusRules)).toEqual([
+      "menu.planned: a planned change is a dated change now. Remove planned and its two fields, and write `timeline: { public: ['<field>'] }` on the brick and `when: { from: 'ask' }` on the task that changes the field.",
+    ])
   })
 })
 
@@ -733,8 +716,7 @@ describe('create task fields', () => {
       menu: collection({ untranslated: 'fallback',
         listing: { title: 'name' },
         label: 'Karte', max: 20, order: 'manual',
-        fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), nextPrice: f.money('Neuer Preis', { optional: true }), priceFrom: f.date('Preis ab', { optional: true }), slug: f.slug('Adresse', { from: 'name' }), onMenu: f.boolean('Auf der Karte', { optional: true, default: true }), note: f.text('Hinweis', { max: 20, optional: true }), old: f.text('Alt', { max: 20, optional: true }) },
-        planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
+        fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), slug: f.slug('Adresse', { from: 'name' }), onMenu: f.boolean('Auf der Karte', { optional: true, default: true }), note: f.text('Hinweis', { max: 20, optional: true }), old: f.text('Alt', { max: 20, optional: true }) },
         tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', fields: fields as never, ...(prefill ? { prefill: prefill as never } : {}) }],
       }),
     },
@@ -748,8 +730,6 @@ describe('create task fields', () => {
     ['an unknown field', ['name', 'price', 'nope'], undefined, ['menu.add.fields: “nope” is not a field of this brick.']],
     ['a required field left out', ['name'], undefined, ['menu.add.fields: “price” is required and has no default, so the task must ask for it.']],
     ['the slug', ['name', 'price', 'slug'], undefined, ['menu.add.fields: “slug” is the address and is made from “name”, so the task cannot ask for it.']],
-    ['the planned next value', ['name', 'price', 'nextPrice'], undefined, ['menu.add.fields: “nextPrice” is the plan of a planned change, so the task cannot ask for it.']],
-    ['the planned from date', ['name', 'price', 'priceFrom'], undefined, ['menu.add.fields: “priceFrom” is the plan of a planned change, so the task cannot ask for it.']],
     ['a retired field', ['name', 'price', 'old'], undefined, ['menu.add.fields: “old” is retired, so the task cannot ask for it.']],
     ['a required field that the prefill sets', ['name'], { price: { amount: 500 } }, []],
   ])('%s', (_name, fields, prefill, expected) => {

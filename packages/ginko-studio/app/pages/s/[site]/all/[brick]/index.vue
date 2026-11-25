@@ -74,13 +74,15 @@ function rowStatus(row: Row): EntryStatus | undefined {
     state: row.state ?? 'live',
     ...(row.publishAt === undefined ? {} : { publishAt: row.publishAt }),
     ...(row.pending ? { unpublished: row.pending } : {}),
+    ...(row.changes ? { changes: row.changes } : {}),
   }, s.today.value)
 }
 
 /**
  * One text per row, from what visitors see now (`now`): "Draft" / "Online from …" for drafts; "expired on …" / "ended"
  * (daterange) for an entry that ended, also one with saved changes; "Unpublished changes" for an online entry with
- * saved changes; "" for an online entry. A row is grey when it is not online.
+ * saved changes; "Changes online from {day}" for one with a change waiting for a later day (the first; D131); "" for
+ * an online entry. A row is grey when it is not online.
  */
 function status(row: Row): string {
   const site = s.schema.value
@@ -97,7 +99,9 @@ function status(row: Row): string {
     const until = shownUntil(b, row.dates)
     return b.kind === 'collection' && b.showUntil && b.fields[b.showUntil.field]?.type === 'daterange' ? t('site.status.ended') : t('site.status.expired', { date: formatDay(until ?? '', format) })
   }
-  return st.waiting.some((w) => w.kind === 'unpublished') ? t('entry.status.changes') : ''
+  if (st.waiting.some((w) => w.kind === 'unpublished')) return t('entry.status.changes')
+  const next = st.waiting.find((w) => w.kind === 'change')
+  return next?.kind === 'change' ? t('entry.status.changesFrom', { when: format.date(next.from, { weekday: 'short', day: 'numeric', month: 'short' }) }) : ''
 }
 
 const moving = ref(false)

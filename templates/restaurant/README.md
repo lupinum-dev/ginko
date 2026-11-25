@@ -107,7 +107,7 @@ change them every week together with `lunch.md`.
 | Menu: one file per dish (category, name, description, price, allergens, vegetarian or vegan) | `content/menu/<n>.<name>.md` |
 | A dish sold out today | `soldOutOn: 2026-10-15` in its file (only that day) |
 | A dish off the menu for now | `onMenu: false` in its file |
-| A price change from a date | `nextPrice` and `priceFrom` in its file; the menu announces it two weeks ahead |
+| A price change from a date | `$changes` in its file: `- from: 2026-11-01` with `set: { price: 8.5 }` below it; the menu announces it two weeks ahead, and the build on that day shows the new price |
 | Lunch of the week: five rows, `day: mo` to `day: fr`, each with one `dish`, an optional `price` and `allergens`; `weekOf` = its Monday. For two dishes a day, write both in `dish` | `content/lunch.md` |
 | Events (date, start time, price, photo, text) | `content/events/<n>.<name>.md`; it leaves the site after its last day |
 | Notices above the header ("Fully booked tonight") | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon) and `until` (the last day it shows, like `2026-12-31`; leave it out to keep the notice until you delete the file). A notice shows from the day you add the file; there is no start date. Something that is always true (groups book by phone) belongs on a page, not in a notice |

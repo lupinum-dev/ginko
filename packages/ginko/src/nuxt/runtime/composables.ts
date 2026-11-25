@@ -97,17 +97,16 @@ export function useGinkoToday(): Ref<string> {
 }
 
 /**
- * The text of a fact (`facts` in ginko.config): `useGinkoFact('practice.price')` → "98 €", the value in effect today
- * (a planned change counts from its date), formatted for the current language. The same text `:fact{name="…"}`
+ * The text of a fact (`facts` in ginko.config): `useGinkoFact('practice.price')` → "98 €", the value the bundle holds
+ * (a dated change counts from its day on), formatted for the current language. The same text `:fact{name="…"}`
  * shows in a Markdown field, in search and in the page's Markdown twin. Undefined while the field is empty.
  */
 export function useGinkoFact(name: MaybeRefOrGetter<string>): ComputedRef<string | undefined> {
   const bundle = useGinkoBundle()
-  const today = useGinkoToday()
   const { languages } = useRuntimeConfig().public.ginko as GinkoPublicConfig
   return computed(() => {
     const b = bundle.value
-    return factText(toValue(name), { bricks: schema.bricks, data: b.bricks, locale: b.locale, mainLocale: b.mainLocale, language: languages[b.locale] ?? b.locale, today: today.value })
+    return factText(toValue(name), { bricks: schema.bricks, data: b.bricks, locale: b.locale, mainLocale: b.mainLocale, language: languages[b.locale] ?? b.locale })
   })
 }
 
@@ -139,12 +138,27 @@ export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<B
 /**
  * The bundle with only the entries shown today (`showUntil`), in every collection, by the reader's day: a page from a
  * cache is right after midnight (D111), and the targets of an `include` are filtered too, so a reference to an entry
- * that ended is empty. The server routes apply the same rule (`loadServerBundles`).
+ * that ended is not resolved (the id stays), as for a target that does not exist. The server routes apply the same rule
+ * (`loadServerBundles`).
  */
 function useVisibleBundle(): ComputedRef<Bundle> {
   const bundle = useGinkoBundle()
   const today = useGinkoToday()
-  return computed(() => shownBundle(bundle.value, schema, today.value))
+  return computed(() => visibleOn(bundle.value, today.value))
+}
+
+/**
+ * The filtered bundle, once per bundle and day: every useGinko, query, nav and neighbours call of a page shares it
+ * instead of filtering the whole bundle again. Keyed by the bundle object, so a new bundle (another language, a refresh)
+ * gets its own; the schema is the module's.
+ */
+const shown = new WeakMap<Bundle, { day: string; bundle: Bundle }>()
+function visibleOn(bundle: Bundle, day: string): Bundle {
+  const known = shown.get(bundle)
+  if (known?.day === day) return known.bundle
+  const visible = shownBundle(bundle, schema, day)
+  shown.set(bundle, { day, bundle: visible })
+  return visible
 }
 
 /** Items of a core result get the `url` of the bundle's locale when the brick has a route (`withUrl`). */

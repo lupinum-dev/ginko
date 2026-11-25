@@ -2,8 +2,26 @@
 // and the platform's sites.release, so both build and check exactly the same data.
 import { effectiveProfile, isTable, mapRows, rowDefaults, rowKeysOf, startValue } from './fields.ts'
 import { stableJson } from './sha256.ts'
-import type { SiteWeek } from './time.ts'
+import { todayIn, type SiteWeek } from './time.ts'
 import type { Fields, Json, Schema } from './types.ts'
+
+/**
+ * Rule 9 (D108): an empty `publishedOn` field means "the day the entry goes online". Returns `data` with `day` in that
+ * field, or `data` itself when the brick states no such field or the field holds a day (a typed date stays). Only for
+ * checks and the write that takes an entry online: a draft keeps the field empty.
+ */
+export function withPublishedOn(schema: Schema, brickKey: string, data: Record<string, Json>, day = todayIn(schema.timeZone)): Record<string, Json> {
+  const brick = schema.bricks[brickKey]
+  const field = brick?.kind === 'collection' ? brick.publishedOn : undefined
+  const value = field === undefined ? undefined : data[field]
+  if (field === undefined || (value !== undefined && value !== null && value !== '')) return data
+  return { ...data, [field]: day }
+}
+
+/** The day an empty `publishedOn` field gets: the day of the plan's time `at` in the site's zone, or today without one. */
+export function planDay(schema: Schema, at: number | undefined): string {
+  return todayIn(schema.timeZone, at === undefined ? undefined : new Date(at))
+}
 
 const isRecord = (value: unknown): value is Record<string, Json> => typeof value === 'object' && value !== null && !Array.isArray(value)
 

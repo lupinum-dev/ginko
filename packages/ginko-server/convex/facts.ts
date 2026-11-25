@@ -1,7 +1,7 @@
 // Facts (`facts` in the site config, `:fact{name="…"}` in texts) as editors and agents need them: what each one
 // shows now, which texts quote it, and a release that would leave a quote without its fact.
 import type { Label } from '@lupinum/ginko'
-import { effectiveProfile, factCopiesInMarkdown, factNames, factValues, msg, resolveEntry, todayIn, type FactValue, type Schema, type SchemaChange } from '@lupinum/ginko/internal'
+import { effectiveProfile, factCopiesInMarkdown, factNames, factValues, msg, resolveEntry, todayIn, upcomingOf, type FactValue, type Upcoming, type Schema, type SchemaChange } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
@@ -9,6 +9,7 @@ import { actorFor } from './lib/access'
 import type { Fields } from '@lupinum/ginko'
 import { factQuotesOf, fieldLabelAt, markdownTextsOf, type Data } from './lib/content'
 import { labelOf } from './entries'
+import { asChanges, datedOf } from './lib/dated'
 
 /** One text that quotes a fact, in the form the Studio's "used in" list reads (UsedInList). */
 export interface FactQuote { entry: Id<'entries'>; brick: string; title: string; paths: string[]; fieldLabels: (Label | null)[]; deleted: false; state: 'draft' | 'live' }
@@ -16,25 +17,31 @@ export interface FactQuote { entry: Id<'entries'>; brick: string; title: string;
 /** A fact for the Studio: its value (FactValue), the label of its brick and the entry the Studio links to. */
 export type StudioFact = FactValue & { brickLabel: Label; entry: Id<'entries'> | null }
 
-/** The single bricks' data in `locale`, as the website serves it, and their entry IDs. */
+/** The single bricks' data in `locale` and their waiting public changes, as the website serves them, and their entry IDs. */
 async function singlesIn(ctx: QueryCtx, site: Doc<'sites'>, schema: Schema, locale: string) {
   const data: Record<string, Record<string, unknown>> = {}
+  const upcoming: Record<string, Upcoming[]> = {}
   const entries: Record<string, Id<'entries'>> = {}
+  const today = todayIn(schema.timeZone)
   for (const brick of new Set(factNames(schema.components).map((name) => name.split('.')[0]!))) {
     const row = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', site._id).eq('brick', brick).eq('deletedAt', undefined)).first()
     if (!row || !Object.hasOwn(schema.bricks, brick)) continue
     entries[brick] = row._id
-    data[brick] = resolveEntry(schema, brick, { id: row._id, order: row.order, data: row.data as Data, prints: row.prints }, { locale, files: () => undefined }).data
+    const stored = { id: row._id, order: row.order, data: row.data as Data, prints: row.prints }
+    data[brick] = resolveEntry(schema, brick, stored, { locale, files: () => undefined }).data
+    // A fact of a `timeline.public` field names its next value (FactValue.next), as a page may read it.
+    const coming = schema.bricks[brick]!.timeline ? upcomingOf(schema, brick, { ...stored, changes: asChanges(await datedOf(ctx, row._id)) }, { locale, files: () => undefined }, today) : undefined
+    if (coming) upcoming[brick] = coming
   }
-  return { data, entries }
+  return { data, upcoming, entries }
 }
 
 /** Every fact of the site with what it shows in `locale` (default: the main language), today. */
 export async function factsOf(ctx: QueryCtx, site: Doc<'sites'>, locale?: string): Promise<StudioFact[]> {
   const schema = site.schema as Schema
   const shown = locale && schema.locales.includes(locale) ? locale : schema.locales[0]!
-  const { data, entries } = await singlesIn(ctx, site, schema, shown)
-  return factValues(schema, data, shown, todayIn(schema.timeZone)).map((fact) => ({ ...fact, brickLabel: schema.bricks[fact.brick]!.label, entry: entries[fact.brick] ?? null }))
+  const { data, upcoming, entries } = await singlesIn(ctx, site, schema, shown)
+  return factValues(schema, data, shown, upcoming).map((fact) => ({ ...fact, brickLabel: schema.bricks[fact.brick]!.label, entry: entries[fact.brick] ?? null }))
 }
 
 /** A fact value written as plain text in a Markdown field: where the fact should be quoted instead. */

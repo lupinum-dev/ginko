@@ -128,17 +128,6 @@ describe('agent door', () => {
     expect(listed.page[0]).toMatchObject({ who: { self: true }, agent: 'Claude Code' })
   })
 
-  // Wrong behaviour caught: from the day of a planned price on, the assistant's new price was stored next to the spent
-  // plan, so the website kept showing the planned price while the answer said the new one was live.
-  it('a price set on or after the day of a planned price replaces the spent plan', async () => {
-    vi.setSystemTime(new Date('2026-10-18T10:00:00Z'))
-    const s = await setup()
-    const done = await call(s, await keyOf(s, 'owner'), 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 23.5, publish: true })
-    expect(done.text).toContain('Live on the website in about a minute.')
-    const data = (await entryRow(s, s.entries['menu-schnitzel']!))!.data
-    expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2350 }, undefined, undefined])
-  })
-
   // Wrong behaviour caught: the door put today over a closure set for tomorrow when the assistant changed only the
   // reason, so the site closed today and tomorrow's closure was gone; the tool also offered today as the default.
   it('"Heute geschlossen" with only a reason keeps a closure set for tomorrow', async () => {
@@ -367,6 +356,22 @@ describe('agent door: tool catalog', () => {
     expect(await entryRow(s, done.data.entry)).toMatchObject({ state: 'draft', data: { title: { de: 'Erntedank' } } })
     const bundle = await (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json() as { bricks: { events: { items: { id: string }[] } } }
     expect(bundle.bricks.events.items.map((i) => i.id)).not.toContain(done.data.entry)
+  })
+
+  // Wrong behaviour caught (D116): an assistant creates or changes a half-filled draft and tells the person it is done,
+  // because the answer does not say what the draft still lacks before it can go online.
+  it('a draft created or written with a field missing: the answer names the field', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    const lacks = 'Before it can go online, these fields still need a value or a fix: description.'
+    const made = await call(s, key, 'ginko_draft', { brick: 'events', fields: { title: 'Erntedank', when: { from: '2026-11-20', to: '2026-11-20' } } })
+    expect(made.text).toContain(lacks)
+    const written = await call(s, key, 'ginko_write', { brick: 'events', entry: made.data.entry, fields: { title: 'Erntedankfest' } })
+    expect(written.text).toContain(lacks)
+    const created = await call(s, key, 'ginko_create', { brick: 'events', fields: { title: 'Herbst', when: { from: '2026-11-21', to: '2026-11-21' } } })
+    expect(created.text).toContain(lacks)
+    const filled = await call(s, key, 'ginko_write', { brick: 'events', entry: made.data.entry, fields: { description: 'Mit Musik.' } })
+    expect(filled.text).not.toContain('Before it can go online')
   })
 
   it('ginko_file_usage names the entry that shows the image', async () => {

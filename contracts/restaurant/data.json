@@ -283,11 +283,7 @@
           "C",
           "G"
         ],
-        "veg": "none",
-        "nextPrice": {
-          "amount": 2290
-        },
-        "priceFrom": "2026-10-18"
+        "veg": "none"
       },
       "prints": {
         "name": {
@@ -296,7 +292,17 @@
         "description": {
           "en": "a7a3b3ae46b6e690d8454f10b0a25152f14645cb93938c18eb4dc6f044f781a6"
         }
-      }
+      },
+      "changes": [
+        {
+          "from": "2026-10-18",
+          "set": {
+            "price": {
+              "amount": 2290
+            }
+          }
+        }
+      ]
     },
     {
       "id": "menu-risotto",

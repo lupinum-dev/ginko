@@ -262,39 +262,6 @@ describe('approving', () => {
     })
   })
 
-  it('a scheduled approval applies at the time', async () => {
-    const s = await approvalSetup()
-    const { proposal } = (await s.cookPrice(s.saibling, 1450)) as Proposed
-    const at = NOW + HOUR
-    expect(await s.as.owner.mutation(api.proposals.approve, { proposal, at })).toMatchObject({ status: 'scheduled', at })
-    expect(await s.row(s.saibling)).toMatchObject({ rev: 1 })
-    await s.advanceTo(at - MINUTE)
-    expect(await s.row(s.saibling)).toMatchObject({ rev: 1 })
-    await s.advanceTo(at + MINUTE)
-    expect(await s.proposalRow(proposal)).toMatchObject({ status: 'applied', decidedBy: 'u-wirtin' })
-    expect(await s.row(s.saibling)).toMatchObject({ rev: 2, data: { price: { amount: 1450 } } })
-  })
-
-  it('a scheduled approval is stale at the time when the field changed before', async () => {
-    const s = await approvalSetup()
-    const { proposal } = (await s.cookPrice(s.saibling, 1450)) as Proposed
-    const at = NOW + HOUR
-    await s.as.owner.mutation(api.proposals.approve, { proposal, at })
-    await s.ownerPrice(s.saibling, 1500)
-    await s.advanceTo(at + MINUTE)
-    expect(await s.proposalRow(proposal)).toMatchObject({ status: 'stale', reason: expect.stringContaining('Inzwischen hat jemand das geändert') })
-    expect((await s.row(s.saibling))!.data.price).toEqual({ amount: 1500 })
-  })
-
-  it.each([
-    ['too far ahead', NOW + YEAR + HOUR],
-    ['in the past', NOW - MINUTE],
-  ])('a scheduled approval %s is refused', async (_why, at) => {
-    const s = await approvalSetup()
-    const { proposal } = (await s.cookPrice(s.saibling, 1450)) as Proposed
-    expect((await errorOf(s.as.owner.mutation(api.proposals.approve, { proposal, at }))).code).toBe('INVALID')
-  })
-
   it('create and remove proposals apply through their own operations', async () => {
     const s = await approvalSetup()
     const created = await s.as.cook.mutation(api.entries.create, {

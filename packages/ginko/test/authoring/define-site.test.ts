@@ -18,10 +18,7 @@ const services = collection({ untranslated: 'fallback',
     slug: f.slug('Adresse', { from: 'title' }),
     until: f.date('Gilt bis', { optional: true }),
     price: f.money('Preis'),
-    nextPrice: f.money('Geplanter Preis', { optional: true }),
-    priceFrom: f.date('Gilt ab', { optional: true }),
   },
-  planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
   timeline: { public: ['price'] },
   showUntil: { field: 'until', plusDays: 2, thenDelete: true },
   status: { show: 'ending' },
@@ -57,14 +54,14 @@ describe('defineSite writes the stored form', () => {
     expect(typeof missing).toBe('function')
   })
 
-  // Wrong: the standard edit form lets the owner change the address of an entry (links break), or an own task loses
-  // the plan fields of a planned value, which the check then reports.
-  it('makes the standard tasks, without the address in "edit" and with the plan next to a planned field', () => {
+  // Wrong: the standard edit form lets the owner change the address of an entry (links break), or an own task gets
+  // fields it did not name.
+  it('makes the standard tasks, without the address in "edit"', () => {
     expect(site.bricks.services.tasks).toEqual([
       { id: 'add', label: { de: 'Leistung hinzufügen', en: 'Add a service' }, kind: 'create' },
-      { id: 'edit', label: { de: 'Leistung bearbeiten', en: 'Edit a service' }, kind: 'edit', pick: true, fields: ['title', 'until', 'price', 'nextPrice', 'priceFrom'] },
-      { id: 'price', label: { de: 'Preis ändern', en: 'Change a price' }, kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'], when: { from: 'ask' } },
-      { id: 'editAll', label: 'Alles ändern', kind: 'edit', pick: true, fields: ['title', 'until', 'price', 'nextPrice', 'priceFrom'], needsApproval: true },
+      { id: 'edit', label: { de: 'Leistung bearbeiten', en: 'Edit a service' }, kind: 'edit', pick: true, fields: ['title', 'until', 'price'] },
+      { id: 'price', label: { de: 'Preis ändern', en: 'Change a price' }, kind: 'edit', pick: true, fields: ['price'], when: { from: 'ask' } },
+      { id: 'editAll', label: 'Alles ändern', kind: 'edit', pick: true, fields: ['title', 'until', 'price'], needsApproval: true },
       { id: 'remove', label: { de: 'Leistung entfernen', en: 'Remove a service' }, kind: 'remove' },
     ])
     expect(site.bricks.home.tasks).toEqual([{ id: 'edit', label: 'Startseite bearbeiten', kind: 'edit', fields: ['title'] }])
@@ -76,6 +73,15 @@ describe('defineSite writes the stored form', () => {
     expect(defineSite({ ...base, locales: ['de'], bricks: { services: stored.defOf(site.bricks.services) }, entries: { services: '/leistungen/[slug]' } }).bricks.services.tasks?.[2]).toMatchObject({ id: 'price', when: { from: 'ask' } })
     const add = collection({ listing: { title: 'title' }, label: 'News', max: 5, order: 'manual', fields: { title: f.text('Titel') }, tasks: [{ id: 'add', when: { from: 'ask' } }] })
     expect(() => defineSite({ ...base, locales: ['de'], bricks: { add } })).toThrow('add.tasks.add: when is only for an edit task.')
+  })
+
+  // Wrong (D129): a site file that still has `planned` fails with "unknown key" or passes, and its author does not learn
+  // that a price for a day is a dated change now.
+  it('tells a brick with planned how to move to dated changes', () => {
+    const old = { ...services, planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' } }
+    expect(() => defineSite({ ...base, locales: ['de'], bricks: { services: old }, entries: { services: '/leistungen/[slug]' } } as never)).toThrow(
+      "services.planned: a planned change is a dated change now: remove `planned` and its two fields, write `timeline: { public: ['<field>'] }` on the brick and `when: { from: 'ask' }` on the task that changes the field.",
+    )
   })
 
   // Wrong: a default or a renamed key is stored under another name or value than the stored form reads.

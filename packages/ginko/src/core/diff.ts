@@ -153,7 +153,7 @@ function contract(field: Field, top = true): string {
 
 function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<string>, newLocales: Set<string>, currency: Currency, sides: Sides, ok: Report, no: Report) {
   if (before.kind !== after.kind) return no(key, 'kindChanged', msg('diff.kindChanged', { key }))
-  unknownChanges(key, before, after, BRICK_KEYS, no)
+  unknownChanges(key, before, after, new Set([...BRICK_KEYS, 'planned']), no)
   if (before.retired && !after.retired) no(key, 'unretired', msg('diff.unretired', { path: key }))
   if (!sameLabel(before.label, after.label)) ok(`${key}.label`, 'text', msg('diff.textChanged'))
   if (!sameLabel(before.describe ?? '', after.describe ?? '')) ok(`${key}.describe`, 'text', msg('diff.textChanged'))
@@ -161,7 +161,9 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
   if (stableJson(before.tasks ?? []) !== stableJson(after.tasks ?? [])) ok(`${key}.tasks`, 'tasks', msg('diff.tasksChanged'))
   // A rule on stored values, not a stored shape: no value changes when it comes, goes or names other fields.
   if (stableJson(before.timeline ?? null) !== stableJson(after.timeline ?? null)) ok(`${key}.timeline`, 'timeline', msg('diff.valueChanged', { name: 'timeline' }))
-  if (stableJson(before.planned ?? null) !== stableJson(after.planned ?? null)) ok(`${key}.planned`, 'planned', msg('diff.valueChanged', { name: 'planned' }))
+  // A stored `planned` from before dated changes (D129) may go: it was a rule on stored values, like `timeline`.
+  const planned = (brick: object) => stableJson(((brick as { planned?: Json }).planned ?? null))
+  if (planned(before) !== planned(after)) ok(`${key}.planned`, 'planned', msg('diff.valueChanged', { name: 'planned' }))
   // Presentation only, like a label: the Today page's status line reads the data, it stores nothing.
   if (stableJson(before.status ?? null) !== stableJson(after.status ?? null)) ok(`${key}.status`, 'text', msg('diff.textChanged'))
   // Presentation only: which field names an entry in a list changes no stored value.

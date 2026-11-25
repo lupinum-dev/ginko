@@ -1,14 +1,16 @@
 // Demo content from a corpus (contracts/<site>/data.json), shared by the local reset (seed.ts) and
 // the demo fill (demo.ts): the entries with their slugs and counters, and invites for the demo people.
 import type { Json } from '@lupinum/ginko'
-import { entryBytes, namesOf, sha256, type Schema } from '@lupinum/ginko/internal'
+import { changeIssues, dataOn, entryBytes, namesOf, sha256, todayIn, waitingChanges, type Change, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { checkGrants, normalizeEmail } from '../members'
 import { treesOf } from './content'
+import { insertWaiting } from './dated'
 import { putTrees } from './trees'
 
-type CorpusEntry = { id: string; order?: number; data: Record<string, Json>; prints?: Record<string, Record<string, string>> }
+/** `changes`: dated changes (D125); a passed one is written into `data`, a waiting one gets its row and its run. */
+type CorpusEntry = { id: string; order?: number; data: Record<string, Json>; prints?: Record<string, Record<string, string>>; changes?: Change[] }
 
 /** File fields point at uploads; the corpus names files that do not exist here, so they are left out. */
 function withoutFiles(schema: Schema, brick: string, data: Record<string, Json>): Record<string, Json> {
@@ -41,13 +43,17 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
   let bytes = 0
   let treeBytes = 0
   let count = 0
+  const today = todayIn(schema.timeZone)
   for (const [brick, rows] of Object.entries(corpus)) {
     const def = schema.bricks[brick]
     if (!def) continue
     // Corpus entries are online, so their names (D96) are fixed: from the main slug or the title, as the upgrade makes them.
     const names = def.kind === 'collection' ? namesOf(brick, def, schema.locales[0]!, rows.map((row) => withoutFiles(schema, brick, row.data))) : []
     for (const [index, row] of rows.entries()) {
-      const data = withoutFiles(schema, brick, row.data)
+      const changes = row.changes ?? []
+      const problem = changes.length ? (await changeIssues(schema, brick, row.data, changes))[0] : undefined
+      if (problem) throw new Error(`corpus ${brick}/${row.id}: ${problem.path} ${problem.message}`)
+      const data = withoutFiles(schema, brick, dataOn(row.data, changes, today))
       const prints = row.prints ?? {}
       const size = entryBytes(data, prints)
       const trees = await treesOf(def.fields, data)
@@ -58,6 +64,7 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
         ...(def.kind === 'collection' ? { name: names[index]!, nameFixed: true as const } : {}),
       })
       await putTrees(ctx, site._id, id, trees.json)
+      await insertWaiting(ctx, schema, { _id: id, site: site._id, brick, rev: 1 }, waitingChanges(changes, today))
       bytes += size
       treeBytes += trees.bytes
       count++

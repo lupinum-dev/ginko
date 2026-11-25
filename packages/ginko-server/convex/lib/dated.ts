@@ -87,6 +87,22 @@ export async function syncDatedRefs(ctx: MutationCtx, schema: Schema, row: Pick<
   await syncFileRefs(ctx, row.site, 'dated', row._id, ids)
 }
 
+/**
+ * The waiting changes that come with an entry from outside (an import, the demo corpus): a row and a run per change,
+ * without a person and without prints. `rev` is the entry's rev they were made at. The caller checked them
+ * (`changeIssues`) and already wrote the passed ones into the entry (`dataOn`, `waitingChanges`).
+ */
+export async function insertWaiting(ctx: MutationCtx, schema: Schema, entry: Pick<Doc<'entries'>, '_id' | 'site' | 'brick' | 'rev'>, changes: readonly Change[]) {
+  for (const change of changes) {
+    const dated = await ctx.db.insert('datedChanges', {
+      site: entry.site, entry: entry._id, brick: entry.brick, from: change.from, fields: change.set, prints: {},
+      revs: Object.fromEntries(Object.keys(change.set).map((root) => [root, entry.rev])), at: Date.now(),
+    })
+    await ctx.db.patch(dated, { job: await ctx.scheduler.runAt(dayStart(change.from, schema.timeZone), internal.datedChanges.applyDue, { change: dated, from: change.from }) })
+    await syncDatedRefs(ctx, schema, { _id: dated, site: entry.site, brick: entry.brick, fields: change.set })
+  }
+}
+
 /** Deletes a dated change with its job (unless that run is the one calling) and its file references. */
 export async function dropDated(ctx: MutationCtx, row: Dated, running = false) {
   if (row.job && !running) await ctx.scheduler.cancel(row.job)

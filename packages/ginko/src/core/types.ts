@@ -207,13 +207,6 @@ export interface SingleBrick<F extends Fields = Fields> {
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
   /**
-   * A planned change of one field: from the date in `from` on, the value in `next` replaces `field`, e.g. a price that
-   * goes up on the 1st. `next` (the type of `field`) and `from` (a date) are optional fields that are set together, and
-   * every edit task that changes `field` shows them too. The site applies the plan; the platform checks it and opens a
-   * task on the value in effect.
-   */
-  planned?: { field: string; next: string; from: string }
-  /**
    * The fields whose dated changes a page may read ahead (`upcoming` in the bundle): "from 1 November 19.50". Live fields
    * that a change may set. Every other waiting value stays on the server (D121).
    */
@@ -241,13 +234,6 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
-  /**
-   * A planned change of one field: from the date in `from` on, the value in `next` replaces `field`, e.g. a price that
-   * goes up on the 1st. `next` (the type of `field`) and `from` (a date) are optional fields that are set together, and
-   * every edit task that changes `field` shows them too. The site applies the plan; the platform checks it and opens a
-   * task on the value in effect.
-   */
-  planned?: { field: string; next: string; from: string }
   /**
    * The fields whose dated changes a page may read ahead (`upcoming` in the bundle): "from 1 November 19.50". Live fields
    * that a change may set. Every other waiting value stays on the server (D121).

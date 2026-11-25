@@ -170,3 +170,26 @@ Rules for a new migration:
   `/docs/languages` and `/docs/platform-and-cli`.
 - **Remove when:** together with the German redirects above, and a release after 0.17.0 has the new README
   links on npm.
+
+## Older plans become dated changes (`2026-11-25-dated-changes`)
+
+- **Why:** D129 and D130 remove `planned`, a time on unpublished changes and a yes for a time on a single request. Rows
+  written before hold them: `pendingChanges.publishAt` with a `publishJob`, proposals with status `scheduled` (no
+  release) and a `job`, and stored schemas with `planned` and its two fields in the entries.
+- **Introduced:** 25 November 2026.
+- **Compatibility code:**
+  - `convex/schema.ts`: `pendingChanges.publishAt`, `pendingChanges.publishJob` and `proposals.job` stay optional; no
+    code writes them.
+  - `convex/entries.ts` `publishDue`: returns at once for an online entry, so an old run that fires before the
+    migration changes nothing.
+  - `convex/datedChanges.ts` `migrateOlderWays` reads `planned` from a stored schema (the core no longer knows the key;
+    `checkSchema` refuses it with the way to move).
+- **Dependents:** every deployment with a time on unpublished changes, a request approved for a time, or a site whose
+  stored schema has `planned` (the restaurant demo and sites made from the gastro preset).
+- **Steps:**
+  1. Deploy this code. The step runs one site per page: see `migrateOlderWays` for the exact rules.
+  2. Check: `ops:status` shows it done. A site's next `ginko release` with the new gastro preset finds the stored
+     schema as the config writes it (no `planned`, `timeline: { public: ['price'] }`); a config that still has
+     `planned` is refused with the way to move.
+  3. Contract step (next major, rule 6): remove `pendingChanges.publishAt`, `pendingChanges.publishJob` and
+     `proposals.job` from the schema, the online branch of `publishDue`, and `migrateOlderWays` with its list entry.

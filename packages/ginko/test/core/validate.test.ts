@@ -157,32 +157,6 @@ describe('a week start (lunch.weekOf, lunchPlans.weekOf)', () => {
   })
 })
 
-describe('a planned price (menu, `planned`)', () => {
-  const plan = { nextPrice: { amount: 1390 }, priceFrom: '2026-11-01' }
-  // Wrong behaviour caught: a planned price without its date is stored and never applies, and nobody is told; or a
-  // date without a price is kept as if a change were planned.
-  it.each([
-    ['price and date', plan, []],
-    ['no plan', {}, []],
-    ['a price without a date', { nextPrice: plan.nextPrice }, [['priceFrom', 'REQUIRED']]],
-    ['a date without a price', { priceFrom: plan.priceFrom }, [['nextPrice', 'REQUIRED']]],
-  ] as const)('%s', async (_name, over, expected) => {
-    expect(pairs((await validate(schema, 'menu', menuEntry(over), check('create'))).errors)).toEqual(expected)
-  })
-
-  // Wrong behaviour caught: a plan stored by halves before the rule blocks every later save of the dish or a release;
-  // or a save that sets half a plan gets through because only the other half is missing.
-  it.each([
-    ['patch of the plan', check('patch', new Set(['nextPrice'])), [['priceFrom', 'REQUIRED']], []],
-    ['patch of the name only', check('patch', new Set(['name'])), [], [['priceFrom', 'REQUIRED']]],
-    ['release of stored data', check('release'), [], [['priceFrom', 'REQUIRED']]],
-  ] as const)('%s', async (_name, opts, errors, warnings) => {
-    const result = await validate(schema, 'menu', menuEntry({ nextPrice: plan.nextPrice }), opts)
-    expect(pairs(result.errors)).toEqual(errors)
-    expect(pairs(result.warnings)).toEqual(warnings)
-  })
-})
-
 describe('numbers and money (SPEC 2.2, 2.3)', () => {
   // Wrong behaviour caught: a value between two steps (14.5 with step 1) or outside min/max is saved.
   it.each([
@@ -524,5 +498,83 @@ describe('ref field (SPEC 2.2, 2.3)', () => {
 
   it('does not look IDs up without a refs callback', async () => {
     expect((await validate(refSchema, 'menu', menuEntry({ side: 'gone' }), check('create'))).errors).toEqual([])
+  })
+})
+
+describe('the draft check (D115): well formed to be stored, not complete', () => {
+  const kit = serializeSchema({
+    ...site,
+    bricks: {
+      ...site.bricks,
+      kit: collection({
+        label: 'Kit', max: 50, order: 'manual', listing: { title: 'name' },
+        fields: {
+          name: f.text('Name', { max: 20 }),
+          slug: f.slug('Adresse', { from: 'name' }),
+          day: f.date('Tag', { optional: true }),
+          at: f.time('Uhrzeit', { optional: true }),
+          span: f.daterange('Zeitraum', { optional: true }),
+          count: f.number('Anzahl', { min: 0, max: 10, step: 1, optional: true }),
+          kind: f.choice('Art', { options: ['a', 'b'], optional: true }),
+          tags: f.choices('Tags', { options: ['a', 'b'], optional: true }),
+          friends: f.refs('Freunde', { to: 'kit', optional: true }),
+          rows: f.list('Zeilen', { itemLabel: 'Zeile', max: 2, unique: 'label', optional: true, fields: { label: f.text('Bezeichnung', { translate: false }) } }),
+          body: f.markdown('Text', { profile: 'page', optional: true }),
+        },
+      }),
+    },
+  })
+  const base = { name: { de: 'Kiste', en: 'Box' }, slug: { de: 'kiste', en: 'box' } }
+  const draft = (data: Record<string, unknown>, brick = 'kit') =>
+    validate(kit, brick, data, { mode: 'draft', refs: (_b, id) => id === 'there', uploads: (id) => (id === 'pdf1' ? 'file' : id === 'img1' ? 'image' : undefined), fileAlt: () => ({ de: 'Bild' }) })
+  const row = (id: string, label: string) => ({ _id: id, label })
+
+  // Wrong behaviour caught: a draft stores a value the site and the Studio cannot read as what it claims to be (a date
+  // that is a number or a phrase, a time 25:99, two rows with one `_id`), so `statusOf`, the date texts and the editor's
+  // row keys break on it.
+  it.each([
+    ['TYPE: a number that is text', { ...base, count: 'drei' }, ['count', 'TYPE']],
+    ['NOT_OBJECT: an entry that is no object', 'Kiste', ['', 'NOT_OBJECT']],
+    ['NOT_LOCALIZED: a translatable text as a plain string', { ...base, name: 'Kiste' }, ['name', 'NOT_LOCALIZED']],
+    ['UNKNOWN_FIELD', { ...base, nope: 1 }, ['nope', 'UNKNOWN_FIELD']],
+    ['UNKNOWN_LOCALE', { ...base, name: { de: 'Kiste', xx: 'Kist' } }, ['name.xx', 'UNKNOWN_LOCALE']],
+    ['DATE: a number', { ...base, day: 42 }, ['day', 'DATE']],
+    ['DATE: a phrase', { ...base, day: 'next friday' }, ['day', 'DATE']],
+    ['DATE: a range of phrases', { ...base, span: { from: 'heute', to: 'morgen' } }, ['span', 'DATE']],
+    ['TIME: 25:99', { ...base, at: '25:99' }, ['at', 'TIME']],
+    ['ROW_ID: a row without a proper id', { ...base, rows: [row('kurz', 'A')] }, ['rows.0', 'ROW_ID']],
+    ['ROW_ID: two rows with one id', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('aaaaaaaaaa', 'B')] }, ['rows.aaaaaaaaaa', 'ROW_ID']],
+    ['SLUG: an address that is no address', { ...base, slug: { de: 'Kiste mit Leerzeichen', en: 'box' } }, ['slug.de', 'SLUG']],
+    ['FILE_REF_NOT_IMAGE: a PDF as a picture', { ...base, body: { de: '![Karte]($file.pdf1)' } }, ['body.de', 'FILE_REF_NOT_IMAGE']],
+    ['DUPLICATE: one option twice', { ...base, tags: ['a', 'a'] }, ['tags', 'DUPLICATE']],
+    ['DUPLICATE: one entry twice', { ...base, friends: ['there', 'there'] }, ['friends', 'DUPLICATE']],
+  ] as const)('refuses %s', async (_name, data, issue) => {
+    const { errors } = await draft(data as Record<string, unknown>)
+    expect(pairs(errors)).toContainEqual(issue)
+  })
+
+  it('refuses UNKNOWN_BRICK and UNKNOWN_ROW', async () => {
+    expect(pairs((await draft(base, 'nope')).errors)).toEqual([['', 'UNKNOWN_BRICK']])
+    expect(pairs((await validate(kit, 'hours', hours({ week: { ...week(), xx: { closed: true } } }), { mode: 'draft' })).errors)).toEqual([['week.xx', 'UNKNOWN_ROW']])
+  })
+
+  // Wrong behaviour caught: a half-filled draft is refused for what it lacks or for content not yet good enough, so the
+  // person loses the input.
+  it.each([
+    ['REQUIRED', { slug: base.slug }, ['name', 'REQUIRED']],
+    ['TOO_LONG', { ...base, name: { de: 'K'.repeat(21), en: 'Box' } }, ['name.de', 'TOO_LONG']],
+    ['TOO_MANY', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('bbbbbbbbbb', 'B'), row('cccccccccc', 'C')] }, ['rows', 'TOO_MANY']],
+    ['RANGE', { ...base, count: 11 }, ['count', 'RANGE']],
+    ['STEP', { ...base, count: 1.5 }, ['count', 'STEP']],
+    ['CHOICE', { ...base, kind: 'c' }, ['kind', 'CHOICE']],
+    ['DATE_ORDER', { ...base, span: { from: '2026-10-09', to: '2026-10-08' } }, ['span', 'DATE_ORDER']],
+    ['REF_MISSING', { ...base, friends: ['gone'] }, ['friends', 'REF_MISSING']],
+    ['FILE_REF_MISSING', { ...base, body: { de: '![Karte]($file.lost1)' } }, ['body.de', 'FILE_REF_MISSING']],
+    ['MARKDOWN', { ...base, body: { de: '::nope' } }, ['body.de', 'MARKDOWN']],
+    ['DUPLICATE: a doubled value in a unique column', { ...base, rows: [row('aaaaaaaaaa', 'A'), row('bbbbbbbbbb', 'A')] }, ['rows', 'DUPLICATE']],
+  ] as const)('only warns about %s', async (_name, data, issue) => {
+    const { errors, warnings } = await draft(data as Record<string, unknown>)
+    expect(pairs(errors)).toEqual([])
+    expect(pairs(warnings)).toContainEqual(issue)
   })
 })

@@ -36,7 +36,7 @@ const props = defineProps<{
   /** A row of the list beside the detail: it selects (`open` = selected) and shows no diff itself. */
   select?: boolean
 }>()
-const emit = defineEmits<{ toggle: []; approve: [at?: number]; reject: [reason: string] }>()
+const emit = defineEmits<{ toggle: []; approve: []; reject: [reason: string] }>()
 const { t, format } = useI18n()
 
 const textOf = useTextOf(() => ({ timeZone: props.timeZone, main: props.locale }))
@@ -97,8 +97,8 @@ const waited = computed(() => (mounted.value ? format.relative(props.proposal.cr
       <ReviewDecide
         v-if="proposal.canDecide"
         :proposal="proposal.proposal" :ready="!!detail" :failed="!!error" :busy="busy"
-        :reject-only="stale || !!inRelease" :time-zone="timeZone"
-        @approve="(at) => emit('approve', at)" @reject="(reason) => emit('reject', reason)"
+        :reject-only="stale || !!inRelease"
+        @approve="emit('approve')" @reject="(reason) => emit('reject', reason)"
       />
       <p v-if="error" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ error }}</p>
     </div>

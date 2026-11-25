@@ -18,7 +18,6 @@ import { builderTools, BUILDER_TOOLS, DRY_RUN, FROM, IMPORT_MAX, isBuilder, sugg
 import type { Data } from './lib/content'
 import { leafStatus } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
-import { same } from './lib/write'
 import { effectiveReview } from './lib/policy'
 import { secret } from './release'
 import { normalizeEmail } from './members'
@@ -389,12 +388,19 @@ function fromArg(value: Json | undefined): string | undefined {
   return value
 }
 
-/** When a write shows on the website: in about a minute, or from the day of a week planned ahead or a planned price (`liveFrom`). */
+/** When a write shows on the website: in about a minute, or from the first day of a week planned ahead (`liveFrom`). */
 const liveText = (liveFrom: string | undefined) => (liveFrom ? `On the website from ${liveFrom}.` : 'Live on the website in about a minute.')
 
-/** The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. */
-function savedAs(result: Json, label: string): { text: string; result: Json } {
+/**
+ * The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. `draft`: the
+ * entry is a draft, so the sentence names what it still lacks (`lacksText`).
+ */
+function savedAs(result: Json, label: string, draft = false): { text: string; result: Json } {
   if (proposed(result)) return { text: PROPOSED, result }
+  if (draft) {
+    const saved = savedAs(result, label)
+    return { ...saved, text: `${saved.text}${lacksText(result)}` }
+  }
   const { change, liveFrom, pending, from } = result as { change?: string; liveFrom?: string; pending?: boolean; from?: string }
   // A dated change (D125): nothing changes on the website before its day.
   if (from !== undefined && change) return { text: `Planned: ${label}. On the website from ${from}; until then it keeps the values it has. The person can move or cancel the change in the platform.`, result }
@@ -409,6 +415,16 @@ function savedAs(result: Json, label: string): { text: string; result: Json } {
     text: change ? `Done: ${label}. ${liveText(liveFrom)} To undo: ginko_undo with change ${change}.` : 'Nothing changed: the values were already like this.',
     result,
   }
+}
+
+/**
+ * What a draft still lacks before it can go online, as one sentence after its create or save: the fields of its warnings
+ * (D115, D116), so the assistant tells the person instead of calling the draft done. '' when it lacks nothing.
+ */
+function lacksText(result: Json): string {
+  const warnings = (result as { warnings?: { path: string }[] }).warnings ?? []
+  const fields = [...new Set(warnings.map((w) => w.path.split('.')[0] || 'the entry'))]
+  return fields.length ? ` Before it can go online, these fields still need a value or a fix: ${fields.join(', ')}.` : ''
 }
 
 /** The tool arguments as an object of the allowed shape; anything else is the assistant's mistake. */
@@ -482,7 +498,8 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
     // Without `publish` the new entry is a draft (SPEC 15); publishing it stays with the person in the platform.
     const where = state === 'draft' ? 'Saved as a draft, not on the website yet. The person publishes it in the platform.' : liveText(liveFrom)
     const change = await lastChangeOf(ctx, id)
-    return notingCopies(ctx, actor, brick.fields, values, { text: `Done: ${labelIn(tool.task.label, main, main)}. New entry ${id}. ${where} To undo: ginko_undo with change ${change?._id}.`, result: { ...(result as object), change: change?._id ?? null } })
+    const lacks = state === 'draft' ? lacksText(result) : ''
+    return notingCopies(ctx, actor, brick.fields, values, { text: `Done: ${labelIn(tool.task.label, main, main)}. New entry ${id}. ${where}${lacks} To undo: ginko_undo with change ${change?._id}.`, result: { ...(result as object), change: change?._id ?? null } })
   }
 
   const entry = await targetOf(ctx, actor, tool.brick, picked)
@@ -499,17 +516,16 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   const taskFields = tool.task.fields
   const stored = entry.data as Record<string, Json>
   // The task opens on the entry as the Studio's sheet does: its presets resolved on the entry (`prefill`, so a closure
-  // day already set stays), and a planned change whose day has come is the value in effect with its spent plan cleared
-  // (`opened`, from `prefillAs`), so a new value does not hide behind it.
+  // day already set stays).
   const prefill = await prefillOf(ctx, actor, tool, entry._id)
-  const opened = await prefillAs(ctx, actor, { site, task: tool.ref, entry: entry._id }) as Record<string, Json>
   const fields = {
-    ...Object.fromEntries(Object.entries(opened).filter(([k, value]) => taskFields.includes(k) && (Object.hasOwn(prefill, k) || !same(value, stored[k])))),
+    ...Object.fromEntries(Object.entries(prefill).filter(([k]) => taskFields.includes(k))),
     ...fromToolInput(Object.fromEntries(taskFields.map((f) => [f, brick.fields[f]!])), values, { mainLocale: main, currency: schema.currency, stored, newRowId }),
   }
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
   // The assistant acts on the state it just read, so the current revision is its base.
-  return notingCopies(ctx, actor, brick.fields, values, savedAs(await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publish ? { publish: true as const } : {}), ...(from !== undefined ? { from } : {}) }), labelIn(tool.task.label, main, main)))
+  const result = await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publish ? { publish: true as const } : {}), ...(from !== undefined ? { from } : {}) })
+  return notingCopies(ctx, actor, brick.fields, values, savedAs(result, labelIn(tool.task.label, main, main), entry.state === 'draft'))
 }
 
 /** `publish` of a write tool: absent or a boolean. */
@@ -583,7 +599,7 @@ async function draftThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<st
   const { entry: id } = result as { entry: Id<'entries'> }
   const change = await lastChangeOf(ctx, id)
   return {
-    text: `Saved as a draft, not on the website yet. New entry ${id}. The person publishes it in the platform. To undo: ginko_undo with change ${change?._id}.`,
+    text: `Saved as a draft, not on the website yet. New entry ${id}. The person publishes it in the platform.${lacksText(result)} To undo: ginko_undo with change ${change?._id}.`,
     result: { ...(result as object), change: change?._id ?? null },
   }
 }
@@ -706,7 +722,7 @@ async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<st
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
   const result = await saveAs(ctx, actor, { site: actor.site.slug, opId, entry: entry._id, baseRev: entry.rev, fields, locale: main, ...(publishArg(input.publish) ? { publish: true as const } : {}), ...(from !== undefined ? { from } : {}) })
   const studio = studioLink(actor, key, def.kind === 'single' ? undefined : entry._id)
-  const saved = savedAs(result, `${labelOf(schema, key, entry.data as Data)}: ${Object.keys(fields).join(', ')}`)
+  const saved = savedAs(result, `${labelOf(schema, key, entry.data as Data)}: ${Object.keys(fields).join(', ')}`, entry.state === 'draft')
   return notingCopies(ctx, actor, def.fields, values, { text: saved.text, result: { ...(result as object), entry: entry._id, ...(studio ? { studio } : {}) } }, batch)
 }
 
@@ -724,7 +740,7 @@ async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
   const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
   const change = await lastChangeOf(ctx, id)
   const studio = studioLink(actor, key, id)
-  const where = state === 'draft' ? 'Saved as a draft, not on the website yet.' : liveText(liveFrom)
+  const where = state === 'draft' ? `Saved as a draft, not on the website yet.${lacksText(result)}` : liveText(liveFrom)
   return notingCopies(ctx, actor, def.fields, values, {
     text: `Created entry ${id} in “${key}”. ${where} To undo: ginko_undo with change ${change?._id}.`,
     result: { ...(result as object), change: change?._id ?? null, ...(studio ? { studio } : {}) },

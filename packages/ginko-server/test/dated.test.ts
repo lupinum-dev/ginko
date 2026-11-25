@@ -1,6 +1,6 @@
 // Dated changes on the platform (D125–D128): `entries.save` and `entries.publish` with `from`, the run on the day
 // (`datedChanges.applyDue`), a change that stops, moving and cancelling, removal, the bundle's `upcoming` and the export.
-import type { Schema } from '@lupinum/ginko/internal'
+import { factComponent, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
@@ -283,5 +283,47 @@ describe('export and import', () => {
     expect(trout.data).toMatchObject({ price: { amount: 1250 } })
     expect(await s.dated(trout._id)).toMatchObject([{ from: '2026-12-01', fields: { price: { amount: 1300 } } }])
     expect((await s.dated(trout._id))[0]!.by).toBeUndefined()
+  })
+})
+
+// The case behind slice 2 (made-up values): a practice keeps one price as a fact that its texts quote, and a staff member
+// changes it today for a later day through a task that asks the day.
+describe('a price fact changed for a later day', () => {
+  // Wrong behaviour caught: the new price shows before its day (on the page or in the quoted fact), never shows, or the
+  // history no longer says who planned it once the system wrote it.
+  it('the page and the fact show the new price from its day, and the history names the planner', async () => {
+    const s = await datedSetup()
+    const contact = s.entries.contact!
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      const brick = schema.bricks.contact! as Schema['bricks'][string] & { timeline?: { public: string[] } }
+      brick.fields.price = { type: 'money', label: { de: 'Einzelstunde', en: 'Single session' }, optional: true } as never
+      brick.timeline = { public: ['price'] }
+      brick.tasks = [...(brick.tasks ?? []), { id: 'price', label: { de: 'Preis ändern', en: 'Change the price' }, kind: 'edit', fields: ['price'], when: { from: 'ask' } } as never]
+      schema.components = { ...schema.components, fact: factComponent(['contact.price'], schema.bricks) }
+      await ctx.db.patch(s.site, { schema })
+      const row = (await ctx.db.get(contact))!
+      await ctx.db.patch(contact, { data: { ...row.data, price: { amount: 9000 } } })
+      const cook = (await ctx.db.query('memberships').collect()).find((m) => m.user === people.cook)!
+      await ctx.db.patch(cook._id, { grants: [...cook.grants, 'contact.price'] })
+    })
+    const rev = (await s.row(contact))!.rev
+    const fact = async () => (await s.as.owner.query(api.facts.values, { site: 'restaurant' })).find((f) => f.name === 'contact.price')!
+    const page = async () => ((await (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json()) as { bricks: { contact: { data: Record<string, unknown>; upcoming?: unknown[] } } }).bricks.contact
+
+    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'contact.price', entry: contact, baseRev: rev, fields: { price: { amount: 9500 } }, from: '2026-10-09' })
+    expect((await fact()).text).toMatch(/90/)
+    expect(await fact()).toMatchObject({ next: { from: '2026-10-09', text: expect.stringMatching(/95/) } })
+    expect(await page()).toMatchObject({ data: { price: { amount: 9000 } }, upcoming: [{ from: '2026-10-09', data: { price: { amount: 9500 } } }] })
+
+    await s.advanceTo(DAY1 + 1000)
+    expect((await fact()).text).toMatch(/95/)
+    expect((await fact()).next).toBeUndefined()
+    const after = await page()
+    expect(after.data).toMatchObject({ price: { amount: 9500 } })
+    expect(after.upcoming).toBeUndefined()
+    const history = await s.as.owner.query(api.changes.list, { site: 'restaurant', entry: contact, paginationOpts: { numItems: 5, cursor: null } })
+    expect(history.page[0]).toMatchObject({ actor: 'system', msg: { key: 'history.datedApplied' }, planner: expect.objectContaining({ email: 'koch@example.com' }) })
+    expect((await s.history(contact)).at(-1)).toMatchObject({ plannedBy: people.cook })
   })
 })

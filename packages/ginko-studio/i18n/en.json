@@ -217,7 +217,8 @@
       "review": "Send for review",
       "asDraft": "Save as draft",
       "laterOpen": "Publish later",
-      "changesWhen": "When should the changes to “{title}” go online?"
+      "changesWhen": "When should the changes to “{title}” go online?",
+      "laterDay": "From a later day"
     },
     "unpublish": {
       "button": "Take offline",
@@ -309,10 +310,25 @@
       "draftNote": "Not on the website yet. Publish it when it is ready.",
       "scheduledNote": "It goes online by itself at that time.",
       "liveNote": "Saving does not change the website yet. Only “Publish …” does.",
-      "changesNote": "Saved, but not on the website yet. It shows the previous version until you publish.",
-      "changesScheduledNote": "The changes go online on their own at that time."
+      "changesNote": "Saved, but not on the website yet. It shows the previous version until you publish."
     },
     "savedNotLive": "Saved, not online yet"
+  },
+  "dated": {
+    "startsOn": "Starts on",
+    "startsOnHint": "Empty: at once",
+    "publishFrom": "Publish from {day}",
+    "waiting": "A planned change starts on {day}: {fields}.",
+    "stopped": "The planned change for {day} did not start: {fields}.",
+    "changedSince": "Changed since it was planned: {fields}. From the planned day, the planned value still applies.",
+    "cancel": "Cancel change",
+    "cancelQuestion": "Cancel this planned change? This cannot be undone.",
+    "keep": "Keep it",
+    "changeDay": "Change day",
+    "saveDay": "Save day",
+    "dayRequired": "Please choose a day.",
+    "cancelled": "Planned change cancelled. The website stays as it is.",
+    "moved": "The change now starts on {day}."
   },
   "site": {
     "zoneNote": "All times are in the website's time zone ({zone}).",
@@ -648,8 +664,7 @@
       "since": "Draft since {date}",
       "goesLive": "Goes live {date}",
       "all": "All drafts in Content",
-      "changesSince": "Unpublished changes since {date}",
-      "changesGoLive": "Changes go online {date}"
+      "changesSince": "Unpublished changes since {date}"
     }
   },
   "editor": {
@@ -1031,7 +1046,6 @@
     "savedLikeLive": "Saved. It matches the version on the website again.",
     "changesPublished": "Changes published.",
     "changesScheduled": "Scheduled: changes online from {time}.",
-    "changesScheduleCleared": "Schedule cancelled. The changes stay saved, but not online yet.",
     "changesDiscarded": "Changes discarded. The version on the website applies again."
   },
   "review": {
@@ -1045,7 +1059,6 @@
     "removeFromRelease": "Remove from release",
     "releaseApproved": "Release approved. On the website in about a minute.",
     "approve": "Approve",
-    "approveLater": "Approve for later…",
     "reject": "Reject…",
     "rejectConfirm": "Reject",
     "reason": "Why? The author sees this.",

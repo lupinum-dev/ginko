@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatMoney } from '@lupinum/ginko'
-import { dishOn, priceOn, timesOf, weekdayNames, type Weekday } from '@lupinum/ginko-preset-gastro'
+import { dishOn, timesOf, weekdayNames, type Weekday } from '@lupinum/ginko-preset-gastro'
 
 const hours = useGinko('hours')
 // The week starts on Monday (`week` in ginko.config.ts).
@@ -30,7 +30,7 @@ useGinkoSeo({ title: 'Speisekarte und Öffnungszeiten' })
       <h2>{{ title }}</h2>
       <ul>
         <li v-for="dish in dishes.filter((i) => i.data.category === key)" :key="dish.id">
-          <strong>{{ dish.data.name }}</strong><template v-if="dish.soldOut"> (heute aus)</template>, {{ formatMoney(priceOn(dish.data, today), language) }}
+          <strong>{{ dish.data.name }}</strong><template v-if="dish.soldOut"> (heute aus)</template>, {{ formatMoney(dish.data.price, language) }}
           <br>{{ dish.data.description }}
         </li>
       </ul>

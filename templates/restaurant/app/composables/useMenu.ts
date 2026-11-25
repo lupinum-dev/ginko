@@ -1,5 +1,5 @@
 // Synced from templates/_features/menu/app/composables/useMenu.ts by `pnpm templates sync`. Edit the source, not this copy.
-import { allergensEU, dishOn, lunchWeekOn, menuCategories, priceOn, upcomingPrice } from '@lupinum/ginko-preset-gastro'
+import { allergensEU, dishOn, lunchWeekOn, menuCategories } from '@lupinum/ginko-preset-gastro'
 import { hoursOn, weekdayOf } from '@lupinum/ginko/patterns'
 
 /** The 14 EU allergen letters (`allergensEU` of the gastro preset): the menu texts name each of them. */
@@ -21,10 +21,14 @@ export function useAllergenName() {
   return (code: string) => (isAllergen(code) ? t(`allergens.${code}`) : code)
 }
 
+/** The day `days` days after `day` (both `YYYY-MM-DD`). */
+const daysAfter = (day: string, days: number) => new Date(Date.parse(`${day}T12:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
+
 /**
  * The menu as guests see it today: dishes taken off the menu are left out, a dish marked sold out today stays with
- * `soldOut`, prices are today's (`priceOn`), and a price change within 14 days is announced (`next`). All rules come
- * from the gastro preset, so the menu, the allergen key and the JSON-LD agree.
+ * `soldOut`, and a new price that starts within 14 days is announced (`next`, from the dish's `upcoming`: the price
+ * task can plan a price for a day). The rules come from the gastro preset, so the menu, the allergen key and the
+ * JSON-LD agree.
  */
 export function useMenu() {
   const menu = useGinko('menu')
@@ -32,7 +36,9 @@ export function useMenu() {
   const dishes = computed(() => menu.value.items.flatMap((item) => {
     const { shown, soldOut } = dishOn(item.data, today.value)
     if (!shown) return []
-    return [{ item, soldOut, price: priceOn(item.data, today.value), next: upcomingPrice(item.data, today.value, 14) }]
+    const coming = item.upcoming?.find((change) => change.data.price && change.from > today.value && change.from <= daysAfter(today.value, 14))
+    const next = coming?.data.price ? { from: coming.from, price: coming.data.price } : undefined
+    return [{ item, soldOut, price: item.data.price, next }]
   }))
   // The categories of the `menu()` brick (`menuCategories`), so a dish always has its group: the brick accepts no other.
   const groups = computed(() => menuCategories

@@ -2,7 +2,7 @@
 // a release before it is sent. The platform repeats the same work in sites.release (SPEC 5.2),
 // so both must stay in step: same migration rules, same defaults, same validation.
 import {
-  checkSite, defaultsFor, entryBytes, recheckAll, fitsBudget, isTranslatable, releaseData, SITE_BUDGET, validate,
+  checkSite, defaultsFor, entryBytes, recheckAll, fitsBudget, isTranslatable, planDay, releaseData, SITE_BUDGET, validate, withPublishedOn,
   type Field, type Fields, type Json, type Locale, type Migration, type MigrationDescriptor, type Schema, type SiteInput,
 } from '../core/index.ts'
 import { type Candidate, isObject, type ReleaseState, type Write } from './model.ts'
@@ -55,7 +55,7 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput, schem
 
   const changed: Candidate['changed'] = []
   const created: Candidate['created'] = []
-  const checked: { id: string; brick: string; data: Record<string, Json>; shape: boolean }[] = []
+  const checked: { id: string; brick: string; data: Record<string, Json>; draft: boolean; planned?: number }[] = []
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (!Object.hasOwn(state.schema.bricks, key)) {
       if (brick.kind === 'single') created.push({ brick: key, data: defaultsFor(brick.fields, schema.week) })
@@ -66,14 +66,19 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput, schem
       if (entry.brick !== key) continue
       const next = releaseData(state.schema.bricks[key]!.fields, brick.fields, entry.data, writes.get(entry.id) ?? {}, [state.schema.week, schema.week])
       if (next.roots.length) changed.push({ id: entry.id, brick: key, data: next.data })
-      // A draft without a time may be incomplete (D115): only its shape is checked, as sites.release does.
-      if (next.roots.length || all) checked.push({ id: entry.id, brick: key, data: next.data, shape: entry.state === 'draft' && entry.publishAt === undefined })
+      // A draft without a time may be incomplete, not badly formed (D115, mode `draft`); a planned one is checked with its
+      // empty `publishedOn` filled by the plan's day (rule 9, D108). As sites.release does.
+      if (next.roots.length || all) {
+        const draft = entry.state === 'draft'
+        checked.push({ id: entry.id, brick: key, data: next.data, draft: draft && entry.publishAt === undefined, ...(draft && entry.publishAt !== undefined ? { planned: entry.publishAt } : {}) })
+      }
     }
   }
 
   // Every entry of a brick whose fields changed is checked, not only the written ones (break-it 9).
   for (const entry of checked) {
-    for (const issue of (await validate(schema, entry.brick, entry.data, { mode: entry.shape ? 'shape' : 'release' })).errors) {
+    const data = entry.planned === undefined ? entry.data : withPublishedOn(schema, entry.brick, entry.data, planDay(schema, entry.planned))
+    for (const issue of (await validate(schema, entry.brick, data, { mode: entry.draft ? 'draft' : 'release' })).errors) {
       problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
     }
   }
