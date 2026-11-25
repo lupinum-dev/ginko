@@ -867,10 +867,15 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
-  // Wrong behaviour caught (I2.4): the edited change was cancelled (or went online) while the sheet was open, yet the
-  // sheet still spoke of it as staying and sent its fields as if replacing it, so a value equal to the stored one was
-  // planned as a change.
-  test('"Bearbeiten" counts only while its change still waits', async () => {
+  // Wrong behaviour caught (I2.4, J3): the edited change was cancelled (or went online) while the sheet was open, yet
+  // the sheet still spoke of it as staying and sent its fields as if replacing it, so a value equal to the stored one was
+  // planned as a change; or another person's change planned on the same day meanwhile counted as the edited one, and the
+  // fields of the cancelled change were forced into it.
+  test.each([
+    ['cancelled, nothing else on that day', false, 'Alt'],
+    ['cancelled, another change on the same day', true, 'Alt'],
+    ['cancelled, another change on the same day, a value typed', true, 'Neu'],
+  ] as const)('"Bearbeiten" counts only while its own change still waits (%s)', async (_case, other, typed) => {
     const day = inDays(20)
     datedRows.value = [{ id: 'd1', from: day, fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
     const wrapper = mountAsk()
@@ -878,14 +883,17 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await flushPromises()
     await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
     await flushPromises()
-    datedRows.value = []
+    datedRows.value = other ? [{ id: 'd2', from: day, fields: ['title'], values: { title: 'Fremd' }, by: null, at: 0, changedSince: [] }] : []
     await wrapper.get('#sheet-starts-on').setValue(inDays(21))
     expect(wrapper.find('#sheet-starts-on-status').exists()).toBe(false)
     await wrapper.get('#sheet-starts-on').setValue(day)
-    await wrapper.get('input[name="title"]').setValue('Alt')
+    await wrapper.get('input[name="title"]').setValue(typed)
     await press(wrapper, footer(wrapper)[0]!)
     await flushPromises()
-    expect(ops.saveEntry.mock.calls.flatMap((c) => Object.keys((c as unknown as [{ fields: object }])[0].fields))).toEqual([])
+    const fields = ops.saveEntry.mock.calls.map((c) => (c as unknown as [{ fields: object }])[0].fields)
+    // A value equal to the stored one is no change: no call, and the field says so. A typed value is the only field sent.
+    if (typed === 'Alt') expect([fields, wrapper.get('#sheet-starts-on-status').text()]).toEqual([[], 'Es ist noch nichts geändert. Ändere zuerst einen Wert.'])
+    else expect(fields).toEqual([{ title: 'Neu' }])
     wrapper.unmount()
   })
 

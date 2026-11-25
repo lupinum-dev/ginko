@@ -392,15 +392,21 @@ const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopp
   return ours.length ? [{ id: c.id, from: c.from, fields: ours, values: c.values as Data, text: t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), changes }) }] : []
 }))
 /** The waiting change "Bearbeiten" filled the form from: saved on its day, it is replaced (every field of it is sent). */
-const editing = ref<{ from: string; fields: string[] }>()
+const editing = ref<{ id: string; fields: string[] }>()
 function editChange(n: (typeof waitingNotices.value)[number]) {
   startsOn.value = n.from
   for (const key of n.fields) form.setField(key, n.values[key] ?? undefined)
-  editing.value = { from: n.from, fields: n.fields }
+  editing.value = { id: n.id, fields: n.fields }
   nextTick(() => document.getElementById('sheet-starts-on')?.focus())
 }
-/** The change being edited, while it still waits: cancelled, gone online or stopped meanwhile, it counts no more (I2). */
-const edited = computed(() => (editing.value && waitingNotices.value.some((n) => n.from === editing.value!.from) ? editing.value : undefined))
+/**
+ * The change being edited, by its row, while it still waits: cancelled, gone online or stopped meanwhile, it counts no
+ * more (I2), also when someone plans another change on the same day (J3). Its day is the row's day now.
+ */
+const edited = computed(() => {
+  const row = editing.value && waitingNotices.value.find((n) => n.id === editing.value!.id)
+  return row ? { from: row.from, fields: editing.value!.fields } : undefined
+})
 /** After "Bearbeiten", another day in the field plans a second change; the one being edited stays (H1). */
 const secondChange = computed(() => {
   const was = edited.value?.from
