@@ -4,6 +4,8 @@ import { factComponent, SITE_BUDGET as BUDGET, type Schema } from '@lupinum/gink
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
+import { ConvexError } from 'convex/values'
+import { writeStop } from '../convex/lib/stopped'
 import { errorOf, opId, people, setup, upload } from './setup'
 
 // Mail is the one thing mocked besides the clock: the outbox records it.
@@ -274,6 +276,18 @@ describe('on the day', () => {
     const today = await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })
     expect(today[0]!.causeText).toBe('Die Werte ließen sich nicht speichern: Der Textspeicher der Seite ist voll (4.1 MB von 4 MB). Kürze oder entferne Einträge. Änderungen, die nichts vergrößern, lassen sich immer speichern.')
     log.mockRestore()
+  })
+
+  // Wrong behaviour caught (H2.15): a ConvexError without a message key out of the write (none of the product's own
+  // throws today) stopped the change as fields that are "missing or not valid", which no field is. Tested on the function
+  // `applyDue` decides with: no write path throws such an error to reach it through the run, and only mail and the clock
+  // are mocked.
+  it.each([
+    ['a refusal with its message', new ConvexError({ code: 'TOO_LARGE', key: 'errors.entryTooComplex' }), { code: 'invalid', fields: ['price'], cause: { key: 'errors.entryTooComplex' } }],
+    ['a ConvexError without a message key', new ConvexError({ code: 'INVALID' }), { code: 'failed' }],
+    ['another error', new TypeError('x'), { code: 'failed' }],
+  ])('the stop of a write that threw: %s', (_, error, reason) => {
+    expect(writeStop(error, ['price'])).toEqual(reason)
   })
 
   it('an error of the run stops the change with "failed" and logs only the class', async () => {

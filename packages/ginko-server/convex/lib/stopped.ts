@@ -38,11 +38,16 @@ function causeOf(schema: Schema, brickKey: string, reason: StopReason, form: 'ca
   return msg(`stopped.${form}.late`)
 }
 
-/** The message of a refusal (`fail`) to keep as a stop's cause: its catalog key and params; none for another error. */
-export function refusalOf(error: { data: unknown }): { key: string; params?: Record<string, string | number> } | undefined {
+/**
+ * The stop of a due change whose write threw (`roots`: its fields). A refusal (`fail`: a ConvexError with a catalog key,
+ * a budget the site reached since) is `invalid` with that message as its cause (G5); anything else, a ConvexError
+ * without a key included, is an error of the run: `failed` (H2).
+ */
+export function writeStop(error: unknown, roots: string[]): StopReason {
+  if (!(error instanceof ConvexError)) return { code: 'failed' }
   const { key, params } = (error.data ?? {}) as { key?: unknown; params?: Record<string, string | number> }
-  if (typeof key !== 'string') return undefined
-  return params === undefined ? { key } : { key, params }
+  if (typeof key !== 'string') return { code: 'failed' }
+  return { code: 'invalid', fields: roots, cause: params === undefined ? { key } : { key, params } }
 }
 
 /** What a log line may say of an error: its code or its class only, since its message can hold an address or a title. */

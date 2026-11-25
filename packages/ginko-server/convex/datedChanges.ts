@@ -13,7 +13,7 @@ import { entryLabel } from './lib/list'
 import { labeler } from './lib/names'
 import { dropPending, dropPendingRoots, overlay, pendingOf, underRoot } from './lib/pending'
 import { needsProposal } from './lib/policy'
-import { errorKind, mailStoppedChange, refusalOf, stoppedBecause } from './lib/stopped'
+import { errorKind, mailStoppedChange, stoppedBecause, writeStop } from './lib/stopped'
 import { brokenNewLinks, commitEntry, lookupsFor } from './lib/write'
 import type { StopReason } from './schema'
 import { internal } from './_generated/api'
@@ -186,15 +186,10 @@ export const applyDue = internalMutation({
       if (!reason) await ctx.runMutation(internal.datedChanges.writeDue, { change: row._id })
     } catch (error) {
       // A refusal of the write (a budget the site reached since) stops it as `invalid` with that refusal as its cause; the
-      // class survives `runMutation`. Any other error of the run stops the change with `failed`; `writeDue` is a
-      // transaction of its own, so nothing of it stays written.
-      if (writing && error instanceof ConvexError) {
-        const cause = refusalOf(error)
-        reason = { code: 'invalid', fields: Object.keys(row.fields), ...(cause ? { cause } : {}) }
-      } else {
-        console.error(`Dated change ${row._id} failed (${errorKind(error)}).`)
-        reason = { code: 'failed' }
-      }
+      // class survives `runMutation`. Any other error of the run stops the change with `failed` (`writeStop`);
+      // `writeDue` is a transaction of its own, so nothing of it stays written.
+      reason = writing ? writeStop(error, Object.keys(row.fields)) : { code: 'failed' }
+      if (reason.code === 'failed') console.error(`Dated change ${row._id} failed (${errorKind(error)}).`)
     }
     return reason ? await stop(ctx, site, entry, row, reason, title) : null
   },
