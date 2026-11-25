@@ -38,13 +38,16 @@ const labelsOf = (row: Dated) => ({ ...(row.yearly ? { yearly: row.yearly } : {}
  * Who may move or cancel a dated change (D125): who may make it, with the same task (`when: { from: 'ask' }`) or the full
  * rights of the brick, and the owners and admins. A move is checked at the days the row will have (`days`, round L2),
  * as a save of those days would be: a task that asks one day moves no end, and a today-only task moves nothing (its
- * row's days are fixed as today).
+ * row's days are fixed as today). A cancel is checked as a save of the row's own days: a task cancels only a row it could
+ * have made (round M1), so "Preis ändern" ends no offer and an offer task takes away no change for good.
  */
 function mayChange(actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated, days?: Days) {
   if (actor.role !== 'staff') return
   const named = taskOf(schema, task)
   if (days && named?.kind === 'edit' && named.when?.from === '@today') fail('FORBIDDEN', 'errors.todayOnly')
-  refuseTaskWithoutDay(schema, task, days)
+  // A cancel has no days of its own: the task must be one that could have made the row, checked as a save of the row's
+  // days (round M1). The name is a label, not a right, so it is left out.
+  refuseTaskWithoutDay(schema, task, days ?? { from: row.from, until: row.until, ...(row.yearly ? { yearly: row.yearly } : {}) })
   // The task's fixed values (`set`) come with it, so its rights cover them.
   const fixed = taskSet(schema, task)
   authorize(actor, schema, { task, brick: taskBrickOf(schema, task, entry), kind: 'edit', fields: Object.keys(row.fields).filter((root) => !Object.hasOwn(fixed, root)), entry })

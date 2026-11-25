@@ -303,6 +303,34 @@ describe('numbers 1 to 3', () => {
   })
 })
 
+// Round M1 (break-it P1-1): staff cancel only a row their task could have made. Wrong behaviour caught: the cook ends the
+// owner's running offer through "Preis ändern" (the website price jumps back), cancels a change for good through a task
+// with an end, or a season through a task that cannot make one; or the list offers a cancel the server refuses.
+describe('a task cancels only a row it could have made (round M1)', () => {
+  it.each<[string, string, (s: Awaited<ReturnType<typeof untilSetup>>) => Promise<unknown>, string | undefined]>([
+    ['a task without an end, a row with one', 'menu.price', (s) => s.offer(990, TODAY, '2026-10-20'), 'errors.taskCannotEnd'],
+    ['a task with an end, a row without one', 'menu.offer', (s) => s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1500 } }, from: '2026-10-20' }), 'errors.taskNeedsDays'],
+    ['a task without yearly, a yearly row', 'menu.offer', (s) => s.offer(990, '2026-12-01', '2027-01-31', { yearly: true }), 'errors.taskCannotYearly'],
+    ['the today-only task, its own row', 'menu.offToday', (s) => s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.offToday', entry: s.saibling, baseRev: 1, fields: {}, from: TODAY, until: TODAY }), undefined],
+    ['a task without an end, a row without one', 'menu.price', (s) => s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1500 } }, from: '2026-10-20' }), undefined],
+  ])('%s: %s', async (_case, task, make, key) => {
+    const s = await untilSetup()
+    await make(s)
+    const [made] = await s.dated(s.saibling)
+    const [rev, price] = [await s.contentRev(), await s.shownPrice(s.saibling)]
+    const listed = await s.as.cook.query(api.datedChanges.list, { site: 'restaurant', entry: s.saibling, task })
+    expect(listed.find((r) => r.id === made!._id)?.mayCancel).toBe(key === undefined)
+    const cancel = s.as.cook.mutation(api.datedChanges.cancel, { site: 'restaurant', opId: opId(), task, change: made!._id })
+    if (key === undefined) {
+      await cancel
+      expect(await s.dated(s.saibling)).toEqual([])
+      return
+    }
+    expect(await errorOf(cancel)).toMatchObject({ key })
+    expect([(await s.dated(s.saibling)).map((r) => [r._id, r.holds]), await s.contentRev(), await s.shownPrice(s.saibling)]).toEqual([[[made!._id, made!.holds]], rev, price])
+  })
+})
+
 describe('moving and ending (state table: Tage ändern, Änderung aufheben, Jetzt beenden)', () => {
   // Row "Tage ändern", waits. Wrong behaviour caught: a move keeps the old end, or skips the limits.
   it('a waiting row moves both days, within the limits', async () => {
