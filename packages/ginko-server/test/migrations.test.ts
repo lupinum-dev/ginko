@@ -3,6 +3,7 @@
 import { checkSchema, type Schema } from '@lupinum/ginko/internal'
 import { statusRules } from '@lupinum/ginko/patterns'
 import { convexTest } from 'convex-test'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
@@ -335,6 +336,31 @@ describe('2026-11-25-dated-changes (D130)', () => {
     await runThisOne(s)
     const after = await read()
     expect([after.site.schema, after.site.schemaRev, after.site.contentRev, after.changes, after.dated]).toEqual([before.site.schema, before.site.schemaRev, before.site.contentRev, before.changes, 0])
+  })
+
+  // A2. Wrong behaviour caught: the migration reads the stored model through code written for the new format, so a site
+  // whose model is older (no `listing`, `visible` instead of `showUntil`, format 2) is not converted at all.
+  it('converts a site whose stored model is an old format', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const [risotto, schnitzel, saibling] = [s.entries['menu-risotto']!, s.entries['menu-schnitzel']!, s.entries['menu-saibling']!]
+    // The restaurant's stored model as the repository had it before `listing` (contracts/restaurant/schema.json at 67821142).
+    const old = JSON.parse(readFileSync(new URL('./fixtures/restaurant-schema-before-listing.json', import.meta.url), 'utf8'))
+    await s.t.run(async (ctx) => {
+      await ctx.db.patch(s.site, { schema: old })
+      for (const [entry, next, from] of [[schnitzel, 2290, '2026-10-18'], [saibling, 1590, '2026-10-01']] as const) {
+        const row = (await ctx.db.get(entry))!
+        await ctx.db.patch(entry, { data: { ...(row.data as object), nextPrice: { amount: next }, priceFrom: from } })
+      }
+    })
+    await timedRow(s, risotto, { price: { amount: 1500 } }, Date.parse('2026-10-20T08:00:00Z'))
+    await runThisOne(s)
+    expect((await s.t.query(internal.ops.status, {}))!.migrations.skipped).toEqual([])
+    const menu = ((await s.t.run((ctx) => ctx.db.get(s.site)))!.schema as { bricks: Record<string, any> }).bricks.menu
+    expect([menu.planned, menu.fields.nextPrice, menu.fields.priceFrom, menu.timeline]).toEqual([undefined, undefined, undefined, { public: ['price'] }])
+    expect(menu.tasks.find((t: { id: string }) => t.id === 'price')).toMatchObject({ fields: ['price'], when: { from: 'ask' } })
+    expect((await datedRows(s)).sort()).toEqual([[risotto, '2026-10-20', { price: { amount: 1500 } }], [schnitzel, '2026-10-18', { price: { amount: 2290 } }]].sort())
+    expect(((await s.t.run((ctx) => ctx.db.get(saibling)))!.data as { price: unknown }).price).toEqual({ amount: 1590 })
   })
 
   // A1. Wrong behaviour caught: one timed change the migration cannot convert (here of a brick the stored model no
