@@ -295,6 +295,7 @@
     "staleChanged": "Alguien ha cambiado esto mientras tanto. Propón el cambio de nuevo.",
     "staleAlreadyLive": "Esta entrada ya está en línea.",
     "staleAlreadyDraft": "Esta entrada ya es un borrador.",
+    "staleTimeGone": "La hora que esta solicitud quería quitar ya no existe.",
     "staleApproverNotAllowed": "Quien aprueba ya no tiene permiso para aprobar esto.",
     "staleNoLonger": "Esto ya no es posible.",
     "staleRefused": "{why} Propón el cambio de nuevo.",

@@ -92,7 +92,14 @@ function reasonOf(data: { code?: string; key?: string; params?: Record<string, s
  * operations check everything before they write, so a refusal leaves nothing behind: it becomes the
  * reason the proposal is stale. Any other error is a bug and is thrown.
  */
+/**
+ * Compatibility (D130, internals/migrations.md): a request from before D130 to take a planned time off ("unpublish"
+ * whose after is online). That time no longer exists, and a yes now would take the entry offline.
+ */
+const timeGone = (p: Doc<'proposals'>) => p.op === 'unpublish' && (p.after as { state?: unknown } | undefined)?.state === 'live'
+
 async function applyNow(ctx: MutationCtx, p: Doc<'proposals'>, approver: string): Promise<Applied> {
+  if (timeGone(p)) return { ok: false, ...staleBecause('history.staleTimeGone') }
   const site = await ctx.db.get(p.site)
   if (!site) return { ok: false, ...staleBecause('history.staleSiteGone') }
   const author = await memberOf(ctx, site, { id: p.author })
@@ -153,6 +160,7 @@ async function staleReason(ctx: QueryCtx, p: Doc<'proposals'>, touched: Touched 
     if (args.rev === undefined) return staleBecause('history.staleAlreadyLive')
     if (entry.rev !== args.rev || !(await pendingOf(ctx, entry._id))) return retry
   }
+  if (timeGone(p)) return staleBecause('history.staleTimeGone')
   if (p.op === 'unpublish' && (entry.state ?? 'live') === 'draft' && entry.publishAt === undefined && !entry.stopped) return staleBecause('history.staleAlreadyDraft')
   touched.set(entry._id, { roots: seen?.roots ?? new Set(), life: true })
   return null

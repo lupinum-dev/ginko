@@ -191,6 +191,9 @@ Rules for a new migration:
     migration changes nothing.
   - `convex/datedChanges.ts` `migrateOlderWays` reads `planned` from a stored schema (the core no longer knows the key;
     `checkSchema` refuses it with the way to move).
+  - `convex/proposals.ts` `timeGone`: an open request from before D130 to take a planned time off (`op: 'unpublish'`,
+    `after.state === 'live'`) is stale (`history.staleTimeGone`) in `applyNow` and `staleReason`; a yes would take the
+    entry offline. Such requests are open until someone decides them, so the rule stays until the contract step.
 - **Dependents:** every deployment with a time on unpublished changes, a request approved for a time, or a site whose
   stored schema has `planned` (the restaurant demo and sites made from the gastro preset).
 - **Steps:**
@@ -204,7 +207,9 @@ Rules for a new migration:
      `npx convex run datedChanges:migrateOneSite '{"site":"<id>"}'` (add `--prod` for production). When it succeeds,
      the site leaves `migrations.skipped`; when it fails again, it stays, and the error names the kind.
   4. Contract step (next major, rule 6): remove `pendingChanges.publishAt`, `pendingChanges.publishJob` and
-     `proposals.job` from the schema, the online branch of `publishDue`, and `migrateOlderWays` with its list entry.
+     `proposals.job` from the schema, the online branch of `publishDue`, `migrateOlderWays` with its list entry, and
+     `timeGone` with its key `history.staleTimeGone` (first mark every open request it finds as stale, in the same
+     major's migration).
 - **One site, one transaction (R4 review), and its bound.** Convex's limits per mutation
   (docs.convex.dev/production/state/limits, read 26 November 2026; nested `runMutation` is not on that page, so the
   nested site and row mutations count as part of the step): 32,000 documents scanned, 16 MiB read, 16,000 documents
