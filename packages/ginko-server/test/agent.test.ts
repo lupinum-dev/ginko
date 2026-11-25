@@ -358,6 +358,22 @@ describe('agent door: tool catalog', () => {
     expect(bundle.bricks.events.items.map((i) => i.id)).not.toContain(done.data.entry)
   })
 
+  // Wrong behaviour caught (D116): an assistant creates or changes a half-filled draft and tells the person it is done,
+  // because the answer does not say what the draft still lacks before it can go online.
+  it('a draft created or written with a field missing: the answer names the field', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    const lacks = 'Before it can go online, these fields still need a value or a fix: description.'
+    const made = await call(s, key, 'ginko_draft', { brick: 'events', fields: { title: 'Erntedank', when: { from: '2026-11-20', to: '2026-11-20' } } })
+    expect(made.text).toContain(lacks)
+    const written = await call(s, key, 'ginko_write', { brick: 'events', entry: made.data.entry, fields: { title: 'Erntedankfest' } })
+    expect(written.text).toContain(lacks)
+    const created = await call(s, key, 'ginko_create', { brick: 'events', fields: { title: 'Herbst', when: { from: '2026-11-21', to: '2026-11-21' } } })
+    expect(created.text).toContain(lacks)
+    const filled = await call(s, key, 'ginko_write', { brick: 'events', entry: made.data.entry, fields: { description: 'Mit Musik.' } })
+    expect(filled.text).not.toContain('Before it can go online')
+  })
+
   it('ginko_file_usage names the entry that shows the image', async () => {
     const s = await setup()
     const file = await upload(s, { type: 'image/jpeg', content: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]), name: 'foto.jpg', ready: false })
