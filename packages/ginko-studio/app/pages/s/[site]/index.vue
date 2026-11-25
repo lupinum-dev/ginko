@@ -235,9 +235,10 @@ const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
         action: { label: t('site.quick.drafts.continue'), to: row.to, run: task ? () => start(task.brick, task.task) : undefined },
       }
     }
-    // A plan that did not go online looks like a change that did not go live; the tile opens the entry (D104).
+    // A plan that did not go online looks like a change that did not go live; the tile opens the entry (D104). One entry
+    // can have a stopped plan and stopped changes: a change's tile is keyed by the change.
     case 'stopped': return {
-      id: `s-${item.row.entry}`, kind: 'notLive', title: textOf(item.row.title, item.row.titleText), sub: textOf(item.row.cause, item.row.causeText),
+      id: `s-${stoppedChangeId(item.row) ?? item.row.entry}`, kind: 'notLive', title: textOf(item.row.title, item.row.titleText), sub: textOf(item.row.cause, item.row.causeText),
       action: { label: t('today.waiting.open'), to: `/s/${s.slug.value}/all/${item.row.brick}/${item.row.entry}` },
     }
     case 'notLive': return {
@@ -247,6 +248,12 @@ const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
     }
   }
 }))
+
+/** The dated change a stopped tile stands for (entries.stoppedPlans adds `change: { id, from }`), or none for a plan. */
+function stoppedChangeId(row: object): string | undefined {
+  const change = 'change' in row ? row.change : undefined
+  return change && typeof change === 'object' && 'id' in change && typeof change.id === 'string' ? change.id : undefined
+}
 
 provide(TODAY, reactive({
   slug: s.slug, main: s.main, isManager: s.isManager, today: s.today, timeZone: computed(() => s.schema.value?.timeZone ?? 'UTC'),

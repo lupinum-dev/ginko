@@ -15,6 +15,7 @@ import { sizeText } from '../utils/size'
 import { isModKey } from '../utils/keys'
 import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { isProposal, opErrorOf } from '../composables/useOps'
+import { messageOf } from '../utils/messageOf'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { SLUG_CHANGE } from '../utils/slugChange'
 import { EllipsisIcon, EyeIcon, EyeOffIcon } from '@lucide/vue'
@@ -24,6 +25,7 @@ import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
 import EntryRemoveDialog from './EntryRemoveDialog.vue'
 import EntryPublishPanel from './EntryPublishPanel.vue'
+import DatedNotices from './DatedNotices.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
 import SplitHandle from './SplitHandle.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
@@ -306,21 +308,23 @@ const state = computed(() => props.entry?.state ?? 'live')
 const isDraft = computed(() => (props.entry ? statusOf(props.brick, { data: props.entry.data, state: state.value }, todayIn(timeZone.value)).now === 'draft' : offlineable.value))
 /**
  * Save without publishing: on every live entry and single, Speichern keeps the changes unpublished; Veröffentlichen
- * puts them live (now or later), Verwerfen goes back to the version on the website.
+ * puts them live (now, or from a later day as a dated change), Verwerfen goes back to the version on the website.
  */
 const pending = computed(() => (state.value === 'live' ? props.entry?.pending : undefined))
 const keepsChanges = computed(() => !!props.entry && state.value === 'live')
-/** The planned time of a scheduled draft, or of a live entry's unpublished changes. */
-const scheduledAt = computed(() => props.entry?.publishAt ?? pending.value?.publishAt)
+/** The planned time of a scheduled draft (an online entry's changes take a day instead, D130). */
+const scheduledAt = computed(() => (state.value === 'live' ? undefined : props.entry?.publishAt))
+/** The first change waiting for a later day (D125): the badge names its day, the notices above the form say the rest. */
+const nextChange = computed(() => {
+  const next = props.entry && state.value === 'live' ? statusOf(props.brick, { data: props.entry.data, state: 'live', ...(props.entry.changes ? { changes: props.entry.changes } : {}) }, todayIn(timeZone.value)).waiting.find((w) => w.kind === 'change') : undefined
+  return next?.kind === 'change' ? next : undefined
+})
 /** "Veröffentlichen …": a draft, or unpublished changes (saved, or typed and saved on the way). */
 const publishable = computed(() => isDraft.value || (keepsChanges.value && (!!pending.value || dirty.value)))
 const statusText = computed(() => {
   if (!props.entry) return ''
-  if (pending.value) {
-    return pending.value.publishAt
-      ? t('entry.status.changesFrom', { when: whenText(pending.value.publishAt, timeZone.value, format) })
-      : t('entry.status.changes')
-  }
+  if (pending.value) return t('entry.status.changes')
+  if (nextChange.value) return t('entry.status.changesFrom', { when: format.date(nextChange.value.from, { weekday: 'short', day: 'numeric', month: 'short' }) })
   if (state.value === 'live') return t('entry.status.online')
   return props.entry.publishAt
     ? t('entry.status.onlineFrom', { when: whenText(props.entry.publishAt, timeZone.value, format) })
@@ -496,7 +500,7 @@ watch(() => props.entry?._id, () => {
 
 /** The status card's line under the badge: what a draft or a scheduled entry means for the website. */
 const statusNote = computed(() => {
-  if (pending.value) return pending.value.publishAt ? t('entry.side.changesScheduledNote') : t('entry.side.changesNote')
+  if (pending.value) return t('entry.side.changesNote')
   if (!props.entry) return ''
   if (state.value === 'live') return t('entry.side.liveNote')
   return props.entry.publishAt ? t('entry.side.scheduledNote') : t('entry.side.draftNote')
@@ -511,6 +515,10 @@ const at = ref('')
 const picked = ref<number>()
 const publishError = ref('')
 const publishBusy = ref(false)
+/** The day an online entry's unpublished changes start on ("Ab einem späteren Tag", D131), and what is wrong with it. */
+const day = ref('')
+const dayError = ref('')
+watch(day, () => { dayError.value = '' })
 const HOUR = 60 * 60 * 1000
 
 function openPublish() {
@@ -520,6 +528,8 @@ function openPublish() {
   // A suggestion for "Online ab": tomorrow 9:00 at the site, or the time already planned.
   at.value = scheduled ? msToZoned(scheduled, timeZone.value) : `${msToZoned(now + 24 * HOUR, timeZone.value).slice(0, 10)}T09:00`
   picked.value = scheduled
+  day.value = ''
+  dayError.value = ''
   publishError.value = ''
   publishing.value = true
 }
@@ -527,7 +537,13 @@ function openPublish() {
 async function doPublish() {
   publishError.value = ''
   let ms: number | undefined
-  if (when.value === 'later') {
+  let from: string | undefined
+  if (when.value === 'later' && keepsChanges.value) {
+    // A day, not a time: the changes become a change of that day (D125).
+    dayError.value = !day.value ? t('dated.dayRequired') : day.value <= todayIn(timeZone.value) ? messageOf({ key: 'errors.dayNotAhead' }) : ''
+    if (dayError.value) return document.getElementById('publish-day')?.focus()
+    from = day.value
+  } else if (when.value === 'later') {
     const problem = scheduleProblem(at.value, timeZone.value, picked.value, Date.now())
     if (problem === 'entry.publish.timeMissing') document.getElementById('publish-at')?.focus()
     else if (problem) publishError.value = t(problem)
@@ -549,7 +565,7 @@ async function doPublish() {
     if (dirty.value && !(await form.save())) return
     if (keepsChanges.value) {
       // The rev the form last saved or read: a newer save of someone else refuses the publish.
-      await ops.publishChanges(props.entry._id, props.entry.lifeRev, form.baseRev.value, { at: ms, task: publishTask.value, timeZone: timeZone.value, main: main.value })
+      await ops.publishChanges(props.entry._id, props.entry.lifeRev, form.baseRev.value, { from, task: publishTask.value, main: main.value })
       publishing.value = false
       return
     }
@@ -572,8 +588,6 @@ async function doUnpublish() {
   publishBusy.value = true
   publishError.value = ''
   try {
-    // The server takes one step back per call: a planned time of unpublished changes goes first, then the entry.
-    if (pending.value?.publishAt !== undefined) await ops.clearChangesSchedule(props.entry._id, props.entry.lifeRev, publishTask.value)
     await ops.unpublishEntry(props.entry._id, props.entry.lifeRev, { task: publishTask.value, timeZone: timeZone.value, wasLive: state.value === 'live', at: props.entry.publishAt, main: main.value })
     askUnpublish.value = false
     publishing.value = false
@@ -584,20 +598,6 @@ async function doUnpublish() {
   }
 }
 
-/** "Zeitplan aufheben" in the publish panel: a scheduled draft stays a draft, planned changes stay saved and the entry online. */
-async function doClearSchedule() {
-  if (!pending.value?.publishAt || !props.entry) return doUnpublish()
-  publishBusy.value = true
-  publishError.value = ''
-  try {
-    await ops.clearChangesSchedule(props.entry._id, props.entry.lifeRev, publishTask.value)
-    publishing.value = false
-  } catch (error) {
-    publishError.value = opErrorOf(error).message
-  } finally {
-    publishBusy.value = false
-  }
-}
 
 const askDiscard = ref(false)
 const discardBusy = ref(false)
@@ -763,9 +763,9 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <!-- Wide screens without the right column: publishing under the header (the top bar has no room for the panel). -->
         <template v-if="bar && !sideMode">
           <EntryPublishPanel
-            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
-            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
-            @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
+            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
+            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError"
+            @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
           />
           <div v-if="askUnpublish" class="grid gap-2.5 rounded-lg border bg-sidebar p-3.5">
             <p>{{ t('entry.unpublish.warning', { title }) }}</p>
@@ -784,6 +784,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           @restore="restoreRemoved" @save-as-new="saveAsNew" @discard="discardRemoved"
         />
         <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
+        <DatedNotices v-if="entry && state === 'live' && !removed" :site="site.slug" :entry="entry._id" :brick="brick" :main="main" :time-zone="timeZone" :task="tasks?.save" />
         <ConflictPanel
           v-if="conflict"
           :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="locale" :main="main"
@@ -848,9 +849,9 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
               <p v-if="publishError && askUnpublish" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ publishError }}</p>
             </template>
             <EntryPublishPanel
-              v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
-              :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
-              @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
+              v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
+              :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError"
+              @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
             />
           </template>
         </div>
@@ -877,9 +878,9 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
             </PopoverContent>
           </Popover>
           <EntryPublishPanel
-            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestionText"
-            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError"
-            @publish="doPublish" @clear-schedule="doClearSchedule" @cancel="publishing = false"
+            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" v-model:day="day" :question="publishQuestionText"
+            :time-zone="timeZone" :scheduled="!!scheduledAt" :busy="publishBusy || busy" :error="publishError" :by-day="keepsChanges" :day-error="dayError"
+            @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
           />
           <div v-else-if="!removed" class="flex flex-wrap gap-2">
             <Button v-if="publishable" type="button" variant="outline" size="sm" :disabled="busy" @click="openPublish">{{ scheduledAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>

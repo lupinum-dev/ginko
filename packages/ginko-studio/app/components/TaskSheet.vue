@@ -3,11 +3,12 @@
      with more languages, a switch shows the texts to translate; one Speichern stores every language. The person's own
      proposal on the entry (SPEC 17) is where an edit starts while it waits; a rejected one can be reopened. A create task
      ends in a publish step (TEMPLATES 7.3): Veröffentlichen, Als Entwurf speichern, Später veröffentlichen. An edit of a
-     live entry offers Veröffentlichen (only its fields go online) and Speichern (they wait unpublished, SPEC 15). -->
+     live entry offers Veröffentlichen (only its fields go online) and Speichern (they wait unpublished, SPEC 15). A task
+     with `when: { from: 'ask' }` adds "Gilt ab" under its fields: a day makes the save a dated change (D125, D131). -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, leavesOf, stableJson, weeklyTask, type Schema } from '@lupinum/ginko/internal'
+import { defaultsFor, isShown, leavesOf, stableJson, todayIn, weeklyTask, type Schema } from '@lupinum/ginko/internal'
 import { textIn, TRANSLATION } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
@@ -15,6 +16,7 @@ import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
 import ScheduleField from './ScheduleField.vue'
+import StartsOnField from './StartsOnField.vue'
 import ProposalWithdraw from './ProposalWithdraw.vue'
 import { provideSiteRefs } from '../composables/useSiteRefs'
 import { useFactUses } from '../composables/useFacts'
@@ -28,6 +30,7 @@ import { formatDay, hasTranslation, hidesUntranslated, languageName, leafTransla
 import { shownLabel } from '../utils/labels'
 import { planOwner } from '../utils/today'
 import { opErrorOf } from '../composables/useOps'
+import { messageOf } from '../utils/messageOf'
 import { isModKey } from '../utils/keys'
 import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { refDebounced } from '@vueuse/core'
@@ -338,6 +341,25 @@ function toggleLater() {
   if (later.value && !at.value) at.value = `${msToZoned(Date.now() + 24 * HOUR, props.schema.timeZone).slice(0, 10)}T09:00`
   if (later.value) nextTick(() => document.getElementById('sheet-publish-at')?.focus())
 }
+
+// "Gilt ab" (D131): a task that asks for the day, on an online entry. Empty is today: the save goes online as without
+// it. A day sends the changed fields as a change that starts on that day; the entry stays as it is until then. Only in
+// the main language's view: a change holds whole values, written in the main language (D119).
+const asksDay = computed(() => props.task.kind === 'edit' && props.task.when?.from === 'ask' && publishStep.value && !isCreate.value && !removedHere.value)
+const startsOn = ref('')
+const startsOnError = ref('')
+watch(startsOn, () => { startsOnError.value = '' })
+const dayOn = computed(() => (asksDay.value && startsOn.value ? startsOn.value : undefined))
+const shortDay = (day: string) => format.date(day, { weekday: 'short', day: 'numeric', month: 'short' })
+// Changes of the form's fields that wait for a later day (datedChanges.list): one notice each, so nobody plans over one
+// without knowing. Cancelling or moving one is done in Alles bearbeiten.
+const datedArgs = () => (props.entry && !isCreate.value && props.entry.state !== 'draft' ? { site: props.site, entry: props.entry._id } : 'skip' as const)
+const { data: dated } = useConvexQuery(api.datedChanges.list, datedArgs, { server: false })
+const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopped).flatMap((c) => {
+  const ours = c.fields.filter((k) => Object.hasOwn(fields.value, k))
+  return ours.length ? [{ id: c.id, text: t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), fields: ours.map((k) => shown(fields.value[k]!.label)).join(', ') }) }] : []
+}))
+
 /**
  * What a save does: `publish` goes online now (or waits for a yes), `draft` stays off the website (a new entry is a
  * draft, a change waits unpublished), `later` plans a new entry.
@@ -347,6 +369,17 @@ async function save(step: Step = 'publish') {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || !ready.value || removedHere.value) return
   laterProblem.value = ''
+  const from = dayOn.value
+  if (from !== undefined) {
+    // Enter in a field and Ctrl+S never publish (below), and a change for a later day is a publish: the button does it.
+    if (step === 'draft') return document.getElementById('sheet-primary')?.focus()
+    if (from <= todayIn(props.schema.timeZone)) {
+      startsOnError.value = messageOf({ key: 'errors.dayNotAhead' })
+      return document.getElementById('sheet-starts-on')?.focus()
+    }
+    await finish(await form.save(undefined, undefined, from))
+    return
+  }
   let publish: { at?: number } | true | undefined
   if (publishStep.value && !isCreate.value) publish = step === 'draft' ? undefined : true
   else if (publishStep.value && step !== 'draft') {
@@ -488,6 +521,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             </div>
             <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
             <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
+            <p v-for="n in waitingNotices" :key="n.id" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning" role="status" data-test="dated-waiting">{{ n.text }}</p>
             <p v-if="oldWeek" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.oldWeek', { date: formatDay(oldWeek, format) }) }}</p>
             <!-- Like "Deinen Vorschlag wieder öffnen" above, it replaces the form's values: offered only before anything is typed. -->
             <Button v-if="isCreate && copyFrom && !copied && !dirty" type="button" variant="outline" class="justify-self-start" :disabled="copying" @click="copyThisWeek">{{ t('entry.copyThisWeek') }}</Button>
@@ -513,6 +547,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
               />
               <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
             </template>
+            <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" optional :time-zone="schema.timeZone" :error="startsOnError" />
           </template>
         </div>
 
@@ -533,9 +568,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             </div>
             <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
             <!-- On the publish step only a press on this button publishes (Enter in a field saves a draft, like Ctrl+S); with the time open it plans instead, so there is one primary per state. -->
-            <Button :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : publishStep ? (approval ? t('entry.publish.review') : later ? t('entry.publish.schedule') : t('entry.publish.go')) : t('entry.save.save') }}</Button>
+            <Button id="sheet-primary" :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : publishStep ? (approval ? t('entry.publish.review') : later ? t('entry.publish.schedule') : dayOn ? t('dated.publishFrom', { day: shortDay(dayOn) }) : t('entry.publish.go')) : t('entry.save.save') }}</Button>
             <template v-if="publishStep">
-              <Button type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ isCreate ? t('entry.publish.asDraft') : t('entry.save.save') }}</Button>
+              <!-- With a day, Speichern (unpublished) would drop it: the day's button is the one way. -->
+              <Button v-if="!dayOn" type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ isCreate ? t('entry.publish.asDraft') : t('entry.save.save') }}</Button>
               <Button v-if="laterOffered" type="button" variant="outline" :aria-expanded="later" @click="toggleLater">{{ t('entry.publish.laterOpen') }}</Button>
             </template>
             <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>

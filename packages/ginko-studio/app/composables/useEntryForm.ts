@@ -181,15 +181,18 @@ export function useEntryForm(o: EntryFormOptions) {
 
   /** What the last save asked for: the conflict answers (keepMine, mergeLists) repeat it, so Veröffentlichen stays one. */
   let asked: { at?: number } | true | undefined
+  let askedFrom: string | undefined
   /**
    * Saves; resolves true when done (nothing to save counts as done). `publish` when creating: `{}` online now, `{ at }` scheduled; absent a draft. On a live entry `true` puts the
-   * saved fields online at once; absent, they wait as unpublished changes.
+   * saved fields online at once; absent, they wait as unpublished changes. `from` (a day after today, an online entry):
+   * the changed fields become a dated change of that day (D125); the entry stays as it is, so the form goes back to it.
    */
-  function save(rev = baseRev.value, publish?: { at?: number } | true): Promise<boolean> {
+  function save(rev = baseRev.value, publish?: { at?: number } | true, from?: string): Promise<boolean> {
     // A removed entry cannot take a save: the person restores it or saves the input as a new entry.
     if (o.removed?.()) return Promise.resolve(false)
     asked = publish
-    return write(rev, publish)
+    askedFrom = from
+    return write(rev, publish, undefined, from)
   }
 
   /** The input of a removed entry as a new entry (EntryGoneBanner); the server makes new addresses. */
@@ -214,7 +217,7 @@ export function useEntryForm(o: EntryFormOptions) {
     await Promise.all([...flushers].map((run) => run()))
   }
 
-  async function write(rev: number, publishAs?: { at?: number } | true, asNew?: { task?: string }): Promise<boolean> {
+  async function write(rev: number, publishAs?: { at?: number } | true, asNew?: { task?: string }, from?: string): Promise<boolean> {
     if (busy.value) return false
     await flush()
     if (blockers.size) {
@@ -250,7 +253,7 @@ export function useEntryForm(o: EntryFormOptions) {
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
         // The server checks the task against the changed fields and the confirmed ones (entries.ts saveNow).
         const task = o.task?.([...new Set([...roots, ...confirm.value.map((leaf) => leaf.split('.')[0]!)])])
-        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}), ...(publishAs === true ? { publish: true as const } : {}) }
+        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}), ...(publishAs === true ? { publish: true as const } : {}), ...(from === undefined ? {} : { from }) }
         const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main() })
         // A draft saved as a draft: what it lacks shows as notes. A live entry's warnings are about fields it did not
         // change, which its form does not show.
@@ -258,6 +261,17 @@ export function useEntryForm(o: EntryFormOptions) {
         if (result.rev === undefined) {
           // Nothing was written: the stored state, base and rev stay; only the input counts as handed in.
           waiting.value = true
+        } else if (from !== undefined) {
+          // The input went into a change for that day: the entry is as it was, and so is the form.
+          baseRev.value = result.rev
+          draft.value = copy(baseline.value)
+          initial.value = copy(baseline.value)
+          confirm.value = []
+          unconfirmed = undefined
+          if (key) clearLocalDraft(key)
+          issues.value = []
+          problem.value = ''
+          return true
         } else {
           baseRev.value = result.rev
           baseline.value = copy(storedOf({ ...baseline.value, ...submitted }))
@@ -321,7 +335,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy({ ...theirs, ...mine } as Data)
     baseRev.value = c.rev
     conflict.value = null
-    return save(c.rev, asked)
+    return save(c.rev, asked, askedFrom)
   }
   /**
    * Both people's rows, when every conflicting field is a list or a rows field and no row was changed by both or
@@ -357,7 +371,7 @@ export function useEntryForm(o: EntryFormOptions) {
     draft.value = copy({ ...theirs, ...mine, ...merged } as Data)
     baseRev.value = c.rev
     conflict.value = null
-    return save(c.rev, asked)
+    return save(c.rev, asked, askedFrom)
   }
 
   /** The stored values for the conflicting fields; the person's other changes stay in the form, unsaved. */

@@ -217,7 +217,8 @@
       "review": "Enviar a revisión",
       "asDraft": "Guardar como borrador",
       "laterOpen": "Publicar más tarde",
-      "changesWhen": "¿Cuándo deben publicarse los cambios en “{title}”?"
+      "changesWhen": "¿Cuándo deben publicarse los cambios en “{title}”?",
+      "laterDay": "Desde un día posterior"
     },
     "unpublish": {
       "button": "Quitar de la web",
@@ -309,10 +310,25 @@
       "draftNote": "Todavía no está en el sitio web. Publícalo cuando esté listo.",
       "scheduledNote": "Se publica solo a esa hora.",
       "liveNote": "Guardar aún no cambia el sitio web. Solo «Publicar…» lo hace.",
-      "changesNote": "Guardado, pero aún no está en el sitio web. Muestra la versión anterior hasta que publiques.",
-      "changesScheduledNote": "Los cambios se publican solos a esa hora."
+      "changesNote": "Guardado, pero aún no está en el sitio web. Muestra la versión anterior hasta que publiques."
     },
     "savedNotLive": "Guardado, aún no publicado"
+  },
+  "dated": {
+    "startsOn": "Válido desde",
+    "startsOnHint": "Vacío: desde ahora",
+    "publishFrom": "Publicar desde el {day}",
+    "waiting": "El {day} empieza un cambio planificado: {fields}.",
+    "stopped": "El cambio planificado para el {day} no empezó: {fields}.",
+    "changedSince": "Cambiado desde que se planificó: {fields}. Desde el día planificado se aplica igualmente el valor planificado.",
+    "cancel": "Anular cambio",
+    "cancelQuestion": "¿Anular este cambio planificado? No se puede deshacer.",
+    "keep": "Mantener",
+    "changeDay": "Cambiar día",
+    "saveDay": "Guardar día",
+    "dayRequired": "Elige un día.",
+    "cancelled": "Cambio planificado anulado. El sitio web queda como está.",
+    "moved": "El cambio empieza ahora el {day}."
   },
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",
@@ -648,8 +664,7 @@
       "since": "Borrador desde el {date}",
       "goesLive": "Se publica el {date}",
       "all": "Todos los borradores en Contenido",
-      "changesSince": "Cambios sin publicar desde {date}",
-      "changesGoLive": "Los cambios se publican {date}"
+      "changesSince": "Cambios sin publicar desde {date}"
     }
   },
   "editor": {
@@ -1031,7 +1046,6 @@
     "savedLikeLive": "Guardado. Vuelve a coincidir con la versión del sitio web.",
     "changesPublished": "Cambios publicados.",
     "changesScheduled": "Programado: cambios en línea desde {time}.",
-    "changesScheduleCleared": "Programación cancelada. Los cambios siguen guardados, pero aún no en línea.",
     "changesDiscarded": "Cambios descartados. Vuelve a valer la versión del sitio web."
   },
   "review": {

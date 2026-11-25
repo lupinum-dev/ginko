@@ -31,6 +31,7 @@ vi.stubGlobal('useOps', () => ops)
 const prefill = { live: false, asked: 0, data: shallowRef<unknown>(), error: shallowRef<unknown>() }
 vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   // No own proposal on the entry (proposals.ownFor answers null): the form starts from the prefill.
+  if (String(fn) === 'datedChanges.list') return { data: datedRows, error: ref(undefined) }
   if (String(fn) !== 'tasks.prefill') return { data: String(fn) === 'proposals.ownFor' ? ownProposal : ref(undefined), error: ref(undefined) }
   watch(() => toValue(args), (now) => {
     prefill.live = now !== 'skip'
@@ -40,6 +41,8 @@ vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   }, { immediate: true, flush: 'sync' })
   return { data: prefill.data, error: prefill.error }
 })
+/** The entry's changes for a later day (datedChanges.list). */
+const datedRows = shallowRef<unknown>([])
 /** The person's own proposal on the entry (proposals.ownFor); null while there is none. */
 const ownProposal = shallowRef<unknown>(null)
 /** The server's answer to the live query; a skipped one never hears it. */
@@ -589,6 +592,87 @@ describe('publish step', () => {
     await flushPromises()
     expect(ops.createEntry).toHaveBeenCalledTimes(1)
     expect(sentPublish()).toBeUndefined()
+    wrapper.unmount()
+  })
+})
+
+describe('"Gilt ab" of a task that asks for the day (D131)', () => {
+  const menu = serializeSchema(defineSite({
+    site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    pages: { home: { de: '/' } },
+    bricks: {
+      items: collection({
+        label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' }, timeline: { public: ['title'] },
+        fields: { title: f.text('Titel', { translate: false }) },
+        tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', fields: ['title'], pick: true, when: { from: 'ask' } }],
+      }),
+    },
+  }))
+  const brick = menu.bricks.items!
+  const stored = { _id: 'i1', brick: 'items', kind: 'item', order: 1, rev: 4, lifeRev: 1, fieldRevs: {}, prints: {}, data: { title: 'Alt' } }
+  const mountAsk = () => mount(TaskSheet, {
+    props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: stored as never },
+    global: { stubs: { GinkoField: FieldStub } },
+    attachTo: document.body,
+  })
+  const footer = (wrapper: ReturnType<typeof mountAsk>) => wrapper.get('footer').findAll('button').map((b) => b.text())
+  const press = (wrapper: ReturnType<typeof mountAsk>, label: string) => wrapper.get('footer').findAll('button').find((b) => b.text() === label)!.trigger('click')
+  const inDays = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const ready = async (wrapper: ReturnType<typeof mountAsk>) => {
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.get('input[name="title"]').setValue('Neu')
+  }
+  afterEach(() => { datedRows.value = [] })
+
+  // Wrong behaviour caught: the field is missing, an empty field plans a change (instead of saving as today), or a day
+  // goes out as a publish now, without `from`, or with "Speichern" still offered beside it (it would drop the day).
+  test('empty saves as today; a day saves with from', async () => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    expect(wrapper.get('label[for="sheet-starts-on"]').text()).toContain('Gilt ab')
+    expect(wrapper.text()).toContain('Leer: ab sofort')
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    const [now] = ops.saveEntry.mock.calls[0] as unknown as [{ publish?: true; from?: string }]
+    expect([now.publish, now.from]).toEqual([true, undefined])
+    wrapper.unmount()
+
+    ops.saveEntry.mockClear()
+    const second = mountAsk()
+    await ready(second)
+    const day = inDays(10)
+    await second.get('#sheet-starts-on').setValue(day)
+    const [primary] = footer(second)
+    expect(primary).toMatch(/^Ab .+ veröffentlichen$/)
+    expect(footer(second)).not.toContain('Speichern')
+    await press(second, primary!)
+    await flushPromises()
+    const [later] = ops.saveEntry.mock.calls[0] as unknown as [{ publish?: true; from?: string; fields: unknown }]
+    expect([later.fields, later.publish, later.from]).toEqual([{ title: 'Neu' }, undefined, day])
+    expect(second.emitted('close')).toHaveLength(1)
+    second.unmount()
+  })
+
+  // Wrong behaviour caught: today goes to the server as a day (it refuses it after the person waited) instead of the
+  // field saying so at once.
+  test('today is refused in the field', async () => {
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    await wrapper.get('#sheet-starts-on').setValue(inDays(0))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(ops.saveEntry).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Der Tag muss nach heute liegen.')
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: someone plans over a waiting change of the same field without being told.
+  test('a waiting change of a form field is announced', async () => {
+    datedRows.value = [{ id: 'd1', from: '2099-03-05', fields: ['title'], values: { title: 'Später' }, by: null, at: 0, changedSince: [] }]
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    expect(wrapper.get('[data-test="dated-waiting"]').text()).toBe('Ab Donnerstag, 5. März gilt eine geplante Änderung: Titel.')
     wrapper.unmount()
   })
 })

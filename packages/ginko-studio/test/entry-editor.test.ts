@@ -588,7 +588,7 @@ describe('the footer of a live entry with unpublished changes', () => {
   test.each([
     { name: 'live, nothing waiting', key: 'blog', entry: entryOf(), status: 'Online', save: 'Speichern', publish: false, discard: false, unpublish: true },
     { name: 'live with unpublished changes', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true, unpublish: true },
-    { name: 'unpublished changes planned', key: 'blog', entry: entryOf({ pending: { since: at, at, fields: ['title'], publishAt: at } }), status: 'Änderungen online ab', save: 'Speichern', publish: 'Zeitplan ändern …', discard: true, unpublish: true },
+    { name: 'a change waiting for a later day', key: 'blog', entry: entryOf({ changes: [{ from: '2099-03-05', fields: ['title'] }] }), status: 'Änderungen online ab Do., 5. März', save: 'Speichern', publish: false, discard: false, unpublish: true },
     { name: 'a draft', key: 'blog', entry: entryOf({ state: 'draft' }), status: 'Entwurf', save: 'Entwurf speichern', publish: 'Veröffentlichen …', discard: false, unpublish: false },
     { name: 'a single, nothing waiting', key: 'contact', entry: entryOf({ brick: 'contact', kind: 'single' }), status: 'Online', save: 'Speichern', publish: false, discard: false, unpublish: false },
     { name: 'a single with unpublished changes', key: 'contact', entry: entryOf({ brick: 'contact', kind: 'single', pending: { since: at, at, fields: ['title'] } }), status: 'Unveröffentlichte Änderungen', save: 'Speichern', publish: 'Veröffentlichen …', discard: true, unpublish: false },
@@ -639,7 +639,7 @@ describe('the footer of a live entry with unpublished changes', () => {
       await click('Veröffentlichen …')
       expect(wrapper.get('#publish-title').text()).toBe('Wann sollen die Änderungen an „Herbstfest“ online gehen?')
       await click('Jetzt veröffentlichen')
-      expect(publishChanges).toHaveBeenCalledWith('e1', 1, 3, expect.objectContaining({ at: undefined }))
+      expect(publishChanges).toHaveBeenCalledWith('e1', 1, 3, expect.objectContaining({ from: undefined }))
       expect(publishEntry).not.toHaveBeenCalled()
 
       await click('Änderungen verwerfen …')
@@ -647,6 +647,36 @@ describe('the footer of a live entry with unpublished changes', () => {
       expect(wrapper.text()).toContain('Die unveröffentlichten Änderungen an „Herbstfest“ gehen verloren.')
       await click('Verwerfen')
       expect(discardChanges).toHaveBeenCalledWith('e1', 3, undefined)
+    } finally {
+      vi.stubGlobal('useOps', () => ({}))
+    }
+  })
+
+  // Wrong behaviour caught (D131): an online entry's changes still ask for a time (the server refuses it), a day of
+  // today or no day goes to the server, or the day is lost on the way.
+  test('publishing the changes later asks for a day and sends it as from', async () => {
+    const publishChanges = vi.fn(async () => ({}))
+    vi.stubGlobal('useOps', () => ({ publishChanges }))
+    try {
+      const entry = entryOf({ pending: { since: at, at, fields: ['title'] } })
+      const wrapper = mount(EntryEditor, { props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false }, global: { stubs } })
+      await flushPromises()
+      const click = async (text: string) => { await wrapper.findAll('button').find((b) => b.text() === text)!.trigger('click'); await flushPromises() }
+      await click('Veröffentlichen …')
+      await wrapper.get('#publish-later').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('#publish-at').exists()).toBe(false)
+      expect(wrapper.get('label[for="publish-day"]').text()).toContain('Gilt ab')
+      await click('Planen')
+      expect(wrapper.text()).toContain('Bitte einen Tag wählen.')
+      await wrapper.get('#publish-day').setValue('2020-01-01')
+      await click('Planen')
+      expect(wrapper.text()).toContain('Der Tag muss nach heute liegen.')
+      expect(publishChanges).not.toHaveBeenCalled()
+      const day = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+      await wrapper.get('#publish-day').setValue(day)
+      await click('Planen')
+      expect(publishChanges).toHaveBeenCalledWith('e1', 1, 3, expect.objectContaining({ from: day }))
     } finally {
       vi.stubGlobal('useOps', () => ({}))
     }

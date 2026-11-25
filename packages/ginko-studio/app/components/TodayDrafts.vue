@@ -43,10 +43,10 @@ const review = computed(() => !props.isManager && props.tasks.some((task) => tas
  */
 const publishTask = computed(() => props.tasks.find((task) => task.kind === 'edit') ?? props.tasks.find((task) => task.kind === 'create'))
 
+// Unpublished changes have no time of their own: for a later day they become a dated change (D130), which needs no step
+// here (Alles bearbeiten shows it, and Heute shows it when it stopped).
 const line = (e: Entry) => e.pending
-  ? e.pending.publishAt !== undefined
-    ? t('site.drafts.changesGoLive', { date: whenWeekday(e.pending.publishAt, props.timeZone, format) })
-    : t('site.drafts.changesSince', { date: whenWeekday(e.pending.since, props.timeZone, format) })
+  ? t('site.drafts.changesSince', { date: whenWeekday(e.pending.since, props.timeZone, format) })
   : e.publishAt !== undefined
   ? t('site.drafts.goesLive', { date: whenWeekday(e.publishAt, props.timeZone, format) })
   : t('site.drafts.since', { date: whenWeekday(e.since ?? 0, props.timeZone, format) })

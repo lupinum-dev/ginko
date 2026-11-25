@@ -217,7 +217,8 @@
       "review": "Envoyer pour relecture",
       "asDraft": "Enregistrer comme brouillon",
       "laterOpen": "Publier plus tard",
-      "changesWhen": "Quand les modifications de « {title} » doivent-elles passer en ligne ?"
+      "changesWhen": "Quand les modifications de « {title} » doivent-elles passer en ligne ?",
+      "laterDay": "À partir d’un jour ultérieur"
     },
     "unpublish": {
       "button": "Mettre hors ligne",
@@ -309,10 +310,25 @@
       "draftNote": "Pas encore sur le site. Publiez-le quand il est prêt.",
       "scheduledNote": "Il sera mis en ligne automatiquement à ce moment-là.",
       "liveNote": "Enregistrer ne change pas encore le site. Seul « Publier… » le fait.",
-      "changesNote": "Enregistré, mais pas encore sur le site. Il montre la version précédente jusqu’à ce que vous publiiez.",
-      "changesScheduledNote": "Les modifications passent en ligne d’elles-mêmes à ce moment-là."
+      "changesNote": "Enregistré, mais pas encore sur le site. Il montre la version précédente jusqu’à ce que vous publiiez."
     },
     "savedNotLive": "Enregistré, pas encore en ligne"
+  },
+  "dated": {
+    "startsOn": "En vigueur le",
+    "startsOnHint": "Vide : dès maintenant",
+    "publishFrom": "Publier à partir du {day}",
+    "waiting": "Un changement prévu commence le {day} : {fields}.",
+    "stopped": "Le changement prévu pour le {day} n’a pas commencé : {fields}.",
+    "changedSince": "Modifié depuis la planification : {fields}. À partir du jour prévu, la valeur prévue s’applique quand même.",
+    "cancel": "Annuler le changement",
+    "cancelQuestion": "Annuler ce changement prévu ? C’est irréversible.",
+    "keep": "Garder",
+    "changeDay": "Changer de jour",
+    "saveDay": "Enregistrer le jour",
+    "dayRequired": "Choisissez un jour.",
+    "cancelled": "Changement prévu annulé. Le site reste tel quel.",
+    "moved": "Le changement commence désormais le {day}."
   },
   "site": {
     "zoneNote": "Toutes les heures sont dans le fuseau horaire du site web ({zone}).",
@@ -648,8 +664,7 @@
       "since": "Brouillon depuis le {date}",
       "goesLive": "En ligne le {date}",
       "all": "Tous les brouillons dans Contenu",
-      "changesSince": "Modifications non publiées depuis {date}",
-      "changesGoLive": "Les modifications passent en ligne {date}"
+      "changesSince": "Modifications non publiées depuis {date}"
     }
   },
   "editor": {
@@ -1031,7 +1046,6 @@
     "savedLikeLive": "Enregistré. Cela correspond de nouveau à la version du site.",
     "changesPublished": "Modifications publiées.",
     "changesScheduled": "Programmé : modifications en ligne à partir du {time}.",
-    "changesScheduleCleared": "Programmation annulée. Les modifications restent enregistrées, mais pas encore en ligne.",
     "changesDiscarded": "Modifications abandonnées. La version du site s’applique de nouveau."
   },
   "review": {

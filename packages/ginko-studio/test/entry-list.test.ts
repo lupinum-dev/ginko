@@ -51,7 +51,7 @@ vi.stubGlobal('useConvexQuery', (fn: string, args: () => unknown, options?: { ke
   }, { immediate: true })
   return list
 })
-const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: []; pending?: { since: number } }[]; total: number }) => {
+const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: []; pending?: { since: number }; changes?: { from: string; fields: string[] }[] }[]; total: number }) => {
   list.data.value = page
   list.pending.value = false
   list.isStale.value = false
@@ -162,6 +162,26 @@ test('a live entry with unpublished changes is marked but not greyed out like a 
   const rows = wrapper.findAll('li[class*="group/row"]')
   expect(rows.map((r) => [r.text().includes('Entwurf'), r.text().includes('Unveröffentlichte Änderungen'), r.attributes('data-dim')])).toEqual([
     [true, false, 'true'],
+    [false, true, undefined],
+  ])
+})
+
+// Wrong behaviour caught (D131): a row with a change waiting for a later day reads like any online row, so nobody sees
+// in the list that the price changes on that day; or unpublished changes, which need a step, hide behind it.
+test('a change for a later day names its day; unpublished changes come first', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
+    global: { mocks: { shownLabel }, stubs },
+  })
+  await flushPromises()
+  list.error.value = undefined
+  answer({ rows: [
+    { _id: 'e1', title: 'Saibling', state: 'live', dates: {}, gaps: [], changes: [{ from: '2099-04-01', fields: ['title'] }, { from: '2099-03-05', fields: ['title'] }] },
+    { _id: 'e2', title: 'Forelle', state: 'live', dates: {}, gaps: [], pending: { since: 1 }, changes: [{ from: '2099-03-05', fields: ['title'] }] },
+  ], total: 2 })
+  await flushPromises()
+  const rows = wrapper.findAll('li[class*="group/row"]')
+  expect(rows.map((r) => [r.text().includes('Änderungen online ab Do., 5. März'), r.text().includes('Unveröffentlichte Änderungen'), r.attributes('data-dim')])).toEqual([
+    [true, false, undefined],
     [false, true, undefined],
   ])
 })
