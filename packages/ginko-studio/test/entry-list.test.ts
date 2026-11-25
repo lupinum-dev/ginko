@@ -166,22 +166,24 @@ test('a live entry with unpublished changes is marked but not greyed out like a 
   ])
 })
 
-// Wrong behaviour caught (D113): an entry whose date passed with saved changes said "Unveröffentlichte Änderungen" and
-// was not greyed out, while the website no longer shows it; the one status says it ended.
-test('an entry that ended with unpublished changes shows that it ended', async () => {
+// Wrong behaviour caught (D113): an entry whose date passed with saved changes lost its "Unveröffentlichte Änderungen"
+// (the changes still wait, spec 5.13.1) or was greyed out; one that ended without changes was not greyed out.
+test('an entry that ended says so, or that its changes wait when it has some', async () => {
   const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
     global: { mocks: { shownLabel }, stubs },
   })
   await flushPromises()
   list.error.value = undefined
   answer({ rows: [
-    { _id: 'e1', title: 'Saibling', state: 'live', dates: { until: '2026-10-14' }, gaps: [], pending: { since: 1 } },
-    { _id: 'e2', title: 'Forelle', state: 'live', dates: { until: '2026-10-15' }, gaps: [], pending: { since: 1 } },
-  ], total: 2 })
+    { _id: 'e1', title: 'Saibling', state: 'live', dates: { until: '2026-10-14' }, gaps: [] },
+    { _id: 'e2', title: 'Forelle', state: 'live', dates: { until: '2026-10-14' }, gaps: [], pending: { since: 1 } },
+    { _id: 'e3', title: 'Hecht', state: 'live', dates: { until: '2026-10-15' }, gaps: [], pending: { since: 1 } },
+  ], total: 3 })
   await flushPromises()
   const rows = wrapper.findAll('li[class*="group/row"]')
   expect(rows.map((r) => [r.text().includes('abgelaufen am'), r.text().includes('Unveröffentlichte Änderungen'), r.attributes('data-dim')])).toEqual([
     [true, false, 'true'],
+    [false, true, undefined],
     [false, true, undefined],
   ])
 })

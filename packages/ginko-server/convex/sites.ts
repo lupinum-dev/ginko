@@ -365,11 +365,11 @@ export const areas = query({
       for (const row of rows) {
         const at = row.contentAt ?? row._creationTime
         if (changedAt === null || at > changedAt) changedAt = at
-        // One status for the entry (D113): an entry that ended has nothing waiting on the website.
+        // One status for the entry (D113); an entry that ended can still have unpublished changes, and counts in both.
         const status = statusOfRow(def, row, held.get(row._id), today)
         if (status.now === 'draft') { drafts += 1; continue }
-        if (status.now === 'ended') { ended += 1; continue }
         if (status.waiting.some((w) => w.kind === 'unpublished')) changes += 1
+        if (status.now === 'ended') { ended += 1; continue }
         for (const locale of foreign) {
           const leaf = leafStatus(schema, key, row, locale)
           if (leaf.missing.length || leaf.outdated.length) translations += 1

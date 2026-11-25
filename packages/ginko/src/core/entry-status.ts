@@ -22,7 +22,10 @@ export type Waiting =
   | { kind: 'request'; id: string; op: 'publish' | 'unpublish' | 'save' | 'add' | 'remove'; by?: string; at?: Time; from?: Day; group?: string }
   | { kind: 'ends'; on: Day }
 
-/** `ended`: it was online, and `showUntil` took it off the website. `waiting` is empty when nothing waits. */
+/**
+ * `ended`: it was online, and `showUntil` took it off the website. `now` and `waiting` are independent (spec 5.13.1):
+ * an ended entry can still have unpublished changes. `waiting` is empty when nothing waits.
+ */
 export interface EntryStatus {
   now: 'online' | 'draft' | 'ended'
   waiting: Waiting[]
@@ -51,8 +54,8 @@ export function statusOf(brick: Brick, entry: StatusInput, today: Day): EntrySta
     else if (entry.stopped) waiting.push({ kind: 'stopped', at: entry.stopped.at, ...(entry.stopped.by ? { by: entry.stopped.by } : {}), reason: entry.stopped.reason })
     return { now: 'draft', waiting }
   }
-  if (!shownOn(brick, entry.data, today)) return { now: 'ended', waiting }
   if (entry.unpublished) waiting.push({ kind: 'unpublished', ...(entry.unpublished.by ? { by: entry.unpublished.by } : {}), since: entry.unpublished.since })
+  if (!shownOn(brick, entry.data, today)) return { now: 'ended', waiting }
   const on = shownUntil(brick, entry.data)
   if (on !== undefined) waiting.push({ kind: 'ends', on })
   return { now: 'online', waiting }

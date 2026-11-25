@@ -635,9 +635,9 @@ describe('entries.whyNotPublic', () => {
 })
 
 describe('sites.areas', () => {
-  // Wrong behaviour caught (D113): an entry whose date passed with saved changes counted as "changes" and as "ended" at
-  // once; the one status says it ended, and nothing waits on the website.
-  it('an entry that ended with unpublished changes counts as ended only', async () => {
+  // Wrong behaviour caught (D113, spec 5.13.1): an entry whose date passed with saved changes dropped out of "changes"
+  // (they still wait) or out of "ended".
+  it('an entry that ended with unpublished changes counts as ended and as changes', async () => {
     const s = await studioSetup({ release: true })
     const events = async () => (await s.as.owner.query(api.sites.areas, { site })).find((a) => a.brick === 'events')!
     const before = await events()
@@ -645,7 +645,7 @@ describe('sites.areas', () => {
     await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: ended.entry, baseRev: 1, locale: 'de', fields: { description: { de: 'Neu' } } })
     expect(await events()).toMatchObject({ changes: before.changes + 1, ended: before.ended })
     await s.t.run(async (ctx) => { const row = (await ctx.db.get(ended.entry))!; await ctx.db.patch(ended.entry, { data: { ...row.data as object, when: { from: '2026-10-01', to: '2026-10-02' } } }) })
-    expect(await events()).toMatchObject({ changes: before.changes, ended: before.ended + 1 })
+    expect(await events()).toMatchObject({ changes: before.changes + 1, ended: before.ended + 1 })
   })
 })
 

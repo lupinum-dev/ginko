@@ -77,7 +77,13 @@ function rowStatus(row: Row): EntryStatus | undefined {
   }, s.today.value)
 }
 
-/** "Draft" / "Online from …" for drafts; "Unpublished changes" for an online entry with saved changes; "expired on …" / "ended" (daterange) for an entry that ended; "" for an online entry. */
+/** Grey: not on the website and nothing of it waits to be published (a draft, or an entry that ended without changes). */
+function isDim(row: Row): boolean {
+  const st = rowStatus(row)
+  return !!st && st.now !== 'online' && !st.waiting.some((w) => w.kind === 'unpublished')
+}
+
+/** "Draft" / "Online from …" for drafts; "Unpublished changes" for an entry with saved changes (also one that ended); "expired on …" / "ended" (daterange) for an entry that ended; "" for an online entry. */
 function status(row: Row): string {
   const b = brick.value
   const st = rowStatus(row)
@@ -88,11 +94,12 @@ function status(row: Row): string {
     const planned = st.waiting.find((w) => w.kind === 'planned')
     return planned ? t('site.status.onlineFrom', { when: whenText(planned.at, zone, format) }) : t('site.status.draft')
   }
+  if (st.waiting.some((w) => w.kind === 'unpublished')) return t('entry.status.changes')
   if (st.now === 'ended') {
     const until = shownUntil(b, row.dates)
     return b.kind === 'collection' && b.showUntil && b.fields[b.showUntil.field]?.type === 'daterange' ? t('site.status.ended') : t('site.status.expired', { date: formatDay(until ?? '', format) })
   }
-  return st.waiting.some((w) => w.kind === 'unpublished') ? t('entry.status.changes') : ''
+  return ''
 }
 
 const moving = ref(false)
@@ -149,7 +156,7 @@ const ops = useOps(s.slug)
       <template v-else>
         <ol class="m-0 list-none divide-y overflow-hidden rounded-xl border bg-card p-0 transition-opacity aria-busy:opacity-60" :aria-busy="loading || undefined">
           <!-- The title is the row's one link (its name is the title) and covers the row; badges and arrows sit above it. -->
-          <li v-for="(e, i) in rows" :key="e._id" class="group/row relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 min-[900px]:min-h-13 min-[900px]:py-2.5 hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03] sm:flex-nowrap" :data-dim="(rowStatus(e)?.now ?? 'online') !== 'online' || undefined">
+          <li v-for="(e, i) in rows" :key="e._id" class="group/row relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 min-[900px]:min-h-13 min-[900px]:py-2.5 hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03] sm:flex-nowrap" :data-dim="isDim(e) || undefined">
             <div class="min-w-0 flex-1">
               <NuxtLink :to="`/s/${s.slug.value}/all/${key}/${e._id}`" class="line-clamp-2 font-medium text-foreground no-underline outline-none after:absolute after:inset-0 focus-visible:after:ring-3 focus-visible:after:ring-ring/80 focus-visible:after:ring-inset group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground min-[900px]:text-sm">{{ rowTitle(e) }}</NuxtLink>
               <span v-if="listingDetail(brick, e.dates, s.main.value, { t, format, currency: currency() })" class="block text-[13px] text-muted-foreground tabular-nums">{{ listingDetail(brick, e.dates, s.main.value, { t, format, currency: currency() }) }}</span>

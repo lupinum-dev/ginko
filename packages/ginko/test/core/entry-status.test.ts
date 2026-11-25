@@ -20,7 +20,8 @@ describe('statusOf', () => {
     ['ended yesterday', events, { data: event('2026-10-07'), state: 'live' }, { now: 'ended', waiting: [] }],
     ['online with unpublished changes and an end', events, { data: event('2026-10-20'), state: 'live', unpublished: { by: 'u1', since: AT } },
       { now: 'online', waiting: [{ kind: 'unpublished', by: 'u1', since: AT }, { kind: 'ends', on: '2026-10-20' }] }],
-    ['ended with unpublished changes: nothing waits on the website', events, { data: event('2026-10-01'), state: 'live', unpublished: { since: AT } }, { now: 'ended', waiting: [] }],
+    // `now` and `waiting` are independent (spec 5.13.1): the saved changes still wait, the end does not.
+    ['ended with unpublished changes', events, { data: event('2026-10-01'), state: 'live', unpublished: { since: AT } }, { now: 'ended', waiting: [{ kind: 'unpublished', since: AT }] }],
     ['a draft', events, { data: event('2026-10-01'), state: 'draft' }, { now: 'draft', waiting: [] }],
     ['a planned draft', events, { data: event('2026-10-20'), state: 'draft', publishAt: AT, publishBy: 'u1' }, { now: 'draft', waiting: [{ kind: 'planned', at: AT, by: 'u1' }] }],
     ['a planned draft from an import has no person', events, { data: {}, state: 'draft', publishAt: AT }, { now: 'draft', waiting: [{ kind: 'planned', at: AT }] }],
