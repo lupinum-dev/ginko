@@ -319,7 +319,7 @@
     "startsOnHint": "Vide : dès maintenant",
     "publishFrom": "Publier à partir du {day}",
     "waiting": "Un changement prévu commence le {day} : {fields}.",
-    "stopped": "Le changement prévu pour le {day} n’a pas commencé : {fields}.",
+    "stopped": "Le changement prévu pour le {day} n’a pas été appliqué : {fields}.",
     "changedSince": "Modifié depuis la planification : {fields}. À partir du jour prévu, la valeur prévue s’applique quand même.",
     "cancel": "Annuler le changement",
     "cancelQuestion": "Annuler ce changement prévu ? C’est irréversible.",

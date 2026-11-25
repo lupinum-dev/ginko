@@ -54,10 +54,10 @@ export function stoppedLines(schema: Schema, entry: Stopped): { title: HistoryMs
   }
 }
 
-/** A dated change that did not start on its day (D127), with its entry's title and the first minute of its day. */
+/** A dated change that did not take effect on its day (D127), with its entry's title and the first minute of its day. */
 type StoppedChange = { brick: string; title: string; day: number; fields: string[]; reason: StopReason }
 
-/** Today's row of a stopped dated change: `“{title}”: the change from {day} did not start`, and the cause. */
+/** Today's row of a stopped dated change: `“{title}”: the change from {day} did not take effect`, and the cause. */
 export function stoppedChangeLines(schema: Schema, change: StoppedChange): { title: HistoryMsg; cause: HistoryMsg } {
   return { title: msg('stopped.changeTitle', { title: change.title, day: change.day }), cause: causeOf(schema, change.brick, change.reason, 'cause', 'change') }
 }
@@ -77,7 +77,7 @@ export async function mailStopped(ctx: MutationCtx, site: Doc<'sites'>, entry: S
   }))
 }
 
-/** `mailStopped` for a dated change that did not start (D127): to the person who made it and the owners. */
+/** `mailStopped` for a dated change that did not take effect (D127): to the person who made it and the owners. */
 export async function mailStoppedChange(ctx: MutationCtx, site: Doc<'sites'>, entry: Pick<Doc<'entries'>, '_id' | 'brick'>, by: string | undefined, change: StoppedChange) {
   const schema = site.schema as Schema
   await mailOwnersAnd(ctx, site, by, entry, (locale, path) => ({

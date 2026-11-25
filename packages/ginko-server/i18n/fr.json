@@ -325,7 +325,7 @@
     "datedCancelledWithEntry": "« {title} » : {count, plural, one {son changement planifié a été annulé} other {ses # changements planifiés ont été annulés}} avec l’entrée",
     "datedApplied": "« {title} » : {fields} modifié, comme prévu à partir du {day, date, ::MMMMd}",
     "datedAppliedLate": "« {title} » : {fields} modifié tout de suite (le jour prévu, {day, date, ::MMMMd}, était déjà arrivé au moment de l’approbation)",
-    "datedStopped": "Le changement de « {title} » à partir du {day, date, ::MMMMd} n’est pas entré en vigueur, car {why}"
+    "datedStopped": "Le changement de « {title} » à partir du {day, date, ::MMMMd} n’a pas été appliqué, car {why}"
   },
   "publicness": {
     "deleted": "L’entrée a été supprimée. Vous pouvez la restaurer jusqu’au {until, date, long} ; elle sera ensuite supprimée définitivement.",
@@ -378,8 +378,8 @@
       "text": "Bonjour,\n\nvotre modification pour « {site} » n’a pas été approuvée :\n\n{what}\n\nMotif : « {reason} »\n\nCorrigez-la : {path}\n"
     },
     "stoppedChange": {
-      "subject": "Le changement planifié de « {title} » n’est pas entré en vigueur",
-      "text": "Bonjour,\n\nun changement de votre entrée était prévu à partir du {day, date, ::EEEEdMMMM} : {fields}. Il n’est pas entré en vigueur, car {because}\n\nL’entrée est en sécurité : le site affiche les valeurs qu’il avait. Corrigez le changement et donnez-lui un nouveau jour, ou annulez-le.\n\nOuvrir l’entrée : {path}\n"
+      "subject": "Le changement planifié de « {title} » n’a pas été appliqué",
+      "text": "Bonjour,\n\nun changement de votre entrée était prévu à partir du {day, date, ::EEEEdMMMM} : {fields}. Il n’a pas été appliqué, car {because}\n\nL’entrée est en sécurité : le site affiche les valeurs qu’il avait. Corrigez le changement et donnez-lui un nouveau jour, ou annulez-le.\n\nOuvrir l’entrée : {path}\n"
     }
   },
   "stopped": {
@@ -398,7 +398,7 @@
       "failed": "une erreur s’est produite pendant la mise en ligne. Planifiez-la à nouveau. Si cela se reproduit, prévenez-nous.",
       "changeFailed": "une erreur s’est produite pendant son application. Donnez au changement un nouveau jour. Si cela se reproduit, prévenez-nous."
     },
-    "changeTitle": "« {title} » : le changement à partir du {day, date, ::MMMMd} n’est pas entré en vigueur"
+    "changeTitle": "« {title} » : le changement à partir du {day, date, ::MMMMd} n’a pas été appliqué"
   },
   "content": {
     "copyOf": "{text} (copie)"

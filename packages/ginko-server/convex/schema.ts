@@ -214,7 +214,7 @@ export default defineSchema({
     at: v.number(),
     /** The scheduled `datedChanges.applyDue` run at the first minute of `from`. Absent once it stopped. */
     job: v.optional(v.id('_scheduled_functions')),
-    /** It did not start on its day (D103 reasons): nothing was written; `setDay` or a save into it clears this. */
+    /** It did not take effect on its day (D103 reasons): nothing was written; `setDay` or a save into it clears this. */
     stopped: v.optional(v.object({ at: v.number(), reason: stopReason })),
   })
     .index('by_entry', ['entry', 'from'])

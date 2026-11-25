@@ -325,7 +325,7 @@
     "datedCancelledWithEntry": "“{title}”: {count, plural, one {su cambio planificado se canceló} other {sus # cambios planificados se cancelaron}} con la entrada",
     "datedApplied": "“{title}”: {fields} cambiado, como estaba planificado a partir del {day, date, ::MMMMd}",
     "datedAppliedLate": "“{title}”: {fields} cambiado de inmediato (el día planificado, {day, date, ::MMMMd}, ya había llegado al aprobarlo)",
-    "datedStopped": "El cambio en “{title}” a partir del {day, date, ::MMMMd} no entró en vigor porque {why}"
+    "datedStopped": "El cambio en “{title}” a partir del {day, date, ::MMMMd} no se aplicó porque {why}"
   },
   "publicness": {
     "deleted": "La entrada se eliminó. Puedes restaurarla hasta el {until, date, long}; después se borra definitivamente.",
@@ -378,8 +378,8 @@
       "text": "Hola:\n\ntu cambio para “{site}” no se aprobó:\n\n{what}\n\nMotivo: “{reason}”\n\nCorregir: {path}\n"
     },
     "stoppedChange": {
-      "subject": "El cambio planificado en “{title}” no entró en vigor",
-      "text": "Hola:\n\npara tu entrada estaba planificado un cambio a partir del {day, date, ::EEEEdMMMM}: {fields}. No entró en vigor porque {because}\n\nLa entrada está a salvo: la web muestra los valores que tenía. Corrige el cambio y dale un nuevo día, o cancélalo.\n\nAbrir la entrada: {path}\n"
+      "subject": "El cambio planificado en “{title}” no se aplicó",
+      "text": "Hola:\n\npara tu entrada estaba planificado un cambio a partir del {day, date, ::EEEEdMMMM}: {fields}. No se aplicó porque {because}\n\nLa entrada está a salvo: la web muestra los valores que tenía. Corrige el cambio y dale un nuevo día, o cancélalo.\n\nAbrir la entrada: {path}\n"
     }
   },
   "stopped": {
@@ -398,7 +398,7 @@
       "failed": "se produjo un error al publicarla. Vuelve a planificarla. Si vuelve a pasar, avísanos.",
       "changeFailed": "se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos."
     },
-    "changeTitle": "“{title}”: el cambio a partir del {day, date, ::MMMMd} no entró en vigor"
+    "changeTitle": "“{title}”: el cambio a partir del {day, date, ::MMMMd} no se aplicó"
   },
   "content": {
     "copyOf": "{text} (copia)"

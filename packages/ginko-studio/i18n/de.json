@@ -319,7 +319,7 @@
     "startsOnHint": "Leer: ab sofort",
     "publishFrom": "Ab {day} veröffentlichen",
     "waiting": "Ab {day} gilt eine geplante Änderung: {fields}.",
-    "stopped": "Die geplante Änderung für {day} ist nicht gestartet: {fields}.",
+    "stopped": "Die geplante Änderung für {day} wurde nicht übernommen: {fields}.",
     "changedSince": "Seit der Planung geändert: {fields}. Ab dem geplanten Tag gilt trotzdem der geplante Wert.",
     "cancel": "Änderung aufheben",
     "cancelQuestion": "Diese geplante Änderung aufheben? Das lässt sich nicht rückgängig machen.",

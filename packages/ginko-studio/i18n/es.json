@@ -319,7 +319,7 @@
     "startsOnHint": "Vacío: desde ahora",
     "publishFrom": "Publicar desde el {day}",
     "waiting": "El {day} empieza un cambio planificado: {fields}.",
-    "stopped": "El cambio planificado para el {day} no empezó: {fields}.",
+    "stopped": "El cambio planificado para el {day} no se aplicó: {fields}.",
     "changedSince": "Cambiado desde que se planificó: {fields}. Desde el día planificado se aplica igualmente el valor planificado.",
     "cancel": "Anular cambio",
     "cancelQuestion": "¿Anular este cambio planificado? No se puede deshacer.",

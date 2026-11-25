@@ -225,7 +225,7 @@ export const writeDue = internalMutation({
 })
 
 /**
- * A dated change that did not start (D127): nothing is written, the row keeps why and loses its run, the history says
+ * A dated change that did not take effect (D127): nothing is written, the row keeps why and loses its run, the history says
  * it, and the person who made it and the owners are told. A failed mail never undoes the stop. It is not tried again.
  */
 async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>, row: Dated, reason: StopReason, title: string): Promise<null> {

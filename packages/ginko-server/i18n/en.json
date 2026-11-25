@@ -325,7 +325,7 @@
     "datedCancelledWithEntry": "“{title}”: {count, plural, one {its planned change was} other {its # planned changes were}} cancelled with the entry",
     "datedApplied": "“{title}”: {fields} changed, as planned from {day, date, ::MMMMd}",
     "datedAppliedLate": "“{title}”: {fields} changed at once (the planned day, {day, date, ::MMMMd}, had come at approval)",
-    "datedStopped": "The change to “{title}” from {day, date, ::MMMMd} did not start, because {why}"
+    "datedStopped": "The change to “{title}” from {day, date, ::MMMMd} did not take effect, because {why}"
   },
   "publicness": {
     "deleted": "The entry was removed. You can restore it until {until, date, long}, then it is deleted for good.",
@@ -378,8 +378,8 @@
       "text": "Hello,\n\nyour change for “{site}” was not approved:\n\n{what}\n\nReason: “{reason}”\n\nFix it: {path}\n"
     },
     "stoppedChange": {
-      "subject": "Planned change to “{title}” did not start",
-      "text": "Hello,\n\na change of your entry was planned from {day, date, ::EEEEdMMMM}: {fields}. It did not start, because {because}\n\nThe entry is safe: the website shows the values it had. Fix the change and give it a new day, or cancel it.\n\nOpen the entry: {path}\n"
+      "subject": "Planned change to “{title}” did not take effect",
+      "text": "Hello,\n\na change of your entry was planned from {day, date, ::EEEEdMMMM}: {fields}. It did not take effect, because {because}\n\nThe entry is safe: the website shows the values it had. Fix the change and give it a new day, or cancel it.\n\nOpen the entry: {path}\n"
     }
   },
   "stopped": {
@@ -398,7 +398,7 @@
       "failed": "an error happened while it went online. Plan it again. If it happens again, please tell us.",
       "changeFailed": "an error happened while it was written. Give the change a new day. If it happens again, please tell us."
     },
-    "changeTitle": "“{title}”: the change from {day, date, ::MMMMd} did not start"
+    "changeTitle": "“{title}”: the change from {day, date, ::MMMMd} did not take effect"
   },
   "content": {
     "copyOf": "{text} (copy)"

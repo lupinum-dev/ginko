@@ -1882,8 +1882,8 @@ const trashBricks = (schema: Schema, only?: string) =>
   Object.entries(schema.bricks).filter(([key, def]) => def.kind === 'collection' && !def.retired && (only === undefined || only === key)).map(([key]) => key)
 
 /**
- * Plans that did not go online (D103) for Today's "waits for you" (D104), and dated changes that did not start on their
- * day (D127, `change` names the row and its day): every one for an owner or admin, a staff member's own. Newest first,
+ * Plans that did not go online (D103) for Today's "waits for you" (D104), and dated changes that did not take effect on
+ * their day (D127, `change` names the row and its day): every one for an owner or admin, a staff member's own. Newest first,
  * at most 50: a stopped plan stays until someone plans, publishes, cancels or removes it; a stopped change until it gets
  * a new day, a save into it, or is cancelled. Each row says it in the catalog's words and, as the fallback, in German.
  */

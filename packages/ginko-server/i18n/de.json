@@ -325,7 +325,7 @@
     "datedCancelledWithEntry": "„{title}“: {count, plural, one {die geplante Änderung ist} other {# geplante Änderungen sind}} mit dem Eintrag entfallen",
     "datedApplied": "„{title}“: {fields} geändert, wie ab {day, date, ::MMMMd} geplant",
     "datedAppliedLate": "„{title}“: {fields} sofort geändert (der geplante Tag, {day, date, ::MMMMd}, war bei der Freigabe schon da)",
-    "datedStopped": "Die Änderung an „{title}“ ab {day, date, ::MMMMd} trat nicht in Kraft, weil {why}"
+    "datedStopped": "Die Änderung an „{title}“ ab {day, date, ::MMMMd} wurde nicht übernommen, weil {why}"
   },
   "publicness": {
     "deleted": "Der Eintrag wurde entfernt. Er lässt sich bis zum {until, date, long} wiederherstellen, danach wird er endgültig gelöscht.",
@@ -378,8 +378,8 @@
       "text": "Hallo,\n\ndeine Änderung für „{site}“ wurde nicht freigegeben:\n\n{what}\n\nGrund: „{reason}“\n\nKorrigieren: {path}\n"
     },
     "stoppedChange": {
-      "subject": "Geplante Änderung an „{title}“ trat nicht in Kraft",
-      "text": "Hallo,\n\nfür deinen Eintrag war ab {day, date, ::EEEEdMMMM} eine Änderung geplant: {fields}. Sie trat nicht in Kraft, weil {because}\n\nDem Eintrag ist nichts passiert: Die Website zeigt die bisherigen Werte. Korrigiere die Änderung und gib ihr einen neuen Tag, oder streiche sie.\n\nEintrag öffnen: {path}\n"
+      "subject": "Geplante Änderung an „{title}“ wurde nicht übernommen",
+      "text": "Hallo,\n\nfür deinen Eintrag war ab {day, date, ::EEEEdMMMM} eine Änderung geplant: {fields}. Sie wurde nicht übernommen, weil {because}\n\nDem Eintrag ist nichts passiert: Die Website zeigt die bisherigen Werte. Korrigiere die Änderung und gib ihr einen neuen Tag, oder streiche sie.\n\nEintrag öffnen: {path}\n"
     }
   },
   "stopped": {
@@ -398,7 +398,7 @@
       "failed": "beim Veröffentlichen ein Fehler aufgetreten ist. Plane den Eintrag neu. Wenn es wieder passiert, melde dich bitte bei uns.",
       "changeFailed": "beim Übernehmen ein Fehler aufgetreten ist. Gib der Änderung einen neuen Tag. Wenn es wieder passiert, melde dich bitte bei uns."
     },
-    "changeTitle": "„{title}“: Änderung ab {day, date, ::MMMMd} trat nicht in Kraft"
+    "changeTitle": "„{title}“: Änderung ab {day, date, ::MMMMd} wurde nicht übernommen"
   },
   "content": {
     "copyOf": "{text} (Kopie)"
