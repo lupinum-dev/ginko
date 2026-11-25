@@ -695,6 +695,9 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await wrapper.get('#sheet-starts-on').setValue(day)
     await wrapper.setProps({ entry: { ...stored, state: 'draft' } as never })
     expect((wrapper.get('#sheet-starts-on').element as HTMLInputElement).value).toBe(day)
+    // J2: the button says what it sends, a change of that day, not "Speichern".
+    const short = new Intl.DateTimeFormat('de', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+    expect(footer(wrapper)[0]).toBe(`Ab ${short} veröffentlichen`)
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     const calls = ops.saveEntry.mock.calls.map((c) => (c as unknown as [{ from?: string; publish?: true }])[0])

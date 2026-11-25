@@ -369,6 +369,17 @@ const dayOn = computed(() => (taskAsksDay.value && startsOn.value ? startsOn.val
  */
 const datedSaving = ref(false)
 const shortDay = (day: string) => format.date(day, { weekday: 'short', day: 'numeric', month: 'short' })
+/**
+ * The primary button says what it sends: a day sends a change of that day, also when the entry went offline meanwhile
+ * (the server refuses it then and says why, J2).
+ */
+const primaryLabel = computed(() => {
+  if (busy.value) return offline.value ? t('entry.save.waiting') : t('entry.save.saving')
+  if (dayOn.value) return t(props.approval ? 'dated.reviewFrom' : 'dated.publishFrom', { day: shortDay(dayOn.value) })
+  if (!publishStep.value) return t('entry.save.save')
+  if (props.approval) return t('entry.publish.review')
+  return later.value ? t('entry.publish.schedule') : t('entry.publish.go')
+})
 // Changes of the form's fields that wait for a later day (datedChanges.list): one notice each, so nobody plans over one
 // without knowing. "Bearbeiten" (E3) puts its day and values into the form; cancelling or moving one is done in Alles
 // bearbeiten.
@@ -645,7 +656,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             </div>
             <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
             <!-- On the publish step only a press on this button publishes (Enter in a field saves a draft, like Ctrl+S); with the time open it plans instead, so there is one primary per state. -->
-            <Button id="sheet-primary" :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : publishStep ? (approval ? (dayOn ? t('dated.reviewFrom', { day: shortDay(dayOn) }) : t('entry.publish.review')) : later ? t('entry.publish.schedule') : dayOn ? t('dated.publishFrom', { day: shortDay(dayOn) }) : t('entry.publish.go')) : t('entry.save.save') }}</Button>
+            <Button id="sheet-primary" :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ primaryLabel }}</Button>
             <template v-if="publishStep">
               <!-- With a day, Speichern (unpublished) would drop it: the day's button is the one way. -->
               <Button v-if="!dayOn" type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ isCreate ? t('entry.publish.asDraft') : t('entry.save.save') }}</Button>
