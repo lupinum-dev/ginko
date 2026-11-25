@@ -2,7 +2,7 @@
 // for a person, how the model is told about them, and the pure helpers some of them use (search text).
 // A tool is listed only when the person may use it; agent.ts checks the same list again at call time.
 import type { Brick, Json, Task } from '@lupinum/ginko'
-import { labelOf, type Schema } from '@lupinum/ginko/internal'
+import { labelOf, taskEnds, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import { createdBy, type Actor } from './access'
 
@@ -25,6 +25,12 @@ export function taskTools(actor: Actor): TaskTool[] {
   }
   return out
 }
+
+/**
+ * The task tools the agent door offers and runs: a task with an end (`when.until`) is left out, because the door cannot
+ * ask its days yet (checkpoint 5) and a save through it needs both days.
+ */
+export const doorTools = (actor: Actor): TaskTool[] => taskTools(actor).filter((t) => !(t.task.kind === 'edit' && taskEnds(t.task)))
 
 /** The tool description of a task: the labels are the site's own words (main language), the rest is for the model. */
 export function describeTask(brick: Brick, task: Task, main: string): string {

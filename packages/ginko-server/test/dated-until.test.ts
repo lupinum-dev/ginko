@@ -415,13 +415,48 @@ describe('the entry around a holding offer (state table)', () => {
 })
 
 describe('task keys on the server', () => {
-  // Wrong behaviour caught: a task that asks one day lets staff save an end; a today-only task saves another day.
+  // Wrong behaviour caught: a task that asks one day lets staff save an end; a today-only task saves another day; a task
+  // with an end called without its days (round L1) saves its values into the entry for good (number 2).
   it.each([
     ['an end through a task that asks one day', 'menu.price', { fields: { price: { amount: 990 } }, from: '2026-10-20', until: '2026-12-31' }, 'errors.taskCannotDate'],
     ['another day through a today-only task', 'menu.offToday', { fields: {}, from: '2026-10-09', until: '2026-10-09' }, 'errors.todayOnly'],
+    ['a today-only task without its days', 'menu.offToday', { fields: {} }, 'errors.taskNeedsDays'],
+    ['an offer without its days', 'menu.offer', { fields: { price: { amount: 990 } } }, 'errors.taskNeedsDays'],
+    ['an offer with its first day only', 'menu.offer', { fields: { price: { amount: 990 } }, from: '2026-10-20' }, 'errors.taskNeedsDays'],
   ])('refuses %s', async (_, task, args, key) => {
     const s = await untilSetup()
+    const before = await s.stored(s.saibling)
     expect(await errorOf(s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task, entry: s.saibling, baseRev: 1, ...args }))).toMatchObject({ key })
+    expect(await s.dated(s.saibling)).toEqual([])
+    expect(await s.stored(s.saibling)).toEqual(before)
+  })
+
+  // Round L1, the same hole through publish. Wrong behaviour caught: staff with only the offer task publish someone's
+  // unpublished price through it, for good (a publish has no end), now or as a change without an end.
+  it.each([['now', {}], ['from a day', { from: '2026-10-20' }]])('refuses a publish through a task with an end (%s)', async (_, extra) => {
+    const s = await untilSetup()
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 1990 } } })
+    const before = await s.stored(s.saibling)
+    const lifeRev = (await s.row(s.saibling))!.lifeRev
+    expect(await errorOf(s.as.cook.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), task: 'menu.offer', entry: s.saibling, lifeRev, ...extra }))).toMatchObject({ key: 'errors.taskNeedsDays' })
+    expect(await s.stored(s.saibling)).toEqual(before)
+    expect(await s.dated(s.saibling)).toEqual([])
+  })
+
+  // Keep of round L1. Wrong behaviour caught: the both-days rule also catches a task without an end, so a price task that
+  // asks a day can no longer save now, or a task with fixed values and no day stops saving them.
+  it('a task that asks one day still saves now without a day; a task with fixed values and no day is a normal save', async () => {
+    const s = await untilSetup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.menu!.tasks as unknown[]).push({ id: 'offNow', label: 'Von der Karte', kind: 'edit', pick: true, fields: [], set: { onMenu: false } })
+      await ctx.db.patch(s.site, { schema })
+      const cook = (await ctx.db.query('memberships').collect()).find((m) => m.user === people.cook)!
+      await ctx.db.patch(cook._id, { grants: [...cook.grants, 'menu.offNow'] })
+    })
+    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1490 } }, publish: true })
+    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.offNow', entry: s.saibling, baseRev: 2, fields: {}, publish: true })
+    expect((await s.stored(s.saibling)).data).toMatchObject({ price: { amount: 1490 }, onMenu: false })
     expect(await s.dated(s.saibling)).toEqual([])
   })
 

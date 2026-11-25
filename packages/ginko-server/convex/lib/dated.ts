@@ -94,17 +94,24 @@ export function taskOf(schema: Schema, ref: string | undefined): Task | undefine
 
 /**
  * A save, publish, move or cancel through a task may give a day only when the task says so (D123): `when.from: 'ask'` or
- * `'@today'`. With `days` it checks a save's days against the task: an end only through a task with `until`, a task with
- * `until` only with an end, and a today-only task only for today. The full rights of a brick (no task) may always date.
+ * `'@today'`. With `days` it checks a write's days against the task: a task with `until` only with both days, an end
+ * only through such a task, and a today-only task only for today. The full rights of a brick (no task) may always date.
  */
-export function refuseTaskWithoutDay(schema: Schema, ref: string | undefined, days?: { from: string; until: string | undefined }) {
+export function refuseTaskWithoutDay(schema: Schema, ref: string | undefined, days?: { from: string | undefined; until: string | undefined }) {
   if (ref === undefined) return
   const task = taskOf(schema, ref)
   if (task?.kind !== 'edit' || !taskDates(task)) fail('FORBIDDEN', 'errors.taskCannotDate')
   if (!days) return
+  if (taskEnds(task) && (days.from === undefined || days.until === undefined)) fail('FORBIDDEN', 'errors.taskNeedsDays')
   if ((days.until !== undefined) !== taskEnds(task)) fail('FORBIDDEN', 'errors.taskCannotDate')
   const today = todayIn(schema.timeZone)
   if (task.when?.from === '@today' && (days.from !== today || days.until !== today)) fail('FORBIDDEN', 'errors.todayOnly')
+}
+
+/** Whether a task has an end (`when.until`): its values lie over an entry for some days and never go into it. */
+export function taskHasEnd(schema: Schema, ref: string | undefined): boolean {
+  const task = taskOf(schema, ref)
+  return task?.kind === 'edit' && taskEnds(task)
 }
 
 /** The fixed values of a task (`set`), or none. */

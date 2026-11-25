@@ -244,6 +244,7 @@
     "dayNotAhead": "El día debe ser posterior a hoy.",
     "dayTooFarAhead": "El día puede estar como máximo a un año.",
     "taskCannotDate": "Esta tarea cambia los valores al momento, no a partir de un día.",
+    "taskNeedsDays": "Esta tarea es solo para ciertos días. Indica el primer y el último día.",
     "fieldsCannotDate": "Estos campos no pueden empezar en un día: {fields}. Publica los cambios ahora o descarta estos campos.",
     "tooManyDated": "Una entrada puede tener como máximo {max} cambios planificados.",
     "untilBeforeFrom": "«Hasta» debe ser el mismo día que «Desde» o posterior.",

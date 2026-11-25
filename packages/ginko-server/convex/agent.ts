@@ -14,7 +14,7 @@ import { usageAs } from './files'
 import { ownAs } from './proposals'
 import { actorFor, entryOf, fail, idempotent, memberOf, type Actor } from './lib/access'
 import { searchEntries as searchAll, searchTexts } from './lib/search'
-import { builderTools, BUILDER_TOOLS, DRY_RUN, FROM, IMPORT_MAX, isBuilder, suggest, fixedTools, HISTORY_MAX, PROPOSE, PUBLISH, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
+import { builderTools, BUILDER_TOOLS, DRY_RUN, FROM, IMPORT_MAX, isBuilder, suggest, fixedTools, HISTORY_MAX, PROPOSE, PUBLISH, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, doorTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
 import type { Data } from './lib/content'
 import { leafStatus } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
@@ -150,7 +150,7 @@ export const tools = internalQuery({
     const actor = await actorOrFail(ctx, key)
     const schema = actor.site.schema as Schema
     const out: ToolDef[] = [...fixedTools(actor), ...builderTools(actor)]
-    for (const tool of taskTools(actor)) {
+    for (const tool of doorTools(actor)) {
       const input = await inputSchemaOf(ctx, actor, tool)
       out.push({
         name: tool.name, description: describeTask(schema.bricks[tool.brick]!, tool.task, schema.locales[0]!),
@@ -167,7 +167,7 @@ export const overview = internalQuery({
   handler: async (ctx, { key }) => {
     const actor = await actorOrFail(ctx, key)
     const schema = actor.site.schema as Schema
-    const allowed = taskTools(actor)
+    const allowed = doorTools(actor)
     const review = effectiveReview(await ctx.db.get(key), actor.site)
     // Values the site keeps in one place; texts quote them (`:fact{name="…"}`) instead of copying them.
     const facts = (await factsOf(ctx, actor.site)).map((fact) => ({
@@ -481,7 +481,7 @@ async function callOnce(ctx: MutationCtx, person: Actor, name: string, args: Rec
 async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
   const schema = actor.site.schema as Schema
   const site = actor.site.slug
-  const tool = taskTools(actor).find((t) => t.name === name)
+  const tool = doorTools(actor).find((t) => t.name === name)
   if (!tool) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name })
   const brick = schema.bricks[tool.brick]!
   const offered = await inputSchemaOf(ctx, actor, tool)

@@ -22,7 +22,7 @@ import { errorKind, mailStopped, stoppedChangeLines, stoppedLines } from './lib/
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
-import { asChanges, checkDay, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, planDated, refuseTaskWithoutDay, taskSet, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
+import { asChanges, checkDay, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, planDated, refuseTaskWithoutDay, taskHasEnd, taskSet, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
 import { advance, stepArgs } from './lib/migrations'
 import { editorEntry, editorEntryWithTranslation, entryLabel as labelOf, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
@@ -184,6 +184,9 @@ async function saveNow(ctx: MutationCtx, actor: Actor, input: ObjectType<typeof 
   const entry = await entryOf(ctx, actor, input.entry)
   const schema = actor.site.schema as Schema
   const today = todayIn(schema.timeZone)
+  // A task with an end saves only with both days, whoever calls it: its values lie over the entry for those days and
+  // never go into it (number 2), also when a caller leaves the days out and the task's `set` would be merged below.
+  if (taskHasEnd(schema, input.task)) refuseTaskWithoutDay(schema, input.task, { from: input.from, until: input.until })
   // A yes on or after the day of a dated save writes online at once what the run on that day would have written (D127):
   // the values onto the online entry, as a save with `publish: true`, while unpublished changes of its fields keep
   // waiting, as the run leaves them. An exception is never written into the entry: a yes after its end comes too late
@@ -1488,6 +1491,8 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     const schema = actor.site.schema as Schema
     // A single is always live: publishing it means its unpublished changes.
     brickOf(schema, entry)
+    // A publish has no end: through a task with an end it would put the values into the entry for good (number 2).
+    if (taskHasEnd(schema, args.task)) fail('FORBIDDEN', 'errors.taskNeedsDays')
     authorizeWriter(actor, schema, { task: args.task, brick: entry.brick })
     if (entry.deletedAt || entry.lifeRev !== args.lifeRev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
     if (stateOf(entry) !== 'draft') return await publishPending(ctx, actor, entry, args)
