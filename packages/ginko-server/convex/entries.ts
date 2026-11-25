@@ -1520,7 +1520,12 @@ export const publishDue = internalMutation({
     const stop = async (reason: StopReason, history: HistoryMsg) => {
       const stopped = { at: args.at, ...(entry.publishBy ? { by: entry.publishBy } : {}), reason }
       await ctx.db.patch(entry._id, { ...NO_PLAN, stopped })
-      await mailStopped(ctx, site, { _id: entry._id, brick: entry.brick, stopped, title: label })
+      // Telling people never undoes the stop: a throw here would roll the job back and leave the plan for ever.
+      try {
+        await mailStopped(ctx, site, { _id: entry._id, brick: entry.brick, stopped, title: label })
+      } catch {
+        console.error(`Mail stopped ${entry._id} not queued.`)
+      }
       await ctx.db.insert('changes', {
         site: entry.site, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `publish:${entry._id}:${args.at}`, kind: 'publishStopped',
         ...recorded(history, schema), entryRev: entry.rev, contentRev: site.contentRev, at: Date.now(),

@@ -357,6 +357,20 @@ describe('people are told when a plan stops (D104)', () => {
     }])
   })
 
+  // Wrong behaviour caught: with mail on and no SITE_URL, the mail step threw inside the job, so the job rolled back:
+  // the entry stayed planned for ever with a finished job, no stopped state, no history, nobody told.
+  it('a mail step that cannot run leaves the entry stopped, with its history row', async () => {
+    vi.stubEnv('GINKO_MAIL', 'outbox')
+    vi.stubEnv('SITE_URL', '')
+    const s = await stoppedBy(people.cook, false)
+    const row = (await s.row(s.draft.entry))!
+    expect(row).toMatchObject({ state: 'draft', stopped: { at: s.at, reason: { code: 'invalid' } } })
+    expect(row.publishAt).toBeUndefined()
+    const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', s.draft.entry as Id<'entries'>)).collect())
+    expect(changes.map((c) => c.kind)).toContain('publishStopped')
+    expect(await outbox(s)).toEqual([])
+  })
+
   // Wrong behaviour caught: a stopped plan is not on Today, or staff see the plans of others.
   it('Today lists a stopped plan for the owners and for its planner, with the cause as second line', async () => {
     const s = await stoppedBy(people.cook, false)

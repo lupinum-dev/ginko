@@ -34,9 +34,14 @@ function isTestAddress(email: string): boolean {
 
 /** Where the Studio lives, for links in mail. */
 export function siteOrigin(): string {
-  const origin = process.env.SITE_URL
+  const origin = knownSiteOrigin()
   if (!origin) throw new Error('SITE_URL is not set in the Convex environment')
-  return origin.replace(/\/$/, '')
+  return origin
+}
+
+/** The Studio's origin, or undefined while `SITE_URL` is not set: for a mail that is better left out than broken. */
+export function knownSiteOrigin(): string | undefined {
+  return process.env.SITE_URL?.replace(/\/$/, '') || undefined
 }
 
 /** Whether mail can be sent at all. */

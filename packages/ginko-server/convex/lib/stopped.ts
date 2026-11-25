@@ -4,7 +4,7 @@ import type { Label } from '@lupinum/ginko'
 import { labelOf as labelIn, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
-import { queueMail, mailAvailable, siteOrigin } from '../mail'
+import { knownSiteOrigin, mailAvailable, queueMail } from '../mail'
 import type { StopReason } from '../schema'
 import { rootOf } from './content'
 import { historyText, msg, type HistoryMsg } from './history'
@@ -49,9 +49,15 @@ export function stoppedLines(schema: Schema, entry: Stopped): { title: HistoryMs
  */
 export async function mailStopped(ctx: MutationCtx, site: Doc<'sites'>, entry: Stopped & Pick<Doc<'entries'>, '_id'>) {
   if (!mailAvailable()) return
+  // The mail's link needs the Studio's address; without it the mail stays out and Today's row is the sign.
+  const origin = knownSiteOrigin()
+  if (!origin) {
+    console.warn(`Mail stopped ${entry._id} not sent: SITE_URL is not set.`)
+    return
+  }
   const schema = site.schema as Schema
   const members = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
-  const path = `${siteOrigin()}/s/${site.slug}/all/${entry.brick}/${entry._id}`
+  const path = `${origin}/s/${site.slug}/all/${entry.brick}/${entry._id}`
   for (const member of members) {
     if (!member.email || (member.role !== 'owner' && member.user !== entry.stopped.by)) continue
     const locale = await localeOfUser(ctx, member.user)
