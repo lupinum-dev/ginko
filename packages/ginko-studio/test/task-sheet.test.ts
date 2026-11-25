@@ -790,4 +790,22 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     expect(document.activeElement).toBe(wrapper.get('#sheet-starts-on').element)
     wrapper.unmount()
   })
+
+  // Wrong behaviour caught (E8): a value typed while a save with a day was on its way was lost, because the form goes
+  // back to the entry when that save lands.
+  test('the fields cannot be typed in while a save with a day is on its way', async () => {
+    let land!: (value: unknown) => void
+    ops.saveEntry.mockImplementationOnce(() => new Promise((resolve) => { land = resolve }) as never)
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    await wrapper.get('#sheet-starts-on').setValue(inDays(10))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    const fields = () => wrapper.get('[data-test="sheet-fields"]').attributes('inert')
+    expect(fields()).toBeDefined()
+    land({ rev: 4 })
+    await flushPromises()
+    expect(fields()).toBeUndefined()
+    wrapper.unmount()
+  })
 })

@@ -358,6 +358,11 @@ const { unchangedDay } = form
 // By content: a save puts an equal copy into the draft, which is no change.
 watch(() => `${startsOn.value}\u0000${stableJson(draft.value)}`, () => { unchangedDay.value = false })
 const dayOn = computed(() => (asksDay.value && startsOn.value ? startsOn.value : undefined))
+/**
+ * A save with a day is on its way (E8): the form goes back to the entry when it lands, so input typed meanwhile would
+ * be lost. The fields and the day are inert until then.
+ */
+const datedSaving = computed(() => busy.value && dayOn.value !== undefined)
 const shortDay = (day: string) => format.date(day, { weekday: 'short', day: 'numeric', month: 'short' })
 // Changes of the form's fields that wait for a later day (datedChanges.list): one notice each, so nobody plans over one
 // without knowing. "Bearbeiten" (E3) puts its day and values into the form; cancelling or moving one is done in Alles
@@ -555,27 +560,29 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             <!-- Like "Deinen Vorschlag wieder öffnen" above, it replaces the form's values: offered only before anything is typed. -->
             <Button v-if="isCreate && copyFrom && !copied && !dirty" type="button" variant="outline" class="justify-self-start" :disabled="copying" @click="copyThisWeek">{{ t('entry.copyThisWeek') }}</Button>
             <p v-if="foreign" class="text-sm text-muted-foreground">{{ t('entry.foreignHint') }}</p>
-            <template v-for="(field, key) in shownFields" :key="`${lang}:${key}`">
-              <div v-if="key === fixedWeek" class="grid gap-1" data-slot="field" data-test="fixed-week">
-                <p class="text-sm font-medium">{{ shown(field.label) }}</p>
-                <p class="font-semibold">{{ dayText(draft[key]) }}</p>
-                <p class="text-sm text-muted-foreground">{{ t('entry.weekFixed') }}</p>
-              </div>
-              <GinkoField
-                v-else
-                v-show="isShown(field, draft)"
-                :field="field"
-                :model-value="draft[key]"
-                :baseline="isCreate ? initial[key] : baseline[key]"
-                :weeks="weekShortcuts(brick, String(key))"
-                :path="String(key)"
-                :locale="lang"
-                :locales="locales"
-                :issues="shownIssues"
-                @update:model-value="form.setField(String(key), $event)"
-              />
-              <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
-            </template>
+            <div class="contents" :inert="datedSaving" :aria-busy="datedSaving || undefined" data-test="sheet-fields">
+              <template v-for="(field, key) in shownFields" :key="`${lang}:${key}`">
+                <div v-if="key === fixedWeek" class="grid gap-1" data-slot="field" data-test="fixed-week">
+                  <p class="text-sm font-medium">{{ shown(field.label) }}</p>
+                  <p class="font-semibold">{{ dayText(draft[key]) }}</p>
+                  <p class="text-sm text-muted-foreground">{{ t('entry.weekFixed') }}</p>
+                </div>
+                <GinkoField
+                  v-else
+                  v-show="isShown(field, draft)"
+                  :field="field"
+                  :model-value="draft[key]"
+                  :baseline="isCreate ? initial[key] : baseline[key]"
+                  :weeks="weekShortcuts(brick, String(key))"
+                  :path="String(key)"
+                  :locale="lang"
+                  :locales="locales"
+                  :issues="shownIssues"
+                  @update:model-value="form.setField(String(key), $event)"
+                />
+                <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
+              </template>
+            </div>
             <StartsOnField v-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :time-zone="schema.timeZone" :error="startsOnError || (unchangedDay ? t('dated.nothingChanged') : '')" />
           </template>
         </div>
