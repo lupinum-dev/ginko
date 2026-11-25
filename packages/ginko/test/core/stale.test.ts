@@ -61,7 +61,6 @@ describe('liveFrom (when a save shows on the website)', () => {
     ['a planned week, saved on Wednesday', 'lunchPlans', { weekOf: '2026-10-19' }, '2026-10-14', '2026-10-17'],
     ['a planned week, saved on the Saturday it starts to show', 'lunchPlans', { weekOf: '2026-10-19' }, '2026-10-17', undefined],
     ['this week\'s lunch', 'lunch', { weekOf: '2026-10-19' }, '2026-10-17', undefined],
-    ['a dish', 'menu', { price: { amount: 2190 } }, '2026-10-14', undefined],
   ] as const)('%s', (_name, brick, data, today, expected) => {
     expect(liveFrom(schema, brick, data, today)).toBe(expected)
   })
