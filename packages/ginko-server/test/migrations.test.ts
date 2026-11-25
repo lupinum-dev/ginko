@@ -46,7 +46,7 @@ describe('migrations.runPending', () => {
     // The recount ran after the entry migration: the counters are the sums over the migrated entries.
     const status = await s.t.query(internal.entries.storageStatus, { cursor: null })
     expect(status.sites).toMatchObject([{ site: 'restaurant', legacyRows: 0, countersMatch: true }])
-    expect((await s.t.query(internal.ops.status, {}))!.migrations).toEqual({ done: 6, pending: [], running: null, stopped: null })
+    expect((await s.t.query(internal.ops.status, {}))!.migrations).toEqual({ done: 6, pending: [], running: null, stopped: null, skipped: [] })
   })
 
   // Wrong behaviour caught: every deploy runs the finished migrations again.
@@ -134,6 +134,8 @@ describe('2026-11-25-dated-changes (D130)', () => {
       delete menu.timeline
       menu.tasks = menu.tasks.map((task) => (task.id === 'price' ? { id: task.id, label: 'Preis ändern', kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'] } : task.id === 'edit' ? { ...task, fields: [...task.fields!, 'nextPrice', 'priceFrom'] } : task)) as typeof menu.tasks
       await ctx.db.patch(s.site, { schema: stored })
+      // The stored model is in the older format: the new check refuses it, and the migration must not need it.
+      expect(checkSchema(stored as unknown as Schema, statusRules)).not.toEqual([])
       const plan = async (entry: Id<'entries'>, next: number, from: string) => {
         const row = (await ctx.db.get(entry))!
         await ctx.db.patch(entry, { data: { ...(row.data as object), nextPrice: { amount: next }, priceFrom: from } })
@@ -183,5 +185,50 @@ describe('2026-11-25-dated-changes (D130)', () => {
     // The coming price is on the website's bundle the way a new dated change is.
     const bundle = await (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).json() as { bricks: { menu: { items: { id: string; upcoming?: unknown }[] } } }
     expect(bundle.bricks.menu.items.find((i) => i.id === schnitzel)?.upcoming).toEqual([{ from: '2026-10-18', data: { price: { amount: 2290, currency: 'EUR' } } }])
+  })
+
+  // Wrong behaviour caught: the migration touches a site that has none of the older plans (a new schemaRev makes every
+  // release look like a model change; a new contentRev empties the website's cache).
+  it('leaves a site without older plans as it is', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const read = () => s.t.run(async (ctx) => ({ site: (await ctx.db.get(s.site))!, changes: (await ctx.db.query('changes').collect()).length, dated: (await ctx.db.query('datedChanges').collect()).length }))
+    const before = await read()
+    await runThisOne(s)
+    const after = await read()
+    expect([after.site.schema, after.site.schemaRev, after.site.contentRev, after.changes, after.dated]).toEqual([before.site.schema, before.site.schemaRev, before.site.contentRev, before.changes, 0])
+  })
+
+  // Wrong behaviour caught: one site the migration cannot convert stops it for every other site, or leaves that site
+  // half converted, and nobody learns which site it was.
+  it('reports a site it cannot convert by name and converts the others', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    const second = await s.t.run(async (ctx) => {
+      const { _id, _creationTime, ...site } = (await ctx.db.get(s.site))!
+      const stored = structuredClone(site.schema) as { bricks: Record<string, { fields: Record<string, unknown>; planned?: unknown; timeline?: unknown }> }
+      stored.bricks.menu!.fields.nextPrice = { type: 'money', label: 'Geplanter Preis', optional: true, pos: 7 }
+      stored.bricks.menu!.fields.priceFrom = { type: 'date', label: 'Gilt ab', optional: true, pos: 8 }
+      stored.bricks.menu!.planned = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
+      return ctx.db.insert('sites', { ...site, slug: 'zweite', schema: stored })
+    })
+    // The restaurant has a timed unpublished change of a brick its stored model no longer has.
+    await s.t.run(async (ctx) => {
+      await ctx.db.insert('pendingChanges', { site: s.site, entry: s.entries['menu-risotto']!, brick: 'menu', fields: { price: { amount: 1500 } }, prints: {}, revs: { price: 1 }, by: people.owner, since: 0, at: 0, publishAt: Date.parse('2026-10-20T08:00:00Z') })
+      const site = (await ctx.db.get(s.site))!
+      const stored = structuredClone(site.schema) as { bricks: Record<string, unknown> }
+      delete stored.bricks.menu
+      await ctx.db.patch(s.site, { schema: stored as unknown as typeof site.schema })
+    })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await runThisOne(s)
+    expect(log.mock.calls).toEqual([['Migration 2026-11-25-dated-changes: site restaurant not converted (TypeError); the other sites go on.']])
+    log.mockRestore()
+    expect((await s.t.query(internal.ops.status, {}))!.migrations.skipped).toEqual([{ migration: '2026-11-25-dated-changes', site: 'restaurant' }])
+    const after = await s.t.run(async (ctx) => ({ restaurant: (await ctx.db.query('pendingChanges').collect())[0]!, second: (await ctx.db.get(second))! }))
+    // Nothing of the restaurant is half written: its change keeps its time.
+    expect(after.restaurant.publishAt).toBe(Date.parse('2026-10-20T08:00:00Z'))
+    expect((after.second.schema as { bricks: Record<string, { planned?: unknown; timeline?: unknown }> }).bricks.menu).toMatchObject({ timeline: { public: ['price'] } })
+    expect((after.second.schema as { bricks: Record<string, { planned?: unknown }> }).bricks.menu!.planned).toBeUndefined()
   })
 })

@@ -5,19 +5,20 @@ import { changeRefusal, entryBytes, todayIn, validate, type Schema } from '@lupi
 import { ConvexError, v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
-import { actorFor, authorize, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor } from './lib/access'
+import { actorFor, authorize, byOf, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor } from './lib/access'
 import type { Data, Prints } from './lib/content'
-import { checkDay, datedOf, dayStart, dropDated, fieldNames, insertWaiting, planDated, refuseTaskWithoutDay, touchesPublic, writeDated, type Dated } from './lib/dated'
+import { checkDay, datedOf, dayStart, dropDated, fieldNames, insertWaiting, planDated, refuseTaskWithoutDay, syncDatedRefs, touchesPublic, writeDated, type Dated } from './lib/dated'
 import { msg, recorded } from './lib/history'
 import { entryLabel } from './lib/list'
 import { labeler } from './lib/names'
 import { dropPending, dropPendingRoots, overlay, pendingOf, underRoot } from './lib/pending'
 import { needsProposal } from './lib/policy'
-import { mailStoppedChange, stoppedBecause } from './lib/stopped'
+import { errorKind, mailStoppedChange, stoppedBecause } from './lib/stopped'
 import { brokenNewLinks, commitEntry, lookupsFor } from './lib/write'
 import type { StopReason } from './schema'
 import { internal } from './_generated/api'
-import { advance, stepArgs } from './lib/migrations'
+import { advance, eachSite, notConverted, stepArgs } from './lib/migrations'
+import { followName, rootsWith, writeFollowedName } from './entries'
 
 /** A dated change of the actor's site, and its entry; anything else is NOT_FOUND. */
 async function datedRow(ctx: QueryCtx, actor: Actor, id: string): Promise<{ row: Dated; entry: Doc<'entries'> }> {
@@ -52,7 +53,7 @@ export const setDay = mutation({
       mayChange(actor, schema, args.task, entry, row)
       if (entry.deletedAt) fail('NOT_FOUND', 'errors.datedNotFound')
       checkDay(schema, args.from)
-      if (await needsProposal(ctx, actor, 'save', args.task, entry.brick, entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
+      if (await needsProposal(ctx, actor, 'save', args.task, taskBrickOf(schema, args.task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
       const result: Json = { change: row._id, from: args.from, contentRev: actor.site.contentRev }
       if (args.from === row.from && !row.stopped) return result
       const rows = (await datedOf(ctx, entry._id)).filter((r) => r._id !== row._id)
@@ -68,10 +69,12 @@ export const setDay = mutation({
       if (row.job) await ctx.scheduler.cancel(row.job)
       await ctx.db.patch(row._id, { from: args.from, fields: plan.fields, prints: plan.prints, stopped: undefined, job: undefined })
       await ctx.db.patch(row._id, { job: await ctx.scheduler.runAt(dayStart(args.from, schema.timeZone), internal.datedChanges.applyDue, { change: row._id, from: args.from }) })
+      // A field that holds its online value on the new day left the change, and with it the hold on its files.
+      await syncDatedRefs(ctx, schema, { _id: row._id, site: row.site, brick: row.brick, fields: plan.fields })
       const contentRev = touchesPublic(schema, entry.brick, Object.keys(row.fields)) ? actor.site.contentRev + 1 : actor.site.contentRev
       if (contentRev !== actor.site.contentRev) await ctx.db.patch(actor.site._id, { contentRev })
       await ctx.db.insert('changes', {
-        site: actor.site._id, entry: entry._id, brick: entry.brick, actor: actor.user.id, opId: args.opId, kind: 'dated', ...history,
+        site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'dated', ...history,
         entryRev: entry.rev, contentRev, at: Date.now(),
       })
       return { change: row._id, from: args.from, contentRev }
@@ -79,7 +82,10 @@ export const setDay = mutation({
   },
 })
 
-/** Cancels a dated change, waiting or stopped: its values never come, the entry stays as it is. */
+/**
+ * Cancels a dated change, waiting or stopped: its values never come, the entry stays as it is. A person whose change
+ * needs a yes may cancel their own change only: taking away someone else's planned values is a change that needs one.
+ */
 export const cancel = mutation({
   args: { site: v.string(), opId: v.string(), task: v.optional(v.string()), change: v.string() },
   handler: async (ctx, args) => {
@@ -88,13 +94,14 @@ export const cancel = mutation({
       const { row, entry } = await datedRow(ctx, actor, args.change)
       const schema = actor.site.schema as Schema
       mayChange(actor, schema, args.task, entry, row)
+      if (row.by !== actor.user.id && await needsProposal(ctx, actor, 'save', args.task, taskBrickOf(schema, args.task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
       await dropDated(ctx, row)
       // A stopped change was no longer served as coming.
       const contentRev = !row.stopped && touchesPublic(schema, entry.brick, Object.keys(row.fields)) ? actor.site.contentRev + 1 : actor.site.contentRev
       if (contentRev !== actor.site.contentRev) await ctx.db.patch(actor.site._id, { contentRev })
       const title = entryLabel(schema, entry.brick, entry.data as Data)
       const change = await ctx.db.insert('changes', {
-        site: actor.site._id, entry: entry._id, brick: entry.brick, actor: actor.user.id, opId: args.opId, kind: 'datedCancelled',
+        site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'datedCancelled',
         ...recorded(msg('history.datedCancelled', { title, day: dayStart(row.from, schema.timeZone), fields: fieldNames(schema, entry.brick, Object.keys(row.fields)) }), schema),
         entryRev: entry.rev, contentRev, at: Date.now(),
       })
@@ -130,9 +137,8 @@ export const list = query({
 /**
  * The run of a dated change at the first minute of its day (D126). It does nothing when the change is gone, moved, stopped
  * or the site is being deleted; it plans itself again while the site's today is still before the day (the zone moved).
- * Then it checks the entry with the values of the change (a field gone or one a change may no longer set, a value that
- * no longer fits, a new link that leads nowhere) and stops with the reason (D127), or writes them through `commitEntry`
- * as the system, into an online entry or a draft, also when a field was edited since.
+ * Then it checks the entry with the values of the change (`dueRefusal`) and stops with the reason (D127), or writes them
+ * (`writeDue`). Any other error of the run stops the change with `failed`, so it never fails silently.
  */
 export const applyDue = internalMutation({
   args: { change: v.id('datedChanges'), from: v.string() },
@@ -145,39 +151,81 @@ export const applyDue = internalMutation({
     if (!entry || entry.deletedAt) return null
     const schema = site.schema as Schema
     if (todayIn(schema.timeZone) < row.from) {
-      await ctx.db.patch(row._id, { job: await ctx.scheduler.runAt(dayStart(row.from, schema.timeZone), internal.datedChanges.applyDue, { change: row._id, from: row.from }) })
+      // Never sooner than a minute from now: a start that has passed would run again at once, again and again.
+      const at = Math.max(dayStart(row.from, schema.timeZone), Date.now() + 60_000)
+      await ctx.db.patch(row._id, { job: await ctx.scheduler.runAt(at, internal.datedChanges.applyDue, { change: row._id, from: row.from }) })
       return null
     }
-    const roots = Object.keys(row.fields)
     const title = entryLabel(schema, entry.brick, entry.data as Data)
-    const day = dayStart(row.from, schema.timeZone)
-    const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
-    const gone = roots.filter((root) => !brick || brick.retired || changeRefusal(schema, brick, root) !== undefined)
-    if (gone.length) return await stop(ctx, site, entry, row, { code: 'invalid', fields: gone }, title)
-    const { data, prints } = overlay(entry, row)
-    const { errors } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(roots), ...(await lookupsFor(ctx, site._id, brick!.fields, data)) })
-    if (errors.length) return await stop(ctx, site, entry, row, { code: 'invalid', fields: [...new Set(errors.map((e) => e.path))] }, title)
-    const broken = await brokenNewLinks(ctx, site, [{ entry, fields: brick!.fields, before: entry.data as Data, after: data }], day)
-    if (broken) return await stop(ctx, site, entry, row, { code: 'link', href: broken.href }, title)
-    const actor: Actor = { user: { id: SYSTEM.actor }, site, role: 'admin', grants: [] }
+    let reason: StopReason | undefined
+    let writing = false
     try {
-      const written = await commitEntry(ctx, {
-        actor, entry, fields: brick!.fields, roots, data, prints, kind: 'save', opId: `dated:${row._id}`,
-        history: recorded(msg('history.datedApplied', { title, fields: fieldNames(schema, entry.brick, roots), day }), schema),
-      })
-      if (row.by) await ctx.db.patch(written.change, { plannedBy: row.by })
+      reason = await dueRefusal(ctx, site, entry, row)
+      writing = true
+      if (!reason) await ctx.runMutation(internal.datedChanges.writeDue, { change: row._id })
     } catch (error) {
-      // Over a budget the site reached since: the values do not fit, as a value that no longer passes.
-      if (!(error instanceof ConvexError)) throw error
-      return await stop(ctx, site, entry, row, { code: 'invalid', fields: roots }, title)
+      // A refusal of the write: over a budget the site reached since, the values do not fit, as a value that no longer
+      // passes. Any other error of the run stops the change with `failed`; `writeDue` is a transaction of its own, so
+      // nothing of it stays written.
+      if (writing && error instanceof ConvexError) reason = { code: 'invalid', fields: Object.keys(row.fields) }
+      else {
+        console.error(`Dated change ${row._id} failed (${errorKind(error)}).`)
+        reason = { code: 'failed' }
+      }
     }
+    return reason ? await stop(ctx, site, entry, row, reason, title) : null
+  },
+})
+
+/**
+ * Why a due change cannot be written (D127), or nothing: a field gone or one a change may no longer set, a value that
+ * no longer fits, a new link that leads nowhere. Reads only.
+ */
+async function dueRefusal(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'entries'>, row: Dated): Promise<StopReason | undefined> {
+  const schema = site.schema as Schema
+  const roots = Object.keys(row.fields)
+  const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
+  const gone = roots.filter((root) => !brick || brick.retired || changeRefusal(schema, brick, root) !== undefined)
+  if (gone.length || !brick) return { code: 'invalid', fields: gone }
+  const { data } = overlay(entry, row)
+  const { errors } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(roots), ...(await lookupsFor(ctx, site._id, brick.fields, data)) })
+  if (errors.length) return { code: 'invalid', fields: [...new Set(errors.map((e) => e.path))] }
+  const broken = await brokenNewLinks(ctx, site, [{ entry, fields: brick.fields, before: entry.data as Data, after: data }], dayStart(row.from, schema.timeZone))
+  if (broken) return { code: 'link', href: broken.href }
+  return undefined
+}
+
+/**
+ * The write of a due change once `dueRefusal` passed, as a transaction of its own (an error rolls all of it back): the
+ * values through `commitEntry` as the system, into an online entry or a draft, also when a field was edited since (a
+ * draft whose name is not fixed follows its new title, as for a save); the history names the planner, and the row goes.
+ */
+export const writeDue = internalMutation({
+  args: { change: v.id('datedChanges') },
+  handler: async (ctx, args): Promise<null> => {
+    const row = (await ctx.db.get(args.change))!
+    const site = (await ctx.db.get(row.site))!
+    const entry = (await ctx.db.get(row.entry))!
+    const schema = site.schema as Schema
+    const roots = Object.keys(row.fields)
+    const brick = schema.bricks[entry.brick]!
+    const { data, prints } = overlay(entry, row)
+    const actor: Actor = { user: { id: SYSTEM.actor }, site, role: 'admin', grants: [] }
+    // A new title of a draft whose name is not fixed yet renames it, as a save does.
+    const followed = await followName(ctx, actor, entry, brick, entry.data as Data, data)
+    const written = await commitEntry(ctx, {
+      actor, entry, fields: brick.fields, roots: rootsWith(roots, brick, followed), data, prints, kind: 'save', opId: `dated:${row._id}`,
+      history: recorded(msg('history.datedApplied', { title: entryLabel(schema, entry.brick, entry.data as Data), fields: fieldNames(schema, entry.brick, roots), day: dayStart(row.from, schema.timeZone) }), schema),
+    })
+    if (followed) await writeFollowedName(ctx, actor, entry, followed)
+    if (row.by) await ctx.db.patch(written.change, { plannedBy: row.by })
     await dropDated(ctx, row, true)
     return null
   },
 })
 
 /**
- * A dated change that did not start (D127): nothing is written, the row keeps why and loses its run, the history says
+ * A dated change that did not take effect (D127): nothing is written, the row keeps why and loses its run, the history says
  * it, and the person who made it and the owners are told. A failed mail never undoes the stop. It is not tried again.
  */
 async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>, row: Dated, reason: StopReason, title: string): Promise<null> {
@@ -188,9 +236,7 @@ async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>,
   try {
     await mailStoppedChange(ctx, site, entry, row.by, { brick: entry.brick, title, day, fields: roots, reason })
   } catch (error) {
-    // The code or the class only: an error's message can hold an address or a title.
-    const kind = error instanceof ConvexError ? String((error.data as { code?: unknown }).code) : error instanceof Error ? error.constructor.name : typeof error
-    console.error(`Mail stopped ${entry._id} not queued (${kind}).`)
+    console.error(`Mail stopped ${entry._id} not queued (${errorKind(error)}).`)
   }
   // The values no longer come, so a page stops reading them ahead.
   const contentRev = touchesPublic(schema, entry.brick, roots) ? site.contentRev + 1 : site.contentRev
@@ -216,14 +262,30 @@ async function stop(ctx: MutationCtx, site: Doc<'sites'>, entry: Doc<'entries'>,
  *   fields go from the data. The stored schema loses `planned` and the two fields (also in tasks), gains
  *   `timeline: { public: [field] }`, and a task that showed the plan gets `when: { from: 'ask' }` when a change may set
  *   all its fields. `schemaRev` and `contentRev` rise.
- * Safe to run again: a site without these has nothing to do.
+ * It reads the stored model as it is, never through the new `checkSchema` (which refuses `planned`). Safe to run again:
+ * a site without these has nothing to do. Each site is a transaction of its own: one it cannot convert is reported by
+ * its slug (`ops:status`), and the others go on.
  */
 export const migrateOlderWays = internalMutation({
   args: stepArgs,
   handler: async (ctx, args): Promise<null> => {
     const page = await ctx.db.query('sites').paginate({ cursor: args.cursor, numItems: 1 })
-    for (const site of page.page) await migrateSite(ctx, site)
+    for (const site of page.page) await eachSite(ctx, args.run, site, () => ctx.runMutation(internal.datedChanges.migrateOneSite, { site: site._id }))
     return advance(ctx, args.run, page.isDone ? null : page.continueCursor)
+  },
+})
+
+/** One site of `migrateOlderWays`, as a transaction of its own (`eachSite`). */
+export const migrateOneSite = internalMutation({
+  args: { site: v.id('sites') },
+  handler: async (ctx, args): Promise<null> => {
+    const site = await ctx.db.get(args.site)
+    try {
+      if (site) await migrateSite(ctx, site)
+    } catch (error) {
+      throw notConverted(error)
+    }
+    return null
   },
 })
 

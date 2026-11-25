@@ -124,6 +124,14 @@ export interface ExportAnswer {
   /** Absent in older exports. */
   folders?: ExportFolder[]
   files: (ExportFileInfo & { url: string })[]
+  /** How many dated changes stopped on their day: they stay behind (D128). Absent when there are none. */
+  stoppedChanges?: number
+}
+
+/** The line that says how many stopped dated changes an export leaves behind, or nothing when there are none. */
+export function stoppedLine(count: number | undefined): string | undefined {
+  if (!count) return undefined
+  return `Warning: ${count === 1 ? '1 stopped change stays' : `${count} stopped changes stay`} behind: an export carries only the dated changes that still wait.`
 }
 
 /** `<dir>/export.json`: the answer without the URLs; each file lies at `path` below the folder. */
@@ -173,6 +181,7 @@ export function parseExport(value: unknown, locator: 'url' | 'path', problem: st
       && (f.focus === undefined || (isObject(f.focus) && typeof f.focus.x === 'number' && typeof f.focus.y === 'number')))
     && (value.folders === undefined || (Array.isArray(value.folders) && value.folders.every((f) => isObject(f)
       && typeof f.id === 'string' && typeof f.name === 'string' && optionalString(f.parent))))
+    && optionalNumber(value.stoppedChanges)
   if (!valid) throw new CliError(problem, locator === 'url' ? 'UNAVAILABLE' : 'INVALID')
   return value as unknown as ExportAnswer | SiteExport
 }

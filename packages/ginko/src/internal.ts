@@ -16,4 +16,4 @@ export { offerPrice, postalAddress, type PostalAddressInput } from './patterns/o
 // The line of the opening-hours status rule, as the Studio and the weekly mail render it.
 export type { HoursToday, TodayLine } from './patterns/rules.ts'
 // The one zone-offset reading: core writes event times with it, the Studio reads drafts' times with it.
-export { zoneOffset } from './core/time.ts'
+export { dayStartIn, zoneOffset } from './core/time.ts'

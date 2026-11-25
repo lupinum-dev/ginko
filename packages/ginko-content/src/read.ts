@@ -681,9 +681,10 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         const prefix = `$changes.${i}.set.`
         const set = item.set
         const live = (name: string) => Object.hasOwn(brick.fields, name) && !brick.fields[name]!.retired
-        // A file's Markdown is built into a tree with the entry; a text in a change has no such step (D122).
-        const markdown = (name: string) => live(name) && brick.fields[name]!.type === 'markdown'
-        for (const name of Object.keys(set).filter(markdown)) fail(cx, `${prefix}${name}`, `“${name}” is a Markdown text, and a Markdown text cannot be in a change in a file. Change the text in the file on its day.`)
+        // A file's Markdown is built into a tree with the entry, also inside list rows; a text in a change has no such
+        // step (D122), and no export rewrites the images it shows.
+        const markdown = (name: string) => live(name) && hasMarkdown(brick.fields[name]!)
+        for (const name of Object.keys(set).filter(markdown)) fail(cx, `${prefix}${name}`, `“${name}” ${brick.fields[name]!.type === 'markdown' ? 'is' : 'holds'} a Markdown text, and a Markdown text cannot be in a change in a file. Change the text in the file on its day.`)
         const written = Object.fromEntries(Object.entries(set).filter(([name, value]) => value !== null && live(name) && !markdown(name)))
         const view = convertFields(brick.fields, written, { ...cx, prefix })
         const subset = Object.fromEntries(Object.keys(view).map((name) => [name, brick.fields[name]!]))
@@ -957,4 +958,10 @@ function brickProblemsOf(brick: Brick): { path?: string; message: string }[] {
     problems.push({ message: 'The file brick has more than one markdown field.' })
   }
   return problems
+}
+
+/** Whether a field is a Markdown text or holds one in its rows. */
+function hasMarkdown(field: Field): boolean {
+  if (field.type === 'markdown') return true
+  return (field.type === 'list' || field.type === 'rows') && Object.values(field.of).some((sub) => !sub.retired && hasMarkdown(sub))
 }

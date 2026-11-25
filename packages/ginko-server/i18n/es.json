@@ -155,6 +155,7 @@
     "importClosed": "La importación no está abierta para este sitio.",
     "importNeedsEmptySite": "Solo un sitio vacío puede abrirse para la importación: tiene entradas, cambios o ediciones.",
     "importEntryInvalid": "La entrada “{id}” no coincide con el esquema ({count} errores, el primero en “{path}”). No se guardó nada de este lote.",
+    "importTooManyDated": "La entrada “{id}” tiene {count} cambios planificados; como máximo {max} pueden esperar.",
     "importEntryTooLarge": "La entrada “{id}” es demasiado grande ({used}, como máximo {limit}).",
     "importSiteTooLarge": "La exportación es más grande que el espacio para textos de un sitio ({used} de {limit}).",
     "importTrashTooLarge": "Las entradas eliminadas de la exportación son más grandes que la papelera de un sitio ({used} de {limit}).",
@@ -273,6 +274,7 @@
     "publishProposalScheduled": "Publicar “{title}”, en línea a partir del {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "publishStoppedBrokenLink": "“{title}” no se publicó: el enlace “{link}” no lleva a ninguna parte.",
     "publishStoppedInvalid": "“{title}” no se publicó: {count, plural, one {el campo {fields} falta o no es válido} other {los campos {fields} faltan o no son válidos}}.",
+    "publishStoppedFailed": "“{title}” no se publicó: se produjo un error al publicarla.",
     "published": "Se publicó “{title}”",
     "publishedDue": "Se publicó “{title}” (según lo programado)",
     "publishedLate": "Se publicó “{title}” de inmediato (la hora programada ya había pasado al aprobarlo)",
@@ -323,7 +325,7 @@
     "datedCancelledWithEntry": "“{title}”: {count, plural, one {su cambio planificado se canceló} other {sus # cambios planificados se cancelaron}} con la entrada",
     "datedApplied": "“{title}”: {fields} cambiado, como estaba planificado a partir del {day, date, ::MMMMd}",
     "datedAppliedLate": "“{title}”: {fields} cambiado de inmediato (el día planificado, {day, date, ::MMMMd}, ya había llegado al aprobarlo)",
-    "datedStopped": "El cambio en “{title}” a partir del {day, date, ::MMMMd} no entró en vigor porque {why}"
+    "datedStopped": "El cambio en “{title}” a partir del {day, date, ::MMMMd} no se aplicó porque {why}"
   },
   "publicness": {
     "deleted": "La entrada se eliminó. Puedes restaurarla hasta el {until, date, long}; después se borra definitivamente.",
@@ -376,8 +378,8 @@
       "text": "Hola:\n\ntu cambio para “{site}” no se aprobó:\n\n{what}\n\nMotivo: “{reason}”\n\nCorregir: {path}\n"
     },
     "stoppedChange": {
-      "subject": "El cambio planificado en “{title}” no entró en vigor",
-      "text": "Hola:\n\npara tu entrada estaba planificado un cambio a partir del {day, date, ::EEEEdMMMM}: {fields}. No entró en vigor porque {because}\n\nLa entrada está a salvo: la web muestra los valores que tenía. Corrige el cambio y dale un nuevo día, o cancélalo.\n\nAbrir la entrada: {path}\n"
+      "subject": "El cambio planificado en “{title}” no se aplicó",
+      "text": "Hola:\n\npara tu entrada estaba planificado un cambio a partir del {day, date, ::EEEEdMMMM}: {fields}. No se aplicó porque {because}\n\nLa entrada está a salvo: la web muestra los valores que tenía. Corrige el cambio y dale un nuevo día, o cancélalo.\n\nAbrir la entrada: {path}\n"
     }
   },
   "stopped": {
@@ -385,14 +387,18 @@
     "cause": {
       "link": "Enlaza a una página que no existe: {href}",
       "invalid": "{count, plural, one {Falta {fields} o no es válido.} other {Faltan {fields} o no son válidos.}}",
-      "late": "Su hora ya había pasado cuando se importó el contenido."
+      "late": "Su hora ya había pasado cuando se importó el contenido.",
+      "failed": "Se produjo un error al publicarla. Vuelve a planificarla. Si vuelve a pasar, avísanos.",
+      "changeFailed": "Se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos."
     },
     "because": {
       "link": "enlaza a una página que no existe: {href}",
       "invalid": "{count, plural, one {falta {fields} o no es válido.} other {faltan {fields} o no son válidos.}}",
-      "late": "su hora ya había pasado cuando se importó el contenido."
+      "late": "su hora ya había pasado cuando se importó el contenido.",
+      "failed": "se produjo un error al publicarla. Vuelve a planificarla. Si vuelve a pasar, avísanos.",
+      "changeFailed": "se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos."
     },
-    "changeTitle": "“{title}”: el cambio a partir del {day, date, ::MMMMd} no entró en vigor"
+    "changeTitle": "“{title}”: el cambio a partir del {day, date, ::MMMMd} no se aplicó"
   },
   "content": {
     "copyOf": "{text} (copia)"

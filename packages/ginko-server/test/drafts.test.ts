@@ -134,6 +134,27 @@ describe('scheduled publishing', () => {
     expect(changes.map((c) => [c.kind, c.actor])).toEqual([['create', 'u-wirtin'], ['publish', 'system']])
   })
 
+  // Wrong behaviour caught: an error that is not a refusal (here a stored choice field without its options) makes the
+  // job fail silently; the draft then stays planned for a run that never comes again.
+  it('an error of the run stops the plan with "failed" and logs only the class', async () => {
+    const s = await draftSetup()
+    const at = NOW + 2 * HOUR
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish('Geplant'), publish: { at } })
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      delete (schema.bricks.menu!.fields.veg as { options?: unknown }).options
+      await ctx.db.patch(s.site, { schema })
+    })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await s.advanceTo(at + 1000)
+    expect(await s.row(draft.entry)).toMatchObject({ state: 'draft', stopped: { at, reason: { code: 'failed' } } })
+    expect((await s.row(draft.entry))!.publishAt).toBeUndefined()
+    expect(log.mock.calls).toEqual([[`Plan ${draft.entry} failed (TypeError).`]])
+    const changes = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', draft.entry as Id<'entries'>)).collect())
+    expect(changes.at(-1)).toMatchObject({ kind: 'publishStopped', msg: { key: 'history.publishStoppedFailed' } })
+    log.mockRestore()
+  })
+
   it('a rescheduled job does not publish at the old time', async () => {
     const s = await draftSetup()
     const first = NOW + 2 * HOUR

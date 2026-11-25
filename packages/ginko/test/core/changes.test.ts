@@ -91,7 +91,8 @@ describe('changeIssues: the check of an entry\'s changes', () => {
     ['the slug', [{ from: '2026-11-01', set: { slug: de('neu') } }], [[0, 'slug', 'CHANGE']]],
     ['the field showUntil reads', [{ from: '2026-11-01', set: { servedUntil: '2026-12-01' } }], [[0, 'servedUntil', 'CHANGE']]],
     ['the field publishedOn reads', [{ from: '2026-11-01', set: { day: '2026-12-01' } }], [[0, 'day', 'CHANGE']]],
-    ['one field twice on one day', [{ from: '2026-11-01', set: { price: money(1) } }, { from: '2026-11-01', set: { price: money(2) } }], [[1, 'price', 'CHANGE']]],
+    // Wrong behaviour caught: two changes of one day pass, and the platform merges them into one row without a word.
+    ['two changes of one day', [{ from: '2026-11-01', set: { price: money(1) } }, { from: '2026-11-01', set: { note: de('kalt') } }], [[1, '$changes.1.from', 'CHANGE']]],
     ['a value the field refuses', [{ from: '2026-11-01', set: { note: de('viel zu lang für dieses Feld') } }], [[0, 'note.de', 'TOO_LONG']]],
     ['a required field cleared', [{ from: '2026-11-01', set: { price: null } }], [[0, 'price', 'REQUIRED']]],
   ])('refuses %s', async (_, changes, expected) => {
@@ -99,7 +100,7 @@ describe('changeIssues: the check of an entry\'s changes', () => {
   })
 
   // Wrong behaviour caught: the check looked only at the change's own fields, so a change that shows a required field
-  // (showWhen) or two changes of one day that only work together were judged wrong.
+  // (showWhen) passed with it empty.
   describe('the whole entry before and after each day', () => {
     const offer = collection({
       label: 'Angebote', listing: { title: 'name' }, max: 20, order: 'manual',
@@ -113,7 +114,7 @@ describe('changeIssues: the check of an entry\'s changes', () => {
     const onRequest: Record<string, Json> = { name: 'Kurs', pricing: 'onRequest' }
     it.each([
       ['a change that shows a required field left empty', [{ from: '2026-11-01', set: { pricing: 'fixed' } }], [[0, 'amount', 'REQUIRED']]],
-      ['two changes of one day that fill what the other shows', [{ from: '2026-11-01', set: { pricing: 'fixed' } }, { from: '2026-11-01', set: { amount: money(2500) } }], []],
+      ['one change that shows a field and fills it', [{ from: '2026-11-01', set: { pricing: 'fixed', amount: money(2500) } }], []],
       ['the field filled only on a later day', [{ from: '2026-11-01', set: { pricing: 'fixed' } }, { from: '2026-12-01', set: { amount: money(2500) } }], [[0, 'amount', 'REQUIRED']]],
     ])('%s', async (_, changes, expected) => {
       expect((await changeIssues(offers, 'offer', onRequest, changes)).map((i) => [i.change, i.path, i.code])).toEqual(expected)

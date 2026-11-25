@@ -44,6 +44,8 @@ let toReview: number | undefined = 0
 let hoursEntry: Record<string, unknown> = {}
 /** proposals.mine `open`: the person's own proposals waiting for approval. */
 let ownOpen: unknown[] = []
+/** entries.stoppedPlans: plans and dated changes that stopped. */
+const stopped = ref<unknown[]>([])
 
 vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
@@ -64,7 +66,7 @@ vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   if (name === 'sites.today') return { data: ref(states) }
   if (name === 'proposals.count') return { data: computed(() => (skipped() ? undefined : toReview)) }
   if (name === 'proposals.mine') return { data: ref({ open: ownOpen, rejected: [], notLive: [] }) }
-  if (name === 'entries.stoppedPlans') return { data: ref([]) }
+  if (name === 'entries.stoppedPlans') return { data: stopped }
   if (name === 'entries.ofBricks') return { data: ref([{ _id: 'h1', brick: 'hours', kind: 'single', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: hoursEntry }]) }
   return { data: computed(() => undefined) }
 })
@@ -203,4 +205,21 @@ test.each<[string, HoursToday, boolean, string]>([
   expect(line.text()).toBe(text)
   expect(line.classes().includes('text-warning')).toBe(due)
   wrapper.unmount()
+})
+
+// Wrong behaviour caught: two stopped changes of one entry share the entry as their key, so Vue mixes up their tiles when
+// the list changes (one tile per entry instead of one per change).
+test('two stopped changes of one entry are two tiles, keyed by the change', async () => {
+  states = []
+  const row = (id: string, day: string) => ({
+    entry: 'e1', brick: 'events', at: 1, change: { id, from: day },
+    title: null, titleText: `„Lesung“: Änderung ab ${day} wurde nicht übernommen`, cause: null, causeText: `Grund ${id}`,
+  })
+  stopped.value = [row('c1', '1. November'), row('c2', '8. November')]
+  const wrapper = await page()
+  expect(['Grund c1', 'Grund c2'].map((cause) => wrapper.text().includes(cause))).toEqual([true, true])
+  // The tile's id is its key in the list (TodayWaiting).
+  expect(wrapper.findComponent({ name: 'TodayWaiting' }).props('tiles').map((tile: { id: string }) => tile.id)).toEqual(['s-c1', 's-c2'])
+  wrapper.unmount()
+  stopped.value = []
 })

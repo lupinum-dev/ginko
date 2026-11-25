@@ -56,7 +56,7 @@
     "changeEmpty": "Une modification a besoin d’au moins un champ dans « set ».",
     "changeKey": "Une modification n’a pas de « {key} » : elle n’a que « from » et « set ».",
     "changeNotYet": "« {key} » n’est pas encore disponible pour une modification.",
-    "changeTwice": "Deux modifications à partir du {from} fixent « {label} ».",
+    "changeTwice": "Deux modifications ont le jour {from}. Écris-les comme une seule modification.",
     "changeFixed": "« {label} » ne peut pas commencer à un jour donné : ce champ décide quand ou où l’entrée apparaît.",
     "changeTranslated": "« {label} » a un texte par langue. Une modification à partir d’un jour n’est pas encore possible pour un tel champ.",
     "changeValue": "Modification à partir du {from} : {problem}"

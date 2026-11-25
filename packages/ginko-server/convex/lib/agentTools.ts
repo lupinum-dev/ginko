@@ -59,10 +59,6 @@ export function draftBricks(actor: Actor): string[] {
     .map(([key]) => key)
 }
 
-/**
- * `publish` on every tool that creates or changes content (SPEC 15): a new entry is a draft and a change to a published
- * entry waits as unpublished changes until the person publishes it, unless the person asked for it to go online now.
- */
 /** A dated change (D125): the day the values start, for an entry that is online. */
 export const FROM = {
   type: 'string',
@@ -70,6 +66,10 @@ export const FROM = {
   description: 'A day (YYYY-MM-DD) after today, at most a year ahead: the values start on that day as a planned change of an entry that is online; until then the website keeps the values it has. Not together with publish.',
 } as const
 
+/**
+ * `publish` on every tool that creates or changes content (SPEC 15): a new entry is a draft and a change to a published
+ * entry waits as unpublished changes until the person publishes it, unless the person asked for it to go online now.
+ */
 export const PUBLISH = {
   type: 'boolean',
   description: 'true: goes on the website at once. Only when the person asked for that. Without it a new entry is a draft and a change waits unpublished; the person publishes it in the platform.',

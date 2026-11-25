@@ -401,8 +401,10 @@ function savedAs(result: Json, label: string, draft = false): { text: string; re
     const saved = savedAs(result, label)
     return { ...saved, text: `${saved.text}${lacksText(result)}` }
   }
-  const { change, liveFrom, pending, from } = result as { change?: string; liveFrom?: string; pending?: boolean; from?: string }
-  // A dated change (D125): nothing changes on the website before its day.
+  const { change, liveFrom, pending, from, dated } = result as { change?: string; liveFrom?: string; pending?: boolean; from?: string; dated?: string | null }
+  // A dated change (D125): nothing changes on the website before its day. Values the entry has on that day anyway
+  // take the change of that day away (`dated: null`).
+  if (from !== undefined && change && dated === null) return { text: `Removed the planned change from ${from}: ${label} has these values on that day anyway, so nothing waits for that day any more.`, result }
   if (from !== undefined && change) return { text: `Planned: ${label}. On the website from ${from}; until then it keeps the values it has. The person can move or cancel the change in the platform.`, result }
   // A save of a published entry waits as unpublished changes unless `publish` (lib/pending.ts).
   if (pending !== undefined) {

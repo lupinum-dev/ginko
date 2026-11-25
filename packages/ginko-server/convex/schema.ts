@@ -13,12 +13,13 @@ const role = v.union(v.literal('owner'), v.literal('staff'))
 const historyMsg = v.object({ key: v.string(), params: v.optional(v.record(v.string(), v.any())) })
 /**
  * Why a plan did not go online (D103): a link to a page that does not exist, fields that fail the full check (their
- * paths), or a time that had passed when the content was imported.
+ * paths), a time that had passed when the content was imported, or an error of the run itself (`failed`).
  */
 export const stopReason = v.union(
   v.object({ code: v.literal('link'), href: v.string() }),
   v.object({ code: v.literal('invalid'), fields: v.array(v.string()) }),
   v.object({ code: v.literal('late') }),
+  v.object({ code: v.literal('failed') }),
 )
 export type StopReason = Infer<typeof stopReason>
 const scope = v.union(v.literal('release'), v.literal('pull'), v.literal('check'), v.literal('export'))
@@ -213,7 +214,7 @@ export default defineSchema({
     at: v.number(),
     /** The scheduled `datedChanges.applyDue` run at the first minute of `from`. Absent once it stopped. */
     job: v.optional(v.id('_scheduled_functions')),
-    /** It did not start on its day (D103 reasons): nothing was written; `setDay` or a save into it clears this. */
+    /** It did not take effect on its day (D103 reasons): nothing was written; `setDay` or a save into it clears this. */
     stopped: v.optional(v.object({ at: v.number(), reason: stopReason })),
   })
     .index('by_entry', ['entry', 'from'])
@@ -379,6 +380,8 @@ export default defineSchema({
     finishedAt: v.optional(v.number()),
     /** Recorded as done on a fresh deployment: there was nothing to migrate, nothing ran. */
     baseline: v.optional(v.boolean()),
+    /** The sites (by slug) a step could not convert; the others went on. `ops:status` lists them. */
+    skipped: v.optional(v.array(v.string())),
   }),
 
   /** A one-time upload ticket (SPEC 4.3): who may store one file for which site, until when. Only its hash is kept. */

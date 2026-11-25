@@ -319,7 +319,7 @@
     "startsOnHint": "Empty: at once",
     "publishFrom": "Publish from {day}",
     "waiting": "A planned change starts on {day}: {fields}.",
-    "stopped": "The planned change for {day} did not start: {fields}.",
+    "stopped": "The planned change for {day} did not take effect: {fields}.",
     "changedSince": "Changed since it was planned: {fields}. From the planned day, the planned value still applies.",
     "cancel": "Cancel change",
     "cancelQuestion": "Cancel this planned change? This cannot be undone.",

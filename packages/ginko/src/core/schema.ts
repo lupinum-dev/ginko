@@ -661,11 +661,6 @@ function taskIdProblems(key: string, brick: Brick): string[] {
 }
 
 /**
- * A create task that lists `fields` names fields the brick has and can ask for, and leaves no required field without a
- * value: the slug is made from the title, a
- * retired field is gone, and a field with a default or a prefill has a value.
- */
-/**
  * `when` of a task (D123): an edit task only, `{ from: 'now' | 'ask' }`, and with `'ask'` every field of the task is one
  * a change may set (`changeRefusal`), so the form never offers a day for a field that cannot take one.
  */
@@ -684,6 +679,10 @@ function whenProblems(path: string, task: Task, when: unknown, brick: Brick, sch
   return out
 }
 
+/**
+ * A create task that lists `fields` names fields the brick has and can ask for, and leaves no required field without a
+ * value: the slug is made from the title, a retired field is gone, and a field with a default or a prefill has a value.
+ */
 function createFieldsProblems(path: string, task: Extract<Task, { kind: 'create' }>, brick: Brick): string[] {
   if (!Array.isArray(task.fields)) return [`${path}: must be a list of field names.`]
   const fields = brick.fields

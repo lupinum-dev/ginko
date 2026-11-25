@@ -56,7 +56,7 @@
     "changeEmpty": "Un cambio necesita al menos un campo en «set».",
     "changeKey": "Un cambio no tiene «{key}»: solo tiene «from» y «set».",
     "changeNotYet": "«{key}» todavía no está disponible para un cambio.",
-    "changeTwice": "Dos cambios desde el {from} fijan «{label}».",
+    "changeTwice": "Dos cambios tienen el día {from}. Escríbelos como un solo cambio.",
     "changeFixed": "«{label}» no puede empezar un día concreto: decide cuándo o dónde aparece la entrada.",
     "changeTranslated": "«{label}» tiene texto por idioma. Un cambio desde un día todavía no es posible para un campo así.",
     "changeValue": "Cambio desde el {from}: {problem}"

@@ -111,6 +111,10 @@ describe('agent door', () => {
     expect((await s.t.run((ctx) => ctx.db.get(s.entries['menu-schnitzel']!)))!.data.price).toEqual({ amount: 2190 })
     const dated = await s.t.run((ctx) => ctx.db.query('datedChanges').collect())
     expect(dated).toMatchObject([{ from: '2026-11-01', fields: { price: { amount: 2500 } } }])
+    // Wrong behaviour caught: the online price for that day takes the change away, but the answer said "Planned".
+    const removed = await call(s, key, 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 21.9, from: '2026-11-01' })
+    expect(removed.text).toContain('Removed the planned change from 2026-11-01')
+    expect(await s.t.run((ctx) => ctx.db.query('datedChanges').collect())).toEqual([])
   })
 
   it('a price in euros is stored in cents and the change names the key', async () => {

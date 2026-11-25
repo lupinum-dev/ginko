@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { carryPrints, changeIssues, dataOn, todayIn, waitingChanges, type Change, defaultsFor, entryBytes, fitsBudget, isEntryName, namesOf, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, withoutUnknownRows, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { carryPrints, changeIssues, dataOn, MAX_DATED, todayIn, waitingChanges, type Change, defaultsFor, entryBytes, fitsBudget, isEntryName, namesOf, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, withoutUnknownRows, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -381,6 +381,10 @@ export const importExport = internalMutation({
       }
       const size = entryBytes(data, prints)
       if (size > BUDGET.entryBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importEntryTooLarge', params: { id: row.id, used: sizeText(size), limit: sizeText(BUDGET.entryBytes) } })
+      // As a save makes them (planDated): at most MAX_DATED waiting changes, and the entry with all of them applied fits.
+      if (changes.length > MAX_DATED) problems.push({ code: 'TOO_LARGE', key: 'errors.importTooManyDated', params: { id: row.id, count: changes.length, max: MAX_DATED } })
+      const last = changes.length ? entryBytes(dataOn(data, changes, '9999-12-31'), prints) : size
+      if (last > BUDGET.entryBytes && size <= BUDGET.entryBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importEntryTooLarge', params: { id: row.id, used: sizeText(last), limit: sizeText(BUDGET.entryBytes) } })
       // The trash keeps no trees.
       const trees = row.deletedAt === undefined ? await treesOf(def.fields, data) : { json: '', bytes: 0 }
       if (row.deletedAt === undefined) {

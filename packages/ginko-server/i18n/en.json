@@ -155,6 +155,7 @@
     "importClosed": "The import is not open for this site.",
     "importNeedsEmptySite": "Only an empty site can be opened for import: it has entries, changes or edits.",
     "importEntryInvalid": "Entry “{id}” does not match the schema ({count} errors, first at “{path}”). Nothing from this batch was saved.",
+    "importTooManyDated": "Entry “{id}” has {count} planned changes; at most {max} can wait.",
     "importEntryTooLarge": "Entry “{id}” is too large ({used}, at most {limit}).",
     "importSiteTooLarge": "The export is larger than a site's text storage ({used} of {limit}).",
     "importTrashTooLarge": "The export's removed entries are larger than a site's trash ({used} of {limit}).",
@@ -273,6 +274,7 @@
     "publishProposalScheduled": "Publish “{title}”, online from {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "publishStoppedBrokenLink": "“{title}” did not go live: the link “{link}” leads nowhere.",
     "publishStoppedInvalid": "“{title}” did not go online: {count, plural, one {the field {fields} is} other {the fields {fields} are}} missing or not valid.",
+    "publishStoppedFailed": "“{title}” did not go online: an error happened while it went online.",
     "published": "“{title}” published",
     "publishedDue": "“{title}” published (as scheduled)",
     "publishedLate": "“{title}” published at once (the planned time had already passed at approval)",
@@ -323,7 +325,7 @@
     "datedCancelledWithEntry": "“{title}”: {count, plural, one {its planned change was} other {its # planned changes were}} cancelled with the entry",
     "datedApplied": "“{title}”: {fields} changed, as planned from {day, date, ::MMMMd}",
     "datedAppliedLate": "“{title}”: {fields} changed at once (the planned day, {day, date, ::MMMMd}, had come at approval)",
-    "datedStopped": "The change to “{title}” from {day, date, ::MMMMd} did not start, because {why}"
+    "datedStopped": "The change to “{title}” from {day, date, ::MMMMd} did not take effect, because {why}"
   },
   "publicness": {
     "deleted": "The entry was removed. You can restore it until {until, date, long}, then it is deleted for good.",
@@ -376,8 +378,8 @@
       "text": "Hello,\n\nyour change for “{site}” was not approved:\n\n{what}\n\nReason: “{reason}”\n\nFix it: {path}\n"
     },
     "stoppedChange": {
-      "subject": "Planned change to “{title}” did not start",
-      "text": "Hello,\n\na change of your entry was planned from {day, date, ::EEEEdMMMM}: {fields}. It did not start, because {because}\n\nThe entry is safe: the website shows the values it had. Fix the change and give it a new day, or cancel it.\n\nOpen the entry: {path}\n"
+      "subject": "Planned change to “{title}” did not take effect",
+      "text": "Hello,\n\na change of your entry was planned from {day, date, ::EEEEdMMMM}: {fields}. It did not take effect, because {because}\n\nThe entry is safe: the website shows the values it had. Fix the change and give it a new day, or cancel it.\n\nOpen the entry: {path}\n"
     }
   },
   "stopped": {
@@ -385,14 +387,18 @@
     "cause": {
       "link": "It links to a page that does not exist: {href}",
       "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
-      "late": "Its time had passed when the content was imported."
+      "late": "Its time had passed when the content was imported.",
+      "failed": "An error happened while it went online. Plan it again. If it happens again, please tell us.",
+      "changeFailed": "An error happened while it was written. Give the change a new day. If it happens again, please tell us."
     },
     "because": {
       "link": "it links to a page that does not exist: {href}",
       "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
-      "late": "its time had passed when the content was imported."
+      "late": "its time had passed when the content was imported.",
+      "failed": "an error happened while it went online. Plan it again. If it happens again, please tell us.",
+      "changeFailed": "an error happened while it was written. Give the change a new day. If it happens again, please tell us."
     },
-    "changeTitle": "“{title}”: the change from {day, date, ::MMMMd} did not start"
+    "changeTitle": "“{title}”: the change from {day, date, ::MMMMd} did not take effect"
   },
   "content": {
     "copyOf": "{text} (copy)"

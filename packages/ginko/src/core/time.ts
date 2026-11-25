@@ -41,6 +41,17 @@ export function zonedDateTime(date: string, time: string, timeZone: string): str
   return `${date}T${time}:00${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`
 }
 
+/**
+ * The first instant (ms) whose date in `timeZone` is `day`: its midnight, or, where the clock jumps from 23:59 to 01:00
+ * (Havana, Santiago when summer time starts), the instant of the jump. Midnight read with the offset before and after
+ * the day starts gives both candidates; the earlier one that already lies in `day` is it.
+ */
+export function dayStartIn(day: string, timeZone: string): number {
+  const naive = Date.parse(`${day}T00:00:00Z`)
+  const candidates = [naive - zoneOffset(timeZone, naive - 86_400_000), naive - zoneOffset(timeZone, naive + 86_400_000)].sort((a, b) => a - b)
+  return candidates.find((ms) => todayIn(timeZone, new Date(ms)) === day) ?? candidates[1]!
+}
+
 export function addDays(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() + days)

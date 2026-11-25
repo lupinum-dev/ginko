@@ -484,17 +484,12 @@ export const compiled: Record<string, MessageTree> = {
     "“ gibt es für eine Änderung noch nicht."
    ],
    "changeTwice": [
-    "Zwei Änderungen ab ",
+    "Zwei Änderungen haben den Tag ",
     [
      "a",
      "from"
     ],
-    " setzen „",
-    [
-     "a",
-     "label"
-    ],
-    "“."
+    ". Schreibe sie als eine Änderung."
    ],
    "changeFixed": [
     "„",
@@ -1962,17 +1957,12 @@ export const compiled: Record<string, MessageTree> = {
     "” is not available for a change yet."
    ],
    "changeTwice": [
-    "Two changes from ",
+    "Two changes have the day ",
     [
      "a",
      "from"
     ],
-    " set “",
-    [
-     "a",
-     "label"
-    ],
-    "”."
+    ". Write them as one change."
    ],
    "changeFixed": [
     "“",
@@ -3440,17 +3430,12 @@ export const compiled: Record<string, MessageTree> = {
     "» todavía no está disponible para un cambio."
    ],
    "changeTwice": [
-    "Dos cambios desde el ",
+    "Dos cambios tienen el día ",
     [
      "a",
      "from"
     ],
-    " fijan «",
-    [
-     "a",
-     "label"
-    ],
-    "»."
+    ". Escríbelos como un solo cambio."
    ],
    "changeFixed": [
     "«",
@@ -4920,17 +4905,12 @@ export const compiled: Record<string, MessageTree> = {
     " » n’est pas encore disponible pour une modification."
    ],
    "changeTwice": [
-    "Deux modifications à partir du ",
+    "Deux modifications ont le jour ",
     [
      "a",
      "from"
     ],
-    " fixent « ",
-    [
-     "a",
-     "label"
-    ],
-    " »."
+    ". Écris-les comme une seule modification."
    ],
    "changeFixed": [
     "« ",
@@ -6399,17 +6379,12 @@ export const compiled: Record<string, MessageTree> = {
     "» in una modifica non è ancora disponibile."
    ],
    "changeTwice": [
-    "Due modifiche dal ",
+    "Due modifiche hanno il giorno ",
     [
      "a",
      "from"
     ],
-    " impostano «",
-    [
-     "a",
-     "label"
-    ],
-    "»."
+    ". Scrivile come una sola modifica."
    ],
    "changeFixed": [
     "«",
@@ -7947,17 +7922,12 @@ export const compiled: Record<string, MessageTree> = {
     "» في التغيير غير متاح بعد."
    ],
    "changeTwice": [
-    "تغييران يبدآن في ",
+    "تغييران لهما اليوم ",
     [
      "a",
      "from"
     ],
-    " يضبطان «",
-    [
-     "a",
-     "label"
-    ],
-    "»."
+    ". اكتبهما كتغيير واحد."
    ],
    "changeFixed": [
     "لا يمكن أن يبدأ «",

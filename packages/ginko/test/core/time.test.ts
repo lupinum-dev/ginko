@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { dayStartIn } from '../../src/core/time.ts'
 import { formatMoney, isCurrency, minorDigits, resolveToken, todayIn, wallClockIn, weekInfo, startOfWeek, workWeekOf, type SiteWeek } from '../../src/core/index.ts'
 
 const MONDAY: SiteWeek = { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }
@@ -11,6 +12,20 @@ describe('todayIn (SPEC 2.7, B7)', () => {
     ['2026-10-08T22:30:00Z', '2026-10-09'],
   ])('at %s in Europe/Vienna is %s', (now, expected) => {
     expect(todayIn('Europe/Vienna', new Date(now))).toBe(expected)
+  })
+})
+
+describe('dayStartIn (when a dated change starts)', () => {
+  // Wrong behaviour caught: where the clock jumps from 23:59 to 01:00, "midnight" lies on the day before, so a run
+  // planned for it finds the day not begun and plans itself for the same instant again and again.
+  it.each([
+    ['2026-10-09', 'Europe/Vienna', '2026-10-08T22:00:00.000Z'],
+    ['2027-03-14', 'America/Havana', '2027-03-14T05:00:00.000Z'],
+    ['2026-09-06', 'America/Santiago', '2026-09-06T04:00:00.000Z'],
+    ['2027-04-04', 'America/Santiago', '2027-04-04T04:00:00.000Z'],
+  ])('%s in %s starts at %s', (day, zone, expected) => {
+    expect(new Date(dayStartIn(day, zone)).toISOString()).toBe(expected)
+    expect(todayIn(zone, new Date(dayStartIn(day, zone)))).toBe(day)
   })
 })
 
