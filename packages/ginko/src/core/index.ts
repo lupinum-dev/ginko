@@ -9,7 +9,7 @@ export { markdownBlocks, serializeMarkdown, isStableMarkdown, type MarkdownBlock
 export { validate, isDate, fileProblem, SHAPE_CODES, DRAFT_CODES, type ValidateOptions, type ValidationResult } from './validate.ts'
 export { diffSchema, type SchemaChange, type SchemaDiff } from './diff.ts'
 export { rowDiffs, keyedRowDiffs, mergeRows, mergeKeyedRows, type RowDiff } from './rows.ts'
-export { releaseData, recheckAll } from './release.ts'
+export { releaseData, recheckAll, withPublishedOn, planDay } from './release.ts'
 export { resolveEntry, upcomingOf, buildBundle, servedBundle, applyDefaults, defaultsFor, shownOn, shownUntil, shownBundle, deletesEnded, sortEntries, untranslatedMode, routeUrls, urlsFor, urlClashes, blockedSlugs, type UrlClash, printOf, type StoredEntry, type FileInfo, type ResolveContext, type BuildBundleInput } from './resolve.ts'
 export { BUNDLE_FORMAT, isBundle, bundleFits, knownBricks, withFileBricks, markdownTrees, type MarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type Upcoming } from './bundle.ts'
 export { dataOn, waitingChanges, changeIssues, changeRefusal, fixedFields, hasTranslatablePart, type Change, type ChangeIssue } from './changes.ts'

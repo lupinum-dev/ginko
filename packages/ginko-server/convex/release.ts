@@ -2,7 +2,7 @@
 // the HTTP routes in routes/release.ts, which resolve the push key to its site first; the
 // internal functions here trust that site id. Owners and admins use the public mutations.
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { byteSize, checkSchema, defaultsFor, entryBytes, fitsBudget, diffSchema, recheckAll, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema, type SiteWeek } from '@lupinum/ginko/internal'
+import { byteSize, checkSchema, defaultsFor, entryBytes, fitsBudget, diffSchema, recheckAll, releaseData, planDay, sha256, stableJson, validate, withPublishedOn, type MigrationDescriptor, type Schema, type SiteWeek } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -300,9 +300,12 @@ export const release = internalMutation({
 
     // Every entry of a brick whose fields changed, not only the written ones (break-it 9): a lowered
     // min off the step grid or a migration that returned nothing must not be stored as valid.
-    // A draft without a time may be incomplete, not badly formed (D115, mode `draft`); online and planned entries in full.
+    // A draft without a time may be incomplete, not badly formed (D115, mode `draft`); online and planned entries in full,
+    // a planned one with its empty `publishedOn` filled by the plan's day, as the plan checks it (rule 9, D108).
     for (const c of checked) {
-      const result = await validate(next, c.entry.brick, c.data, { mode: c.entry.state === 'draft' && c.entry.publishAt === undefined ? 'draft' : 'release' })
+      const { state, publishAt } = c.entry
+      const data = state === 'draft' && publishAt !== undefined ? withPublishedOn(next, c.entry.brick, c.data, planDay(next, publishAt)) : c.data
+      const result = await validate(next, c.entry.brick, data, { mode: state === 'draft' && publishAt === undefined ? 'draft' : 'release' })
       if (result.errors.length) fail('INVALID', 'errors.entryNoLongerFitsAfterRelease', undefined, { entry: c.entry._id, errors: result.errors as unknown as Json })
     }
     for (const c of created) {

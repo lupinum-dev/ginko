@@ -78,6 +78,19 @@ describe('buildCandidate: migrations over live and deleted entries (SPEC 5.1 ste
     expect((await candidateOf(state([onlyEnglish]), after)).problems).toEqual(problems)
   })
 
+  // Wrong behaviour caught (D108 rule 9): a planned draft whose `publishedOn` waits for its day blocks the release,
+  // though the plan fills it; or the fill lets an online entry (also one in the trash) through with an empty day.
+  it.each([
+    ['a planned draft gets the plan\'s day', { state: 'draft' as const, publishAt: 1_800_000_000_000 }, null, []],
+    ['an online entry stays strict', { state: 'live' as const }, null, [expect.stringContaining('news-1 (news), day')]],
+    ['an online entry in the trash stays strict', { state: 'live' as const }, 1_700_000_000_000, [expect.stringContaining('news-1 (news), day')]],
+  ])('an empty publishedOn: %s', async (_, status, deletedAt, problems) => {
+    const news = (fields: Fields) => defineSite({ ...before, locales: ['de'], bricks: { news: collection({ label: 'News', listing: { title: 'title' }, publishedOn: 'day', fields: { title: f.text('Titel', { translate: false }), day: f.date('Tag'), ...fields }, max: 20, order: 'manual' }) } })
+    const entry = { id: 'news-1', brick: 'news', data: { title: 'Neu' }, deletedAt, ...status }
+    const release: ReleaseState = { ...state([entry]), schema: serializeSchema(news({})) }
+    expect((await candidateOf(release, news({ note: f.text('Notiz', { optional: true, translate: false }) }))).problems).toEqual(problems)
+  })
+
   it('a migration the platform already applied is not run again', async () => {
     const applied = { id: '2026-11-menu-title', brick: 'menu', fills: 'title', fingerprint: migrationFingerprint('menu', 'title', after.migrations['2026-11-menu-title']!.compute), schemaRev: 2 }
     const candidate = await candidateOf(state([live, deleted], [applied]), after)

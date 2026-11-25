@@ -1179,4 +1179,40 @@ describe('the day it went online (D108)', () => {
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: row.rev, fields: { postedOn: null }, sentence: 'Datum' })
     expect((await s.row(entry))!.publishAt).toBe(NOW + 3 * HOUR)
   })
+
+  // Wrong behaviour caught: a release that rechecks the brick refuses a planned draft whose date waits for its day,
+  // though the plan fills it; or the fill lets an online entry (also one in the trash) through without a date.
+  it('a release fills the date of a planned draft by its day; online entries stay strict', async () => {
+    const s = await postedSetup()
+    let n = 0
+    const release = async () => {
+      n += 1
+      const site = (await s.siteRow())!
+      const schema = site.schema as Schema
+      const events = schema.bricks.events!
+      // A new label on a field changes the brick's fields, so the release checks every entry of the brick again.
+      const next = { ...schema, bricks: { ...schema.bricks, events: { ...events, fields: { ...events.fields, description: { ...events.fields.description!, label: { de: `Text ${n}`, en: `Text ${n}` } } } } } }
+      return s.t.mutation(internal.release.release, {
+        site: s.site, actor: 'pushkey:test', commit: crypto.randomUUID().replaceAll('-', ''),
+        expectedSchemaRev: site.schemaRev, expectedContentRev: site.contentRev, schema: next as Schema, writes: [],
+      })
+    }
+    // The seeded events went online before the brick had the date: give them one, as their publish would have.
+    await s.t.run(async (ctx) => {
+      for (const row of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'events')).collect()) {
+        await ctx.db.patch(row._id, { data: { ...(row.data as object), postedOn: '2026-09-01' } })
+      }
+    })
+    await s.create('Geplant', {}, { at: NOW + 3 * HOUR })
+    await release()
+    const { entry } = await s.create('Online', {}, {})
+    const clear = (patch: object) => s.t.run(async (ctx) => {
+      const { postedOn: _, ...data } = (await ctx.db.get(entry as Id<'entries'>))!.data as Record<string, unknown>
+      await ctx.db.patch(entry as Id<'entries'>, { data, ...patch })
+    })
+    await clear({})
+    expect(await errorOf(release())).toMatchObject({ code: 'INVALID', details: { entry } })
+    await clear({ deletedAt: NOW })
+    expect(await errorOf(release())).toMatchObject({ code: 'INVALID', details: { entry } })
+  })
 })

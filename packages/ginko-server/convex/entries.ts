@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { changeRefusal, dataOn, blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesEnded, shownOn, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, shownUntil, weeklyTask, type Schema, type StoredEntry, type ValidationResult } from '@lupinum/ginko/internal'
+import { changeRefusal, dataOn, blockedSlugs, effectiveMax, nameBase, nameSource, numberedName, SLUG_PATTERN, entryBytes, fitsBudget, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesEnded, shownOn, liveFrom, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, slugKeyOf, todayIn, treeFields, treeOf, uniqueSlug, urlsFor, validate, shownUntil, weeklyTask, withPublishedOn, planDay, type Schema, type StoredEntry, type ValidationResult } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -1329,23 +1329,6 @@ async function onlineErrors(ctx: QueryCtx, site: Id<'sites'>, schema: Schema, en
   const fields = structuralBrick(schema, entry.brick).fields
   const data = publishedOn === false ? entry.data as Data : withPublishedOn(schema, entry.brick, entry.data as Data, publishedOn)
   return (await validate(schema, entry.brick, data, { mode: 'create', ...(await lookupsFor(ctx, site, fields, data)) })).errors
-}
-
-/**
- * Rule 9 (D108): an empty `publishedOn` field means "the day the entry goes online". Returns `data` with the site's day
- * in that field, or `data` itself when the brick states no such field or the field holds a day (a typed date stays).
- */
-function withPublishedOn(schema: Schema, brickKey: string, data: Data, day = todayIn(schema.timeZone)): Data {
-  const brick = schema.bricks[brickKey]
-  const field = brick?.kind === 'collection' ? brick.publishedOn : undefined
-  const value = field === undefined ? undefined : data[field]
-  if (field === undefined || (value !== undefined && value !== null && value !== '')) return data
-  return { ...data, [field]: day }
-}
-
-/** The day an empty `publishedOn` field gets: the day of the plan's time `at` in the site's zone, or today without one. */
-function planDay(schema: Schema, at: number | undefined): string {
-  return todayIn(schema.timeZone, at === undefined ? undefined : new Date(at))
 }
 
 /** Refuses a write with the field errors of `onlineErrors`, as the form shows them. */
