@@ -22,7 +22,7 @@ import { errorKind, mailStopped, stoppedChangeLines, stoppedLines } from './lib/
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
-import { asChanges, checkDay, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, planDated, refuseTaskWithoutDay, taskHasEnd, taskSet, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
+import { asChanges, baseRows, checkDay, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, planDated, refuseTaskWithoutDay, taskHasEnd, taskSet, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
 import { advance, stepArgs } from './lib/migrations'
 import { editorEntry, editorEntryWithTranslation, entryLabel as labelOf, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
@@ -361,7 +361,7 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
   refuseTaskWithoutDay(schema, args.task, { from, until })
   // A value is given as for a save of the entry; its other parts are those it has on that day.
   const joined = edited ?? rows.find((r) => r.from === from && r.until === until)
-  const before = dataOn(entry.data as Data, asChanges(rows.filter((r) => r._id !== joined?._id)), from)
+  const before = dataOn(entry.data as Data, asChanges(baseRows(rows.filter((r) => r._id !== joined?._id), until)), from)
   const set: Record<string, Json> = {}
   for (const [key, value] of Object.entries(args.fields)) set[key] = value === null ? null : (mergeField(brick.fields[key]!, before[key], value as Json, args.locale as Locale | undefined) ?? null)
   const plan = await planDated(ctx, actor.site, entry, from, set, rows, { ...(until !== undefined ? { until } : {}), ...(edited ? { same: edited } : {}) })

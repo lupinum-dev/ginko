@@ -514,6 +514,21 @@ describe('a request that holds both days (state table: the person needs a yes)',
     expect(await s.shownPrice(s.saibling)).toBe(990)
   })
 
+  // Round L5. Wrong behaviour caught: a change without an end on a day an offer holds starts from the offer's values
+  // (its `before`), so the request names the offer as the value it replaces, and merged parts of it reach the entry.
+  it('a request for a new normal value on a day an offer holds names the normal value as the one it replaces', async () => {
+    const s = await untilSetup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      for (const task of schema.bricks.menu!.tasks ?? []) if (task.id === 'price') (task as { needsApproval?: boolean }).needsApproval = true
+      await ctx.db.patch(s.site, { schema })
+    })
+    await s.offer(990, TODAY, '2026-10-31')
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1490 } }, from: '2026-10-20' }) as unknown as Proposed
+    const proposal = await s.t.run((ctx) => ctx.db.get(sent.proposal))
+    expect([proposal?.before, proposal?.after]).toEqual([{ price: { amount: 1350 } }, { price: { amount: 1490 } }])
+  })
+
   // Round L3, the untested path. Wrong behaviour caught: a yes for a new offer after its first day is refused as a day
   // before today, or holds from the asked day instead of from today.
   it('a yes for a new offer after its first day, before its end, holds from today', async () => {

@@ -224,6 +224,12 @@ async function newIssues(schema: Schema, brick: string, live: Data, others: Chan
 }
 
 /**
+ * The rows whose values a change of `from` starts from (its `before`): a change without an end starts from the normal
+ * values, so only the other changes without an end (round L5); an exception from what the day shows with them all.
+ */
+export const baseRows = (rows: readonly Dated[], until: string | undefined) => (until === undefined ? rows.filter((r) => r.until === undefined) : rows)
+
+/**
  * Checks a dated change of `entry` and merges it into the row of the same day (D125): `set` holds root fields in storage
  * format (null clears). The check of D119 runs over every waiting change, and only what this change adds refuses it
  * (`newIssues`); then the files and the links it adds (a draft planned for that day counts as
@@ -242,7 +248,7 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   const same = opts.same ?? rows.find((r) => r.from === from && r.until === until)
   const others = rows.filter((r) => r._id !== same?._id)
   const live = entry.data as Data
-  const before = dataOn(live, asChanges(others), from)
+  const before = dataOn(live, asChanges(baseRows(others, until)), from)
   const fields: Record<string, Json> = { ...(same?.fields as Record<string, Json> | undefined) }
   const roots = Object.keys(set)
   // Every field sent is meant: it leaves the change only when it holds the live value and no earlier waiting change
