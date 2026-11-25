@@ -171,6 +171,18 @@ describe('links of a plan (D106)', () => {
     else expect(await errorOf(linked)).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
   })
 
+  // Wrong behaviour caught: an undo of a planned draft brought back a link to an entry that is not online by its time,
+  // so the plan stopped at night instead of the undo being refused.
+  it('the undo of a planned draft that brings back a link to a draft without a time is refused', async () => {
+    const s = await linkSetup()
+    const b = (await s.create('Ziel')) as { entry: Id<'entries'> }
+    const slug = (await s.t.run((ctx) => ctx.db.get(b.entry)))!.data.slug as Record<string, string>
+    const a = (await s.create(`[Ziel]($events.${slug.de})`)) as { entry: Id<'entries'> }
+    const unlinked = (await s.save(a.entry, 1, { description: { de: 'Ohne Link' } })) as { change: string }
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: a.entry, lifeRev: 1, at: Date.now() + 2 * HOUR })
+    expect(await errorOf(s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: unlinked.change }))).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
+  })
+
   // The known edge, kept on purpose: A and B are due together, A's job runs first and counts B as online, then B
   // stops. A is online with a link to a page that does not exist; the cancel and remove screen will name such links.
   it('A and B due together, B stops: A is online with a link to B', async () => {
