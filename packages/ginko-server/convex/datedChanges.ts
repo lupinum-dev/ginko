@@ -82,6 +82,8 @@ export const setDay = mutation({
         // Into the change of that day, or nothing left that differs on that day: the moved row goes.
         await dropDated(ctx, row)
         const written = await writeDated(ctx, actor, entry, plan, row.revs, [{ kind: 'dated', history }], args.opId)
+        // The moved values are someone else's (or already several people's): the merged row holds them too (I2).
+        if (written.dated && (row.shared || row.by !== actor.user.id)) await ctx.db.patch(written.dated, { shared: true })
         return { change: written.dated ?? null, from: args.from, contentRev: written.contentRev }
       }
       if (row.job) await ctx.scheduler.cancel(row.job)

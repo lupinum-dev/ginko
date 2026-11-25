@@ -610,6 +610,24 @@ describe('a dated change that needs a yes', () => {
     expect([row!.by, row!.stopped, row!.shared, Object.keys(row!.fields).sort()]).toEqual([people.cook, undefined, true, ['price', 'veg']])
   })
 
+  // Wrong behaviour caught (I2.6 b): the owner moved the asker's change into the owner's own change of another day; the
+  // merged row was the owner's alone, so the asker's values in it were not marked as someone else's.
+  it('moving someone else\'s change into another day\'s change marks the merged row shared', async () => {
+    const s = await datedSetup({ needsApproval: true })
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      for (const task of schema.bricks.menu!.tasks ?? []) if (task.id === 'price') (task as { fields: string[] }).fields = ['price', 'veg']
+      await ctx.db.patch(s.site, { schema })
+    })
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1450 } }, from: '2026-10-10' }) as unknown as Proposed
+    await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { veg: 'vegan' }, from: '2026-10-09' })
+    const cooks = (await s.dated(s.saibling)).find((r) => r.from === '2026-10-10')!
+    await s.as.owner.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), change: cooks._id, from: '2026-10-09' })
+    const rows = await s.dated(s.saibling)
+    expect(rows.map((r) => [r.from, r.by, r.shared, Object.keys(r.fields).sort()])).toEqual([['2026-10-09', people.owner, true, ['price', 'veg']]])
+  })
+
   // Wrong behaviour caught: a late yes publishes like a save with "publish now" and so throws away an unpublished
   // change of the same field, which the run on the day leaves waiting.
   it('a late yes writes what the run would: an unpublished change of the field keeps waiting', async () => {
