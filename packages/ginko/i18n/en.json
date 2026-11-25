@@ -56,7 +56,7 @@
     "changeEmpty": "A change needs at least one field in “set”.",
     "changeKey": "A change has no “{key}”: it has only “from” and “set”.",
     "changeNotYet": "“{key}” is not available for a change yet.",
-    "changeTwice": "Two changes from {from} set “{label}”.",
+    "changeTwice": "Two changes have the day {from}. Write them as one change.",
     "changeFixed": "“{label}” cannot start on a day: it decides when or where the entry shows.",
     "changeTranslated": "“{label}” has text per language. A change from a day is not possible for such a field yet.",
     "changeValue": "Change from {from}: {problem}"

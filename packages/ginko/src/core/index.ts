@@ -12,7 +12,7 @@ export { rowDiffs, keyedRowDiffs, mergeRows, mergeKeyedRows, type RowDiff } from
 export { releaseData, recheckAll, withPublishedOn, planDay } from './release.ts'
 export { resolveEntry, upcomingOf, buildBundle, servedBundle, applyDefaults, defaultsFor, shownOn, shownUntil, shownBundle, deletesEnded, sortEntries, untranslatedMode, routeUrls, urlsFor, urlClashes, blockedSlugs, type UrlClash, printOf, type StoredEntry, type FileInfo, type ResolveContext, type BuildBundleInput } from './resolve.ts'
 export { BUNDLE_FORMAT, isBundle, bundleFits, knownBricks, withFileBricks, markdownTrees, type MarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type Upcoming } from './bundle.ts'
-export { dataOn, waitingChanges, changeIssues, changeRefusal, fixedFields, hasTranslatablePart, type Change, type ChangeIssue } from './changes.ts'
+export { dataOn, waitingChanges, changeIssues, MAX_DATED, changeRefusal, fixedFields, hasTranslatablePart, type Change, type ChangeIssue } from './changes.ts'
 export { withMarkdownRefs, fileMarkdownRef, platformMarkdownRef, type MarkdownRefOf } from './markdown-refs.ts'
 export { isSafeHref, safeHref } from './href.ts'
 export { withoutTrailingSlashes, trimPath } from './path.ts'

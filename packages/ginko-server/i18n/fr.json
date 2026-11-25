@@ -157,6 +157,7 @@
     "importClosed": "L’import n’est pas ouvert pour ce site.",
     "importNeedsEmptySite": "Seul un site vide peut être ouvert à l’import : celui-ci a des entrées ou des modifications.",
     "importEntryInvalid": "L’entrée « {id} » ne correspond pas au schéma ({count} erreurs, la première à « {path} »). Rien de ce lot n’a été enregistré.",
+    "importTooManyDated": "L’entrée « {id} » a {count} changements planifiés ; au maximum {max} peuvent attendre.",
     "importEntryTooLarge": "L’entrée « {id} » est trop volumineuse ({used}, {limit} au maximum).",
     "importSiteTooLarge": "L’export dépasse le stockage de textes d’un site ({used} sur {limit}).",
     "importTrashTooLarge": "Les entrées supprimées de l’export dépassent la corbeille d’un site ({used} sur {limit}).",

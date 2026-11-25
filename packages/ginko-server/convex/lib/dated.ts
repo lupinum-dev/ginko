@@ -3,7 +3,7 @@
 // first minute of its day. The core decides what a change may set and how it is applied (`changeIssues`, `dataOn`); this
 // file holds what the save, the publish, the run on the day and the readers share.
 import type { Json, Label } from '@lupinum/ginko'
-import { changeIssues, dataOn, entryBytes, fitsBudget, isDate, labelOf, todayIn, zonedDateTime, type Change, type Schema } from '@lupinum/ginko/internal'
+import { changeIssues, dataOn, entryBytes, fitsBudget, isDate, labelOf, MAX_DATED, todayIn, zonedDateTime, type Change, type Schema } from '@lupinum/ginko/internal'
 import { internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
@@ -14,9 +14,6 @@ import { underRoot } from './pending'
 import { BUDGET, checkNewFiles, checkNewLinks, lookupsFor, overBudget, same as sameValue, syncFileRefs, uploadIdsOf } from './write'
 
 export type Dated = Doc<'datedChanges'>
-
-/** At most this many changes wait per entry (D125). */
-export const MAX_DATED = 20
 
 /** The entry's dated changes, waiting and stopped, in the order of their days. */
 export function datedOf(ctx: QueryCtx, entry: Id<'entries'>): Promise<Dated[]> {

@@ -155,6 +155,7 @@
     "importClosed": "The import is not open for this site.",
     "importNeedsEmptySite": "Only an empty site can be opened for import: it has entries, changes or edits.",
     "importEntryInvalid": "Entry “{id}” does not match the schema ({count} errors, first at “{path}”). Nothing from this batch was saved.",
+    "importTooManyDated": "Entry “{id}” has {count} planned changes; at most {max} can wait.",
     "importEntryTooLarge": "Entry “{id}” is too large ({used}, at most {limit}).",
     "importSiteTooLarge": "The export is larger than a site's text storage ({used} of {limit}).",
     "importTrashTooLarge": "The export's removed entries are larger than a site's trash ({used} of {limit}).",

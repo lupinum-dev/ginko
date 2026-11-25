@@ -155,6 +155,7 @@
     "importClosed": "La importación no está abierta para este sitio.",
     "importNeedsEmptySite": "Solo un sitio vacío puede abrirse para la importación: tiene entradas, cambios o ediciones.",
     "importEntryInvalid": "La entrada “{id}” no coincide con el esquema ({count} errores, el primero en “{path}”). No se guardó nada de este lote.",
+    "importTooManyDated": "La entrada “{id}” tiene {count} cambios planificados; como máximo {max} pueden esperar.",
     "importEntryTooLarge": "La entrada “{id}” es demasiado grande ({used}, como máximo {limit}).",
     "importSiteTooLarge": "La exportación es más grande que el espacio para textos de un sitio ({used} de {limit}).",
     "importTrashTooLarge": "Las entradas eliminadas de la exportación son más grandes que la papelera de un sitio ({used} de {limit}).",

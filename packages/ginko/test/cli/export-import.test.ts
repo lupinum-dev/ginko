@@ -3,9 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { exportSite } from '../../src/cli/export.ts'
-import { importSite } from '../../src/cli/import.ts'
+import { checkImport, importSite } from '../../src/cli/import.ts'
 import { failureOf, runOnce } from '../../src/cli/local.ts'
-import type { ExportAnswer } from '../../src/cli/model.ts'
+import type { ExportAnswer, ExportEntry } from '../../src/cli/model.ts'
+import { collection, defineSite, f, serializeSchema } from '../../src/core/index.ts'
 import type { Platform } from '../../src/cli/platform.ts'
 
 interface Batch { site: string; files: Record<string, unknown>[]; folders?: unknown[]; entries: unknown[] }
@@ -151,5 +152,22 @@ describe('ops:import', () => {
     expect(await main(['ops:import', 'folder', '--prod'], deps)).toBe(2)
     expect(out.join('')).toMatch(/Add --prod to confirm/)
     expect(out.join('')).toMatch(/needs --site/)
+  })
+})
+
+describe('checkImport: waiting changes as a save makes them', () => {
+  const schema = serializeSchema(defineSite({
+    site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] }, pages: {},
+    bricks: { notes: collection({ label: 'Notizen', listing: { title: 'title' }, max: 20, order: 'manual', fields: { title: f.text('Titel', { max: 80 }), text: f.longtext('Text', { max: 600_000, optional: true }) } }) },
+  }))
+  const entry = (changes: ExportEntry['changes']): ExportEntry => ({ id: 'n1', brick: 'notes', kind: 'item', order: 0, prints: {}, rev: 1, data: { title: { de: 'Eins' } }, changes })
+  // Wrong behaviour caught: the CLI clears the site for an export the platform then refuses batch by batch: more waiting
+  // changes than a save may make, or an entry that outgrows the budget once they apply.
+  it.each([
+    ['21 waiting changes', Array.from({ length: 21 }, (_, i) => ({ from: `2099-01-${String(i + 1).padStart(2, '0')}`, set: { title: { de: `T${i}` } } })), 'Entry n1 (notes) has 21 waiting changes; at most 20 can wait.'],
+    ['a change that takes the entry over the budget', [{ from: '2099-01-01', set: { text: { de: 'x'.repeat(500_000) } } }], 'with its waiting changes applied'],
+  ])('refuses %s', async (_, changes, problem) => {
+    expect((await checkImport(schema, [entry(changes)])).join('\n')).toContain(problem)
   })
 })

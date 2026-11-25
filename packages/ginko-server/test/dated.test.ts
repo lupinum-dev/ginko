@@ -306,6 +306,26 @@ describe('export and import', () => {
     expect(await s.dated(trout._id)).toMatchObject([{ from: '2026-12-01', fields: { price: { amount: 1300 } } }])
     expect((await s.dated(trout._id))[0]!.by).toBeUndefined()
   })
+
+  // Wrong behaviour caught: an import stores more waiting changes than a save may make, or an entry that outgrows the
+  // budget once its changes are applied, which then stops on its day.
+  it('an import refuses more than 20 waiting changes and an entry too large with its changes applied', async () => {
+    const s = await datedSetup()
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const dish = { category: 'starters', name: { de: 'Forelle' }, price: { amount: 1200 }, allergens: ['D'], veg: 'none' }
+    const days = Array.from({ length: 21 }, (_, i) => ({ from: `2026-11-${String(i + 1).padStart(2, '0')}`, set: { price: { amount: 1300 + i } } }))
+    const many = await errorOf(s.t.mutation(internal.seed.importExport, { site: 'restaurant', files: [], entries: [{ id: 'm1', brick: 'menu', kind: 'item', order: 99, prints: {}, rev: 1, data: dish, changes: days }] }))
+    expect(many.details).toMatchObject({ problems: [{ key: 'errors.importTooManyDated', params: { id: 'm1', count: 21, max: 20 } }] })
+    // A longer limit on the description, so a change can hold a text that takes the entry over the budget.
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.menu!.fields.description as { max?: number }).max = 600_000
+      await ctx.db.patch(s.site, { schema })
+    })
+    const long = { de: 'x'.repeat(500_000) }
+    const large = await errorOf(s.t.mutation(internal.seed.importExport, { site: 'restaurant', files: [], entries: [{ id: 'm2', brick: 'menu', kind: 'item', order: 99, prints: {}, rev: 1, data: dish, changes: [{ from: '2026-12-01', set: { description: long } }] }] }))
+    expect(large.details).toMatchObject({ problems: expect.arrayContaining([expect.objectContaining({ key: 'errors.importEntryTooLarge', params: expect.objectContaining({ id: 'm2' }) })]) })
+  })
 })
 
 // The case behind slice 2 (made-up values): a practice keeps one price as a fact that its texts quote, and a staff member

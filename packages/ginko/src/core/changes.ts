@@ -18,6 +18,9 @@ export interface Change { from: Day; set: Record<string, Json> }
 const LATER_KEYS = ['until', 'yearly', 'name']
 
 /** `a` before `b` by their days; changes of one day keep their order. */
+/** At most this many changes wait for an entry (the platform's save and import, D125, D128). */
+export const MAX_DATED = 20
+
 const byDay = (a: Change, b: Change) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0)
 
 /**
@@ -87,8 +90,7 @@ export type ChangeIssue = Issue & { change: number }
 /**
  * The check of an entry's changes (D119), for `ginko check`, the file reader and the platform: `changes` is a list;
  * each change has a day in `from` and at least one field in `set`, and no other key (`until`, `yearly` and `name` are
- * not built yet); each field is one a change may set (`changeRefusal`); two changes of one day never set the same
- * field; and the whole entry is checked before and after each day's changes, in the entry's own mode (`release` for an
+ * not built yet); each field is one a change may set (`changeRefusal`); an entry has at most one change per day; and the whole entry is checked before and after each day's changes, in the entry's own mode (`release` for an
  * entry that is or goes online, `draft` for a draft without a time): every error that is new after the day is the
  * problem of that day's changes, also one on a field no change sets (a required field that a change shows through its
  * `showWhen`, a cross-field rule). A problem the entry already had is not the change's. A new problem goes to the change
@@ -106,7 +108,7 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
     return out
   }
   const good: { index: number; change: Change }[] = []
-  const seen = new Map<string, number>()
+  const dayTaken = new Set<string>()
   changes.forEach((raw: unknown, index) => {
     const at = `$changes.${index}`
     if (!isRecord(raw)) return add(index, at, 'CHANGE', 'issues.changeShape')
@@ -120,7 +122,11 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
     if (!isDate(raw.from)) {
       ok = false
       add(index, `${at}.from`, 'CHANGE', 'issues.changeDay', { value: String(raw.from ?? '') })
-    }
+    } else if (dayTaken.has(raw.from)) {
+      // One change per day and entry: the platform keeps one row per day, so two would merge into one silently.
+      ok = false
+      add(index, `${at}.from`, 'CHANGE', 'issues.changeTwice', { from: raw.from })
+    } else dayTaken.add(raw.from)
     const set = raw.set
     if (!isRecord(set) || !Object.keys(set).length) {
       add(index, `${at}.set`, 'CHANGE', 'issues.changeEmpty')
@@ -134,12 +140,6 @@ export async function changeIssues(schema: Schema, brickKey: string, data: Recor
         add(index, name, refusal === 'unknownField' ? 'UNKNOWN_FIELD' : refusal === 'changeFixed' ? 'CHANGE' : 'NOT_YET', `issues.${refusal}`, field ? { label: labelOf(field.label, DEFAULT_LOCALE, main) } : undefined)
         continue
       }
-      if (typeof raw.from !== 'string') continue
-      const key = `${raw.from}\u0000${name}`
-      if (seen.has(key)) {
-        ok = false
-        add(index, name, 'CHANGE', 'issues.changeTwice', { from: raw.from, label: labelOf(brick.fields[name]!.label, DEFAULT_LOCALE, main) })
-      } else seen.set(key, index)
     }
     if (ok) good.push({ index, change: { from: raw.from as Day, set: set as Record<string, Json> } })
   })
