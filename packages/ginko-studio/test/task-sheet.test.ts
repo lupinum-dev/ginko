@@ -1256,7 +1256,10 @@ describe('"Gilt ab" and "Gilt bis" of a task with an end (slice 3)', () => {
   const footer = (wrapper: Wrapper) => wrapper.get('footer').findAll('button').map((b) => b.text())
   const press = (wrapper: Wrapper, label: string) => wrapper.get('footer').findAll('button').find((b) => b.text() === label)!.trigger('click')
   const inDays = (n: number) => addDays(todayIn('Europe/Vienna'), n)
-  const fmt = (day: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('de', { ...o, timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  // The Studio formats German as the site's de-AT ("4. Jän."), as the shim does.
+  const fmt = (day: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('de-AT', { ...o, timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  /** Money keeps a no-break space before the sign: compared with plain spaces. */
+  const plain = (text: string) => text.replace(/\s/g, ' ')
   /** "26. Nov.": the days in the button and the hint. */
   const short = (day: string) => fmt(day, { day: 'numeric', month: 'short' })
   /** "So., 6. Dez.": the days of a notice. */
@@ -1376,11 +1379,11 @@ describe('"Gilt ab" and "Gilt bis" of a task with an end (slice 3)', () => {
     ]
     const wrapper = mountTask()
     await ready(wrapper, '12,90')
-    expect(wrapper.findAll('[data-test="dated-waiting"]').map((n) => n.text())).toEqual([
+    expect(wrapper.findAll('[data-test="dated-waiting"]').map((n) => plain(n.text()))).toEqual([
       `Von ${withDay(inDays(10))} bis ${withDay(inDays(40))}: Preis 9,90 €`,
       `Bis ${withDay(until)} zeigt die Website: Preis 9,90 € (sonst 12,90 €)`,
     ])
-    expect(wrapper.get('[data-test="covered-hint"]').text()).toBe(`Die Website zeigt bis ${short(until)} 9,90 €.`)
+    expect(plain(wrapper.get('[data-test="covered-hint"]').text())).toBe(`Die Website zeigt bis ${short(until)} 9,90 €.`)
     wrapper.unmount()
   })
 

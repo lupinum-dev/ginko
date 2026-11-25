@@ -9,8 +9,11 @@ import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
 import FieldFrame from './fields/FieldFrame.vue'
 
-/** `status`: a warning about the day that is not an error (the field stays valid), shown under it. */
-const props = defineProps<{ id: string; timeZone: string; error?: string; status?: string; label?: string; hint?: string; optional?: boolean }>()
+/**
+ * `status`: a warning about the day that is not an error (the field stays valid), shown under it. `earliest`: the first
+ * day the field offers (default tomorrow; an exception may start today, slice 3).
+ */
+const props = defineProps<{ id: string; timeZone: string; error?: string; status?: string; label?: string; hint?: string; optional?: boolean; earliest?: string }>()
 const day = defineModel<string>({ required: true })
 /**
  * A day typed by keyboard and not finished, or no date at all: the input's value is then empty, the same as no day, and
@@ -45,7 +48,7 @@ function clear() {
     <FieldFrame :id="id" :label="label ?? t('dated.startsOn')" :hint="hint ?? (optional ? t('dated.startsOnHint') : undefined)" :optional="optional" :errors="errors">
       <template #default="{ describedBy, invalid }">
         <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
-          <Input :id="id" v-model="day" type="date" class="min-w-0 max-w-56 flex-1 basis-40" :min="tomorrow" :max="max" :aria-invalid="invalid" :aria-describedby="describedBy" @input="check" @change="check" @keyup="check" @blur="check" />
+          <Input :id="id" v-model="day" type="date" class="min-w-0 max-w-56 flex-1 basis-40" :min="earliest ?? tomorrow" :max="max" :aria-invalid="invalid" :aria-describedby="describedBy" @input="check" @change="check" @keyup="check" @blur="check" />
           <div class="flex min-w-0 flex-wrap gap-1.5">
             <Button type="button" variant="secondary" size="sm" class="px-2.5 aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:ring-1 aria-pressed:ring-ring" :aria-pressed="day === tomorrow" @click="pick(tomorrow)">{{ t('fields.date.tomorrow') }}</Button>
             <Button v-if="optional && (day || bad)" type="button" variant="ghost" size="sm" @click="clear">{{ t('fields.clear') }}</Button>

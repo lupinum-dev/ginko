@@ -145,7 +145,8 @@ describe('the notices of changes for a later day', () => {
 
 // Slice 3: the notices of a change with an end in Alles bearbeiten.
 describe('the notices of a change with an end', () => {
-  const fmt = (day: string) => new Intl.DateTimeFormat('de', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  // The Studio formats German as the site's de-AT, as the shim does.
+  const fmt = (day: string) => new Intl.DateTimeFormat('de-AT', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
   const offer = (id: string, from: string, until: string, over: Record<string, unknown> = {}) => change(id, from, { until, values: { price: { amount: 990 } }, normal: { price: { amount: 1290 } }, ...over })
 
   // Rows "save" (waits, holds) and "Änderung aufheben / Jetzt beenden". Wrong behaviour caught: an offer is shown as a
@@ -153,7 +154,7 @@ describe('the notices of a change with an end', () => {
   test('a waiting offer names both days; a holding one says what the website shows and what comes back', () => {
     rows.value = [offer('d1', '2099-12-06', '2099-12-31'), offer('d2', '2026-11-01', '2099-12-31', { holds: true })]
     const wrapper = mountNotices()
-    expect(wrapper.findAll('[data-notice]').map((n) => [n.find('p').text(), n.findAll('button').map((b) => b.text())])).toEqual([
+    expect(wrapper.findAll('[data-notice]').map((n) => [n.find('p').text().replace(/\s/g, ' '), n.findAll('button').map((b) => b.text())])).toEqual([
       [`Von ${fmt('2099-12-06')} bis ${fmt('2099-12-31')}: Preis 9,90 €`, ['Tage ändern', 'Änderung aufheben']],
       [`Bis ${fmt('2099-12-31')} zeigt die Website: Preis 9,90 € (sonst 12,90 €)`, ['Tage ändern', 'Jetzt beenden']],
     ])

@@ -279,6 +279,18 @@ export function changesText(fields: Fields, keys: readonly string[], values: Dat
   }).join(', ')
 }
 
+/**
+ * The values alone, as a list shows them ("12,90 €"), for the normal value an exception covers (slice 3); undefined when
+ * one of the fields has no short value, which only its label could name.
+ */
+export function valuesText(fields: Fields, keys: readonly string[], values: Data, main: Locale, words: ValueWords): string | undefined {
+  const shown = keys.map((key) => {
+    const field = Object.hasOwn(fields, key) ? fields[key] : undefined
+    return field && SHORT_VALUES.has(field.type) ? displayValue(field, values[key], main, words) : undefined
+  })
+  return shown.every((s) => s !== undefined) ? shown.join(', ') : undefined
+}
+
 /** 2026-10-08 → 8.10.2026 in German, 10/8/2026 in English: a calendar date, so no time zone shifts it. */
 export function formatDay(date: string, format: Words['format']): string {
   const [y, m, d] = date.split('-')

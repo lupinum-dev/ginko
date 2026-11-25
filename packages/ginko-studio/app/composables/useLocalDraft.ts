@@ -18,6 +18,8 @@ export interface LocalDraft {
   base?: Data
   /** The day the input is meant to start on ("Gilt ab" of a task sheet), when one was typed. */
   from?: string
+  /** "Gilt bis" of a task sheet that asks both days (slice 3), when one was typed. */
+  until?: string
   /** The entry's area and its title as typed, for the list on Heute (records written before had neither). */
   brick?: string
   title?: string
