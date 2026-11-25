@@ -644,7 +644,6 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       if (changes) {
         const ahead = waitingChanges(changes, today)
         if (ahead.length) entry.changes = ahead
-        reportChanges(mainView.changes as Record<string, unknown>[], changes, mainRel, group.main.csv?.row.line)
       }
       // Old paths of the entry (main-language file only), beside the fields: the bundle forwards them (`oldUrls`).
       if (mainView.redirectFrom?.length) entry.redirectFrom = mainView.redirectFrom
@@ -661,6 +660,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       for (const t of taken) slugOwner.set(t.key, id)
       // Checked above like an online entry; a planned one stays out until its `$publishAt`.
       if (mainView.planned) { leftOut.add(id); continue }
+      // Only an entry that is read in tells about its changes: one held back or refused above prints no value.
+      if (changes) reportChanges(mainView.changes as Record<string, unknown>[], changes, mainRel, group.main.csv?.row.line)
       if (order !== undefined) entry.order = order
       entry.updatedAt = times.updatedAt(Object.values(rels))
       entry.sources = Object.fromEntries(Object.entries(rels).map(([locale, rel]) => [locale, times.source(rel!)]))
@@ -703,7 +704,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         }
         const set = isRecord(written[i]?.set) ? written[i]!.set as Record<string, unknown> : {}
         for (const field of Object.keys(change.set)) {
-          warnings.push({ file, path: `$changes.${i}.set.${field}`, message: `The day of this change (${change.from}) has come: write ${JSON.stringify(set[field] ?? null)} into “${field}” and remove the change. While it stays, it wins over the field.`, ...at })
+          // A change that clears the field asks for it to go, not for `null` to be written into it.
+          const step = change.set[field] === null ? `remove “${field}” from the entry` : `write ${JSON.stringify(set[field])} into “${field}”`
+          warnings.push({ file, path: `$changes.${i}.set.${field}`, message: `The day of this change (${change.from}) has come: ${step} and remove the change. While it stays, it wins over the field.`, ...at })
         }
       })
     }

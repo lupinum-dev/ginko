@@ -76,6 +76,16 @@ describe('$changes in a file', () => {
     expect(r.notes).toEqual([{ file: 'menu/suppe.yml', path: '$changes.1', message: 'A change from 2026-11-01 is still to come: a dated change in a file starts with the first build on or after its day. Build the site on that day, for example with a daily build.' }])
   })
 
+  // Wrong behaviour caught: an entry held back by its $publishAt still tells the owner to write a change's value into
+  // it; a change that clears a field asks to write null into it.
+  it.each([
+    ['a planned entry', { 'content/menu/suppe.yml': `$publishAt: 2026-12-01T10:00\n${soup}` }, []],
+    ['a cleared field', { 'content/menu/suppe.yml': 'name: Suppe\nprice: 9\nnote: heiß\n$changes:\n  - from: 2026-10-01\n    set: { note: null }\n' },
+      [{ file: 'menu/suppe.yml', path: '$changes.0.set.note', message: 'The day of this change (2026-10-01) has come: remove “note” from the entry and remove the change. While it stays, it wins over the field.' }]],
+  ])('the warning for a change whose day has come: %s', async (_, files, expected) => {
+    expect((await read(files)).warnings).toEqual(expected)
+  })
+
   it('reads an image in a change as the field reads it', async () => {
     const png = await sharp({ create: { width: 4, height: 3, channels: 3, background: '#fff' } }).png().toBuffer()
     const r = await read({ 'public/neu.png': png, 'content/menu/suppe.yml': 'name: Suppe\nprice: 9\n$changes:\n  - from: 2026-11-01\n    set: { photo: { src: /neu.png, alt: Teller } }\n' })
