@@ -716,7 +716,8 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <header class="grid gap-2.5">
           <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <h1 class="text-2xl min-[900px]:text-[1.875rem]">{{ title }}</h1>
+              <!-- tabindex: the focus lands here when the last notice of a planned change goes (DatedNotices). -->
+              <h1 id="entry-title" class="text-2xl outline-none min-[900px]:text-[1.875rem]" tabindex="-1">{{ title }}</h1>
               <Badge v-if="bar && !sideMode && statusText" :variant="statusVariant">{{ statusText }}</Badge>
             </div>
             <DropdownMenu v-if="entry && !removed">
@@ -787,7 +788,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           @restore="restoreRemoved" @save-as-new="saveAsNew" @discard="discardRemoved"
         />
         <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :planned-from="localOffer.from" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
-        <DatedNotices v-if="entry && !removed" :site="site.slug" :entry="entry._id" :brick="brick" :main="main" :time-zone="timeZone" :currency="schema.currency" :task="tasks?.save" />
+        <DatedNotices v-if="entry && !removed" :site="site.slug" :entry="entry._id" :brick="brick" :main="main" :time-zone="timeZone" :currency="schema.currency" :task="tasks?.save" last-focus="entry-title" />
         <ConflictPanel
           v-if="conflict"
           :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="locale" :main="main"
