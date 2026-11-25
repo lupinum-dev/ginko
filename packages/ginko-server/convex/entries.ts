@@ -234,7 +234,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
   // A planned draft goes online at its time without a person: a save that leaves it failing the full check is refused
   // now, not stopped then (D101). The person fills the field or cancels the plan first.
-  if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }))
+  if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }, todayIn(schema.timeZone)))
   await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed })
   await checkNewFiles(ctx, actor.site._id, brick.fields, before, data)
   // A draft and unpublished changes are not online yet: their links are checked when they go live.
@@ -615,7 +615,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     const { errors } = await validate(schema, entry.brick, checked, { mode: 'patch', changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('NOT_UNDOABLE', 'errors.oldVersionNoLongerFitsSchema', undefined, { errors: errors as unknown as Json })
     // An undo of a planned draft is held to the full check, as a save is (D101).
-    if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }))
+    if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }, todayIn(schema.timeZone)))
     // Moving a plan back to a week that was planned again since would hide one of the two.
     await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed: roots, whole: true })
     await checkNewFiles(ctx, actor.site._id, brick.fields, entry.data as Data, data)
@@ -1191,7 +1191,8 @@ export const restore = mutation({
       let history = msg('history.restored', { title: label })
       let online = entry.state !== 'draft'
       if (online) {
-        const invalid = await onlineErrors(ctx, actor.site._id, schema, entry)
+        // Restore fills no `publishedOn`: the entry was online before, and today would be a wrong date on it (D109).
+        const invalid = await onlineErrors(ctx, actor.site._id, schema, entry, false)
         const broken = invalid.length ? undefined : await brokenNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before: {}, after: entry.data as Data }])
         if (invalid.length) history = msg('history.restoredAsDraftInvalid', { title: label, ...failedFields(schema, entry.brick, invalid) })
         else if (broken) history = msg('history.restoredAsDraftBrokenLink', { title: label, link: broken.href })
@@ -1279,11 +1280,12 @@ type Issue = ValidationResult['errors'][number]
  * The full check of a draft that goes online or gets a time (D101): every rule of the schema, as a create runs it.
  * A draft may hold what a create refuses (an import keeps what fits the shape, a referenced entry was removed since,
  * a field became required), so passing as a draft says nothing about going online. The field errors; empty: it passes.
+ * `publishedOn`: the day an empty `publishedOn` field gets on the way online, so it counts as filled (D108); `false`
+ * where nothing fills it (a restore, D109), so an empty required date fails.
  */
-async function onlineErrors(ctx: QueryCtx, site: Id<'sites'>, schema: Schema, entry: { brick: string; data: unknown }): Promise<Issue[]> {
+async function onlineErrors(ctx: QueryCtx, site: Id<'sites'>, schema: Schema, entry: { brick: string; data: unknown }, publishedOn: string | false): Promise<Issue[]> {
   const fields = structuralBrick(schema, entry.brick).fields
-  // An empty `publishedOn` field is filled when the entry goes online, so it counts as filled (D108).
-  const data = withPublishedOn(schema, entry.brick, entry.data as Data)
+  const data = publishedOn === false ? entry.data as Data : withPublishedOn(schema, entry.brick, entry.data as Data, publishedOn)
   return (await validate(schema, entry.brick, data, { mode: 'create', ...(await lookupsFor(ctx, site, fields, data)) })).errors
 }
 
@@ -1291,12 +1293,12 @@ async function onlineErrors(ctx: QueryCtx, site: Id<'sites'>, schema: Schema, en
  * Rule 9 (D108): an empty `publishedOn` field means "the day the entry goes online". Returns `data` with the site's day
  * in that field, or `data` itself when the brick states no such field or the field holds a day (a typed date stays).
  */
-function withPublishedOn(schema: Schema, brickKey: string, data: Data): Data {
+function withPublishedOn(schema: Schema, brickKey: string, data: Data, day = todayIn(schema.timeZone)): Data {
   const brick = schema.bricks[brickKey]
   const field = brick?.kind === 'collection' ? brick.publishedOn : undefined
   const value = field === undefined ? undefined : data[field]
   if (field === undefined || (value !== undefined && value !== null && value !== '')) return data
-  return { ...data, [field]: todayIn(schema.timeZone) }
+  return { ...data, [field]: day }
 }
 
 /** Refuses a write with the field errors of `onlineErrors`, as the form shows them. */
@@ -1384,7 +1386,7 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     if (at !== undefined && args.rev !== undefined) await refuseChangedSince(ctx, actor, entry, args.rev)
     // Everything the draft holds goes live: the full check first, then every link in it counts as new. A plan is
     // checked now and again by the job at its time (D101).
-    refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, entry))
+    refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, entry, todayIn(schema.timeZone)))
     // A plan may link to an entry planned for its time or earlier (D106).
     await checkNewLinks(ctx, actor.site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }], at)
 
@@ -1532,7 +1534,7 @@ export const publishDue = internalMutation({
       })
       return null
     }
-    const invalid = await onlineErrors(ctx, site._id, schema, entry)
+    const invalid = await onlineErrors(ctx, site._id, schema, entry, todayIn(schema.timeZone))
     if (invalid.length) return await stop({ code: 'invalid', fields: [...new Set(invalid.map((e) => e.path))] }, msg('history.publishStoppedInvalid', { title: label, ...failedFields(schema, entry.brick, invalid) }))
     // A target due at the same time counts as online, whichever job runs first (D106).
     const broken = await brokenNewLinks(ctx, site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }], args.at)

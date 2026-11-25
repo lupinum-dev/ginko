@@ -177,6 +177,8 @@ describe('restore from the trash (D109)', () => {
     { name: 'passes both checks', breakIt: 'nothing', state: undefined, history: 'history.restored', params: {} },
     { name: 'links to an entry removed meanwhile', breakIt: 'target', state: 'draft', history: 'history.restoredAsDraftBrokenLink', params: { link: expect.stringMatching(/^\$events\./) } },
     { name: 'misses a required field', breakIt: 'field', state: 'draft', history: 'history.restoredAsDraftInvalid', params: { count: 1 } },
+    // Restore fills no `publishedOn`, so an empty required date fails the check instead of counting as filled.
+    { name: 'has an empty required publishedOn date', breakIt: 'publishedOn', state: 'draft', history: 'history.restoredAsDraftInvalid', params: { count: 1, fields: expect.objectContaining({ de: 'Veröffentlicht am' }) } },
   ] as const)('an entry that was online and $name', async ({ breakIt, state, history, params }) => {
     const s = await linkSetup()
     const b = (await s.create(OK, {})) as { entry: Id<'entries'> }
@@ -185,6 +187,13 @@ describe('restore from the trash (D109)', () => {
     const remove = (entry: Id<'entries'>) => s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })
     await remove(a.entry)
     if (breakIt === 'target') await remove(b.entry)
+    if (breakIt === 'publishedOn') {
+      await s.t.run(async (ctx) => {
+        const schema = (await ctx.db.get(s.site))!.schema as { bricks: Record<string, { fields: object }> }
+        const events = schema.bricks.events!
+        await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, events: { ...events, publishedOn: 'postedOn', fields: { ...events.fields, postedOn: { type: 'date', label: { de: 'Veröffentlicht am' } } } } } } as never })
+      })
+    }
     if (breakIt === 'field') {
       await s.t.run(async (ctx) => {
         const { description: _, ...data } = (await ctx.db.get(a.entry))!.data as Record<string, unknown>
