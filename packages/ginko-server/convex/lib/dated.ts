@@ -173,7 +173,8 @@ export function rowLabels(schema: Schema, ref: string | undefined, row: Dated | 
   const task = ref === undefined ? undefined : taskOf(schema, ref)
   const asks = task?.kind === 'edit' ? taskAsks(task) : undefined
   if (row.yearly && ref !== undefined && !asks?.yearly) fail('FORBIDDEN', 'errors.taskCannotYearly')
-  if (isHolding(row) && !!row.yearly !== !!yearly) fail('INVALID', 'errors.yearlyWhileHolding')
+  // Each direction has its own sentence: switching off speaks of a season, switching on of a one-off change.
+  if (isHolding(row) && !!row.yearly !== !!yearly) fail('INVALID', row.yearly ? 'errors.yearlyWhileHolding' : 'errors.yearlyOnWhileHolding')
   return ref !== undefined && !asks?.name ? row.name : name
 }
 

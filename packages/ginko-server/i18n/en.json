@@ -260,6 +260,7 @@
     "nameNeedsUntil": "Only a change for certain days gets a name. Give the last day.",
     "nameLength": "The name needs 1 to {max} characters.",
     "yearlyWhileHolding": "This change holds now and comes back every year. That cannot be switched off now; you can remove it.",
+    "yearlyOnWhileHolding": "This change is in effect now. Whether it comes back every year can only be changed once it has ended.",
     "taskCannotYearly": "With this task a change does not come back every year.",
     "taskCannotName": "This task gives a change no name.",
     "todayOnly": "This task is for today only.",

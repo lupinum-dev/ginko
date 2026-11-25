@@ -260,6 +260,7 @@
     "nameNeedsUntil": "Solo un cambio temporal lleva nombre. Indica el último día.",
     "nameLength": "El nombre necesita de 1 a {max} caracteres.",
     "yearlyWhileHolding": "Este cambio está vigente y vuelve cada año. Eso no se puede desactivar ahora; puedes anularlo.",
+    "yearlyOnWhileHolding": "Este cambio está vigente ahora. Si vuelve cada año solo se puede cambiar cuando haya terminado.",
     "taskCannotYearly": "Con esta tarea un cambio no vuelve cada año.",
     "taskCannotName": "Esta tarea no da nombre a un cambio.",
     "todayOnly": "Esta tarea es solo para hoy.",

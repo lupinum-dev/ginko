@@ -375,8 +375,8 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           const today = args.timeZone === undefined ? args.from : todayIn(args.timeZone)
           const first = yearlyDays && occurrence({ from: args.from, until: args.until, yearly: true, set: {} }, today)
           // `first` carries its year when the next time starts in another calendar year than today (round N8).
-          const firstText = first && (first.from.slice(0, 4) === today.slice(0, 4) ? dayText(first.from) : format.date(first.from, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
-          const days = first && yearlyDays ? (first.from <= today ? t(`dated.liveYearly${yearlyOne}Today`, yearlyDays) : t(`dated.liveYearly${yearlyOne}`, { ...yearlyDays, first: firstText }))
+          const firstText = (day: string) => (day.slice(0, 4) === today.slice(0, 4) ? dayText(day) : format.date(day, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
+          const days = first && yearlyDays ? (first.from <= today ? t(`dated.liveYearly${yearlyOne}Today`, yearlyDays) : t(`dated.liveYearly${yearlyOne}`, { ...yearlyDays, first: firstText(first.from) }))
             : args.until === undefined ? liveText({ from: args.from })
             : args.until !== args.from ? t('dated.liveFromUntil', { date: dayText(args.from), until: dayText(args.until) })
             : oneDay(args.from, args.timeZone) ? t('dated.liveToday') : t('dated.liveOn', { date: dayText(args.from) })

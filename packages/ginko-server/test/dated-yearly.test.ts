@@ -459,7 +459,7 @@ describe('the rights on an existing row (round N1)', () => {
     ['a task without yearly, the same days, a waiting season', waitingSeason, (s) => save(s, { task: 'menu.offer', from: '2028-06-01', until: '2028-08-31' }), 'errors.taskCannotYearly'],
     ['a task without yearly, the same days, a holding season', holdingSeason, (s) => save(s, { task: 'menu.offer', from: TODAY, until: '2027-10-31' }), 'errors.taskCannotYearly'],
     ['the owner, the same days, a holding season, yearly left out', holdingSeason, (s) => save(s, { from: TODAY, until: '2027-10-31' }, 'owner'), 'errors.yearlyWhileHolding'],
-    ['yearly on a holding one-off change', (s) => s.offer(700, TODAY, '2027-10-12'), (s, id) => save(s, { from: TODAY, until: '2027-10-12', yearly: true, change: id }, 'owner'), 'errors.yearlyWhileHolding'],
+    ['yearly on a holding one-off change', (s) => s.offer(700, TODAY, '2027-10-12'), (s, id) => save(s, { from: TODAY, until: '2027-10-12', yearly: true, change: id }, 'owner'), 'errors.yearlyOnWhileHolding'],
     ['a task without name edits a named one-off change', namedOneOff, (s, id) => save(s, { task: 'menu.offer', from: '2027-11-01', until: '2027-11-05', change: id }), undefined],
     ['a move through a task without name, a named row', namedOneOff, (s, id) => move(s, id, '2027-11-02', '2027-11-06'), undefined],
     ['a move through a task without yearly, a season', waitingSeason, (s, id) => move(s, id, '2028-06-02', '2028-08-31'), 'errors.taskCannotYearly'],

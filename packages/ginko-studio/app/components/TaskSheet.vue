@@ -814,7 +814,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
               <StartsOnField v-if="asksDay && taskEnds && !foreign" id="sheet-until" v-model="untilOn" v-model:bad="untilBad" :label="t('dated.until')" :earliest="startsOn || earliestStart(today, isYearly)" :latest="isYearly ? latestYearlyUntil(exceptionFrom) : undefined" :time-zone="schema.timeZone" :error="untilError" />
               <!-- Slice 4: under "Gilt bis", in this order. While the edited row holds, `yearly` stays as it is both ways
                    (decision 2, round N1); the sentence says why for a yearly row only (the one-off case has none yet). -->
-              <FieldFrame v-if="asksDay && asksYearly && !foreign" id="sheet-yearly" inline :label="t('dated.yearly')" :hint="holdingEdit?.yearly ? t('dated.yearlyWhileHolding') : undefined">
+              <FieldFrame v-if="asksDay && asksYearly && !foreign" id="sheet-yearly" inline :label="t('dated.yearly')" :hint="holdingEdit ? t(holdingEdit.yearly ? 'dated.yearlyWhileHolding' : 'dated.yearlyOnWhileHolding') : undefined">
                 <template #default="{ describedBy }">
                   <Switch id="sheet-yearly" v-model="yearly" :disabled="holdingEdit !== undefined" :aria-describedby="describedBy" />
                 </template>

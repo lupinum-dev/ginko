@@ -379,6 +379,7 @@
     "yearly": "Repetir cada año",
     "yearlyHint": "Vale cada año en estos días.",
     "yearlyWhileHolding": "Este cambio vale ahora y vuelve cada año. Eso no se puede desactivar ahora; puedes anularlo.",
+    "yearlyOnWhileHolding": "Este cambio está vigente ahora. Si vuelve cada año solo se puede cambiar cuando haya terminado.",
     "yearlyTooLong": "Un cambio que vuelve cada año debe durar menos de un año.",
     "yearlyLeapDay": "El 29 de febrero no existe todos los años. Añade más días o desactiva «Repetir cada año».",
     "startsTooFarBack": "«Válido desde» puede estar como máximo un año atrás.",

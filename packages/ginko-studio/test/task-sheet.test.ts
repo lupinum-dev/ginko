@@ -1833,7 +1833,8 @@ describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slic
     await flushPromises()
     await season.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
     await flushPromises()
-    expect([checked(season), season.get('#sheet-yearly').attributes('disabled') !== undefined]).toEqual(['false', true])
+    // The lead's N1 follow-up: a sentence says why the switch cannot be turned on now.
+    expect([checked(season), season.get('#sheet-yearly').attributes('disabled') !== undefined, season.text().includes(catalog.dated.yearlyOnWhileHolding)]).toEqual(['false', true, true])
     season.unmount()
   })
 

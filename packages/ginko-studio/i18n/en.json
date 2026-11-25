@@ -379,6 +379,7 @@
     "yearly": "Repeat every year",
     "yearlyHint": "Holds on these days every year.",
     "yearlyWhileHolding": "This change holds now and comes back every year. That cannot be switched off now; you can cancel it.",
+    "yearlyOnWhileHolding": "This change is in effect now. Whether it comes back every year can only be changed once it has ended.",
     "yearlyTooLong": "A change that comes back every year must be shorter than a year.",
     "yearlyLeapDay": "29 February does not exist every year. Add more days or switch off “Repeat every year”.",
     "startsTooFarBack": "“Starts on” can be at most a year back.",

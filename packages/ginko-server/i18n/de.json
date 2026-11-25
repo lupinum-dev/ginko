@@ -260,6 +260,7 @@
     "nameNeedsUntil": "Einen Namen bekommt nur eine befristete Änderung. Gib den letzten Tag an.",
     "nameLength": "Der Name braucht 1 bis {max} Zeichen.",
     "yearlyWhileHolding": "Diese Änderung gilt gerade und kommt jedes Jahr wieder. Das lässt sich jetzt nicht ausschalten; du kannst sie aufheben.",
+    "yearlyOnWhileHolding": "Diese Änderung gilt gerade. Ob sie jedes Jahr wiederkommt, lässt sich erst ändern, wenn sie vorbei ist.",
     "taskCannotYearly": "Mit dieser Aufgabe kommt eine Änderung nicht jedes Jahr wieder.",
     "taskCannotName": "Diese Aufgabe gibt einer Änderung keinen Namen.",
     "todayOnly": "Diese Aufgabe gilt nur für heute.",
