@@ -7,7 +7,7 @@ import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, byOf, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor } from './lib/access'
 import type { Data, Prints } from './lib/content'
-import { asChanges, checkDay, checkUntil, datedOf, dayStart, dropDated, endOf, fieldNames, insertWaiting, isHolding, planDated, refuseTaskWithoutDay, scheduleRun, syncDatedRefs, taskSet, touchesPublic, writeDated, type Dated } from './lib/dated'
+import { asChanges, checkDay, checkUntil, datedOf, dayStart, dropDated, endOf, fieldNames, insertWaiting, isHolding, planDated, refuseTaskWithoutDay, scheduleRun, syncDatedRefs, taskOf, taskSet, touchesPublic, writeDated, type Dated } from './lib/dated'
 import { msg, recorded } from './lib/history'
 import { entryLabel } from './lib/list'
 import { labeler } from './lib/names'
@@ -28,13 +28,20 @@ async function datedRow(ctx: QueryCtx, actor: Actor, id: string): Promise<{ row:
   return { row, entry: await entryOf(ctx, actor, row.entry) }
 }
 
+/** The days a move gives a row, checked like a save's: `until` as asked, else the row's own end. */
+type Days = { from: string; until: string | undefined }
+
 /**
  * Who may move or cancel a dated change (D125): who may make it, with the same task (`when: { from: 'ask' }`) or the full
- * rights of the brick, and the owners and admins.
+ * rights of the brick, and the owners and admins. A move is checked at the days the row will have (`days`, round L2),
+ * as a save of those days would be: a task that asks one day moves no end, and a today-only task moves nothing (its
+ * row's days are fixed as today).
  */
-function mayChange(actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated) {
+function mayChange(actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated, days?: Days) {
   if (actor.role !== 'staff') return
-  refuseTaskWithoutDay(schema, task)
+  const named = taskOf(schema, task)
+  if (days && named?.kind === 'edit' && named.when?.from === '@today') fail('FORBIDDEN', 'errors.todayOnly')
+  refuseTaskWithoutDay(schema, task, days)
   // The task's fixed values (`set`) come with it, so its rights cover them.
   const fixed = taskSet(schema, task)
   authorize(actor, schema, { task, brick: taskBrickOf(schema, task, entry), kind: 'edit', fields: Object.keys(row.fields).filter((root) => !Object.hasOwn(fixed, root)), entry })
@@ -47,11 +54,11 @@ function mayChange(actor: Actor, schema: Schema, task: string | undefined, entry
  * a row they saved last that holds no one else's values (`shared`, H2). On a draft nothing needs a yes, as for a save on a
  * draft (`needsProposal`), so this last rule does not apply there.
  */
-async function datedRefusal(ctx: QueryCtx, actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated, step: 'cancel' | 'move'): Promise<ConvexError<Json> | undefined> {
+async function datedRefusal(ctx: QueryCtx, actor: Actor, schema: Schema, task: string | undefined, entry: Doc<'entries'>, row: Dated, step: 'cancel' | { move: Days }): Promise<ConvexError<Json> | undefined> {
   try {
-    mayChange(actor, schema, task, entry, row)
-    if (step === 'move' && entry.deletedAt) fail('NOT_FOUND', 'errors.datedNotFound')
-    if ((step === 'move' || row.by !== actor.user.id || row.shared) && await needsProposal(ctx, actor, 'save', task, taskBrickOf(schema, task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
+    mayChange(actor, schema, task, entry, row, step === 'cancel' ? undefined : step.move)
+    if (step !== 'cancel' && entry.deletedAt) fail('NOT_FOUND', 'errors.datedNotFound')
+    if ((step !== 'cancel' || row.by !== actor.user.id || row.shared) && await needsProposal(ctx, actor, 'save', task, taskBrickOf(schema, task, entry), entry)) fail('FORBIDDEN', 'errors.needsApprovalProposeAgain')
     return undefined
   } catch (error) {
     if (error instanceof ConvexError) return error as ConvexError<Json>
@@ -75,7 +82,7 @@ export const setDay = mutation({
     return idempotent(ctx, actor, args, async () => {
       const { row, entry } = await datedRow(ctx, actor, args.change)
       const schema = actor.site.schema as Schema
-      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, 'move')
+      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: args.from, until: row.until !== undefined ? args.until ?? row.until : args.until } })
       if (refused) throw refused
       if (row.until !== undefined) return await moveException(ctx, actor, schema, entry, row, args.from, args.until ?? row.until, args.opId)
       if (args.until !== undefined) fail('INVALID', 'errors.taskCannotDate')
@@ -187,7 +194,8 @@ export const list = query({
         ...(row.until !== undefined ? { until: row.until, holds: isHolding(row), normal: Object.fromEntries(Object.keys(row.fields).map((root) => [root, (entry.data as Data)[root] ?? null])) } : {}),
         // What `task` lets this person do with it (G7): the editor offers only these steps.
         mayCancel: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, 'cancel')),
-        mayMove: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, 'move')),
+        // A move keeps a row's kind: checked at its own days, so a task that cannot give them moves none.
+        mayMove: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: row.from, until: row.until } })),
         ...(row.stopped ? { stopped: row.stopped } : {}),
         changedSince: Object.keys(row.fields).filter((root) => (entry.fieldRevs[root] ?? 0) > (row.revs[root] ?? 0)),
       })

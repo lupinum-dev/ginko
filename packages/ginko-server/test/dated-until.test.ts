@@ -311,6 +311,25 @@ describe('moving and ending (state table: Tage ändern, Änderung aufheben, Jetz
     expect(await s.shownPrice(s.saibling)).toBe(990)
   })
 
+  // Round L2. Wrong behaviour caught: staff move a today-only row's end to next week through the today-only task, or an
+  // exception's end through a task that asks one day; owners lose the move, or staff lose the cancel through the task.
+  it('staff move a row only to days their task allows; owners move as before; the cancel through the task stays', async () => {
+    const s = await untilSetup()
+    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.offToday', entry: s.saibling, baseRev: 1, fields: {}, from: TODAY, until: TODAY })
+    await s.offer(990, '2026-10-20', '2026-10-25')
+    const [today, offer] = (await s.dated(s.saibling)).sort((a, b) => a.from.localeCompare(b.from))
+    const move = (who: 'cook' | 'owner', task: string | undefined, change: Id<'datedChanges'>, from: string, until: string) =>
+      s.as[who].mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), ...(task ? { task } : {}), change, from, until })
+    expect(await errorOf(move('cook', 'menu.offToday', today!._id, TODAY, '2026-10-15'))).toMatchObject({ key: 'errors.todayOnly' })
+    expect(await errorOf(move('cook', 'menu.price', offer!._id, '2026-10-20', '2026-10-28'))).toMatchObject({ key: 'errors.taskCannotDate' })
+    const listed = await s.as.cook.query(api.datedChanges.list, { site: 'restaurant', entry: s.saibling, task: 'menu.offToday' })
+    expect(listed.find((r) => r.id === today!._id)).toMatchObject({ mayMove: false, mayCancel: true })
+    await move('owner', undefined, today!._id, TODAY, '2026-10-15')
+    expect((await s.dated(s.saibling)).find((r) => r._id === today!._id)).toMatchObject({ until: '2026-10-15' })
+    await s.as.cook.mutation(api.datedChanges.cancel, { site: 'restaurant', opId: opId(), task: 'menu.offer', change: offer!._id })
+    expect((await s.dated(s.saibling)).map((r) => r._id)).toEqual([today!._id])
+  })
+
   // Row "Bearbeiten then other days", holds. Wrong behaviour caught: editing a holding offer with a longer end makes a
   // second offer of the same start (refused as a clash), or lets the start move.
   it('a save that edits a holding row changes its end and values in the same row; its start stays', async () => {
