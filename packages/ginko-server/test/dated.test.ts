@@ -179,6 +179,29 @@ describe('on the day', () => {
     await s.advanceTo(DAY1 + 24 * 3600_000 + 1000)
     expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1450 } })
   })
+  // Wrong behaviour caught: an error that is not a refusal (here a stored choice field without its options) makes the
+  // run fail silently; the change then neither starts nor says that it stopped.
+  it('an error of the run stops the change with "failed" and logs only the class', async () => {
+    const s = await datedSetup()
+    await s.plan(1450)
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      delete (schema.bricks.menu!.fields.veg as { options?: unknown }).options
+      await ctx.db.patch(s.site, { schema })
+    })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await s.advanceTo(DAY1 + 1000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+    const [stopped] = await s.dated(s.saibling)
+    expect([stopped!.stopped, stopped!.job]).toEqual([{ at: DAY1, reason: { code: 'failed' } }, undefined])
+    expect(log.mock.calls).toEqual([[`Dated change ${stopped!._id} failed (TypeError).`]])
+    const line = (await s.history(s.saibling)).find((c) => c.kind === 'datedStopped')!
+    expect(line.msg).toMatchObject({ params: { why: { key: 'stopped.because.changeFailed' } } })
+    const today = await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })
+    expect(today[0]!.causeText).toBe('Beim Übernehmen ist ein Fehler aufgetreten. Gib der Änderung einen neuen Tag. Wenn es wieder passiert, melde dich bitte bei uns.')
+    log.mockRestore()
+  })
+
   // Wrong behaviour caught: saving the same values into a stopped change is taken as "nothing changed", so it stays
   // stopped although the person planned it again. Reached when the site's today moves back (a new time zone).
   it('saving the same values into a stopped change starts it again', async () => {

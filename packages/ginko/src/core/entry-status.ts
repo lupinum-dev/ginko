@@ -10,8 +10,8 @@ export type Time = number
 /** A day, `YYYY-MM-DD`, in the site's time zone. */
 export type Day = string
 
-/** Why a plan did not go online: a link that leads nowhere, fields that fail the full check, or an import after its time. */
-export type StopReason = { code: 'link'; href: string } | { code: 'invalid'; fields: string[] } | { code: 'late' }
+/** Why a plan did not go online: a link that leads nowhere, fields that fail the full check, an import after its time, or an error of the run. */
+export type StopReason = { code: 'link'; href: string } | { code: 'invalid'; fields: string[] } | { code: 'late' } | { code: 'failed' }
 
 /** One thing that waits. `by` is a user id; a file entry and an imported plan have no person. */
 export type Waiting =

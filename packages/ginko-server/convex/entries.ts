@@ -18,7 +18,7 @@ import { countersOf, DELETED_KEPT, NO_PLAN, overflowingTrash, purgeEntry, softRe
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { translationNotes } from './lib/translation'
-import { mailStopped, stoppedChangeLines, stoppedLines } from './lib/stopped'
+import { errorKind, mailStopped, stoppedChangeLines, stoppedLines } from './lib/stopped'
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
@@ -1527,7 +1527,6 @@ export const publishDue = internalMutation({
     if (!entry || entry.deletedAt || stateOf(entry) === 'live' || entry.publishAt !== args.at) return null
     const site = await ctx.db.get(entry.site)
     if (!site || site.deleting) return null
-    const c = countersOf(site)
     const schema = site.schema as Schema
     const label = labelOf(schema, entry.brick, entry.data as Data)
     // The full check and the links run again: the entry or what it points to may have changed since it was planned
@@ -1540,9 +1539,7 @@ export const publishDue = internalMutation({
       try {
         await mailStopped(ctx, site, { _id: entry._id, brick: entry.brick, stopped, title: label })
       } catch (error) {
-        // The code or the class only: an error's message can hold an address or a title.
-        const kind = error instanceof ConvexError ? String((error.data as { code?: unknown } | null)?.code) : error instanceof Error ? error.constructor.name : typeof error
-        console.error(`Mail stopped ${entry._id} not queued (${kind}).`)
+        console.error(`Mail stopped ${entry._id} not queued (${errorKind(error)}).`)
       }
       await ctx.db.insert('changes', {
         site: entry.site, entry: entry._id, brick: entry.brick, ...SYSTEM, opId: `publish:${entry._id}:${args.at}`, kind: 'publishStopped',
@@ -1550,13 +1547,33 @@ export const publishDue = internalMutation({
       })
       return null
     }
-    const invalid = await onlineErrors(ctx, site._id, schema, entry, todayIn(schema.timeZone))
-    if (invalid.length) return await stop({ code: 'invalid', fields: [...new Set(invalid.map((e) => e.path))] }, msg('history.publishStoppedInvalid', { title: label, ...failedFields(schema, entry.brick, invalid) }))
-    // A target due at the same time counts as online, whichever job runs first (D106).
-    const broken = await brokenNewLinks(ctx, site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }], args.at)
-    if (broken) return await stop({ code: 'link', href: broken.href }, msg('history.publishStoppedBrokenLink', { title: label, link: broken.href }))
+    try {
+      const invalid = await onlineErrors(ctx, site._id, schema, entry, todayIn(schema.timeZone))
+      if (invalid.length) return await stop({ code: 'invalid', fields: [...new Set(invalid.map((e) => e.path))] }, msg('history.publishStoppedInvalid', { title: label, ...failedFields(schema, entry.brick, invalid) }))
+      // A target due at the same time counts as online, whichever job runs first (D106).
+      const broken = await brokenNewLinks(ctx, site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }], args.at)
+      if (broken) return await stop({ code: 'link', href: broken.href }, msg('history.publishStoppedBrokenLink', { title: label, link: broken.href }))
+      await ctx.runMutation(internal.entries.goLiveDue, args)
+    } catch (error) {
+      // Any other error of the run: its writes roll back (`goLiveDue` is a transaction of its own), and the plan stops
+      // with `failed` instead of failing silently and staying planned for a run that never comes again.
+      console.error(`Plan ${entry._id} failed (${errorKind(error)}).`)
+      return await stop({ code: 'failed' }, msg('history.publishStoppedFailed', { title: label }))
+    }
+    return null
+  },
+})
+
+/** The writes of `publishDue` once its checks passed, as a transaction of its own: an error rolls all of them back. */
+export const goLiveDue = internalMutation({
+  args: { entry: v.id('entries'), at: v.number() },
+  handler: async (ctx, args): Promise<null> => {
+    const entry = (await ctx.db.get(args.entry))!
+    const site = (await ctx.db.get(entry.site))!
+    const schema = site.schema as Schema
+    const c = countersOf(site)
     // The job is running now, so there is nothing left to cancel.
-    await goLive(ctx, schema, c, { ...entry, publishJob: undefined }, SYSTEM, `publish:${entry._id}:${args.at}`, recorded(msg('history.publishedDue', { title: label }), site.schema as Schema))
+    await goLive(ctx, schema, c, { ...entry, publishJob: undefined }, SYSTEM, `publish:${entry._id}:${args.at}`, recorded(msg('history.publishedDue', { title: labelOf(schema, entry.brick, entry.data as Data) }), schema))
     await writeCounters(ctx, site._id, c)
     return null
   },

@@ -274,6 +274,7 @@
     "publishProposalScheduled": "Publish “{title}”, online from {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "publishStoppedBrokenLink": "“{title}” did not go live: the link “{link}” leads nowhere.",
     "publishStoppedInvalid": "“{title}” did not go online: {count, plural, one {the field {fields} is} other {the fields {fields} are}} missing or not valid.",
+    "publishStoppedFailed": "“{title}” did not go online: an error happened while it went online.",
     "published": "“{title}” published",
     "publishedDue": "“{title}” published (as scheduled)",
     "publishedLate": "“{title}” published at once (the planned time had already passed at approval)",
@@ -386,12 +387,16 @@
     "cause": {
       "link": "It links to a page that does not exist: {href}",
       "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
-      "late": "Its time had passed when the content was imported."
+      "late": "Its time had passed when the content was imported.",
+      "failed": "An error happened while it went online. Plan it again. If it happens again, please tell us.",
+      "changeFailed": "An error happened while it was written. Give the change a new day. If it happens again, please tell us."
     },
     "because": {
       "link": "it links to a page that does not exist: {href}",
       "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
-      "late": "its time had passed when the content was imported."
+      "late": "its time had passed when the content was imported.",
+      "failed": "an error happened while it went online. Plan it again. If it happens again, please tell us.",
+      "changeFailed": "an error happened while it was written. Give the change a new day. If it happens again, please tell us."
     },
     "changeTitle": "“{title}”: the change from {day, date, ::MMMMd} did not start"
   },
