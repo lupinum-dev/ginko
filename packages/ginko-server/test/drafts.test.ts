@@ -7,6 +7,13 @@ import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import { errorOf, opId, people, setup, upload } from './setup'
 
+// Mail is the one thing mocked: `mail.failing` makes queueing throw, as a broken mail setup would.
+const mail = vi.hoisted(() => ({ failing: false }))
+vi.mock('../convex/mail', async (original) => {
+  const real = await original<typeof import('../convex/mail')>()
+  return { ...real, queueMail: (...args: Parameters<typeof real.queueMail>) => (mail.failing ? Promise.reject(new TypeError('mail down')) : real.queueMail(...args)) }
+})
+
 const NOW = Date.parse('2026-10-08T10:00:00Z')
 const HOUR = 60 * 60 * 1000
 const DAY = 24 * HOUR
@@ -384,12 +391,14 @@ describe('people are told when a plan stops (D104)', () => {
     }])
   })
 
-  // Wrong behaviour caught: with mail on and no SITE_URL, the mail step threw inside the job, so the job rolled back:
-  // the entry stayed planned for ever with a finished job, no stopped state, no history, nobody told.
-  it('a mail step that cannot run leaves the entry stopped, with its history row', async () => {
-    vi.stubEnv('GINKO_MAIL', 'outbox')
-    vi.stubEnv('SITE_URL', '')
-    const s = await stoppedBy(people.cook, false)
+  // Wrong behaviour caught: a mail step that threw inside the job rolled the job back: the entry stayed planned for
+  // ever with a finished job, no stopped state, no history, nobody told.
+  it('a mail step that throws leaves the entry stopped, with its history row', async () => {
+    mail.failing = true
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const s = await stoppedBy(people.cook).finally(() => { mail.failing = false })
+    expect(error.mock.calls.map((call) => String(call[0]))).toEqual([`Mail stopped ${s.draft.entry} not queued (TypeError).`])
+    error.mockRestore()
     const row = (await s.row(s.draft.entry))!
     expect(row).toMatchObject({ state: 'draft', stopped: { at: s.at, reason: { code: 'invalid' } } })
     expect(row.publishAt).toBeUndefined()
