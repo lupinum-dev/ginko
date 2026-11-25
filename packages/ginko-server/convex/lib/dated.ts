@@ -85,12 +85,21 @@ export async function syncDatedRefs(ctx: MutationCtx, schema: Schema, row: Pick<
 }
 
 /**
- * The waiting changes that come with an entry from outside (an import, the demo corpus): a row and a run per change,
- * without a person and without prints. `rev` is the entry's rev they were made at. The caller checked them
- * (`changeIssues`) and already wrote the passed ones into the entry (`dataOn`, `waitingChanges`).
+ * The waiting changes that come with an entry from outside (an import, the demo corpus, the migration of `planned`):
+ * a row and a run per change, without a person and without prints. A row the entry already has for that day takes the
+ * fields it lacks (one row per day, D125); its own values stay. `rev` is the entry's rev they were made at. The caller
+ * checked them (`changeIssues`) and already wrote the passed ones into the entry (`dataOn`, `waitingChanges`).
  */
 export async function insertWaiting(ctx: MutationCtx, schema: Schema, entry: Pick<Doc<'entries'>, '_id' | 'site' | 'brick' | 'rev'>, changes: readonly Change[]) {
   for (const change of changes) {
+    const same = (await datedOf(ctx, entry._id)).find((r) => r.from === change.from)
+    if (same) {
+      const added = Object.keys(change.set).filter((root) => !Object.hasOwn(same.fields as object, root))
+      const fields = { ...Object.fromEntries(added.map((root) => [root, change.set[root]!])), ...(same.fields as Record<string, Json>) }
+      await ctx.db.patch(same._id, { fields, revs: { ...Object.fromEntries(added.map((root) => [root, entry.rev])), ...same.revs } })
+      await syncDatedRefs(ctx, schema, { _id: same._id, site: entry.site, brick: entry.brick, fields })
+      continue
+    }
     const dated = await ctx.db.insert('datedChanges', {
       site: entry.site, entry: entry._id, brick: entry.brick, from: change.from, fields: change.set, prints: {},
       revs: Object.fromEntries(Object.keys(change.set).map((root) => [root, entry.rev])), at: Date.now(),

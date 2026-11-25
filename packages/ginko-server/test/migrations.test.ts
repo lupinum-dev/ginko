@@ -217,6 +217,30 @@ describe('2026-11-25-dated-changes (D130)', () => {
     expect(await s.t.run((ctx) => ctx.db.query('pendingChanges').collect())).toEqual([])
   })
 
+  // G1. Wrong behaviour caught: a planned price and another change of the same day became two rows of one day, and every
+  // later save into that day was refused ("two changes have the day").
+  it.each([
+    ['a timed unpublished change', async (s: Awaited<ReturnType<typeof setup>>, entry: Id<'entries'>) => {
+      await timedRow(s, entry, { veg: 'vegan' }, Date.parse('2026-10-20T08:00:00Z'))
+    }],
+    ['a dated change saved since the deploy', async (s: Awaited<ReturnType<typeof setup>>, entry: Id<'entries'>) => {
+      await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { veg: 'vegan' }, from: '2026-10-20' })
+    }],
+  ])('joins a planned value and %s of the same day into one row', async (_, other) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(Date.parse('2026-10-08T10:00:00Z'))
+    const s = await setup()
+    const schnitzel = s.entries['menu-schnitzel']!
+    await withPlanned(s)
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(schnitzel))!
+      await ctx.db.patch(schnitzel, { data: { ...(row.data as object), nextPrice: { amount: 2290 }, priceFrom: '2026-10-20' } })
+    })
+    await other(s, schnitzel)
+    await runThisOne(s)
+    expect(await datedRows(s)).toEqual([[schnitzel, '2026-10-20', { price: { amount: 2290 }, veg: 'vegan' }]])
+  })
+
   // Wrong behaviour caught: the migration cancels a job that already ran or failed, which rewrites its record in
   // `_scheduled_functions` (the only place a failed run is remembered) as cancelled.
   it('cancels only a job that still waits', async () => {
