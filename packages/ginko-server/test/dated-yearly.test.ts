@@ -70,8 +70,9 @@ async function yearlySetup(opts: { needsApproval?: boolean } = {}) {
   const offer = (amount: number, from: string, until: string, extra: Record<string, unknown> = {}) =>
     s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: saibling, baseRev: 1, fields: { price: { amount } }, from, until, ...extra })
   const list = () => s.as.owner.query(api.datedChanges.list, { site: 'restaurant', entry: saibling })
+  /** Moves the clock to `time` (never back) and lets the runs that came due finish. */
   const advanceTo = async (time: number) => {
-    vi.advanceTimersByTime(time - Date.now())
+    vi.advanceTimersByTime(Math.max(0, time - Date.now()))
     await s.t.finishInProgressScheduledFunctions()
   }
   return { ...s, saibling, row, dated, history, contentRev, bundleText, bundle, item, shownPrice, stored, planned, season, offer, list, advanceTo }
@@ -96,17 +97,18 @@ describe('a yearly save (state table: save, yearly on)', () => {
     expect((await s.item(s.saibling))?.upcoming).toEqual([{ from: '2028-06-01', until: '2028-08-31', name: 'Sommer', yearly: true, data: { price: { amount: 990, currency: 'EUR' } } }])
   })
 
-  // Row "today inside the days (from in the past)" and decision 3. Wrong behaviour caught: a season typed in the middle of
-  // its days is refused (a start in the past) or waits a year; the page names the days of its first year.
+  // Row "today inside the days (from in the past)" and decision 3. Wrong behaviour caught: a season whose days hold today
+  // is refused (a start in the past, here the most it may lie back: one year) or waits a year; the page names the days of
+  // its first year.
   it('today inside the days, from a year back: holds at once, the page names this year\'s days', async () => {
     const s = await yearlySetup()
     const before = await s.stored(s.saibling)
-    await s.season(990, '2026-10-01', '2026-10-31', { name: 'Herbst' })
+    await s.season(990, '2026-10-08', '2026-10-31', { name: 'Herbst' })
     expect((await s.dated(s.saibling))[0]!.holds).toEqual(expect.any(Number))
     expect(await s.stored(s.saibling)).toEqual(before)
     expect(await s.item(s.saibling)).toMatchObject({
       data: { price: { amount: 990 } },
-      holding: [{ from: '2027-10-01', until: '2027-10-31', name: 'Herbst', yearly: true, data: { price: { amount: 990, currency: 'EUR' } }, normal: { price: { amount: 1350, currency: 'EUR' } } }],
+      holding: [{ from: '2027-10-08', until: '2027-10-31', name: 'Herbst', yearly: true, data: { price: { amount: 990, currency: 'EUR' } }, normal: { price: { amount: 1350, currency: 'EUR' } } }],
     })
   })
 
@@ -176,12 +178,15 @@ describe('the same start and overlaps (state table)', () => {
   // not count for the next years.
   it('holds: end, name and values change for every year; yearly cannot be switched off', async () => {
     const s = await yearlySetup()
-    await s.season(990, '2026-10-01', '2026-10-31')
+    await s.season(990, '2026-10-08', '2026-10-31')
     const [row] = await s.dated(s.saibling)
-    expect(await errorOf(s.offer(950, '2027-10-01', '2027-11-15', { change: row!._id }))).toMatchObject({ key: 'errors.yearlyWhileHolding' })
-    await s.season(950, '2027-10-01', '2027-11-15', { name: 'Herbst', change: row!._id })
-    expect(await s.list()).toMatchObject([{ id: row!._id, from: '2027-10-01', until: '2027-11-15', yearly: true, name: 'Herbst', holds: true }])
+    expect(await errorOf(s.offer(950, '2027-10-08', '2027-11-15', { change: row!._id }))).toMatchObject({ key: 'errors.yearlyWhileHolding' })
+    await s.season(950, '2027-10-08', '2027-11-15', { name: 'Herbst', change: row!._id })
+    expect(await s.list()).toMatchObject([{ id: row!._id, from: '2027-10-08', until: '2027-11-15', yearly: true, name: 'Herbst', holds: true }])
     expect(await s.shownPrice(s.saibling)).toBe(950)
+    // One step per run: a run plans the next while the fake clock stands at the end of the step.
+    await s.advanceTo(at('2027-11-16') + 1000)
+    expect(await s.shownPrice(s.saibling)).toBe(1350)
     await s.advanceTo(at('2028-11-10') + 1000)
     expect(await s.shownPrice(s.saibling)).toBe(950)
     await s.advanceTo(at('2028-11-16') + 1000)
@@ -202,7 +207,7 @@ describe('the same start and overlaps (state table)', () => {
   // loses to the season although it starts later.
   it('a one-off change inside the yearly days: both saved; the later start shows on its days', async () => {
     const s = await yearlySetup()
-    await s.season(990, '2026-10-01', '2026-10-31')
+    await s.season(990, '2026-10-08', '2026-10-31')
     await s.offer(500, '2027-10-10', '2027-10-12', { name: 'Betriebsurlaub' })
     expect(await s.dated(s.saibling)).toHaveLength(2)
     await s.advanceTo(at('2027-10-10') + 1000)
@@ -217,7 +222,7 @@ describe('the runs over the years (state table: end run, start run)', () => {
   // no history, keeps the website's old copy, or plans no next start.
   it('the end run keeps the row: holds cleared, a history line, the website told, the next start planned', async () => {
     const s = await yearlySetup()
-    await s.season(990, '2026-10-01', '2026-10-31', { name: 'Herbst' })
+    await s.season(990, '2026-10-08', '2026-10-31', { name: 'Herbst' })
     const [row] = await s.dated(s.saibling)
     const rev = await s.contentRev()
     await s.advanceTo(at('2027-11-01') + 1000)
@@ -226,17 +231,17 @@ describe('the runs over the years (state table: end run, start run)', () => {
     expect(await s.shownPrice(s.saibling)).toBe(1350)
     expect(await s.contentRev()).toBe(rev + 1)
     expect((await s.history(s.saibling)).at(-1)).toMatchObject({ kind: 'datedEnded', actor: 'system', msg: { key: 'history.datedEndedYearly' } })
-    expect(await s.planned()).toEqual([{ name: 'datedChanges:applyDue', at: at('2028-10-01'), args: expect.objectContaining({ change: row!._id }) }])
-    expect((await s.item(s.saibling))?.upcoming).toEqual([{ from: '2028-10-01', until: '2028-10-31', name: 'Herbst', yearly: true, data: { price: { amount: 990, currency: 'EUR' } } }])
+    expect(await s.planned()).toEqual([{ name: 'datedChanges:applyDue', at: at('2028-10-08'), args: expect.objectContaining({ change: row!._id }) }])
+    expect((await s.item(s.saibling))?.upcoming).toEqual([{ from: '2028-10-08', until: '2028-10-31', name: 'Herbst', yearly: true, data: { price: { amount: 990, currency: 'EUR' } } }])
   })
 
   // Wrong behaviour caught: the start run of the next year does not come, comes without a check, or writes no history.
   it('the start run a year later lets it hold again, with a history line', async () => {
     const s = await yearlySetup()
-    await s.season(990, '2026-10-01', '2026-10-31', { name: 'Herbst' })
-    await s.advanceTo(at('2028-10-01') - 60_000)
+    await s.season(990, '2026-10-08', '2026-10-31', { name: 'Herbst' })
+    await s.advanceTo(at('2028-10-08') - 60_000)
     expect(await s.shownPrice(s.saibling)).toBe(1350)
-    await s.advanceTo(at('2028-10-01') + 1000)
+    await s.advanceTo(at('2028-10-08') + 1000)
     expect(await s.shownPrice(s.saibling)).toBe(990)
     expect((await s.history(s.saibling)).at(-1)).toMatchObject({ kind: 'datedStarted', actor: 'system', msg: { key: 'history.datedStartedYearly' } })
   })
@@ -259,8 +264,8 @@ describe('the runs over the years (state table: end run, start run)', () => {
   it('number 3: fields written into the entry by a yearly change over two full years: 0', async () => {
     const s = await yearlySetup()
     const before = await s.stored(s.saibling)
-    await s.season(990, '2026-10-01', '2026-10-31')
-    for (const day of ['2027-11-01', '2028-10-01', '2028-11-01', '2029-10-01', '2029-11-01']) {
+    await s.season(990, '2026-10-08', '2026-10-31')
+    for (const day of ['2027-11-01', '2028-10-08', '2028-11-01', '2029-10-08', '2029-11-01']) {
       await s.advanceTo(at(day) + 1000)
       expect([day, await s.stored(s.saibling)]).toEqual([day, before])
     }
@@ -286,10 +291,10 @@ describe('the runs over the years (state table: end run, start run)', () => {
   // again on an entry that went offline since its last time.
   it('a start run a year later on an entry that is not online stops the row', async () => {
     const s = await yearlySetup()
-    await s.season(990, '2026-10-01', '2026-10-31')
+    await s.season(990, '2026-10-08', '2026-10-31')
     await s.advanceTo(at('2027-11-01') + 1000)
     await s.t.run((ctx) => ctx.db.patch(s.saibling, { state: 'draft' }))
-    await s.advanceTo(at('2028-10-01') + 1000)
+    await s.advanceTo(at('2028-10-08') + 1000)
     const [row] = await s.dated(s.saibling)
     expect([row!.holds, row!.stopped?.reason]).toEqual([undefined, { code: 'invalid', fields: ['price'], cause: { key: 'errors.exceptionNotOnline' } }])
   })
@@ -348,20 +353,20 @@ describe('moving and removing (state table: Tage ändern, Änderung aufheben)', 
   // this year.
   it('a holding season moves only its end, and the new end counts for every year', async () => {
     const s = await yearlySetup()
-    await s.season(990, '2026-10-01', '2026-10-31')
+    await s.season(990, '2026-10-08', '2026-10-31')
     const [row] = await s.dated(s.saibling)
     const move = (from: string, until: string) => s.as.owner.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), change: row!._id, from, until })
     expect(await errorOf(move('2027-10-02', '2027-11-15'))).toMatchObject({ key: 'errors.holdingFromFixed' })
-    await move('2027-10-01', '2027-11-15')
+    await move('2027-10-08', '2027-11-15')
     await s.advanceTo(at('2027-11-16') + 1000)
-    expect((await s.item(s.saibling))?.upcoming).toEqual([{ from: '2028-10-01', until: '2028-11-15', yearly: true, data: { price: { amount: 990, currency: 'EUR' } } }])
+    expect((await s.item(s.saibling))?.upcoming).toEqual([{ from: '2028-10-08', until: '2028-11-15', yearly: true, data: { price: { amount: 990, currency: 'EUR' } } }])
   })
 
   // Row "Änderung aufheben", holds, and decision 2. Wrong behaviour caught: removing a holding season only ends this
   // year's time (it comes back), leaves it on the website until a later refresh, or keeps its planned run.
   it('"Änderung aufheben" on a holding season drops it for good: the page shows the normal value at once', async () => {
     const s = await yearlySetup()
-    await s.season(990, '2026-10-01', '2026-10-31')
+    await s.season(990, '2026-10-08', '2026-10-31')
     const [row] = await s.dated(s.saibling)
     const rev = await s.contentRev()
     await s.as.owner.mutation(api.datedChanges.cancel, { site: 'restaurant', opId: opId(), change: row!._id })
@@ -376,10 +381,10 @@ describe('moving and removing (state table: Tage ändern, Änderung aufheben)', 
   // 31. Okt. 2026" in 2027, or loses the name and yearly.
   it('the list names the days of the current or next time, with yearly and the name', async () => {
     const s = await yearlySetup()
-    await s.season(990, '2026-10-01', '2026-10-31', { name: 'Herbst' })
+    await s.season(990, '2026-10-08', '2026-10-31', { name: 'Herbst' })
     await s.season(900, '2027-06-01', '2027-08-31')
     expect((await s.list()).map((r) => [r.from, r.until, r.yearly, r.name ?? null, r.holds])).toEqual([
-      ['2027-10-01', '2027-10-31', true, 'Herbst', true],
+      ['2027-10-08', '2027-10-31', true, 'Herbst', true],
       ['2028-06-01', '2028-08-31', true, null, false],
     ])
   })
@@ -414,13 +419,14 @@ describe('a request that holds yearly and a name (state table: the person needs 
   // year's end is refused as stale although the season comes back.
   it('the request holds days, yearly and name; a yes after this year\'s end makes a row that waits for next year', async () => {
     const s = await yearlySetup({ needsApproval: true })
-    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.season', entry: s.saibling, baseRev: 1, fields: { price: { amount: 990 } }, from: '2027-10-09', until: '2027-10-20', yearly: true, name: 'Kürbiswochen' }) as unknown as Proposed
-    expect(await s.as.cook.query(api.proposals.ownFor, { site: 'restaurant', entry: s.saibling })).toMatchObject({ from: '2027-10-09', until: '2027-10-20', yearly: true, name: 'Kürbiswochen' })
-    await s.advanceTo(at('2027-10-25') + 3600_000)
+    // Its days end today; the yes comes after midnight (sessions last 24 hours, so not later).
+    const sent = await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.season', entry: s.saibling, baseRev: 1, fields: { price: { amount: 990 } }, from: '2027-10-01', until: TODAY, yearly: true, name: 'Kürbiswochen' }) as unknown as Proposed
+    expect(await s.as.cook.query(api.proposals.ownFor, { site: 'restaurant', entry: s.saibling })).toMatchObject({ from: '2027-10-01', until: TODAY, yearly: true, name: 'Kürbiswochen' })
+    await s.advanceTo(at('2027-10-09') + 3600_000)
     expect((await s.as.owner.query(api.proposals.get, { site: 'restaurant', proposal: sent.proposal }))?.conflictMsg).toBeNull()
     expect(await s.as.owner.mutation(api.proposals.approve, { proposal: sent.proposal })).not.toMatchObject({ status: 'stale' })
     expect(await s.dated(s.saibling)).toMatchObject([{ yearly: true, name: 'Kürbiswochen', by: people.cook }])
-    expect((await s.item(s.saibling))?.upcoming).toMatchObject([{ from: '2028-10-09', until: '2028-10-20', yearly: true, name: 'Kürbiswochen' }])
+    expect((await s.item(s.saibling))?.upcoming).toMatchObject([{ from: '2028-10-01', until: '2028-10-08', yearly: true, name: 'Kürbiswochen' }])
   })
 })
 
