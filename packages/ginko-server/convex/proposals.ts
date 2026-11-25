@@ -3,7 +3,7 @@
 // same operation again as the author, with the approver named in the change row, so there is one
 // write path. A change that no longer fits (revision moved on) becomes `stale` and writes nothing.
 import type { Json } from '@lupinum/ginko'
-import type { Schema } from '@lupinum/ginko/internal'
+import { todayIn, type Schema } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
@@ -145,9 +145,11 @@ async function staleReason(ctx: QueryCtx, p: Doc<'proposals'>, touched: Touched 
   const entry = await ctx.db.get(p.entry)
   if (!entry || entry.site !== p.site) return staleBecause('history.staleEntryGone')
   if (entry.deletedAt) return staleBecause('history.staleEntryDeleted')
-  const args = p.args as { baseRev?: number; lifeRev?: number; rev?: number; fields?: Record<string, Json>; confirm?: string[] }
+  const args = p.args as { baseRev?: number; lifeRev?: number; rev?: number; fields?: Record<string, Json>; confirm?: string[]; until?: string }
   const seen = touched.get(entry._id)
   if (p.op === 'save') {
+    // A request for some days whose last day has passed comes too late (as its yes refuses it, round L5).
+    if (args.until !== undefined && args.until < todayIn((site.schema as Schema).timeZone)) return staleBecause('history.staleTimeGone')
     const roots = [...new Set([...Object.keys(args.fields ?? {}), ...(args.confirm ?? []).map(rootOf)])]
     const base = args.baseRev ?? 0
     if (base > entry.rev || roots.some((r) => (entry.fieldRevs[r] ?? 0) > base) || roots.some((r) => seen?.roots.has(r))) return retry

@@ -570,6 +570,16 @@ describe('a request that holds both days (state table: the person needs a yes)',
     expect(await s.shownPrice(s.saibling)).toBe(990)
   })
 
+  // Round L5. Wrong behaviour caught: the Studio offers a yes on a request whose last day has passed (the yes then fails
+  // as stale), instead of showing it as stale before.
+  it('a request whose last day has passed shows as stale before the yes', async () => {
+    const s = await asked(TODAY, TODAY)
+    const conflictMsg = async () => (await s.as.owner.query(api.proposals.get, { site: 'restaurant', proposal: s.sent.proposal }))?.conflictMsg
+    expect(await conflictMsg()).toBeNull()
+    await s.advanceTo(at('2026-10-09') + 3600_000)
+    expect(await conflictMsg()).toMatchObject({ key: 'history.staleTimeGone' })
+  })
+
   // Wrong behaviour caught: a yes after the offer ended puts the offer online (or writes it into the entry for good).
   it('a yes after the end is stale (timeGone) and writes nothing', async () => {
     const s = await asked(TODAY, TODAY)
