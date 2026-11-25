@@ -863,7 +863,9 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     await press(wrapper, footer(wrapper)[0]!)
     await flushPromises()
     expect(ops.saveEntry).toHaveBeenCalledTimes(typed ? 1 : 0)
-    expect(wrapper.text()).toContain('Es ist noch nichts geändert. Ändere zuerst einen Wert.')
+    // H1.9: a status under the field, not its error: the day itself is valid.
+    const status = wrapper.get('#sheet-starts-on-status')
+    expect([status.text(), status.attributes('role'), wrapper.get('#sheet-starts-on').attributes('aria-invalid')]).toEqual(['Es ist noch nichts geändert. Ändere zuerst einen Wert.', 'status', 'false'])
     expect(wrapper.emitted('close')).toBeUndefined()
     expect(document.activeElement).toBe(wrapper.get('#sheet-starts-on').element)
     wrapper.unmount()
