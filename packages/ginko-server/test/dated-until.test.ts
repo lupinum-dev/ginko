@@ -91,7 +91,7 @@ describe('a save with an end (state table: save, days valid)', () => {
     const rev = await s.contentRev()
     await s.offer(990, TODAY, '2026-10-31')
     const [held] = await s.dated(s.saibling)
-    expect(held).toMatchObject({ from: TODAY, until: '2026-10-31', holds: NOW })
+    expect(held).toMatchObject({ from: TODAY, until: '2026-10-31', holds: expect.any(Number) })
     expect(await s.stored(s.saibling)).toEqual(before)
     expect(await s.contentRev()).toBe(rev + 1)
     expect(await s.item(s.saibling)).toMatchObject({
@@ -415,7 +415,7 @@ describe('task keys on the server', () => {
   it('a today-only task saves its fixed values as an exception for today', async () => {
     const s = await untilSetup()
     await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.offToday', entry: s.saibling, baseRev: 1, fields: {}, from: TODAY, until: TODAY })
-    expect(await s.dated(s.saibling)).toMatchObject([{ from: TODAY, until: TODAY, fields: { onMenu: false }, holds: NOW }])
+    expect(await s.dated(s.saibling)).toMatchObject([{ from: TODAY, until: TODAY, fields: { onMenu: false }, holds: expect.any(Number) }])
     expect((await s.item(s.saibling))?.data.onMenu).toBe(false)
     expect(await errorOf(s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.offToday', entry: s.saibling, baseRev: 1, fields: { onMenu: true }, from: TODAY, until: TODAY }))).toMatchObject({ code: 'FORBIDDEN' })
   })

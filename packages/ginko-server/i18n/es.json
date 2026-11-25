@@ -245,6 +245,12 @@
     "taskCannotDate": "Esta tarea cambia los valores al momento, no a partir de un día.",
     "fieldsCannotDate": "Estos campos no pueden empezar en un día: {fields}. Publica los cambios ahora o descarta estos campos.",
     "tooManyDated": "Una entrada puede tener como máximo {max} cambios planificados.",
+    "untilBeforeFrom": "«Hasta» debe ser el mismo día que «Desde» o posterior.",
+    "dayBeforeToday": "El día no puede ser anterior a hoy.",
+    "datedSameStart": "Ya empieza el mismo día una excepción para este campo; dura hasta el {until, date, ::MMMMd}. Cambia esa o elige otro primer día.",
+    "holdingFromFixed": "Este cambio ya está vigente. Su primer día se mantiene; se pueden cambiar el final y los valores.",
+    "todayOnly": "Esta tarea es solo para hoy.",
+    "taskSetFixed": "Esta tarea fija este valor. Aquí no se puede cambiar.",
     "liveTakesDay": "Los cambios de una entrada en línea empiezan en un día, no a una hora.",
     "draftTakesTime": "Un borrador se publica a una hora, no a partir de un día.",
     "datedNotFound": "Este cambio planificado ya no existe."
@@ -328,6 +334,12 @@
     "datedCancelledWithEntry": "“{title}”: {count, plural, one {su cambio planificado se canceló} other {sus # cambios planificados se cancelaron}} con la entrada",
     "datedApplied": "“{title}”: {fields} cambiado, como estaba planificado a partir del {day, date, ::MMMMd}",
     "datedAppliedLate": "“{title}”: {fields} cambiado de inmediato (el día planificado, {day, date, ::MMMMd}, ya había llegado al aprobarlo)",
+    "datedSavedUntil": "“{title}”: {fields} del {day, date, ::MMMMd} al {until, date, ::MMMMd}",
+    "datedProposalUntil": "Cambiar {fields} de “{title}” del {day, date, ::MMMMd} al {until, date, ::MMMMd}",
+    "datedMovedUntil": "“{title}”: la excepción ({fields}) vale ahora del {day, date, ::MMMMd} al {until, date, ::MMMMd}",
+    "datedStarted": "“{title}”: {fields} vale ahora hasta el {until, date, ::MMMMd}, como estaba planificado",
+    "datedEnded": "“{title}”: excepción ({fields}) del {day, date, ::MMMMd} al {until, date, ::MMMMd} terminada; la web vuelve a mostrar el valor normal",
+    "datedEndedNow": "“{title}”: excepción ({fields}) terminada antes de tiempo; la web vuelve a mostrar el valor normal",
     "datedStopped": "El cambio en “{title}” a partir del {day, date, ::MMMMd} no se aplicó porque {why}"
   },
   "publicness": {

@@ -3,7 +3,7 @@
 // first minute of its day. The core decides what a change may set and how it is applied (`changeIssues`, `dataOn`); this
 // file holds what the save, the publish, the run on the day and the readers share.
 import type { Json, Label } from '@lupinum/ginko'
-import { changeIssues, dataOn, dayStartIn, entryBytes, fitsBudget, isDate, labelOf, MAX_DATED, todayIn, type Change, type ChangeIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
+import { addDays, changeIssues, dataOn, dayStartIn, entryBytes, fitsBudget, isDate, labelOf, MAX_DATED, taskDates, taskEnds, todayIn, type Change, type ChangeIssue, type Schema, type Task, type ValidateOptions } from '@lupinum/ginko/internal'
 import { internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
@@ -32,36 +32,85 @@ export async function datedByBrick(ctx: QueryCtx, site: Id<'sites'>, brick: stri
   return out
 }
 
-/** The waiting rows as core changes: a stopped one waits for nobody, so the bundle and the check leave it out. */
+/** The rows as core changes, for the check: a stopped one waits for nobody, so it is left out. */
 export function asChanges(rows: readonly Dated[]): Change[] {
-  return rows.filter((r) => !r.stopped).map((r) => ({ from: r.from, set: r.fields as Record<string, Json> }))
+  return rows.filter((r) => !r.stopped).map(changeOf)
 }
+
+/**
+ * The rows the read lays over the entry or announces (slice 3, number 4): a change without an end that waits, an
+ * exception whose start run let it through (`holds`), and an exception that still waits for its day. Never a stopped
+ * row, nor an exception whose day has come but whose start run has not passed.
+ */
+export function shownChanges(rows: readonly Dated[], today: string): Change[] {
+  return rows.filter((r) => !r.stopped && (r.until === undefined || r.holds !== undefined || r.from > today)).map(changeOf)
+}
+
+const changeOf = (r: Dated): Change => ({ from: r.from, ...(r.until !== undefined ? { until: r.until } : {}), set: r.fields as Record<string, Json> })
+
+/** An exception that holds: its start run passed and it has not been stopped. */
+export const isHolding = (r: Dated) => r.until !== undefined && r.holds !== undefined && !r.stopped
 
 /** The rows as `statusOf` reads them (`StatusInput.changes`). */
 export function statusChanges(rows: readonly Dated[]) {
-  return rows.map((r) => ({ from: r.from, fields: Object.keys(r.fields), ...(r.by ? { by: r.by } : {}), ...(r.stopped ? { stopped: r.stopped } : {}) }))
+  return rows.map((r) => ({ from: r.from, ...(r.until !== undefined ? { until: r.until } : {}), fields: Object.keys(r.fields), ...(r.by ? { by: r.by } : {}), ...(r.stopped ? { stopped: r.stopped } : {}) }))
 }
 
 /** The first instant of `day` in the site's zone, in ms: when a change of that day starts (`dayStartIn`). */
 export const dayStart = dayStartIn
 
-/** A day for a new or moved change: a real day, after the site's today, at most a year ahead (the same date next year). */
-export function checkDay(schema: Schema, from: unknown): asserts from is string {
+/** The first instant after `until` in the site's zone: when an exception ends (its end run). */
+export const endOf = (until: string, timeZone: string) => dayStartIn(addDays(until, 1), timeZone)
+
+/** The same date next year: no day of a change may be later. */
+const yearAhead = (today: string) => `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`
+
+/**
+ * A day for a new or moved change: a real day, at most a year ahead (the same date next year). A change without an end
+ * starts after the site's today; an exception (`exception`) may start today, never before (decision 3).
+ */
+export function checkDay(schema: Schema, from: unknown, opts: { exception?: boolean } = {}): asserts from is string {
   if (!isDate(from)) fail('INVALID', 'errors.dayInvalid')
   const today = todayIn(schema.timeZone)
-  if (from <= today) fail('INVALID', 'errors.dayNotAhead')
-  if (from > `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`) fail('INVALID', 'errors.dayTooFarAhead')
+  if (opts.exception ? from < today : from <= today) fail('INVALID', opts.exception ? 'errors.dayBeforeToday' : 'errors.dayNotAhead')
+  if (from > yearAhead(today)) fail('INVALID', 'errors.dayTooFarAhead')
+}
+
+/** The last day of an exception: a real day, on or after `from` and today, at most a year ahead. */
+export function checkUntil(schema: Schema, from: string, until: unknown): asserts until is string {
+  if (!isDate(until)) fail('INVALID', 'errors.dayInvalid')
+  if (until < from) fail('INVALID', 'errors.untilBeforeFrom')
+  const today = todayIn(schema.timeZone)
+  if (until < today) fail('INVALID', 'errors.dayBeforeToday')
+  if (until > yearAhead(today)) fail('INVALID', 'errors.dayTooFarAhead')
+}
+
+/** The task `ref` (`brick.id`) of the schema, or undefined. */
+export function taskOf(schema: Schema, ref: string | undefined): Task | undefined {
+  if (ref === undefined) return undefined
+  const [brick, id] = ref.split('.')
+  return brick !== undefined && Object.hasOwn(schema.bricks, brick) ? schema.bricks[brick]!.tasks?.find((t) => t.id === id) : undefined
 }
 
 /**
- * A save or publish through a task may give a day only when the task says so (`when: { from: 'ask' }`, D123); the full
- * rights of a brick (no task) may always date.
+ * A save, publish, move or cancel through a task may give a day only when the task says so (D123): `when.from: 'ask'` or
+ * `'@today'`. With `days` it checks a save's days against the task: an end only through a task with `until`, a task with
+ * `until` only with an end, and a today-only task only for today. The full rights of a brick (no task) may always date.
  */
-export function refuseTaskWithoutDay(schema: Schema, ref: string | undefined) {
+export function refuseTaskWithoutDay(schema: Schema, ref: string | undefined, days?: { from: string; until: string | undefined }) {
   if (ref === undefined) return
-  const [brick, id] = ref.split('.')
-  const task = brick !== undefined && Object.hasOwn(schema.bricks, brick) ? schema.bricks[brick]!.tasks?.find((t) => t.id === id) : undefined
-  if (task?.kind !== 'edit' || task.when?.from !== 'ask') fail('FORBIDDEN', 'errors.taskCannotDate')
+  const task = taskOf(schema, ref)
+  if (task?.kind !== 'edit' || !taskDates(task)) fail('FORBIDDEN', 'errors.taskCannotDate')
+  if (!days) return
+  if ((days.until !== undefined) !== taskEnds(task)) fail('FORBIDDEN', 'errors.taskCannotDate')
+  const today = todayIn(schema.timeZone)
+  if (task.when?.from === '@today' && (days.from !== today || days.until !== today)) fail('FORBIDDEN', 'errors.todayOnly')
+}
+
+/** The fixed values of a task (`set`), or none. */
+export function taskSet(schema: Schema, ref: string | undefined): Record<string, Json> {
+  const task = taskOf(schema, ref)
+  return task?.kind === 'edit' && task.set ? task.set as Record<string, Json> : {}
 }
 
 /** Whether a change of `roots` changes what a page reads ahead (`timeline.public`), so the site's cache must go (D125). */
@@ -91,8 +140,21 @@ export async function syncDatedRefs(ctx: MutationCtx, schema: Schema, row: Pick<
  * checked them (`changeIssues`) and already wrote the passed ones into the entry (`dataOn`, `waitingChanges`).
  */
 export async function insertWaiting(ctx: MutationCtx, schema: Schema, entry: Pick<Doc<'entries'>, '_id' | 'site' | 'brick' | 'rev'>, changes: readonly Change[]) {
+  const today = todayIn(schema.timeZone)
   for (const change of changes) {
-    const same = (await datedOf(ctx, entry._id)).find((r) => r.from === change.from)
+    // An exception is a row of its own (identity: entry, from, until). One that holds today was checked with the entry
+    // like a start run, so it holds at once; the others wait for their start run.
+    if (change.until !== undefined) {
+      const holds = change.from <= today
+      const dated = await ctx.db.insert('datedChanges', {
+        site: entry.site, entry: entry._id, brick: entry.brick, from: change.from, until: change.until, fields: change.set, prints: {},
+        revs: Object.fromEntries(Object.keys(change.set).map((root) => [root, entry.rev])), at: Date.now(), ...(holds ? { holds: Date.now() } : {}),
+      })
+      await ctx.db.patch(dated, { job: await scheduleRun(ctx, schema, dated, change.from, change.until, holds) })
+      await syncDatedRefs(ctx, schema, { _id: dated, site: entry.site, brick: entry.brick, fields: change.set })
+      continue
+    }
+    const same = (await datedOf(ctx, entry._id)).find((r) => r.from === change.from && r.until === undefined)
     if (same) {
       const added = Object.keys(change.set).filter((root) => !Object.hasOwn(same.fields as object, root))
       const fields = { ...Object.fromEntries(added.map((root) => [root, change.set[root]!])), ...(same.fields as Record<string, Json>) }
@@ -110,6 +172,16 @@ export async function insertWaiting(ctx: MutationCtx, schema: Schema, entry: Pic
   }
 }
 
+/**
+ * The run a row waits for: the start of its day (`applyDue`: written into the entry, or an exception's start run), or,
+ * for an exception that holds, its end (`endDue`, the first minute after `until`).
+ */
+export function scheduleRun(ctx: MutationCtx, schema: Schema, change: Id<'datedChanges'>, from: string, until: string | undefined, holds: boolean) {
+  return holds && until !== undefined
+    ? ctx.scheduler.runAt(endOf(until, schema.timeZone), internal.datedChanges.endDue, { change, until })
+    : ctx.scheduler.runAt(dayStart(from, schema.timeZone), internal.datedChanges.applyDue, { change, from })
+}
+
 /** Deletes a dated change with its job (unless that run is the one calling) and its file references. */
 export async function dropDated(ctx: MutationCtx, row: Dated, running = false) {
   if (row.job && !running) await ctx.scheduler.cancel(row.job)
@@ -120,7 +192,9 @@ export async function dropDated(ctx: MutationCtx, row: Dated, running = false) {
 /** What a checked dated save or publish writes: the row of that day (new or merged) and the values around it. */
 export interface DatedPlan {
   from: string
-  /** The row of the same day that it merges into. */
+  /** The last day of an exception; absent for a change without an end. */
+  until: string | undefined
+  /** The row of the same days (or the holding row being edited) that it merges into. */
   same: Dated | undefined
   /** Every field of the row after the merge, and the prints under them. */
   fields: Record<string, Json>
@@ -148,12 +222,18 @@ async function newIssues(schema: Schema, brick: string, live: Data, others: Chan
  * (`newIssues`); then the files and the links it adds (a draft planned for that day counts as
  * online), the entry's budget with every waiting change applied, and at most `MAX_DATED` waiting changes. A field given
  * with the value it already has on that day leaves the row; `fields` empty means nothing waits for that day any more.
+ *
+ * With `until` it is an exception (slice 3): its row is the one of the same two days, or `same` (the holding row a save
+ * edits, whose end and values may change). Every field sent stays in it (an exception says what visitors see on its
+ * days, also where that is the normal value), and a second exception of the same start may not set one of its fields
+ * (`errors.datedSameStart`, naming the other one's end).
  */
-export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'entries'>, from: string, set: Record<string, Json>, rows: readonly Dated[]): Promise<DatedPlan> {
+export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'entries'>, from: string, set: Record<string, Json>, rows: readonly Dated[], opts: { until?: string; same?: Dated } = {}): Promise<DatedPlan> {
   const schema = site.schema as Schema
   const brick = schema.bricks[entry.brick]!
-  const same = rows.find((r) => r.from === from)
-  const others = rows.filter((r) => r !== same)
+  const { until } = opts
+  const same = opts.same ?? rows.find((r) => r.from === from && r.until === until)
+  const others = rows.filter((r) => r._id !== same?._id)
   const live = entry.data as Data
   const before = dataOn(live, asChanges(others), from)
   const fields: Record<string, Json> = { ...(same?.fields as Record<string, Json> | undefined) }
@@ -163,20 +243,25 @@ export async function planDated(ctx: QueryCtx, site: Doc<'sites'>, entry: Doc<'e
   // A stopped change gives nothing (G4).
   const earlier = others.filter((r) => !r.stopped && r.from < from)
   for (const root of roots) {
-    if (sameValue(set[root], live[root]) && !earlier.some((r) => Object.hasOwn(r.fields as object, root))) delete fields[root]
+    if (until === undefined && sameValue(set[root], live[root]) && !earlier.some((r) => Object.hasOwn(r.fields as object, root))) delete fields[root]
     else fields[root] = set[root] ?? null
   }
-  const after = dataOn(before, [{ from, set: fields }], from)
+  if (until !== undefined) {
+    const clash = others.find((r) => !r.stopped && r.until !== undefined && r.from === from && Object.keys(fields).some((root) => Object.hasOwn(r.fields as object, root)))
+    if (clash) fail('INVALID', 'errors.datedSameStart', { until: dayStart(clash.until!, schema.timeZone) })
+  }
+  const own: Change = { from, ...(until !== undefined ? { until } : {}), set: fields }
+  const after = dataOn(before, [own], from)
   const main = schema.locales[0]!
   const keys = Object.keys(fields)
   const kept = Object.fromEntries(Object.entries(same?.prints ?? {}).filter(([leaf]) => !roots.some((r) => underRoot(leaf, r))))
   const fresh = nextPrints({ fields: brick.fields, roots, before, after, prints: entry.prints as Prints, main, confirm: undefined })
   const prints: Prints = { ...kept, ...Object.fromEntries(Object.entries(fresh).filter(([leaf]) => roots.some((r) => keys.includes(r) && underRoot(leaf, r)))) }
   const pick = (d: Data) => Object.fromEntries(roots.filter((r) => d[r] !== undefined).map((r) => [r, d[r]!]))
-  const plan: DatedPlan = { from, same, fields, prints, roots, before: pick(before), after: pick(after) }
+  const plan: DatedPlan = { from, until, same, fields, prints, roots, before: pick(before), after: pick(after) }
   if (!keys.length) return plan
 
-  const changes: Change[] = [...asChanges(others), { from, set: fields }]
+  const changes: Change[] = [...asChanges(others), own]
   const issues = await newIssues(schema, entry.brick, live, asChanges(others), changes, await lookupsFor(ctx, site._id, brick.fields, after))
   if (issues.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: issues.map(({ change: _, from: _day, ...issue }) => issue) as unknown as Json })
   await checkNewFiles(ctx, site._id, brick.fields, before, after)
@@ -204,27 +289,42 @@ export async function writeDated(ctx: MutationCtx, actor: Actor, entry: Doc<'ent
   const schema = site.schema as Schema
   const now = Date.now()
   const touched = [...new Set([...plan.roots, ...Object.keys(plan.same?.fields ?? {})])]
+  // An exception from today is its own start run (planDated checked it like one): it holds at once. A holding row a
+  // save joins keeps holding.
+  const holding: number | undefined = plan.until === undefined ? undefined
+    : plan.same && isHolding(plan.same) ? plan.same.holds
+    : plan.from <= todayIn(schema.timeZone) ? now : undefined
   let id: Id<'datedChanges'> | undefined
   if (!Object.keys(plan.fields).length) {
     if (plan.same) await dropDated(ctx, plan.same)
   } else {
     const keptRevs = Object.fromEntries(Object.entries(plan.same?.revs ?? {}).filter(([root]) => Object.hasOwn(plan.fields, root)))
-    const row = { fields: plan.fields, prints: plan.prints, revs: { ...keptRevs, ...Object.fromEntries(plan.roots.filter((r) => Object.hasOwn(plan.fields, r)).map((r) => [r, revs[r] ?? entry.rev])) }, by: actor.user.id, at: now }
+    const row = {
+      fields: plan.fields, prints: plan.prints, revs: { ...keptRevs, ...Object.fromEntries(plan.roots.filter((r) => Object.hasOwn(plan.fields, r)).map((r) => [r, revs[r] ?? entry.rev])) }, by: actor.user.id, at: now,
+      ...(plan.until !== undefined ? { until: plan.until } : {}), ...(holding !== undefined ? { holds: holding } : {}),
+    }
     if (plan.same) {
       id = plan.same._id
       // Someone else saves into a waiting row, or restarts a stopped one and keeps fields of it: it now holds values of
       // several people (H2, I2); a patch keeps a set flag.
       const keepsOld = Object.keys(plan.same.fields).some((root) => !plan.roots.includes(root) && Object.hasOwn(plan.fields, root))
       const shared = plan.same.by !== actor.user.id && (!plan.same.stopped || keepsOld)
-      await ctx.db.patch(id, { ...row, stopped: undefined, ...(shared ? { shared: true as const } : {}) })
-      if (!plan.same.job) await ctx.db.patch(id, { job: await ctx.scheduler.runAt(dayStart(plan.from, schema.timeZone), internal.datedChanges.applyDue, { change: id, from: plan.from }) })
+      await ctx.db.patch(id, { ...row, from: plan.from, stopped: undefined, ...(shared ? { shared: true as const } : {}) })
+      // New days move its run (a waiting exception moved, the end of a holding one); a restarted (stopped) row gets its
+      // run again.
+      if (!plan.same.job || plan.same.from !== plan.from || plan.same.until !== plan.until || (holding !== undefined && plan.same.holds === undefined)) {
+        if (plan.same.job) await ctx.scheduler.cancel(plan.same.job)
+        await ctx.db.patch(id, { job: await scheduleRun(ctx, schema, id, plan.from, plan.until, holding !== undefined) })
+      }
     } else {
       id = await ctx.db.insert('datedChanges', { site: site._id, entry: entry._id, brick: entry.brick, from: plan.from, ...row })
-      await ctx.db.patch(id, { job: await ctx.scheduler.runAt(dayStart(plan.from, schema.timeZone), internal.datedChanges.applyDue, { change: id, from: plan.from }) })
+      await ctx.db.patch(id, { job: await scheduleRun(ctx, schema, id, plan.from, plan.until, holding !== undefined) })
     }
     await syncDatedRefs(ctx, schema, { _id: id, site: site._id, brick: entry.brick, fields: plan.fields })
   }
-  const contentRev = touchesPublic(schema, entry.brick, touched) ? site.contentRev + 1 : site.contentRev
+  // What a page reads ahead changed, or what it shows today (a holding row, saved into or dropped).
+  const today = holding !== undefined || (plan.same !== undefined && isHolding(plan.same))
+  const contentRev = today || touchesPublic(schema, entry.brick, touched) ? site.contentRev + 1 : site.contentRev
   if (contentRev !== site.contentRev) await ctx.db.patch(site._id, { contentRev })
   const changes: Id<'changes'>[] = []
   for (const { kind, history } of lines) {
