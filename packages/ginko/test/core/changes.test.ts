@@ -218,6 +218,14 @@ describe('upcoming in the bundle', () => {
     for (const secret of ['geheim', 'nur intern', '"B"']) expect(text).not.toContain(secret)
   })
 
+  // Wrong behaviour caught: a page announces a new price for a day after the dish is taken off the menu.
+  it('leaves out a change whose day comes after the entry\'s last shown day', () => {
+    const ending = { ...input(), entries: { dishes: [{ id: 'd1', data: { ...dish, servedUntil: '2026-11-20' }, changes }] } }
+    const bundle = buildBundle(ending)
+    const [item] = bundle.bricks.dishes!.kind === 'collection' ? bundle.bricks.dishes!.items : []
+    expect(item?.upcoming?.map((u) => u.from)).toEqual(['2026-11-15'])
+  })
+
   it('carries nothing ahead for a brick without timeline', () => {
     const s = schema()
     delete s.bricks.dishes!.timeline

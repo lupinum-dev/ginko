@@ -402,13 +402,18 @@ export function buildBundle(input: BuildBundleInput): Bundle {
 
 /**
  * What a page may read ahead of an entry (D121): each change after `today` that sets a field of the brick's
- * `timeline.public`, with only those fields, resolved like the entry's own values. Undefined when there is none.
+ * `timeline.public`, with only those fields, resolved like the entry's own values. Undefined when there is none. A change
+ * whose day comes after the entry's last shown day (`showUntil`) is left out: the entry is gone by then. The field
+ * `showUntil` reads is one no change may set (`fixedFields`), so the stored value is the last day.
  */
 export function upcomingOf(schema: Schema, key: string, entry: StoredEntry, ctx: ResolveContext, today: string): Upcoming[] | undefined {
-  const shown = schema.bricks[key]!.timeline?.public
+  const brick = schema.bricks[key]!
+  const shown = brick.timeline?.public
   if (!shown?.length || !entry.changes?.length) return undefined
+  const last = shownUntil(brick, entry.data)
   const out: Upcoming[] = []
   for (const change of waitingChanges(entry.changes, today)) {
+    if (last !== undefined && change.from > last) continue
     const names = Object.keys(change.set).filter((name) => shown.includes(name))
     if (!names.length) continue
     // Only the public values go into the resolver: nothing else of the change can reach the result.
