@@ -33,6 +33,8 @@ type Days = { from: string; until: string | undefined; yearly?: true; name?: str
 
 /** The labels a row keeps through a move (slice 4), as `Days` and `planDated` take them. */
 const labelsOf = (row: Dated) => ({ ...(row.yearly ? { yearly: row.yearly } : {}), ...(row.name !== undefined ? { name: row.name } : {}) })
+/** What a task needs the right to over a row it moves: `yearly`; a name is a label, not a right (round N1). */
+const rightsOf = (row: Dated) => (row.yearly ? { yearly: row.yearly } : {})
 
 /**
  * Who may move or cancel a dated change (D125): who may make it, with the same task (`when: { from: 'ask' }`) or the full
@@ -88,7 +90,7 @@ export const setDay = mutation({
     return idempotent(ctx, actor, args, async () => {
       const { row, entry } = await datedRow(ctx, actor, args.change)
       const schema = actor.site.schema as Schema
-      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: args.from, until: row.until !== undefined ? args.until ?? row.until : args.until, ...labelsOf(row) } })
+      const refused = await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: args.from, until: row.until !== undefined ? args.until ?? row.until : args.until, ...rightsOf(row) } })
       if (refused) throw refused
       if (row.until !== undefined) return await moveException(ctx, actor, schema, entry, row, args.from, args.until ?? row.until, args.opId)
       if (args.until !== undefined) fail('INVALID', 'errors.taskCannotDate')
@@ -211,7 +213,7 @@ export const list = query({
         // What `task` lets this person do with it (G7): the editor offers only these steps.
         mayCancel: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, 'cancel')),
         // A move keeps a row's kind: checked at its own days, so a task that cannot give them moves none.
-        mayMove: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: row.from, until: row.until, ...labelsOf(row) } })),
+        mayMove: !(await datedRefusal(ctx, actor, schema, args.task, entry, row, { move: { from: row.from, until: row.until, ...rightsOf(row) } })),
         ...(row.stopped ? { stopped: row.stopped } : {}),
         changedSince: Object.keys(row.fields).filter((root) => (entry.fieldRevs[root] ?? 0) > (row.revs[root] ?? 0)),
       })

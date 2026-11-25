@@ -160,6 +160,21 @@ export function refuseTaskWithoutDay(schema: Schema, ref: string | undefined, da
   if (task.when?.from === '@today' && (days.from !== today || days.until !== today)) fail('FORBIDDEN', 'errors.todayOnly')
 }
 
+/**
+ * The rights on the row a save writes, however it was found (by `change` or by the same days; round N1): a yearly row is
+ * edited only through a task that asks `yearly` (or without a task), and while a row holds `yearly` changes in neither
+ * direction. A name is a label, not a right: through a task that does not ask one the row keeps its name. Gives the name
+ * the row gets.
+ */
+export function rowLabels(schema: Schema, ref: string | undefined, row: Dated | undefined, yearly: true | undefined, name: string | undefined): string | undefined {
+  if (!row) return name
+  const task = ref === undefined ? undefined : taskOf(schema, ref)
+  const asks = task?.kind === 'edit' ? taskAsks(task) : undefined
+  if (row.yearly && ref !== undefined && !asks?.yearly) fail('FORBIDDEN', 'errors.taskCannotYearly')
+  if (isHolding(row) && !!row.yearly !== !!yearly) fail('INVALID', 'errors.yearlyWhileHolding')
+  return ref !== undefined && !asks?.name ? row.name : name
+}
+
 /** Whether a task has an end (`when.until`): its values lie over an entry for some days and never go into it. */
 export function taskHasEnd(schema: Schema, ref: string | undefined): boolean {
   const task = taskOf(schema, ref)

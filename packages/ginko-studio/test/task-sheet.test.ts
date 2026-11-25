@@ -1768,6 +1768,26 @@ describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slic
     wrapper.unmount()
   })
 
+  // Round N1, the sheet's half. Wrong behaviour caught: a sheet whose task cannot make a season offers "Bearbeiten" on one
+  // (the server refuses the save); or the switch of a holding one-off change can be switched on (the server refuses that
+  // too: `yearly` does not change while a row holds).
+  test('no "Bearbeiten" on a season through a task without yearly; the switch of a holding one-off change is disabled', async () => {
+    datedRows.value = [row()]
+    const offer = mountTask(2)
+    answer({ data: {} })
+    await flushPromises()
+    expect(offer.findAll('button').some((b) => b.text() === 'Bearbeiten')).toBe(false)
+    offer.unmount()
+    datedRows.value = [row({ id: 'd2', from: inDays(-5), until: inDays(20), holds: true, yearly: undefined, name: undefined })]
+    const season = mountTask(0)
+    answer({ data: {} })
+    await flushPromises()
+    await season.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    expect([checked(season), season.get('#sheet-yearly').attributes('disabled') !== undefined]).toEqual(['false', true])
+    season.unmount()
+  })
+
   // A task whose change is only its fixed values (`set`, the demo's "Saisongericht"), found by the browser test. Wrong
   // behaviour caught: with no field to change the sheet says "Es ist noch nichts geändert" and never saves the days.
   test('a task with only fixed values saves its days: one save, no "nothing changed"', async () => {

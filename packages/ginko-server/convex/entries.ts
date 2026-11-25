@@ -22,7 +22,7 @@ import { errorKind, mailStopped, stoppedChangeLines, stoppedLines } from './lib/
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
-import { asChanges, baseRows, checkDay, checkLabels, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, isRowOf, planDated, refuseTaskWithoutDay, startsOn, taskHasEnd, taskSet, timeOf, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
+import { asChanges, baseRows, checkDay, checkLabels, checkUntil, datedByBrick, datedOf, dayStart, fieldNames, isHolding, isRowOf, planDated, refuseTaskWithoutDay, rowLabels, startsOn, taskHasEnd, taskSet, timeOf, writeDated, type DatedLine, type DatedPlan } from './lib/dated'
 import { advance, stepArgs } from './lib/migrations'
 import { editorEntry, editorEntryWithTranslation, entryLabel as labelOf, listRow, slimEntry, titleOf } from './lib/list'
 import { diffFields, localeDiffs } from './lib/diff'
@@ -370,18 +370,19 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
   const named = until !== undefined && args.change !== undefined ? rows.find((r) => r._id === args.change && r.until !== undefined) : undefined
   const holdingNamed = named !== undefined && isHolding(named)
   if (holdingNamed && from !== (timeOf(named, todayIn(schema.timeZone)) ?? named).from) fail('INVALID', 'errors.holdingFromFixed')
-  if (holdingNamed && named.yearly && !yearly) fail('INVALID', 'errors.yearlyWhileHolding')
   const edited = named && (holdingNamed || startsOn(named, from)) ? named : undefined
   const editsHolding = edited !== undefined && isHolding(edited)
+  // The row this save writes, however it was found: its rights and its name are decided on it (round N1).
+  const joined = edited ?? rows.find((r) => isRowOf(r, from, until))
+  const rowName = rowLabels(schema, args.task, joined, yearly, name)
   if (!editsHolding) checkDay(schema, from, { exception: until !== undefined, yearly })
   if (until !== undefined) checkUntil(schema, from, until, { yearly, holding: editsHolding })
   refuseTaskWithoutDay(schema, args.task, { from, until, yearly, name })
   // A value is given as for a save of the entry; its other parts are those it has on that day.
-  const joined = edited ?? rows.find((r) => isRowOf(r, from, until))
   const before = dataOn(entry.data as Data, asChanges(baseRows(rows.filter((r) => r._id !== joined?._id), until)), from)
   const set: Record<string, Json> = {}
   for (const [key, value] of Object.entries(args.fields)) set[key] = value === null ? null : (mergeField(brick.fields[key]!, before[key], value as Json, args.locale as Locale | undefined) ?? null)
-  const plan = await planDated(ctx, actor.site, entry, from, set, rows, { ...(until !== undefined ? { until } : {}), ...(edited ? { same: edited } : {}), ...(yearly ? { yearly } : {}), ...(name !== undefined ? { name } : {}) })
+  const plan = await planDated(ctx, actor.site, entry, from, set, rows, { ...(until !== undefined ? { until } : {}), ...(edited ? { same: edited } : {}), ...(yearly ? { yearly } : {}), ...(rowName !== undefined ? { name: rowName } : {}) })
   // A stopped change of that day starts again with the same values: only a waiting one is left as it is.
   const sameLabels = plan.same?.yearly === plan.yearly && plan.same?.name === plan.name
   if (plan.same && !plan.same.stopped ? same(plan.fields, plan.same.fields) && plan.same.until === until && sameLabels : !plan.same && !Object.keys(plan.fields).length) {

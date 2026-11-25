@@ -493,7 +493,8 @@ const coveredHint = (key: string) => coveredText(waitingNotices.value, key, fiel
  * "Bearbeiten" on a notice of the kind the task makes (an exception for a task that asks both days, else a change
  * without an end): its days and values go into the form. A holding exception keeps its start (decision 4).
  */
-const mayEdit = (n: Notice) => asksDay.value && !foreign.value && (n.until !== undefined) === taskEnds.value
+// A season only through a task that asks `yearly`, as the server rules (round N1).
+const mayEdit = (n: Notice) => asksDay.value && !foreign.value && (n.until !== undefined) === taskEnds.value && (!n.yearly || asksYearly.value)
 /** The waiting change "Bearbeiten" filled the form from: saved on its day, it is replaced (every field of it is sent). */
 const editing = ref<{ id: string; fields: string[] }>()
 function editChange(n: Notice) {
@@ -810,10 +811,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
               </div>
               <StartsOnField v-else-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :hint="taskEnds ? t(isYearly ? 'dated.yearlyHint' : 'dated.startsOnHintToday') : undefined" :earliest="taskEnds ? (isYearly ? yearBack(today) : today) : undefined" :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
               <StartsOnField v-if="asksDay && taskEnds && !foreign" id="sheet-until" v-model="untilOn" v-model:bad="untilBad" :label="t('dated.until')" :earliest="startsOn || (isYearly ? yearBack(today) : today)" :latest="isYearly ? addDays(exceptionFrom, 364) : undefined" :time-zone="schema.timeZone" :error="untilError" />
-              <!-- Slice 4: under "Gilt bis", in this order. A holding yearly change keeps coming back (decision 2). -->
+              <!-- Slice 4: under "Gilt bis", in this order. While the edited row holds, `yearly` stays as it is both ways
+                   (decision 2, round N1); the sentence says why for a yearly row only (the one-off case has none yet). -->
               <FieldFrame v-if="asksDay && asksYearly && !foreign" id="sheet-yearly" inline :label="t('dated.yearly')" :hint="holdingEdit?.yearly ? t('dated.yearlyWhileHolding') : undefined">
                 <template #default="{ describedBy }">
-                  <Switch id="sheet-yearly" v-model="yearly" :disabled="holdingEdit?.yearly === true" :aria-describedby="describedBy" />
+                  <Switch id="sheet-yearly" v-model="yearly" :disabled="holdingEdit !== undefined" :aria-describedby="describedBy" />
                 </template>
               </FieldFrame>
               <FieldFrame v-if="asksDay && asksName && !foreign" id="sheet-name" :label="t('dated.name')" optional :hint="t('dated.nameHint')" :errors="nameError ? [nameError] : []">

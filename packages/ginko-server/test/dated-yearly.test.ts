@@ -418,6 +418,41 @@ describe('moving and removing (state table: Tage ändern, Änderung aufheben)', 
   })
 })
 
+// Round N1: one rule for an existing row, decided on the row that is written (found by `change` or by the same days).
+// Wrong behaviour caught: a task without `yearly` joins a season by its days and switches it off (writeDated cleared
+// yearly and the name), moves it, or a holding row changes `yearly` either way; or a task without `name` cannot touch a
+// named row, or drops its name.
+describe('the rights on an existing row (round N1)', () => {
+  type S = Awaited<ReturnType<typeof yearlySetup>>
+  const save = (s: S, args: Record<string, unknown>, who: 'owner' | 'cook' = 'cook') =>
+    s.as[who].mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { price: { amount: 950 } }, ...args })
+  const move = (s: S, change: Id<'datedChanges'>, from: string, until: string) =>
+    s.as.cook.mutation(api.datedChanges.setDay, { site: 'restaurant', opId: opId(), task: 'menu.offer', change, from, until })
+  const waitingSeason = (s: S) => s.season(990, '2028-06-01', '2028-08-31', { name: 'Sommer' })
+  const holdingSeason = (s: S) => s.season(990, '2026-10-08', '2026-10-31')
+  const namedOneOff = (s: S) => s.offer(700, '2027-11-01', '2027-11-05', { name: 'Probewoche' })
+  it.each<[string, (s: S) => Promise<unknown>, (s: S, id: Id<'datedChanges'>) => Promise<unknown>, string | undefined]>([
+    ['a task without yearly, the same days, a waiting season', waitingSeason, (s) => save(s, { task: 'menu.offer', from: '2028-06-01', until: '2028-08-31' }), 'errors.taskCannotYearly'],
+    ['a task without yearly, the same days, a holding season', holdingSeason, (s) => save(s, { task: 'menu.offer', from: TODAY, until: '2027-10-31' }), 'errors.taskCannotYearly'],
+    ['the owner, the same days, a holding season, yearly left out', holdingSeason, (s) => save(s, { from: TODAY, until: '2027-10-31' }, 'owner'), 'errors.yearlyWhileHolding'],
+    ['yearly on a holding one-off change', (s) => s.offer(700, TODAY, '2027-10-12'), (s, id) => save(s, { from: TODAY, until: '2027-10-12', yearly: true, change: id }, 'owner'), 'errors.yearlyWhileHolding'],
+    ['a task without name edits a named one-off change', namedOneOff, (s, id) => save(s, { task: 'menu.offer', from: '2027-11-01', until: '2027-11-05', change: id }), undefined],
+    ['a move through a task without name, a named row', namedOneOff, (s, id) => move(s, id, '2027-11-02', '2027-11-06'), undefined],
+    ['a move through a task without yearly, a season', waitingSeason, (s, id) => move(s, id, '2028-06-02', '2028-08-31'), 'errors.taskCannotYearly'],
+  ])('%s', async (_case, make, step, key) => {
+    const s = await yearlySetup()
+    await make(s)
+    const [before] = await s.dated(s.saibling)
+    if (key) {
+      expect(await errorOf(step(s, before!._id))).toMatchObject({ key })
+      expect(await s.dated(s.saibling)).toEqual([before])
+      return
+    }
+    await step(s, before!._id)
+    expect(await s.dated(s.saibling)).toMatchObject([{ _id: before!._id, name: before!.name }])
+  })
+})
+
 describe('task keys on the server (state table: another door)', () => {
   // Rule from slice 3: decide by the task, not by which arguments came along. Wrong behaviour caught: staff make a
   // one-off offer come back every year, or give it a name, through a task that does not ask for it; a season task saves
