@@ -164,7 +164,7 @@ describe('useEntryForm', () => {
     }
     expect(await form.save()).toBe(false)
 
-    expect(await form.mergeLists()).toBe(true)
+    expect([form.mergeLists(), await form.saveAgain()]).toEqual([true, true])
     expect(calls).toEqual([
       ['save', { entry: 'e1', baseRev: 6, fields: { sides: [salad, { _id: 'r2', name: 'Frittatensuppe' }, { _id: 'r3', name: 'Kaspressknödel' }] } }],
     ])
@@ -246,21 +246,21 @@ describe('a rows field in a conflict', () => {
   // person's day is lost.
   test('we change different rows: "Beides behalten" saves both rows', async () => {
     const form = await conflictOver(withHours(6, 'zu', '17–22'))
-    expect(await form.mergeLists()).toBe(true)
+    expect([form.mergeLists(), await form.saveAgain()]).toEqual([true, true])
     expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { hours: { mo: { note: '11–14' }, tu: { note: '17–22' } } } }]])
   })
 
   // Wrong behaviour caught: "Meine behalten" sends my whole table, so the cook's Tuesday goes back to what it was.
   test('"Meine behalten" keeps the row the other person changed and I left alone', async () => {
     const form = await conflictOver(withHours(6, 'zu', '17–22'))
-    expect(await form.keepMine()).toBe(true)
+    expect([form.keepMine(), await form.saveAgain()]).toEqual([true, true])
     expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { hours: { mo: { note: '11–14' }, tu: { note: '17–22' } } } }]])
   })
 
   // Wrong behaviour caught: a clash on one row is merged, and one person's value of that row is lost without a word.
   test('we change the same row differently: no "Beides behalten", the conflict stays', async () => {
     const form = await conflictOver(withHours(6, '12–15', 'zu'))
-    expect(await form.mergeLists()).toBe(false)
+    expect(form.mergeLists()).toBe(false)
     expect(form.conflict.value?.fields).toEqual(['hours'])
     expect(calls).toEqual([])
   })
@@ -292,7 +292,7 @@ describe('a form that saves every language', () => {
     }
     expect(form.conflict.value?.fields).toEqual(['name'])
 
-    expect(await form.keepMine()).toBe(true)
+    expect([form.keepMine(), await form.saveAgain()]).toEqual([true, true])
     expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { name: { de: 'Wiener Schnitzel', en: 'Viennese veal schnitzel' } } }]])
   })
 

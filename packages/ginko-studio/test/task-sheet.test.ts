@@ -841,6 +841,112 @@ describe('"Gilt ab" of a task that asks for the day (D131)', () => {
     wrapper.unmount()
   })
 
+  // H1: a conflict answer saves through the sheet's own step, which reads the day field at that moment, never the day of
+  // the first try.
+  const clash = (data: Record<string, unknown> = { title: 'Fremd' }, conflicts = ['title']) =>
+    ops.saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data, rev: 5, conflicts } } })
+  const keepMine = (wrapper: ReturnType<typeof mountAsk>) => wrapper.findAll('button').find((b) => b.text() === 'Meine Eingaben speichern')!.trigger('click')
+  type Sent = { from?: string; publish?: true; baseRev: number }
+  const sent = (): Sent[] => ops.saveEntry.mock.calls.map((c) => (c as unknown as [Sent])[0])
+
+  // Wrong behaviour caught (H1 a, b): "Meine Eingaben speichern" repeated the first try, so a day typed after the conflict
+  // was dropped and the value went online now while the field showed the day; or a day cleared after it was still sent.
+  test.each([
+    ['a day set after the conflict is sent', '', 10],
+    ['a day cleared after the conflict is not sent', 10, ''],
+  ] as const)('the conflict answer reads the day field: %s', async (_case, first, then) => {
+    clash()
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    if (first !== '') await wrapper.get('#sheet-starts-on').setValue(inDays(first))
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    await wrapper.get('#sheet-starts-on').setValue(then === '' ? '' : inDays(then))
+    await keepMine(wrapper)
+    await flushPromises()
+    const again = sent()[1]!
+    expect([again.from, again.publish, again.baseRev]).toEqual(then === '' ? [undefined, true, 5] : [inDays(then), undefined, 5])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1 c): the conflict answer saved past a day typed and not finished, as "no day".
+  test('the conflict answer refuses a day typed and not finished', async () => {
+    clash()
+    const wrapper = mountAsk()
+    await ready(wrapper)
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    const day = wrapper.get('#sheet-starts-on')
+    Object.defineProperty(day.element, 'validity', { value: { badInput: true } })
+    await day.trigger('keyup')
+    await keepMine(wrapper)
+    await flushPromises()
+    expect(ops.saveEntry).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Das ist kein Datum. Bitte wähle einen Tag oder leere das Feld.')
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught (H1 d): a restored local copy whose field someone saved meanwhile opens the conflict, and the
+  // answer saved the copy's values without its day (online now).
+  test('the conflict answer after restoring a local copy keeps its day', async () => {
+    localStorage.clear()
+    const day = inDays(10)
+    const first = mountAsk()
+    await ready(first)
+    await first.get('#sheet-starts-on').setValue(day)
+    first.unmount()
+
+    const second = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema: menu, entry: { ...stored, rev: 5, fieldRevs: { title: 5 }, data: { title: 'Fremd' } } as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+    answer({ data: {} })
+    await flushPromises()
+    await second.findAll('button').find((b) => b.text() === 'Wiederherstellen')!.trigger('click')
+    await flushPromises()
+    await keepMine(second)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.publish, s.baseRev])).toEqual([[day, undefined, 5]])
+    second.unmount()
+    localStorage.clear()
+  })
+
+  // Wrong behaviour caught (H1 e): "Beides behalten" repeated the first try, as "Meine Eingaben speichern" did (a).
+  test('"Beides behalten" reads the day field too', async () => {
+    const listed = serializeSchema(defineSite({
+      site: 'cafe', name: 'Café', url: 'https://cafe.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+      pages: { home: { de: '/' } },
+      bricks: {
+        items: collection({
+          label: 'Karte', max: 50, order: 'manual', listing: { title: 'title' },
+          fields: { title: f.text('Titel', { translate: false }), sides: f.list('Beilagen', { of: { name: f.text('Name', { translate: false }) } }) },
+          tasks: [{ id: 'sides', label: 'Beilagen ändern', kind: 'edit', fields: ['sides'], pick: true, when: { from: 'ask' } }],
+        }),
+      },
+    }))
+    const salad = { _id: 'r1', name: 'Salat' }
+    // The list as typed: the stored row and one row more.
+    const ListStub = defineComponent({ props: fieldProps, emits: ['update:modelValue'], setup: (props, { emit }) => () => h('input', { name: props.path, onInput: (e: Event) => emit('update:modelValue', [salad, { _id: 'r3', name: (e.target as HTMLInputElement).value }]) }) })
+    clash({ title: 'Alt', sides: [salad, { _id: 'r2', name: 'Suppe' }] }, ['sides'])
+    const wrapper = mount(TaskSheet, {
+      props: { site: 'cafe', brickKey: 'items', brick: listed.bricks.items!, task: listed.bricks.items!.tasks![0]!, main: 'de', locales: ['de'], schema: listed, entry: { ...stored, data: { title: 'Alt', sides: [salad] } } as never },
+      global: { stubs: { GinkoField: ListStub } },
+      attachTo: document.body,
+    })
+    answer({ data: { sides: [salad] } })
+    await flushPromises()
+    await wrapper.get('input[name="sides"]').setValue('Knödel')
+    await press(wrapper, 'Veröffentlichen')
+    await flushPromises()
+    await wrapper.get('#sheet-starts-on').setValue(inDays(10))
+    await wrapper.findAll('button').find((b) => b.text() === 'Beides behalten')!.trigger('click')
+    await flushPromises()
+    const again = sent()[1]!
+    expect([again.from, again.publish, again.baseRev]).toEqual([inDays(10), undefined, 5])
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught (E10): in the English view the day field is not shown, and a press there put the German
   // input online now instead of on its day.
   test('the second language view keeps the day', async () => {

@@ -325,6 +325,30 @@ test('Ctrl+S in the form saves a change once, and an unchanged form not at all',
   }
 })
 
+// Wrong behaviour caught (H1 guard): once the form's conflict answer only merges, "Meine Eingaben speichern" here merged
+// and saved nothing, or saved on the old base.
+test('the conflict answer saves the input again on the new base', async () => {
+  const saveEntry = vi.fn(async () => ({ rev: 6 }))
+  saveEntry.mockImplementationOnce(async () => { throw { code: 'CHANGED_SINCE', message: 'Geändert.', details: { data: { title: { de: 'Fremd' } }, rev: 5, conflicts: ['title'] } } })
+  vi.stubGlobal('useOps', () => ({ opId: () => `op${saveEntry.mock.calls.length}`, saveEntry }))
+  try {
+    const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 0, data: { title: { de: 'Alt' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' } as const
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false },
+      global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    })
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Neu' })
+    await flushPromises()
+    wrapper.get('form').element.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }))
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Meine Eingaben speichern')!.trigger('click')
+    await flushPromises()
+    expect(saveEntry.mock.calls.map((c) => (c as unknown as [{ baseRev: number; fields: unknown }])[0]).map((c) => [c.baseRev, c.fields])).toEqual([[1, { title: { de: 'Neu' } }], [5, { title: { de: 'Neu' } }]])
+  } finally {
+    vi.stubGlobal('useOps', () => ({}))
+  }
+})
+
 // Wrong behaviour caught: the toast after a save ("Gespeichert … Rückgängig") sat on top of the save bar, so the bar
 // showed only "G…"; or it stayed up there after the editor closed.
 test('while the editor is open the toast sits above its save bar, and goes back down when it closes', async () => {

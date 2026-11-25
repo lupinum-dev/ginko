@@ -389,9 +389,16 @@ function editChange(n: (typeof waitingNotices.value)[number]) {
  * draft, a change waits unpublished), `later` plans a new entry.
  */
 type Step = 'publish' | 'draft' | 'later'
+/**
+ * The step of the last save: a conflict answer saves with it again (H1). Never a day: every save reads the day field at
+ * that moment. Before any save (a restored local copy that clashes) the input stays off the website, as Speichern does.
+ */
+let lastStep: Step = 'draft'
+/** Every save goes through here: the buttons, Enter, Ctrl+S and the conflict answers. */
 async function save(step: Step = 'publish') {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || !ready.value || removedHere.value) return
+  lastStep = step
   laterProblem.value = ''
   // A day typed and not finished is not "today": nothing is saved until it is a day or the field is empty (E1).
   if (asksDay.value && startsOnBad.value) {
@@ -439,11 +446,13 @@ function onFormKey(event: KeyboardEvent) {
   // On the publish step the key keeps the entry off the website: nobody publishes by pressing Ctrl+S.
   save(publishStep.value ? 'draft' : 'publish')
 }
+// A conflict answer merges, then saves like a press of the button: with a day in the field, a change of that day (a day
+// is always the primary button's step); without one, the last step.
 async function keepMine() {
-  await finish(await form.keepMine())
+  if (form.keepMine()) await save(dayOn.value ? 'publish' : lastStep)
 }
 async function keepBoth() {
-  await finish(await form.mergeLists())
+  if (form.mergeLists()) await save(dayOn.value ? 'publish' : lastStep)
 }
 // Someone removed the entry (N1): bring it back and save the input, or drop it.
 const removedHere = computed(() => !isCreate.value && !!props.removed && !!props.entry)

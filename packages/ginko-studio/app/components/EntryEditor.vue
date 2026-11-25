@@ -417,11 +417,12 @@ function onFormKey(event: KeyboardEvent) {
   save()
 }
 
+// A conflict answer merges; the save repeats the last one's publish step.
 async function keepMine() {
-  if (await form.keepMine() && !waiting.value) savedOnce.value = true
+  if (form.keepMine() && await form.saveAgain() && !waiting.value) savedOnce.value = true
 }
 async function keepBoth() {
-  if (await form.mergeLists() && !waiting.value) savedOnce.value = true
+  if (form.mergeLists() && await form.saveAgain() && !waiting.value) savedOnce.value = true
 }
 
 const ops = useOps(computed(() => props.site.slug))
