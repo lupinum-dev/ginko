@@ -11,9 +11,10 @@ import FieldFrame from './fields/FieldFrame.vue'
 
 /**
  * `status`: a warning about the day that is not an error (the field stays valid), shown under it. `earliest`: the first
- * day the field offers (default tomorrow; an exception may start today, slice 3).
+ * day the field offers (default tomorrow; an exception may start today, slice 3). `latest`: the last (default the same
+ * date next year; a yearly change's end may lie later, slice 4).
  */
-const props = defineProps<{ id: string; timeZone: string; error?: string; status?: string; label?: string; hint?: string; optional?: boolean; earliest?: string }>()
+const props = defineProps<{ id: string; timeZone: string; error?: string; status?: string; label?: string; hint?: string; optional?: boolean; earliest?: string; latest?: string }>()
 const day = defineModel<string>({ required: true })
 /**
  * A day typed by keyboard and not finished, or no date at all: the input's value is then empty, the same as no day, and
@@ -31,7 +32,7 @@ function pick(value: string) {
 const { t } = useI18n()
 const today = useToday(computed(() => props.timeZone))
 const tomorrow = computed(() => addDays(today.value, 1))
-const max = computed(() => `${Number(today.value.slice(0, 4)) + 1}${today.value.slice(4)}`)
+const max = computed(() => props.latest ?? `${Number(today.value.slice(0, 4)) + 1}${today.value.slice(4)}`)
 /** "Leeren", also for a date typed and not finished: the input's own typed parts go too, which the model cannot reach. */
 function clear() {
   const input = document.getElementById(props.id) as HTMLInputElement | null

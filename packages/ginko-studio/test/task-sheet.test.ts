@@ -1690,7 +1690,7 @@ describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slic
   test.each([
     ['one year or longer', 1, 366, 'Sommer', 'sheet-until', catalog.dated.yearlyTooLong],
     ['"Gilt ab" more than a year back', -400, 20, 'Sommer', 'sheet-starts-on', catalog.dated.startsTooFarBack],
-    ['a name longer than 60', 1, 30, 'x'.repeat(61), 'sheet-name', catalog.dated.nameTooLong],
+    ['a name longer than 60', 1, 30, 'x'.repeat(61), 'sheet-name', catalog.dated.nameTooLong.replace('{max}', '60')],
   ] as const)('%s: nothing is saved; the field has the focus and says why', async (_case, from, until, name, focus, message) => {
     const wrapper = mountTask(0)
     await ready(wrapper)

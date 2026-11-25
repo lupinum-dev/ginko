@@ -11,6 +11,34 @@ export interface DatedRow { id: string; from: string; until?: string; holds?: bo
 
 /** "26. Nov.": the days in a line and a hint. */
 const dayMonth = (day: string, words: ValueWords) => words.format.date(day, { day: 'numeric', month: 'short' })
+/** "So., 6. Dez.": the days of an exception in its notice. */
+const shortDay = (day: string, words: ValueWords) => words.format.date(day, { weekday: 'short', day: 'numeric', month: 'short' })
+
+/** An exception's days and labels as `datedChanges.list` gives them (the days of its time of today). */
+export interface ExceptionNotice { from: string; until: string; holds?: boolean; yearly?: boolean; name?: string | null }
+
+/**
+ * The notice of an exception, in the task sheet and the editor: its days and `changes`, while it holds what the website
+ * shows instead of `normal`. The name leads when there is one; a yearly one names its days without a year and, while
+ * it holds, says that it comes back (slice 4).
+ */
+export function exceptionText(c: ExceptionNotice, changes: string, normal: string | undefined, words: ValueWords): string {
+  const { t } = words
+  const name = c.name ?? ''
+  if (!c.holds) {
+    if (c.yearly) {
+      const days = { day: dayMonth(c.from, words), until: dayMonth(c.until, words), changes, name }
+      return name ? t('dated.waitingYearlyNamed', days) : t('dated.waitingYearly', days)
+    }
+    const days = { day: shortDay(c.from, words), until: shortDay(c.until, words), changes, name }
+    return name ? t('dated.waitingUntilNamed', days) : t('dated.waitingUntil', days)
+  }
+  const params = { until: shortDay(c.until, words), changes, name, normal: normal ?? '' }
+  const text = normal
+    ? (name ? t('dated.holdingNamed', params) : t('dated.holding', params))
+    : (name ? t('dated.holdingPlainNamed', params) : t('dated.holdingPlain', params))
+  return c.yearly ? t('dated.comesBack', { text }) : text
+}
 
 /**
  * The line under the notice of `n`: an exception that starts inside an earlier one of a shared field names the days

@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, leavesOf, stableJson, taskEnds as endsByThemselves, todayIn, weeklyTask, type Schema } from '@lupinum/ginko/internal'
+import { addDays, defaultsFor, isShown, leavesOf, NAME_MAX, stableJson, taskAsks, taskEnds as endsByThemselves, todayIn, weeklyTask, yearTooLong, type Schema } from '@lupinum/ginko/internal'
 import { textIn, TRANSLATION, useToday } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
@@ -39,7 +39,10 @@ import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { refDebounced } from '@vueuse/core'
 import { msToZoned, scheduleProblem, whenFull } from '../utils/when'
 import { whoText } from '../utils/who'
-import { coveredHint as coveredText, coveredId, datedLine } from '../utils/datedLines'
+import { coveredHint as coveredText, coveredId, datedLine, exceptionText } from '../utils/datedLines'
+import FieldFrame from './fields/FieldFrame.vue'
+import { Input } from '@studio/components/ui/input'
+import { Switch } from '@studio/components/ui/switch'
 
 const props = defineProps<{
   site: string
@@ -92,6 +95,9 @@ const startsOnBad = ref(false)
 /** "Gilt bis" of a task that asks both days (slice 3), with its own "not finished" state. */
 const untilOn = ref('')
 const untilBad = ref(false)
+/** "Jedes Jahr wiederholen" and "Name" of a task that asks for them (slice 4), kept in the local copy with the days. */
+const yearly = ref(false)
+const changeName = ref('')
 const form = useEntryForm({
   site: computed(() => props.site),
   brickKey: () => props.brickKey,
@@ -110,6 +116,8 @@ const form = useEntryForm({
   removed: () => !isCreate.value && !!props.removed,
   day: startsOn,
   until: untilOn,
+  yearly,
+  name: changeName,
 })
 const { draft, baseline, initial, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
 /** The form holds the values of an own proposal, not the stored ones. */
@@ -148,6 +156,8 @@ function loadProposal(start: Data, o: NonNullable<typeof mine.value>) {
   // A dated request keeps its day: sending it again replaces it with a request for that day, not for now (I2).
   if (o.from) startsOn.value = o.from
   if (o.until) untilOn.value = o.until
+  if (o.yearly) yearly.value = true
+  if (o.name) changeName.value = o.name
   fromProposal.value = true
   proposalWeek.value = fixedWeek.value ? (o.fields as Data)[fixedWeek.value] : undefined
 }
@@ -368,6 +378,13 @@ const when = computed(() => (props.task.kind === 'edit' ? props.task.when : unde
  * value. Its day fields stay also on an entry that went offline: the save is still an exception, which the server refuses.
  */
 const taskEnds = computed(() => taskAsksDay.value && endsByThemselves(props.task))
+/** What the task asks besides both days (slice 4): "Jedes Jahr wiederholen" and a name. */
+const asksYearly = computed(() => taskEnds.value && taskAsks(props.task).yearly)
+const asksName = computed(() => taskEnds.value && taskAsks(props.task).name)
+/** The switch is on, where the task asks for it: the days come back every year. */
+const isYearly = computed(() => asksYearly.value && yearly.value)
+/** The same date last year: the earliest start of a yearly change (decision 3). */
+const yearBack = (day: string) => `${Number(day.slice(0, 4)) - 1}${day.slice(4)}`
 /** A today-only task (`when: { from: '@today', until: '@today' }`): one labelled press sends its fixed values for today. */
 const todayOnly = computed(() => !!when.value && when.value.from === '@today' && !isCreate.value && !removedHere.value)
 const today = useToday(computed(() => props.schema.timeZone))
@@ -375,9 +392,11 @@ const today = useToday(computed(() => props.schema.timeZone))
 // meanwhile: the day is still sent, and the server's refusal for a draft says why nothing was saved (I2).
 const asksDay = computed(() => taskAsksDay.value && (taskEnds.value || publishStep.value || !!startsOn.value || startsOnBad.value))
 const startsOnError = ref('')
-watch(startsOn, () => { startsOnError.value = '' })
+watch([startsOn, yearly], () => { startsOnError.value = '' })
 const untilError = ref('')
-watch([startsOn, untilOn], () => { untilError.value = '' })
+watch([startsOn, untilOn, yearly], () => { untilError.value = '' })
+const nameError = ref('')
+watch(changeName, () => { nameError.value = '' })
 // "Es ist noch nichts geändert" (E6) under the day field until the day or a value changes.
 const { unchangedDay } = form
 // By content: a save puts an equal copy into the draft, which is no change.
@@ -396,16 +415,21 @@ const exceptionFrom = computed(() => holdingEdit.value?.from ?? (startsOn.value 
 /**
  * Why the days of an exception cannot be sent yet (the press names it at its field): "Gilt ab" half typed or before
  * today; "Gilt bis" half typed, empty, before "Gilt ab", or before today (a holding exception, whose start passed).
+ * With "Jedes Jahr wiederholen" (slice 4) "Gilt ab" may lie up to a year back and "Gilt bis" in the past (the change
+ * then waits for next year), and the days must be shorter than a year. The server checks the same.
  */
 const daysProblem = computed(() => {
   if (!taskEnds.value) return undefined
   const holding = holdingEdit.value
+  const from = exceptionFrom.value
   if (!holding && startsOnBad.value) return 'startsBad' as const
-  if (!holding && exceptionFrom.value < today.value) return 'startsPast' as const
+  if (!holding && isYearly.value && from < yearBack(today.value)) return 'startsTooFarBack' as const
+  if (!holding && !isYearly.value && from < today.value) return 'startsPast' as const
   if (untilBad.value) return 'untilBad' as const
   if (!untilOn.value) return 'untilEmpty' as const
-  if (untilOn.value < exceptionFrom.value) return 'untilBeforeFrom' as const
-  return untilOn.value < today.value ? 'untilPast' as const : undefined
+  if (untilOn.value < from) return 'untilBeforeFrom' as const
+  if (isYearly.value && yearTooLong({ from, until: untilOn.value, yearly: true, set: {} })) return 'yearlyTooLong' as const
+  return (!isYearly.value || holding) && untilOn.value < today.value ? 'untilPast' as const : undefined
 })
 /** The days an exception save sends; undefined while they are not both valid. */
 const exceptionDays = computed(() => {
@@ -415,10 +439,11 @@ const exceptionDays = computed(() => {
 })
 /**
  * What the primary button says for an exception: "Für 26. Nov. bis 31. Dez. …", "Bis 31. Dez. …", "Für heute …", and
- * "Bis heute …" for one that started before today.
+ * "Bis heute …" for one that started before today; "Jedes Jahr 1. Juni bis 31. Aug. …" for a yearly one (no year).
  */
 function exceptionLabel({ from, until }: { from: string; until: string }) {
   const verb = props.approval ? 'review' : 'publish'
+  if (isYearly.value) return t(`dated.${verb}Yearly`, { day: dayMonth(from), until: dayMonth(until) })
   if (until === today.value) return t(from < today.value ? `dated.${verb}UntilToday` : `dated.${verb}Today`)
   if (from <= today.value) return t(`dated.${verb}Until`, { until: dayMonth(until) })
   return t(`dated.${verb}FromUntil`, { day: dayMonth(from), until: dayMonth(until) })
@@ -452,13 +477,12 @@ const waitingNotices = computed(() => (dated.value ?? []).filter((c) => !c.stopp
   const holds = c.holds === true
   let text: string
   if (c.until === undefined) text = t('dated.waiting', { day: format.date(c.from, { weekday: 'long', day: 'numeric', month: 'long' }), changes })
-  else if (!holds) text = t('dated.waitingUntil', { day: shortDay(c.from), until: shortDay(c.until), changes })
   else {
     // What visitors see now, and the normal value it covers ("sonst 12,90 €") when that has a short form.
-    const normal = c.normal ? valuesText(fields.value, ours, c.normal as Data, props.main, valueWords.value) : undefined
-    text = normal ? t('dated.holding', { until: shortDay(c.until), changes, normal }) : t('dated.holdingPlain', { until: shortDay(c.until), changes })
+    const normal = holds && c.normal ? valuesText(fields.value, ours, c.normal as Data, props.main, valueWords.value) : undefined
+    text = exceptionText({ ...c, until: c.until, holds }, changes, normal, valueWords.value)
   }
-  return [{ id: c.id, from: c.from, until: c.until, holds, fields: ours, values, text }]
+  return [{ id: c.id, from: c.from, until: c.until, holds, yearly: c.yearly === true, name: c.name, fields: ours, values, text }]
 }))
 type Notice = (typeof waitingNotices.value)[number]
 /** The line under a notice: two offers on the same days, a change that waits for an offer's end (datedLines). */
@@ -474,7 +498,11 @@ const mayEdit = (n: Notice) => asksDay.value && !foreign.value && (n.until !== u
 const editing = ref<{ id: string; fields: string[] }>()
 function editChange(n: Notice) {
   if (!n.holds) startsOn.value = n.from
-  if (n.until !== undefined) untilOn.value = n.until
+  if (n.until !== undefined) {
+    untilOn.value = n.until
+    yearly.value = n.yearly
+    changeName.value = n.name ?? ''
+  }
   for (const key of n.fields) form.setField(key, n.values[key] ?? undefined)
   editing.value = { id: n.id, fields: n.fields }
   nextTick(() => document.getElementById(n.holds ? 'sheet-until' : 'sheet-starts-on')?.focus())
@@ -485,7 +513,7 @@ function editChange(n: Notice) {
  */
 const edited = computed(() => {
   const row = editing.value && waitingNotices.value.find((n) => n.id === editing.value!.id)
-  return row ? { id: row.id, from: row.from, until: row.until, holds: row.holds, fields: editing.value!.fields } : undefined
+  return row ? { id: row.id, from: row.from, until: row.until, holds: row.holds, yearly: row.yearly, fields: editing.value!.fields } : undefined
 })
 /** A holding exception being edited: "Gilt ab" is fixed and shown as text; the save edits that row (`change`). */
 const holdingEdit = computed(() => (edited.value?.holds ? edited.value : undefined))
@@ -549,15 +577,24 @@ async function save(step: Step = 'publish') {
     // An exception (slice 3): "Gilt ab" empty is today, never before; "Gilt bis" is required, not before it nor today.
     const problem = daysProblem.value
     if (problem === 'startsPast') startsOnError.value = messageOf({ key: 'errors.dayBeforeToday' })
-    if (problem === 'startsBad' || problem === 'startsPast') return focusDay('sheet-starts-on')
+    if (problem === 'startsTooFarBack') startsOnError.value = t('dated.startsTooFarBack')
+    if (problem === 'startsBad' || problem === 'startsPast' || problem === 'startsTooFarBack') return focusDay('sheet-starts-on')
     if (problem) {
-      if (problem !== 'untilBad') untilError.value = problem === 'untilEmpty' ? t('dated.dayRequired') : problem === 'untilBeforeFrom' ? t('dated.untilBeforeFrom') : messageOf({ key: 'errors.dayBeforeToday' })
+      if (problem !== 'untilBad') {
+        untilError.value = problem === 'untilEmpty' ? t('dated.dayRequired') : problem === 'untilBeforeFrom' ? t('dated.untilBeforeFrom')
+          : problem === 'yearlyTooLong' ? t('dated.yearlyTooLong') : messageOf({ key: 'errors.dayBeforeToday' })
+      }
       return focusDay('sheet-until')
+    }
+    const name = asksName.value ? changeName.value.trim() : ''
+    if (name.length > NAME_MAX) {
+      nameError.value = t('dated.nameTooLong', { max: NAME_MAX })
+      return focusDay('sheet-name')
     }
     const from = exceptionFrom.value
     // "Bearbeiten" edits that exception while its start stays (L7): its values are all sent, so it is replaced.
     const was = edited.value?.until !== undefined && edited.value.from === from ? edited.value : undefined
-    return sendDated(from, was?.fields, { until: untilOn.value, ...(was ? { change: was.id } : {}) })
+    return sendDated(from, was?.fields, { until: untilOn.value, ...(was ? { change: was.id } : {}), ...(isYearly.value ? { yearly: true as const } : {}), ...(name ? { name } : {}) })
   }
   const from = dayOn.value
   if (from !== undefined) {
@@ -768,8 +805,19 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
                 <p class="font-semibold">{{ shortDay(holdingEdit.from) }}</p>
                 <p class="text-sm text-muted-foreground">{{ t('dated.fromFixed') }}</p>
               </div>
-              <StartsOnField v-else-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :hint="taskEnds ? t('dated.startsOnHintToday') : undefined" :earliest="taskEnds ? today : undefined" :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
-              <StartsOnField v-if="asksDay && taskEnds && !foreign" id="sheet-until" v-model="untilOn" v-model:bad="untilBad" :label="t('dated.until')" :earliest="startsOn || today" :time-zone="schema.timeZone" :error="untilError" />
+              <StartsOnField v-else-if="asksDay && !foreign" id="sheet-starts-on" v-model="startsOn" v-model:bad="startsOnBad" optional :hint="taskEnds ? t(isYearly ? 'dated.yearlyHint' : 'dated.startsOnHintToday') : undefined" :earliest="taskEnds ? (isYearly ? yearBack(today) : today) : undefined" :time-zone="schema.timeZone" :error="startsOnError" :status="unchangedDay ? t('dated.nothingChanged') : secondChange" />
+              <StartsOnField v-if="asksDay && taskEnds && !foreign" id="sheet-until" v-model="untilOn" v-model:bad="untilBad" :label="t('dated.until')" :earliest="startsOn || (isYearly ? yearBack(today) : today)" :latest="isYearly ? addDays(exceptionFrom, 364) : undefined" :time-zone="schema.timeZone" :error="untilError" />
+              <!-- Slice 4: under "Gilt bis", in this order. A holding yearly change keeps coming back (decision 2). -->
+              <FieldFrame v-if="asksDay && asksYearly && !foreign" id="sheet-yearly" inline :label="t('dated.yearly')" :hint="holdingEdit?.yearly ? t('dated.yearlyWhileHolding') : undefined">
+                <template #default="{ describedBy }">
+                  <Switch id="sheet-yearly" v-model="yearly" :disabled="holdingEdit?.yearly === true" :aria-describedby="describedBy" />
+                </template>
+              </FieldFrame>
+              <FieldFrame v-if="asksDay && asksName && !foreign" id="sheet-name" :label="t('dated.name')" optional :hint="t('dated.nameHint')" :errors="nameError ? [nameError] : []">
+                <template #default="{ describedBy, invalid }">
+                  <Input id="sheet-name" v-model="changeName" class="max-w-80" autocomplete="off" :aria-invalid="invalid" :aria-describedby="describedBy" />
+                </template>
+              </FieldFrame>
             </div>
           </template>
         </div>

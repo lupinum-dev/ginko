@@ -20,6 +20,9 @@ export interface LocalDraft {
   from?: string
   /** "Gilt bis" of a task sheet that asks both days (slice 3), when one was typed. */
   until?: string
+  /** "Jedes Jahr wiederholen" switched on, and the name typed (slice 4). */
+  yearly?: true
+  name?: string
   /** The entry's area and its title as typed, for the list on Heute (records written before had neither). */
   brick?: string
   title?: string

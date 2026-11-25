@@ -58,13 +58,17 @@ export interface EntryFormOptions {
   day?: Ref<string>
   /** "Gilt bis" of the form (a task that asks both days): kept and brought back with the day. */
   until?: Ref<string>
+  /** "Jedes Jahr wiederholen" and "Name" of the form (slice 4): kept and brought back with the days. */
+  yearly?: Ref<boolean>
+  name?: Ref<string>
 }
 
 /**
  * What a save with a day also sends (slice 3): `until`, the last day of an exception; `change`, the holding exception it
- * edits; `empty`, a save without a changed field is still sent (a today-only task, whose values the task fixes).
+ * edits; `empty`, a save without a changed field is still sent (a today-only task, whose values the task fixes);
+ * `yearly` and `name` of an exception (slice 4).
  */
-export interface DatedExtra { until?: string; change?: string; empty?: boolean }
+export interface DatedExtra { until?: string; change?: string; empty?: boolean; yearly?: true; name?: string }
 
 export function useEntryForm(o: EntryFormOptions) {
   const ops = useOps(o.site)
@@ -283,7 +287,7 @@ export function useEntryForm(o: EntryFormOptions) {
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
         // The server checks the task against the changed fields and the confirmed ones (entries.ts saveNow).
         const task = o.task?.([...new Set([...roots, ...confirm.value.map((leaf) => leaf.split('.')[0]!)])])
-        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}), ...(publishAs === true ? { publish: true as const } : {}), ...(from === undefined ? {} : { from }), ...(from !== undefined && extra.until !== undefined ? { until: extra.until } : {}), ...(from !== undefined && extra.change !== undefined ? { change: extra.change } : {}) }
+        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}), ...(publishAs === true ? { publish: true as const } : {}), ...(from === undefined ? {} : { from }), ...(from !== undefined && extra.until !== undefined ? { until: extra.until } : {}), ...(from !== undefined && extra.change !== undefined ? { change: extra.change } : {}), ...(from !== undefined && extra.yearly ? { yearly: extra.yearly } : {}), ...(from !== undefined && extra.name !== undefined ? { name: extra.name } : {}) }
         const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main(), timeZone: o.timeZone?.() })
         // A draft saved as a draft: what it lacks shows as notes. A live entry's warnings are about fields it did not
         // change, which its form does not show.
@@ -486,10 +490,14 @@ export function useEntryForm(o: EntryFormOptions) {
     const title = brick.kind === 'collection' ? typedTitle(brick, draft.value, o.main()) : undefined
     const from = o.day?.value
     const until = o.until?.value
-    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}), ...(from ? { from } : {}), ...(until ? { until } : {}) })
+    const name = o.name?.value
+    writeLocalDraft(key, {
+      v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}),
+      ...(from ? { from } : {}), ...(until ? { until } : {}), ...(o.yearly?.value ? { yearly: true as const } : {}), ...(name ? { name } : {}),
+    })
   }
   // Typed back to what was there: the next write removes the copy (a save removes it at once, in write()).
-  const localWriter = useLocalDraftWriter(() => [draft.value, o.day?.value, o.until?.value], keepLocal)
+  const localWriter = useLocalDraftWriter(() => [draft.value, o.day?.value, o.until?.value, o.yearly?.value, o.name?.value], keepLocal)
 
   function forgetLocal() {
     localWriter.cancel()
@@ -524,6 +532,8 @@ export function useEntryForm(o: EntryFormOptions) {
     // A copy without a day keeps a day already typed (H1).
     if (o.day && record.from) o.day.value = record.from
     if (o.until && record.until) o.until.value = record.until
+    if (o.yearly && record.yearly) o.yearly.value = true
+    if (o.name && record.name) o.name.value = record.name
     waiting.value = false
     if (!entry) return
     const clash = own.filter((k) => (entry.fieldRevs[k] ?? 0) > copyBase && !same(entry.data[k], next[k]))
