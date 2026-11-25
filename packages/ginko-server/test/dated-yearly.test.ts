@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import * as bothHomes from '../../ginko/test/fixtures/both-homes-yearly'
-import { errorOf, opId, people, setup } from './setup'
+import { errorOf, opId, people, renewSession, setup } from './setup'
 
 // Mail is the one thing mocked besides the clock. The table of number 1 is saved on this day, so the days of 2028 (a leap
 // year) lie within a year.
@@ -193,6 +193,32 @@ describe('the same start and overlaps (state table)', () => {
     expect(await s.shownPrice(s.saibling)).toBe(950)
     await s.advanceTo(at('2028-11-16') + 1000)
     expect(await s.shownPrice(s.saibling)).toBe(1350)
+  })
+
+  // Row "same start again" in a later year (lead's cell 1): the list gives a season the days of its current or next time,
+  // and "Bearbeiten" sends them back with the row's id. Wrong behaviour caught: the second year's start is not taken for the
+  // row's start, so the save makes a second row (two seasons on the same days) or is refused as a tie with itself; or
+  // the edited row stops matching its days of the years after.
+  it('a later year: a save with the listed days and the row\'s id edits that row; its days stay those of every year', async () => {
+    const s = await yearlySetup()
+    await s.season(990, '2027-11-01', '2027-11-30', { name: 'Herbst' })
+    const [row] = await s.dated(s.saibling)
+    await s.advanceTo(at('2027-11-01') + 1000)
+    await s.advanceTo(at('2027-12-01') + 1000)
+    await s.advanceTo(at('2028-10-15') + 1000)
+    await renewSession(s.t, 'owner')
+    const [listed] = await s.list()
+    expect(listed).toMatchObject({ id: row!._id, from: '2028-11-01', until: '2028-11-30' })
+    await s.season(950, listed!.from, listed!.until!, { name: 'Herbst', change: row!._id })
+    const rows = await s.dated(s.saibling)
+    expect(rows).toMatchObject([{ _id: row!._id, from: '2028-11-01', until: '2028-11-30', yearly: true, fields: { price: { amount: 950 } } }])
+    const seen: [string, number][] = []
+    for (const day of ['2028-10-31', '2028-11-01', '2028-11-30', '2028-12-01', '2029-10-31', '2029-11-01', '2029-12-01']) {
+      await s.advanceTo(at(day) + 1000)
+      seen.push([day, (await s.shownPrice(s.saibling))!])
+    }
+    expect(seen).toEqual([['2028-10-31', 1350], ['2028-11-01', 950], ['2028-11-30', 950], ['2028-12-01', 1350], ['2029-10-31', 1350], ['2029-11-01', 950], ['2029-12-01', 1350]])
+    expect(await s.dated(s.saibling)).toHaveLength(1)
   })
 
   // Row "tie". Wrong behaviour caught: a one-off change that starts on the first day of the season's next time, or a second

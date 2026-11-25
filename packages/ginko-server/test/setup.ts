@@ -138,6 +138,20 @@ export async function revokeSession(t: Backend, person: Person) {
   await t.mutation(components.betterAuth.adapter.deleteOne, { model: 'session', where: [{ field: 'id', value: sessionIdOf(people[person]) }] })
 }
 
+/**
+ * The person signs in again: a session that lives 24 hours from now, under the same id (a fake clock that jumped a year
+ * needs it; the expired row may already be gone).
+ */
+export async function renewSession(t: Backend, person: Person) {
+  const id = people[person]
+  const now = Date.now()
+  await revokeSession(t, person)
+  await t.mutation(components.betterAuth.adapter.create, {
+    model: 'session',
+    data: { id: sessionIdOf(id), token: `token-${id}-${now}`, userId: id, expiresAt: now + 24 * 60 * 60 * 1000, createdAt: now, updatedAt: now, ipAddress: null, userAgent: null },
+  })
+}
+
 /** `paginationOpts` of a paginated query's first page, as `useConvexPaginatedQuery` asks for it. */
 export const firstPage = { numItems: 50, cursor: null }
 

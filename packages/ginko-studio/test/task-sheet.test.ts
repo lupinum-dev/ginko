@@ -1766,6 +1766,38 @@ describe('"Jedes Jahr wiederholen" and "Name" of a task that asks for them (slic
     wrapper.unmount()
   })
 
+  // Lead's cell 1, the sheet's half (the server's: dated-yearly.test.ts "a later year"). The list gives a season the days
+  // of its current or next time, which in a later year are not its stored first days. Wrong behaviour caught: "Bearbeiten"
+  // and a new value only read as a second change on other days ("Es gibt schon eine Änderung ab …"), or the save goes
+  // without the row's id, so the server would make a second season.
+  test('"Bearbeiten" on a season and only a value changed: no second-change line; one save with the row\'s id', async () => {
+    datedRows.value = [row()]
+    const wrapper = mountTask(0)
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'Bearbeiten')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('input[name="price"]').setValue('9,50')
+    expect(wrapper.find('#sheet-starts-on-status').exists()).toBe(false)
+    await press(wrapper, footer(wrapper)[0]!)
+    await flushPromises()
+    expect(sent().map((s) => [s.from, s.until, s.yearly, s.name, s.change])).toEqual([[inDays(10), inDays(40), true, 'Sommer', 'd1']])
+    wrapper.unmount()
+  })
+
+  // Lead's cell 2, row "a one-off change inside the yearly days". Wrong behaviour caught: the line under the one-off change
+  // names other days than the ones of this year's time of the season (the list's days), so it says the wrong days hold both.
+  test('a one-off change inside a holding season: the line names the days of this year\'s time', async () => {
+    datedRows.value = [
+      row({ id: 'd1', from: inDays(-5), until: inDays(20), holds: true }),
+      row({ id: 'd2', from: inDays(5), until: inDays(10), yearly: undefined, name: 'Betriebsurlaub', values: { price: { amount: 500 } } }),
+    ]
+    const wrapper = mountTask(0)
+    await ready(wrapper, '12,90')
+    expect(wrapper.get('[data-test="dated-overlap"]').text()).toBe(`Von ${short(inDays(5))} bis ${short(inDays(10))} gelten beide. Die Website zeigt die Änderung ab ${short(inDays(5))}.`)
+    wrapper.unmount()
+  })
+
   // Row "second language shown". Wrong behaviour caught: the switch or the name shows in the English view (where they are
   // not saved), or a save from there drops them.
   test('the second language view hides the switch and the name; the save keeps them', async () => {
