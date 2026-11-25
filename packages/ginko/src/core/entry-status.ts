@@ -11,7 +11,7 @@ export type Time = number
 export type Day = string
 
 /** Why a plan did not go online: a link that leads nowhere, fields that fail the full check, an import after its time, or an error of the run. */
-export type StopReason = { code: 'link'; href: string } | { code: 'invalid'; fields: string[] } | { code: 'late' } | { code: 'failed' }
+export type StopReason = { code: 'link'; href: string } | { code: 'invalid'; fields: string[]; cause?: { key: string; params?: Record<string, string | number> } } | { code: 'late' } | { code: 'failed' }
 
 /** One thing that waits. `by` is a user id; a file entry and an imported plan have no person. */
 export type Waiting =

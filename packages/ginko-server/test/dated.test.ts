@@ -1,6 +1,6 @@
 // Dated changes on the platform (D125–D128): `entries.save` and `entries.publish` with `from`, the run on the day
 // (`datedChanges.applyDue`), a change that stops, moving and cancelling, removal, the bundle's `upcoming` and the export.
-import { factComponent, type Schema } from '@lupinum/ginko/internal'
+import { factComponent, SITE_BUDGET as BUDGET, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
@@ -226,6 +226,23 @@ describe('on the day', () => {
 
   // Wrong behaviour caught: an error that is not a refusal (here a stored choice field without its options) makes the
   // run fail silently; the change then neither starts nor says that it stopped.
+  // Wrong behaviour caught (G5): a refusal while writing (the site reached its storage budget since the change was planned)
+  // is taken as an error of the run ("failed", "tell us"), or as fields that no longer pass, though the cause is the budget.
+  it('a refusal while writing stops the change as invalid with the refusal as its cause', async () => {
+    const s = await datedSetup()
+    await s.plan(14500)
+    await s.t.run(async (ctx) => { await ctx.db.patch(s.site, { bytes: BUDGET.siteBytes }) })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await s.advanceTo(DAY1 + 1000)
+    expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
+    const [stopped] = await s.dated(s.saibling)
+    expect(stopped!.stopped!.reason).toEqual({ code: 'invalid', fields: ['price'], cause: { key: 'errors.siteStorageLimitReached', params: { used: '4.1 MB', limit: '4 MB', over: '1 KB' } } })
+    expect(log).not.toHaveBeenCalled()
+    const today = await s.as.owner.query(api.entries.stoppedPlans, { site: 'restaurant' })
+    expect(today[0]!.causeText).toBe('Die Werte ließen sich nicht speichern: Der Textspeicher der Seite ist voll (4.1 MB von 4 MB). Kürze oder entferne Einträge. Änderungen, die nichts vergrößern, lassen sich immer speichern.')
+    log.mockRestore()
+  })
+
   it('an error of the run stops the change with "failed" and logs only the class', async () => {
     const s = await datedSetup()
     await s.plan(1450)

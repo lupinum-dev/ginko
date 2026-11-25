@@ -391,14 +391,16 @@
       "invalid": "{count, plural, one {Falta {fields} o no es válido.} other {Faltan {fields} o no son válidos.}}",
       "late": "Su hora ya había pasado cuando se importó el contenido.",
       "failed": "Se produjo un error al publicarla. Vuelve a planificarla. Si vuelve a pasar, avísanos.",
-      "changeFailed": "Se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos."
+      "changeFailed": "Se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos.",
+      "refused": "No se pudieron guardar los valores: {why}"
     },
     "because": {
       "link": "enlaza a una página que no existe: {href}",
       "invalid": "{count, plural, one {falta {fields} o no es válido.} other {faltan {fields} o no son válidos.}}",
       "late": "su hora ya había pasado cuando se importó el contenido.",
       "failed": "se produjo un error al publicarla. Vuelve a planificarla. Si vuelve a pasar, avísanos.",
-      "changeFailed": "se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos."
+      "changeFailed": "se produjo un error al aplicarlo. Dale al cambio un nuevo día. Si vuelve a pasar, avísanos.",
+      "refused": "no se pudieron guardar los valores: {why}"
     },
     "changeTitle": "“{title}”: el cambio a partir del {day, date, ::MMMMd} no se aplicó"
   },

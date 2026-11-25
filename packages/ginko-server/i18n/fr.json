@@ -391,14 +391,16 @@
       "invalid": "{count, plural, one {{fields} manque ou n’est pas valide.} other {{fields} manquent ou ne sont pas valides.}}",
       "late": "Son heure était déjà passée lors de l’import du contenu.",
       "failed": "Une erreur s’est produite pendant la mise en ligne. Planifiez-la à nouveau. Si cela se reproduit, prévenez-nous.",
-      "changeFailed": "Une erreur s’est produite pendant son application. Donnez au changement un nouveau jour. Si cela se reproduit, prévenez-nous."
+      "changeFailed": "Une erreur s’est produite pendant son application. Donnez au changement un nouveau jour. Si cela se reproduit, prévenez-nous.",
+      "refused": "Les valeurs n’ont pas pu être enregistrées : {why}"
     },
     "because": {
       "link": "il renvoie vers une page qui n’existe pas : {href}",
       "invalid": "{count, plural, one {{fields} manque ou n’est pas valide.} other {{fields} manquent ou ne sont pas valides.}}",
       "late": "son heure était déjà passée lors de l’import du contenu.",
       "failed": "une erreur s’est produite pendant la mise en ligne. Planifiez-la à nouveau. Si cela se reproduit, prévenez-nous.",
-      "changeFailed": "une erreur s’est produite pendant son application. Donnez au changement un nouveau jour. Si cela se reproduit, prévenez-nous."
+      "changeFailed": "une erreur s’est produite pendant son application. Donnez au changement un nouveau jour. Si cela se reproduit, prévenez-nous.",
+      "refused": "les valeurs n’ont pas pu être enregistrées : {why}"
     },
     "changeTitle": "« {title} » : le changement à partir du {day, date, ::MMMMd} n’a pas été appliqué"
   },

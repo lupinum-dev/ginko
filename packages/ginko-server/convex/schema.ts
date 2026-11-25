@@ -13,11 +13,12 @@ const role = v.union(v.literal('owner'), v.literal('staff'))
 const historyMsg = v.object({ key: v.string(), params: v.optional(v.record(v.string(), v.any())) })
 /**
  * Why a plan did not go online (D103): a link to a page that does not exist, fields that fail the full check (their
- * paths), a time that had passed when the content was imported, or an error of the run itself (`failed`).
+ * paths), a time that had passed when the content was imported, or an error of the run itself (`failed`). A refusal while a
+ * dated change is written (a budget the site reached since, G5) is `invalid` with that refusal's message as its `cause`.
  */
 export const stopReason = v.union(
   v.object({ code: v.literal('link'), href: v.string() }),
-  v.object({ code: v.literal('invalid'), fields: v.array(v.string()) }),
+  v.object({ code: v.literal('invalid'), fields: v.array(v.string()), cause: v.optional(v.object({ key: v.string(), params: v.optional(v.record(v.string(), v.union(v.string(), v.number()))) })) }),
   v.object({ code: v.literal('late') }),
   v.object({ code: v.literal('failed') }),
 )

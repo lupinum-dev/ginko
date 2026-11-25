@@ -391,14 +391,16 @@
       "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
       "late": "Its time had passed when the content was imported.",
       "failed": "An error happened while it went online. Plan it again. If it happens again, please tell us.",
-      "changeFailed": "An error happened while it was written. Give the change a new day. If it happens again, please tell us."
+      "changeFailed": "An error happened while it was written. Give the change a new day. If it happens again, please tell us.",
+      "refused": "The values could not be saved: {why}"
     },
     "because": {
       "link": "it links to a page that does not exist: {href}",
       "invalid": "{count, plural, one {{fields} is missing or not valid.} other {{fields} are missing or not valid.}}",
       "late": "its time had passed when the content was imported.",
       "failed": "an error happened while it went online. Plan it again. If it happens again, please tell us.",
-      "changeFailed": "an error happened while it was written. Give the change a new day. If it happens again, please tell us."
+      "changeFailed": "an error happened while it was written. Give the change a new day. If it happens again, please tell us.",
+      "refused": "the values could not be saved: {why}"
     },
     "changeTitle": "“{title}”: the change from {day, date, ::MMMMd} did not take effect"
   },

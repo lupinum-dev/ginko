@@ -391,14 +391,16 @@
       "invalid": "{count, plural, one {{fields} fehlt oder ist ungültig.} other {{fields} fehlen oder sind ungültig.}}",
       "late": "Seine Zeit war schon vorbei, als die Inhalte importiert wurden.",
       "failed": "Beim Veröffentlichen ist ein Fehler aufgetreten. Plane den Eintrag neu. Wenn es wieder passiert, melde dich bitte bei uns.",
-      "changeFailed": "Beim Übernehmen ist ein Fehler aufgetreten. Gib der Änderung einen neuen Tag. Wenn es wieder passiert, melde dich bitte bei uns."
+      "changeFailed": "Beim Übernehmen ist ein Fehler aufgetreten. Gib der Änderung einen neuen Tag. Wenn es wieder passiert, melde dich bitte bei uns.",
+      "refused": "Die Werte ließen sich nicht speichern: {why}"
     },
     "because": {
       "link": "er auf eine Seite verlinkt, die es nicht gibt: {href}",
       "invalid": "{count, plural, one {{fields} fehlt oder ungültig ist.} other {{fields} fehlen oder ungültig sind.}}",
       "late": "seine Zeit schon vorbei war, als die Inhalte importiert wurden.",
       "failed": "beim Veröffentlichen ein Fehler aufgetreten ist. Plane den Eintrag neu. Wenn es wieder passiert, melde dich bitte bei uns.",
-      "changeFailed": "beim Übernehmen ein Fehler aufgetreten ist. Gib der Änderung einen neuen Tag. Wenn es wieder passiert, melde dich bitte bei uns."
+      "changeFailed": "beim Übernehmen ein Fehler aufgetreten ist. Gib der Änderung einen neuen Tag. Wenn es wieder passiert, melde dich bitte bei uns.",
+      "refused": "sich die Werte nicht speichern ließen: {why}"
     },
     "changeTitle": "„{title}“: Änderung ab {day, date, ::MMMMd} wurde nicht übernommen"
   },
