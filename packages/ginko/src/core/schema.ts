@@ -701,7 +701,7 @@ function whenProblems(path: string, task: Task, when: unknown, brick: Brick, sch
  */
 function setProblems(path: string, task: Task, set: unknown, brick: Brick, schema: Schema): string[] {
   if (task.kind !== 'edit') return [`${path}: set is only for an edit task.`]
-  if (typeof set !== 'object' || set === null || Array.isArray(set)) return [`${path}.set must be an object of field values, such as { onMenu: false }.`]
+  if (typeof set !== 'object' || set === null || Array.isArray(set)) return [`${path}.set must be an object of field values, such as { shown: false }.`]
   const out: string[] = []
   for (const [name, value] of Object.entries(set)) {
     const field = Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
