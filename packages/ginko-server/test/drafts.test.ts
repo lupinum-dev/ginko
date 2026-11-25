@@ -306,6 +306,33 @@ describe('a stopped plan (D103)', () => {
     await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: b.entry, lifeRev: (removed as { lifeRev: number }).lifeRev })
     expect(await shape(b.entry)).toEqual({ state: 'draft', planned: false, stopped: false })
     expect(await both()).toEqual([])
+
+    // Copy, undo and revert, of a stopped draft and of a planned one: a copy is a new draft with neither; an undo or a
+    // revert of its content keeps what it was.
+    const c = await s.createDraft('Stopp C')
+    const d = await s.createDraft('Geplant D')
+    await stop(c.entry)
+    await plan(d.entry)
+    for (const [id, was] of [[c.entry, { planned: false, stopped: true }], [d.entry, { planned: true, stopped: false }]] as const) {
+      const copy = await s.as.owner.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), entry: id })
+      expect(await shape((copy as { entry: string }).entry)).toEqual({ state: 'draft', planned: false, stopped: false })
+      const first = await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', id as Id<'entries'>)).first())
+      const saved = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: id, baseRev: (await s.row(id))!.rev, fields: { title: { de: 'Anders' } }, sentence: 'Titel' })
+      await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: saved.change as string })
+      expect(await shape(id)).toEqual({ state: 'draft', ...was })
+      await s.as.owner.mutation(api.entries.revert, { site: 'restaurant', opId: opId(), entry: id, change: first!._id })
+      expect(await shape(id)).toEqual({ state: 'draft', ...was })
+    }
+
+    // An import that carries a plan to come and a stop keeps the plan only.
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const data = { title: { de: 'Import' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi' } }
+    const { ids } = await s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [], entries: [{ id: 'both', brick: 'events', kind: 'item', order: 1, prints: {}, rev: 1, state: 'draft', data, publishAt: time + HOUR, stopped: { at: NOW, reason: { code: 'late' } } }],
+    })
+    expect(await shape(ids[0]![1])).toEqual({ state: 'draft', planned: true, stopped: false })
+    expect(await both()).toEqual([])
+    vi.unstubAllEnvs()
   })
 
   it('a plain draft still has nothing to cancel', async () => {
