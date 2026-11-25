@@ -489,7 +489,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "“ gibt es in einer Änderung nicht: sie hat nur „from“ und „set“."
+    "“ gibt es in einer Änderung nicht: sie hat nur „from“, „until“ und „set“."
    ],
    "changeNotYet": [
     "„",
@@ -506,6 +506,40 @@ export const compiled: Record<string, MessageTree> = {
      "day"
     ],
     ". Schreibe sie als eine Änderung."
+   ],
+   "changeUntilDay": [
+    "„",
+    [
+     "a",
+     "value"
+    ],
+    "“ ist kein Tag. Schreibe „until“ als JJJJ-MM-TT, zum Beispiel 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "Das Ende einer Änderung (",
+    [
+     "a",
+     "until"
+    ],
+    ") liegt vor ihrem Beginn (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "Zwei Änderungen mit Ende beginnen am ",
+    [
+     "a",
+     "day"
+    ],
+    " und setzen beide „",
+    [
+     "a",
+     "label"
+    ],
+    "“. Gib einer einen anderen Beginn oder schreibe sie als eine."
    ],
    "changeFixed": [
     "„",
@@ -1978,7 +2012,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "”: it has only “from” and “set”."
+    "”: it has only “from”, “until” and “set”."
    ],
    "changeNotYet": [
     "“",
@@ -1995,6 +2029,40 @@ export const compiled: Record<string, MessageTree> = {
      "day"
     ],
     ". Write them as one change."
+   ],
+   "changeUntilDay": [
+    "“",
+    [
+     "a",
+     "value"
+    ],
+    "” is not a day. Write “until” as YYYY-MM-DD, for example 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "The end of a change (",
+    [
+     "a",
+     "until"
+    ],
+    ") is before its start (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "Two changes with an end start on ",
+    [
+     "a",
+     "day"
+    ],
+    " and both set “",
+    [
+     "a",
+     "label"
+    ],
+    "”. Give one of them another start, or write them as one."
    ],
    "changeFixed": [
     "“",
@@ -3467,7 +3535,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "»: solo tiene «from» y «set»."
+    "»: solo tiene «from», «until» y «set»."
    ],
    "changeNotYet": [
     "«",
@@ -3484,6 +3552,40 @@ export const compiled: Record<string, MessageTree> = {
      "day"
     ],
     ". Escríbelos como un solo cambio."
+   ],
+   "changeUntilDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» no es un día. Escribe «until» como AAAA-MM-DD, por ejemplo 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "El final de un cambio (",
+    [
+     "a",
+     "until"
+    ],
+    ") es anterior a su inicio (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "Dos cambios con final empiezan el ",
+    [
+     "a",
+     "day"
+    ],
+    " y los dos fijan «",
+    [
+     "a",
+     "label"
+    ],
+    "». Da a uno otro inicio o escríbelos como uno solo."
    ],
    "changeFixed": [
     "«",
@@ -4958,7 +5060,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    " » : elle n’a que « from » et « set »."
+    " » : elle n’a que « from », « until » et « set »."
    ],
    "changeNotYet": [
     "« ",
@@ -4975,6 +5077,40 @@ export const compiled: Record<string, MessageTree> = {
      "day"
     ],
     ". Écris-les comme une seule modification."
+   ],
+   "changeUntilDay": [
+    "« ",
+    [
+     "a",
+     "value"
+    ],
+    " » n’est pas un jour. Écris « until » sous la forme AAAA-MM-JJ, par exemple 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "La fin d’une modification (",
+    [
+     "a",
+     "until"
+    ],
+    ") est avant son début (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "Deux modifications avec une fin commencent le ",
+    [
+     "a",
+     "day"
+    ],
+    " et fixent toutes deux « ",
+    [
+     "a",
+     "label"
+    ],
+    " ». Donne à l’une un autre début, ou écris-les comme une seule."
    ],
    "changeFixed": [
     "« ",
@@ -6448,7 +6584,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "»: ha solo «from» e «set»."
+    "»: ha solo «from», «until» e «set»."
    ],
    "changeNotYet": [
     "«",
@@ -6465,6 +6601,40 @@ export const compiled: Record<string, MessageTree> = {
      "day"
     ],
     ". Scrivile come una sola modifica."
+   ],
+   "changeUntilDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» non è un giorno. Scrivi «until» come AAAA-MM-GG, per esempio 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "La fine di una modifica (",
+    [
+     "a",
+     "until"
+    ],
+    ") è prima del suo inizio (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "Due modifiche con una fine iniziano il ",
+    [
+     "a",
+     "day"
+    ],
+    " e impostano entrambe «",
+    [
+     "a",
+     "label"
+    ],
+    "». Dai a una un altro inizio o scrivile come una sola."
    ],
    "changeFixed": [
     "«",
@@ -8007,7 +8177,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "key"
     ],
-    "» في التغيير: فيه «from» و«set» فقط."
+    "» في التغيير: فيه «from» و«until» و«set» فقط."
    ],
    "changeNotYet": [
     "«",
@@ -8024,6 +8194,40 @@ export const compiled: Record<string, MessageTree> = {
      "day"
     ],
     ". اكتبهما كتغيير واحد."
+   ],
+   "changeUntilDay": [
+    "«",
+    [
+     "a",
+     "value"
+    ],
+    "» ليس يومًا. اكتب «until» بالشكل YYYY-MM-DD، مثل 2026-12-31."
+   ],
+   "changeUntilBefore": [
+    "نهاية التغيير (",
+    [
+     "a",
+     "until"
+    ],
+    ") تسبق بدايته (",
+    [
+     "a",
+     "from"
+    ],
+    ")."
+   ],
+   "changeSameStart": [
+    "تغييران لهما نهاية يبدآن في ",
+    [
+     "a",
+     "day"
+    ],
+    " ويحدد كلاهما «",
+    [
+     "a",
+     "label"
+    ],
+    "». اجعل لأحدهما بداية أخرى أو اكتبهما كتغيير واحد."
    ],
    "changeFixed": [
     "لا يمكن أن يبدأ «",
