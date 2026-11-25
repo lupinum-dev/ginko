@@ -9,7 +9,8 @@ export interface ReleaseState {
   schemaRev: number
   contentRev: number
   migrations: { id: string; brick: string; fills: string; fingerprint: string; schemaRev: number }[]
-  entries: { id: string; brick: string; data: Record<string, Json>; deletedAt: number | null }[]
+  /** `state` and `publishAt` are absent from an older platform: such an entry is checked in full. */
+  entries: { id: string; brick: string; data: Record<string, Json>; deletedAt: number | null; state?: 'draft' | 'live'; publishAt?: number }[]
 }
 
 /** One write of a migration result: the target values of one entry (SPEC 5.2 step 6). */

@@ -64,7 +64,7 @@ export const build = internalQuery({
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()
     if (!site || site.deleting) return 'SITE_NOT_FOUND'
     if (minRev && (site.schemaRev < minRev.schemaRev || site.contentRev < minRev.contentRev)) return 'STALE'
-    return bundleOf(ctx, site, locale, undefined, [], stableFiles)
+    return bundleOf(ctx, site, locale, { stableFiles })
   },
 })
 
@@ -104,11 +104,23 @@ function latestChange(entries: Record<string, StoredEntry[]>, fallback: number):
   return latest
 }
 
-/**
- * The bundle of a site that is known to exist; the agent door's link check builds one per language with it.
- * `plannedBy` (ms), for the link check of a plan (D106): a draft planned for that time or earlier counts as online.
- */
-export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string, overrides?: ReadonlyMap<string, Record<string, Json>>, added: readonly NewItem[] = [], stableFiles = false, plannedBy?: number): Promise<Bundle> {
+/** What a link check or the site asks of `bundleOf`. */
+export interface BundleOptions {
+  /** Data that is about to be written, by entry id; it also lets a draft through (the link check reads the state after the write). */
+  overrides?: ReadonlyMap<string, Record<string, Json>>
+  /** Entries that do not exist yet (a create that is only proposed). */
+  added?: readonly NewItem[]
+  /** File URLs on the site's own address (`/__ginko/file/…`) instead of live storage URLs. */
+  stableFiles?: boolean
+  /** For the link check of a plan (D106), in ms: a draft planned for that time or earlier counts as online. */
+  plannedBy?: number
+  /** For the link checks: keep the entries that ended, without an address (core `buildBundle`, D111). */
+  keepEnded?: boolean
+}
+
+/** The bundle of a site that is known to exist; the link checks build one per language with it. */
+export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string, options: BundleOptions = {}): Promise<Bundle> {
+  const { overrides, added = [], stableFiles = false, plannedBy, keepEnded } = options
   const schema = site.schema as Schema
   // A missing locale parameter (empty string) means the main language, not an unknown locale.
   const requestedLocale = locale === '' ? schema.locales[0]! : locale
@@ -171,6 +183,7 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     // ISR revalidation of a site page stores a "changed" page and is billed as a write (ISR efficiency plan).
     generatedAt: latestChange(entries, site._creationTime),
     today: todayIn(schema.timeZone),
+    ...(keepEnded ? { keepEnded } : {}),
   })
   // Addresses an entry had before entries.changeSlug: the site forwards them to its page there (301).
   for (const row of await ctx.db.query('slugs').withIndex('by_site_old', (q) => q.eq('site', site._id).eq('old', true)).collect()) {

@@ -168,16 +168,6 @@
           "fallback": [
             "text"
           ]
-        },
-        {
-          "id": "notice-urlaub",
-          "data": {
-            "text": "Betriebsurlaub vom 27. Dezember bis 6. Jänner.",
-            "until": "2026-09-30"
-          },
-          "fallback": [
-            "text"
-          ]
         }
       ]
     },

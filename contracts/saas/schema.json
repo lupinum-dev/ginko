@@ -576,10 +576,9 @@
         "title": "text",
         "detail": "until"
       },
-      "visible": {
-        "mode": "until",
+      "showUntil": {
         "field": "until",
-        "deleteExpired": true
+        "thenDelete": true
       },
       "untranslated": "fallback",
       "pos": 7

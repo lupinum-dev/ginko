@@ -19,7 +19,8 @@ export async function checkFileLinks(input: { config: SiteInput; root: string; l
   }
   const contentDir = join(input.root, 'content')
   const publicDir = join(input.root, 'public')
-  const result = await content.buildFileBundles({ contentDir, publicDir, schema, drafts: false })
+  // Entries that ended are checked too: an end date moved forward puts their links online (D111).
+  const result = await content.buildFileBundles({ contentDir, publicDir, schema, drafts: false, keepEnded: true })
   let ok = true
   for (const e of result.errors) {
     input.log(content.errorLine(e))

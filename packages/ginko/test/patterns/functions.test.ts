@@ -45,7 +45,7 @@ describe('the functions behind the patterns', () => {
   })
 
   it('leaves a job out after `validUntil`', () => {
-    expect(jobs().visible).toEqual({ mode: 'until', field: 'validUntil' })
+    expect(jobs().showUntil).toEqual({ field: 'validUntil' })
   })
 
   // Wrong behaviour caught: speaker pages need a slug, but adding one to every people() brick would change the stored
@@ -262,7 +262,7 @@ describe('a files site with every basic', () => {
       now: new Date('2026-10-15T10:00:00Z'),
     })
     expect(errors).toEqual([])
-    const served = publicBundle(bundles.en!, serializeSchema(config), new Date('2026-10-15T10:00:00Z'))
+    const served = publicBundle(bundles.en!)
     const ids = (key: string) => { const b = served.bricks[key]; return b?.kind === 'collection' ? b.items.map((i) => i.id) : [] }
     expect(served.bricks.site).toMatchObject({ kind: 'single', data: { legalName: 'Basics GmbH', city: 'Berlin' } })
     expect(Object.fromEntries(['legal', 'people', 'posts', 'authors', 'changelog', 'jobs', 'faq', 'downloads'].map((k) => [k, ids(k)]))).toEqual({

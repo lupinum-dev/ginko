@@ -1,19 +1,34 @@
 // What the Studio's pages read of entries (sites.meta has no entries): a list row with what a list shows, and the
 // entry an editor opens. Each page subscribes only to the rows it shows, so a save elsewhere sends it little or nothing.
 import type { Brick, Locale } from '@lupinum/ginko'
-import { entryTitle, labelOf, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, labelOf, statusOf, type EntryStatus, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { Data } from './content'
 import { leafStatus, type LeafStatus } from './translation'
 import { overlay, pendingInfo, type Pending } from './pending'
 
 /**
- * The fields a list row shows beside its title: the field `visible` reads (expired or not) and the field
+ * `statusOf` of a stored row (D113): what visitors see now and what waits, from its state, plan, stop and unpublished
+ * changes, on the site's day `today`. The server's readers ask this; the Studio asks `statusOf` with the same input.
+ */
+export function statusOfRow(brick: Brick, row: Doc<'entries'>, held: Pending | null | undefined, today: string): EntryStatus {
+  return statusOf(brick, {
+    data: row.data as Data,
+    state: row.state ?? 'live',
+    ...(row.publishAt === undefined ? {} : { publishAt: row.publishAt }),
+    ...(row.publishBy === undefined ? {} : { publishBy: row.publishBy }),
+    ...(row.stopped === undefined ? {} : { stopped: row.stopped }),
+    ...(held ? { unpublished: { by: held.by, since: held.since } } : {}),
+  }, today)
+}
+
+/**
+ * The fields a list row shows beside its title: the field `showUntil` reads (ended or not) and the field
  * `listing.detail` names (the line under the title). Only these values travel with a row.
  */
 function shownKeys(brick: Brick): string[] {
   const keys = new Set<string>()
-  if (brick.kind === 'collection' && brick.visible && brick.visible.mode !== 'always') keys.add(brick.visible.field)
+  if (brick.kind === 'collection' && brick.showUntil) keys.add(brick.showUntil.field)
   if (brick.kind === 'collection' && brick.listing.detail !== undefined) keys.add(brick.listing.detail)
   return [...keys]
 }
@@ -40,7 +55,7 @@ export function titleOf(schema: Schema, brick: Brick, data: Data, language: stri
 }
 
 /** One row of a collection list (about 150 B): its title, its state, the values the row shows (`dates`: the expiry and the detail), and its translation gaps. */
-export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, language?: string, pending = false) {
+export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, language?: string, held?: Pending) {
   const def = schema.bricks[brick]!
   const data = row.data as Data
   const dates: Data = {}
@@ -50,8 +65,9 @@ export function listRow(schema: Schema, brick: string, row: Doc<'entries'>, lang
     order: row.order,
     ...(row.state === undefined ? {} : { state: row.state }),
     ...(row.publishAt === undefined ? {} : { publishAt: row.publishAt }),
-    // Saved changes wait to be published (lib/pending.ts); the title stays the website's.
-    ...(pending ? { pending: true } : {}),
+    // Saved changes wait to be published since then (lib/pending.ts); the title stays the website's. With `state`,
+    // `publishAt` and `dates` it is the input of the Studio's `statusOf` (D113).
+    ...(held ? { pending: { since: held.since } } : {}),
     title: titleOf(schema, def, data, language),
     dates,
     gaps: gapsOf(schema, brick, row),
@@ -91,7 +107,7 @@ export function editorEntry(row: Doc<'entries'>, held?: Pending | null, user?: s
  * change; a sheet that edits the entry reads it whole (entries.get).
  */
 export function slimEntry(brick: Brick, row: Doc<'entries'>, held?: Pending | null, user?: string) {
-  const dates = new Set([brick.kind === 'collection' ? brick.plans?.field : undefined, brick.kind === 'collection' && brick.visible?.mode === 'until' ? brick.visible.field : undefined, brick.planned?.from])
+  const dates = new Set([brick.kind === 'collection' ? brick.plans?.field : undefined, brick.kind === 'collection' ? brick.showUntil?.field : undefined, brick.planned?.from])
   const small = new Set(['text', 'longtext', 'choice', 'money', 'boolean'])
   const keep = (key: string) => dates.has(key) || small.has(brick.fields[key]?.type ?? '')
   const entry = editorEntry(row, held, user)

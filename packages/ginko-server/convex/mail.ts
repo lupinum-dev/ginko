@@ -34,9 +34,14 @@ function isTestAddress(email: string): boolean {
 
 /** Where the Studio lives, for links in mail. */
 export function siteOrigin(): string {
-  const origin = process.env.SITE_URL
+  const origin = knownSiteOrigin()
   if (!origin) throw new Error('SITE_URL is not set in the Convex environment')
-  return origin.replace(/\/$/, '')
+  return origin
+}
+
+/** The Studio's origin, or undefined while `SITE_URL` is not set: for a mail that is better left out than broken. */
+export function knownSiteOrigin(): string | undefined {
+  return process.env.SITE_URL?.replace(/\/$/, '') || undefined
 }
 
 /** Whether mail can be sent at all. */
@@ -86,7 +91,8 @@ async function deliver(mail: Mail, key: string | undefined): Promise<{ sent: tru
     return { sent: false, retry: true, reason: `network error: ${String(error).slice(0, 200)}` }
   }
   if (response.ok) return { sent: true }
-  return { sent: false, retry: response.status === 429 || response.status >= 500, reason: `${response.status} ${(await response.text()).slice(0, 300)}` }
+  // The status alone: the provider's reply can repeat the address, and the reason goes to the logs.
+  return { sent: false, retry: response.status === 429 || response.status >= 500, reason: String(response.status) }
 }
 
 /**

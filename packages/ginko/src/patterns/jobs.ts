@@ -1,5 +1,5 @@
 // Job ads. Each ad needs `validUntil` and leaves lists, pages, the sitemap and the JSON-LD after that day by itself
-// (`visible until validUntil`), so an expired job cannot stay online.
+// (`showUntil: validUntil`), so an expired job cannot stay online.
 import { f } from '../core/fields.ts'
 import { collection } from '../core/site.ts'
 import { compact, postalAddressLd } from '../core/seo.ts'
@@ -26,7 +26,7 @@ export function jobs(o: BasicsOptions = {}) {
     untranslated: 'hide',
     max: 30,
     order: { field: 'title', dir: 'asc' },
-    visible: { mode: 'until', field: 'validUntil' },
+    showUntil: { field: 'validUntil' },
     tasks: [
       { id: 'add', kind: 'create', label: t('Stelle ausschreiben', 'Post a job', 'Publicar una oferta', 'Publier une offre') },
       { id: 'extend', kind: 'edit', pick: true, fields: ['validUntil'], label: t('Bewerbungsfrist ändern', 'Change the deadline', 'Cambiar el plazo', 'Modifier la date limite') },

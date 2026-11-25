@@ -6,7 +6,7 @@ import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import { useSchemaOrg } from '#ginko/schema-org'
 import {
-  applyDefaults, breadcrumbs, factText, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, weekInfo, websiteLd, withCountry, withAbsoluteImages,
+  applyDefaults, breadcrumbs, factText, navTree, neighbors, shownBundle, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, weekInfo, websiteLd, withCountry, withAbsoluteImages,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from './shared.ts'
@@ -121,10 +121,10 @@ export function useGinkoWeek(): WeekInfo {
 
 /**
  * The content of one brick: `{ data, fallback }` for a single, `{ items }` for a collection.
- * Collections contain only entries that are visible today (SPEC 2.1 `visible`), in order.
+ * Collections contain only the entries shown today (`showUntil`), in order.
  */
 export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<Bricks[K]>> {
-  const bundle = useVisibleBundle([brick])
+  const bundle = useVisibleBundle()
   return computed(() => {
     const value = bundle.value.bricks[brick]
     const def = schema.bricks[brick] as Brick | undefined
@@ -136,20 +136,15 @@ export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<B
   })
 }
 
-/** The bundle with only the entries visible today (SPEC 2.1 `visible`) in the given collections. The one place that rule is applied. */
-function useVisibleBundle(bricks: MaybeRefOrGetter<readonly BrickKey[]>): ComputedRef<Bundle> {
+/**
+ * The bundle with only the entries shown today (`showUntil`), in every collection, by the reader's day: a page from a
+ * cache is right after midnight (D111), and the targets of an `include` are filtered too, so a reference to an entry
+ * that ended is empty. The server routes apply the same rule (`loadServerBundles`).
+ */
+function useVisibleBundle(): ComputedRef<Bundle> {
   const bundle = useGinkoBundle()
   const today = useGinkoToday()
-  return computed(() => {
-    const now = today.value
-    const out = { ...bundle.value.bricks }
-    for (const key of toValue(bricks)) {
-      const value = out[key]
-      const def = schema.bricks[key] as Brick | undefined
-      if (value?.kind === 'collection' && def) out[key] = { ...value, items: value.items.filter((item) => visible(def, item.data, now)) }
-    }
-    return { ...bundle.value, bricks: out }
-  })
+  return computed(() => shownBundle(bundle.value, schema, today.value))
 }
 
 /** Items of a core result get the `url` of the bundle's locale when the brick has a route (`withUrl`). */
@@ -164,7 +159,7 @@ function withRouteUrl(brick: string, items: BundleItem[], bundle: Bundle): Bundl
  * getter (a page number from the route), and the result follows it.
  */
 export function useGinkoQuery<K extends CollectionKey>(brick: K, q: MaybeRefOrGetter<Query<GinkoData<K>>> = {}): ComputedRef<Omit<QueryResult, 'items'> & { items: GinkoItem<K>[] }> {
-  const bundle = useVisibleBundle([brick])
+  const bundle = useVisibleBundle()
   return computed(() => {
     const result = query(bundle.value, brick, toValue(q) as Query, schema)
     // The core returns bundle items; their typed shape is the brick's GinkoItem (same cast as useGinko).
@@ -174,7 +169,7 @@ export function useGinkoQuery<K extends CollectionKey>(brick: K, q: MaybeRefOrGe
 
 /** The entries before and after `id` among the visible ones, in `options.order` (the `Query` order) or bundle order. */
 export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, options: Pick<Query<GinkoData<K>>, 'order'> = {}): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
-  const bundle = useVisibleBundle([brick])
+  const bundle = useVisibleBundle()
   return computed(() => {
     const { prev, next } = neighbors(bundle.value, brick, toValue(id), options.order as Query['order'])
     const one = (item?: BundleItem) => item && withRouteUrl(brick, [item], bundle.value)[0]
@@ -184,7 +179,7 @@ export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRe
 
 /** Navigation tree of the visible entries of these collections in the current locale (core `navTree`). */
 export function useGinkoNav(bricks: MaybeRefOrGetter<CollectionKey[]>): ComputedRef<NavNode[]> {
-  const bundle = useVisibleBundle(bricks)
+  const bundle = useVisibleBundle()
   const locale = useGinkoLocale()
   return computed(() => navTree(bundle.value, toValue(bricks), locale.value, schema))
 }

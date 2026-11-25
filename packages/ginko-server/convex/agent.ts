@@ -273,7 +273,8 @@ async function checkSiteLinks(ctx: QueryCtx, actor: Actor, input: Record<string,
   const schema = actor.site.schema as Schema
   const only = typeof input.brick === 'string' ? input.brick : undefined
   if (only !== undefined && !Object.hasOwn(schema.bricks, only)) fail('INVALID', 'errors.brickNotFoundSeeOverview', { only })
-  const bundles = await Promise.all(schema.locales.map((locale) => bundleOf(ctx, actor.site, locale)))
+  // Every live entry, also one that ended: its links go online again when its end date moves (D111).
+  const bundles = await Promise.all(schema.locales.map((locale) => bundleOf(ctx, actor.site, locale, { keepEnded: true })))
   // The platform knows no files of the site's public folder, so a path that matches no entry or page is reported.
   const issues = checkLinks(bundles, schema, { files: () => false })
   const out = new Map<string, { entry: string | null; brick: string; label: string; field: string; link: string; reason: string; severity: string; locales: string[] }>()

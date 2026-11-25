@@ -27,7 +27,7 @@ export const SCHEMA_KEYS = new Set(['format', 'site', 'name', 'url', 'timeZone',
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
 // `drafts` is no option since 0.13 (every collection keeps changes until they are published), but schemas released
 // before carry it: it stays known, so they still pass checkSchema and diffSchema, and nothing reads it.
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'visible', 'untranslated', 'publishedOn', 'plans', 'planned', 'drafts', 'status', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'body', 'preview', 'layout', 'tasks', 'max', 'order', 'listing', 'tree', 'route', 'showUntil', 'untranslated', 'publishedOn', 'plans', 'planned', 'drafts', 'status', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'rows', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after', 'aspect'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
@@ -458,8 +458,7 @@ function schemaProblems(schema: Schema, rules: StatusRules): string[] {
       }
       const slugs = Object.entries(brick.fields).filter(([, fd]) => fd.type === 'slug' && !fd.retired).map(([name]) => name)
       if (slugs.length > 1) problems.push(`${key}: a collection has one address (slug) field, not ${slugs.length} (${slugs.join(', ')}). Keep one and retire the others.`)
-      const vis = brick.visible
-      if (vis !== undefined) problems.push(...visibilityProblems(key, vis, brick.fields))
+      if (brick.showUntil !== undefined) problems.push(...showUntilProblems(key, brick.showUntil, brick.fields))
     } else if (brick.fields && Object.values(brick.fields).some((fd) => fd.type === 'slug')) {
       problems.push(`${key}: single bricks have no address (slug).`)
     }
@@ -587,17 +586,15 @@ function treeProblems(key: string, brick: CollectionBrick): string[] {
   return problems
 }
 
-function visibilityProblems(key: string, vis: unknown, fields: Fields): string[] {
-  if (typeof vis !== 'object' || vis === null || Array.isArray(vis)) return [`${key}: visible must be an object.`]
-  const { mode, field, days, deleteExpired } = vis as Record<string, unknown>
-  if (mode === 'always') return Object.keys(vis).length === 1 ? [] : [`${key}: visible: “always” takes no other options.`]
-  if (mode !== 'until') return [`${key}: visible.mode must be “always” or “until”.`]
+function showUntilProblems(key: string, rule: unknown, fields: Fields): string[] {
+  if (typeof rule !== 'object' || rule === null || Array.isArray(rule)) return [`${key}: showUntil must be an object { field, plusDays?, thenDelete? }.`]
+  const { field, plusDays, thenDelete } = rule as Record<string, unknown>
   const problems: string[] = []
-  for (const k of Object.keys(vis)) if (!['mode', 'field', 'days', 'deleteExpired'].includes(k)) problems.push(`${key}.visible: unknown property “${k}”.`)
-  const type = typeof field === 'string' && Object.hasOwn(fields, field) ? fields[field]!.type : undefined
-  if (type !== 'date' && type !== 'daterange') problems.push(`${key}: visibility needs a date or daterange field.`)
-  if (days !== undefined && !(Number.isInteger(days) && (days as number) >= 0)) problems.push(`${key}: visibility: days must be a whole number from 0.`)
-  if (deleteExpired !== undefined && typeof deleteExpired !== 'boolean') problems.push(`${key}: visibility: deleteExpired must be true or false.`)
+  for (const k of Object.keys(rule)) if (!['field', 'plusDays', 'thenDelete'].includes(k)) problems.push(`${key}.showUntil: unknown property “${k}”.`)
+  const def = typeof field === 'string' && Object.hasOwn(fields, field) ? fields[field] : undefined
+  if ((def?.type !== 'date' && def?.type !== 'daterange') || def.retired) problems.push(`${key}.showUntil needs a date or daterange field.`)
+  if (plusDays !== undefined && !(Number.isInteger(plusDays) && (plusDays as number) >= 0)) problems.push(`${key}.showUntil: plusDays must be a whole number from 0.`)
+  if (thenDelete !== undefined && typeof thenDelete !== 'boolean') problems.push(`${key}.showUntil: thenDelete must be true or false.`)
   return problems
 }
 
@@ -723,8 +720,7 @@ function statusProblems(key: string, brick: Brick, schema: Schema, rules: Status
   const [kind, value] = entries[0]!
   if (kind === 'count') {
     if (value !== true) return [`${key}: status.count must be true.`]
-    const vis = (brick as CollectionBrick).visible
-    return vis?.mode === 'until' ? [] : [`${key}: status { count: true } needs visible: { mode: 'until' }.`]
+    return (brick as CollectionBrick).showUntil ? [] : [`${key}: status { count: true } needs showUntil.`]
   }
   const field = typeof value === 'string' && Object.hasOwn(brick.fields, value) ? brick.fields[value] : undefined
   if (!field) return [`${key}: status.${kind} names “${String(value)}”, which is not a field of the brick.`]

@@ -5,7 +5,7 @@ import schema from '#ginko/schema'
 import fileBundles from '#ginko/files'
 import locales from '#ginko/locales'
 import type { Brick } from '@lupinum/ginko'
-import { isVisible, todayIn } from '@lupinum/ginko/internal'
+import { shownOn, todayIn } from '@lupinum/ginko/internal'
 import { rssXml } from '@lupinum/ginko/patterns'
 
 export function serveBlogFeed(event: RequestEvent, locale: string) {
@@ -20,7 +20,7 @@ export function serveBlogFeed(event: RequestEvent, locale: string) {
   const today = todayIn(config.timeZone)
   const route = def.route?.[locale as keyof typeof def.route]
   if (!route) throw createError({ statusCode: 404, statusMessage: 'No blog' })
-  const items = posts.items.filter((p) => p.urls?.[bundle.locale] && isVisible(def, p.data, today)).map((p) => ({
+  const items = posts.items.filter((p) => p.urls?.[bundle.locale] && shownOn(def, p.data, today)).map((p) => ({
     title: String(p.data.title),
     link: base + p.urls![bundle.locale],
     description: typeof p.data.description === 'string' ? p.data.description : undefined,

@@ -147,19 +147,16 @@ type Prefill<F extends Fields> = Fields extends F
   : { readonly [P in keyof F]?: ValueInput<F[P]> }
 
 /**
- * Which entries of a collection the website shows. `always`: all of them. `until`: an entry is shown until the
- * date in `field` (a `date`, or the end `to` of a `daterange`) has passed, plus `days` more (a week that starts
- * on that day: `days: 6`). An empty field always shows the entry. `deleteExpired: true` lets the platform delete
- * entries that are no longer shown (see the docs page "Bricks", Visibility).
+ * The end of an entry's life (stored form): it is shown until the date in `field` (a `date`, or the end `to` of a
+ * `daterange`) has passed, plus `plusDays` more (a week that starts on that day: `plusDays: 6`). An empty field never
+ * ends. `thenDelete: true` lets the platform delete entries that ended. The written form is `ShowUntil` of the site file.
  */
-export type Visibility<K extends string = string> =
-  | { mode: 'always' }
-  | { mode: 'until'; field: K; days?: number; deleteExpired?: boolean }
+export interface ShowUntilRule<K extends string = string> { field: K; plusDays?: number; thenDelete?: boolean }
 
 /**
  * The one-line status of a collection on the Studio's Today page, computed on the server from the live entries:
  * `next` the first entry whose date (a `date`, or a `daterange` that has not ended) is today or later; `count` how many
- * entries end within 7 days (needs `visible: { mode: 'until' }`); `missing` how many entries leave an optional field
+ * entries end within 7 days (needs `showUntil`); `missing` how many entries leave an optional field
  * without a default empty; `age` the newest entry by a date field and how long ago that is. A status also says when a
  * section is due: entries end within 7 days, entries miss the field, or the next entry is within 7 days and misses a
  * required text. Changing it changes no stored data.
@@ -244,7 +241,7 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   /** The entries are pages of a navigation tree (see `CollectionTree`). */
   tree?: CollectionTree
   route?: R
-  visible?: Visibility
+  showUntil?: ShowUntilRule
   /**
    * What an entry does in a language where a translatable required field is missing (an outdated translation still
    * counts): `'hide'` leaves it out of that language (no page, not in lists, sitemap or hreflang); `'fallback'` shows

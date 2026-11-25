@@ -24,7 +24,7 @@ export function noticesBrick(opts: BasicsOptions, first: readonly NoticeTask[]) 
     fields: noticeFields(),
     max: 5,
     order: 'manual',
-    visible: { mode: 'until', field: 'until', deleteExpired: true },
+    showUntil: { field: 'until', thenDelete: true },
     tasks: [
       ...first,
       { id: 'add', label: both('Hinweis hinzufügen', 'Add a notice'), kind: 'create' },

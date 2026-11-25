@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import type { Locale } from '@lupinum/ginko'
-import { buildBundle, imageInfo, isVisible, resolveRouteLinks, todayIn, type Bundle, type FileInfo, type Schema } from '@lupinum/ginko/internal'
+import { buildBundle, imageInfo, resolveRouteLinks, todayIn, type Bundle, type FileInfo, type Schema } from '@lupinum/ginko/internal'
 import { hashOf, head } from './images.ts'
 import { makeVariants } from './variants.ts'
 import { readContent, type ContentError, type ReadOptions } from './read.ts'
@@ -12,20 +12,15 @@ export function fileSchema(schema: Schema): Schema {
 }
 
 /**
- * The bundle a site serves to everyone (`/__ginko/files/*`, page state, search): items whose visibility window
- * ended before `now` are left out (an expired offer is not private data to publish), and the repo path
- * `source` is dropped unless `keepSource` is set (docs pages need it for their "Edit this page" link).
- * Items whose window is current or still to come stay: the page filters them by date in the browser.
+ * The bundle a site serves to everyone (`/__ginko/files/*`, page state, search): the repo path `source` is dropped
+ * unless `keepSource` is set (docs pages need it for their "Edit this page" link). Entries that ended are already left
+ * out by `buildBundle` (D111); the page filters by its own day after that.
  * @internal Loaded by the Ginko module and CLI; sites do not import it.
  */
-export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options: { keepSource?: boolean } = {}): Bundle {
-  const today = todayIn(schema.timeZone, now)
+export function publicBundle(bundle: Bundle, options: { keepSource?: boolean } = {}): Bundle {
   const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, brick]) => {
     if (brick.kind !== 'collection') return [key, brick]
-    const def = schema.bricks[key]
-    const items = brick.items
-      .filter((item) => !def || isVisible(def, item.data, today))
-      .map(({ source, ...item }) => (options.keepSource && source !== undefined ? { ...item, source } : item))
+    const items = brick.items.map(({ source, ...item }) => (options.keepSource && source !== undefined ? { ...item, source } : item))
     return [key, { ...brick, items }]
   }))
   return { ...bundle, bricks }
@@ -45,6 +40,7 @@ export async function buildFileBundles(options: BuildOptions): Promise<BuildResu
   const build = (locale: Locale) => buildBundle({
     schema: files, requestedLocale: locale, entries, files: (id) => fileInfo[id],
     schemaRev: 0, contentRev: 0, generatedAt: now.toISOString(), today: todayIn(schema.timeZone, now),
+    ...(options.keepEnded ? { keepEnded: true } : {}),
   })
   // Links to an entry left out of a language (not translated) go to its main-language page.
   const main = build(schema.locales[0]!)
@@ -61,6 +57,8 @@ export interface BuildOptions extends ReadOptions {
   schema: Schema
   /** Where the WebP variants of the site's images are written (the folder served at `/_ginko/img`). Without it, no variants are made. */
   imageDir?: string
+  /** For `ginko check`: keep the entries that ended, without an address, so their links are checked too (core `buildBundle`). */
+  keepEnded?: boolean
 }
 
 export interface BuildResult {

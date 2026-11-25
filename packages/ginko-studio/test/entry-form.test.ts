@@ -27,6 +27,8 @@ const stored: Entry = {
 let refuseNext: unknown
 /** The next save becomes a proposal, as for a task that needs approval. */
 let proposeNext = false
+/** The warnings the next save or create returns, as the server does for a draft without a time (D115). */
+let warnNext: unknown[] | undefined
 /** While set, the next save waits for it, as a save on its way does. */
 let landing: Promise<void> | undefined
 /** The live list's view of the entry: undefined once someone removed it. */
@@ -48,11 +50,15 @@ vi.stubGlobal('useOps', () => ({
       proposeNext = false
       return {}
     }
-    return { rev: 7 }
+    const warnings = warnNext ?? []
+    warnNext = undefined
+    return { rev: 7, warnings }
   },
   createEntry: async (args: { data: unknown }) => {
     calls.push(['create', args.data])
-    return { entry: 'e2' }
+    const warnings = warnNext ?? []
+    warnNext = undefined
+    return { entry: 'e2', warnings }
   },
   restoreEntry: async (entry: string, lifeRev: number) => {
     calls.push(['restore', entry, lifeRev])
@@ -98,6 +104,7 @@ beforeEach(() => {
   toasts.length = 0
   live.value = stored
   refuseNext = undefined
+  warnNext = undefined
   landing = undefined
   connected.value = true
   localStorage.clear()
@@ -165,6 +172,49 @@ describe('useEntryForm', () => {
 })
 
 // A rows field keeps its rows, so a conflict merges row by row key, as a list merges by `_id`.
+describe('notes of a draft (D116)', () => {
+  const missing = { path: 'description', message: '„Beschreibung“ fehlt.', code: 'REQUIRED' }
+
+  // Wrong behaviour caught: a draft saved with an empty required field shows it as an error (or not at all), a fixed
+  // field keeps its note, a live entry's save shows notes about fields it did not touch, or a refused publish still
+  // calls the field a note.
+  test('a draft saved with an empty required field shows it as a note; typing there drops it; a refused publish shows it as an error', async () => {
+    const form = mountForm({ draft: () => true })
+    form.setField('description', undefined)
+    warnNext = [missing]
+    expect(await form.save()).toBe(true)
+    expect([form.issues.value, form.fieldIssues.value]).toEqual([[], [{ ...missing, note: true }]])
+    form.setField('description', 'Neu')
+    expect(form.fieldIssues.value).toEqual([])
+    form.showFieldErrors({ code: 'INVALID', message: 'Bitte prüfe die markierten Felder.', details: { errors: [missing] } })
+    expect(form.fieldIssues.value).toEqual([missing])
+
+    const liveForm = mountForm()
+    liveForm.setField('name', 'Anders')
+    warnNext = [missing]
+    expect(await liveForm.save()).toBe(true)
+    expect(liveForm.fieldIssues.value).toEqual([])
+  })
+
+  // Wrong behaviour caught: the first save of a new draft opens its own page, whose new form has lost the notes.
+  test('a new draft hands its notes once to the form of its own page; a publish at create has none', async () => {
+    const create = mountForm({ entry: () => undefined })
+    create.setField('name', 'Neu')
+    warnNext = [missing]
+    await create.save()
+    expect(create.notes.value).toEqual([missing])
+    const page = () => mountForm({ entry: () => ({ ...stored, _id: 'e2' }) })
+    expect(page().notes.value).toEqual([missing])
+    expect(page().notes.value).toEqual([])
+
+    const published = mountForm({ entry: () => undefined })
+    published.setField('name', 'Online')
+    warnNext = [missing]
+    await published.save(undefined, {})
+    expect(published.notes.value).toEqual([])
+  })
+})
+
 describe('a rows field in a conflict', () => {
   const hoursBrick = {
     kind: 'collection', label: 'Gerichte', listing: { title: 'name' },

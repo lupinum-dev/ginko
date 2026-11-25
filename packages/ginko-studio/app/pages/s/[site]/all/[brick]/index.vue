@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ChevronDownIcon, ChevronUpIcon, PlusIcon } from '@lucide/vue'
 import { api } from '#convex/api'
-import { treeOf, visibleUntil } from '@lupinum/ginko/internal'
+import { shownUntil, statusOf, treeOf, type EntryStatus } from '@lupinum/ginko/internal'
 import { formatDay, languageName, listingDetail } from '../../../../../utils/content'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
@@ -65,16 +65,39 @@ const canCreate = computed(() => !!access.value && (access.value.all || !!access
 
 const rowTitle = (row: Row) => row.title ?? (brick.value ? shown(brick.value.label) : '')
 
-/** "Draft" / "Online from …" for drafts; "Unpublished changes" for a live entry with saved changes; "expired on …" / "ended" (daterange) / "" for an entry of a timed collection. */
-function status(row: Row): string {
+/** The one status of a row (D113), on the site's day: the same `statusOf` the server's readers ask. */
+function rowStatus(row: Row): EntryStatus | undefined {
   const b = brick.value
-  // A draft is not on the website, whatever its dates say (SPEC 15).
-  if (row.state === 'draft') return row.publishAt ? t('site.status.onlineFrom', { when: whenText(row.publishAt, s.schema.value?.timeZone ?? 'Europe/Vienna', format) }) : t('site.status.draft')
-  if (row.pending) return t('entry.status.changes')
-  if (!b || b.kind !== 'collection' || !b.visible || b.visible.mode === 'always') return ''
-  const until = visibleUntil(b, row.dates)
-  if (until === undefined || until >= s.today.value) return ''
-  return b.fields[b.visible.field]?.type === 'daterange' ? t('site.status.ended') : t('site.status.expired', { date: formatDay(until, format) })
+  if (!b) return undefined
+  return statusOf(b, {
+    data: row.dates,
+    state: row.state ?? 'live',
+    ...(row.publishAt === undefined ? {} : { publishAt: row.publishAt }),
+    ...(row.pending ? { unpublished: row.pending } : {}),
+  }, s.today.value)
+}
+
+/**
+ * One text per row, from what visitors see now (`now`): "Draft" / "Online from …" for drafts; "expired on …" / "ended"
+ * (daterange) for an entry that ended, also one with saved changes; "Unpublished changes" for an online entry with
+ * saved changes; "" for an online entry. A row is grey when it is not online.
+ */
+function status(row: Row): string {
+  const site = s.schema.value
+  const b = brick.value
+  const st = rowStatus(row)
+  // The brick comes with the site's model, and the model with the site's zone, so "Online from" is never in another
+  // zone (D114).
+  if (!site || !b || !st) return ''
+  if (st.now === 'draft') {
+    const planned = st.waiting.find((w) => w.kind === 'planned')
+    return planned ? t('site.status.onlineFrom', { when: whenText(planned.at, site.timeZone, format) }) : t('site.status.draft')
+  }
+  if (st.now === 'ended') {
+    const until = shownUntil(b, row.dates)
+    return b.kind === 'collection' && b.showUntil && b.fields[b.showUntil.field]?.type === 'daterange' ? t('site.status.ended') : t('site.status.expired', { date: formatDay(until ?? '', format) })
+  }
+  return st.waiting.some((w) => w.kind === 'unpublished') ? t('entry.status.changes') : ''
 }
 
 const moving = ref(false)
@@ -131,7 +154,7 @@ const ops = useOps(s.slug)
       <template v-else>
         <ol class="m-0 list-none divide-y overflow-hidden rounded-xl border bg-card p-0 transition-opacity aria-busy:opacity-60" :aria-busy="loading || undefined">
           <!-- The title is the row's one link (its name is the title) and covers the row; badges and arrows sit above it. -->
-          <li v-for="(e, i) in rows" :key="e._id" class="group/row relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 min-[900px]:min-h-13 min-[900px]:py-2.5 hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03] sm:flex-nowrap" :data-dim="(!!status(e) && !e.pending) || undefined">
+          <li v-for="(e, i) in rows" :key="e._id" class="group/row relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 min-[900px]:min-h-13 min-[900px]:py-2.5 hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03] sm:flex-nowrap" :data-dim="(rowStatus(e)?.now ?? 'online') !== 'online' || undefined">
             <div class="min-w-0 flex-1">
               <NuxtLink :to="`/s/${s.slug.value}/all/${key}/${e._id}`" class="line-clamp-2 font-medium text-foreground no-underline outline-none after:absolute after:inset-0 focus-visible:after:ring-3 focus-visible:after:ring-ring/80 focus-visible:after:ring-inset group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground min-[900px]:text-sm">{{ rowTitle(e) }}</NuxtLink>
               <span v-if="listingDetail(brick, e.dates, s.main.value, { t, format, currency: currency() })" class="block text-[13px] text-muted-foreground tabular-nums">{{ listingDetail(brick, e.dates, s.main.value, { t, format, currency: currency() }) }}</span>

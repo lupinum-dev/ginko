@@ -1,5 +1,5 @@
 // Site queries for the UI and the admin-only creation of a site (SPEC 4.2, 10).
-import { isCurrency, isLocale, isTimeZone, isVisible, labelOf as labelIn, MAX_LOCALES, ordered, SCHEMA_FORMAT, todayIn, type Schema } from '@lupinum/ginko/internal'
+import { isCurrency, isLocale, isTimeZone, labelOf as labelIn, MAX_LOCALES, ordered, SCHEMA_FORMAT, todayIn, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
@@ -11,7 +11,7 @@ import { isReminded, reminderBricks } from './lib/reminders'
 import { statesOf } from './lib/status'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { leafStatus } from './lib/translation'
-import { titleOf } from './lib/list'
+import { statusOfRow, titleOf } from './lib/list'
 import { pendingBySite } from './lib/pending'
 import { advance, stepArgs } from './lib/migrations'
 import type { Data } from './lib/content'
@@ -294,7 +294,7 @@ const TRANSLATION_ROWS = 200
  * Translation status (SPEC 4.2): per brick and per language other than the main one, how many entries
  * have every text (`ok`), at least one missing text (`missing`), or only outdated ones (`outdated`).
  * It uses the rule of the bundle (`resolveEntry`), so it matches what ginko_read reports. It counts what the
- * website shows: live entries and singles, not drafts, and no entry whose date has passed (`isVisible`, as the
+ * website shows: live entries and singles, not drafts, and no entry whose date has passed (`statusOf`, as the
  * site's listings). `entries` lists the entries with a gap for the Studio's overview ("Übersetzungen"), by
  * brick in config order and then the site's order, at most TRANSLATION_ROWS (`truncated`): the title (null for
  * a single and an untitled entry: the Studio shows the area), how many texts are missing or outdated, and
@@ -316,7 +316,7 @@ export const translationStatus = query({
     for (const [key, def] of ordered(schema.bricks)) {
       if (def.retired || !opens(key, def.tasks)) continue
       const rows = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', key)).collect())
-        .filter((row) => !row.deletedAt && row.state !== 'draft' && isVisible(def, row.data as Data, today))
+        .filter((row) => !row.deletedAt && statusOfRow(def, row, undefined, today).now === 'online')
       const locales: Record<string, { missing: number; outdated: number; ok: number }> = {}
       for (const locale of foreign) locales[locale] = { missing: 0, outdated: 0, ok: 0 }
       for (const row of rows) {
@@ -343,7 +343,7 @@ export const translationStatus = query({
 
 /**
  * The areas of the site as the Studio lists them (Content overview, area list): per brick in config order the number
- * of entries (drafts included, removed ones not), drafts, live entries with unpublished changes, ended entries (not visible today), open translations (one
+ * of entries (drafts included, removed ones not), drafts, online entries with unpublished changes, ended entries (not visible today; `statusOf`), open translations (one
  * per entry and foreign language with a missing or outdated text, counted like `translationStatus`) and when its
  * content last changed. Staff see the bricks of their tasks only, like `translationStatus`. One read per brick.
  */
@@ -365,12 +365,14 @@ export const areas = query({
       for (const row of rows) {
         const at = row.contentAt ?? row._creationTime
         if (changedAt === null || at > changedAt) changedAt = at
-        if (row.state === 'draft') { drafts += 1; continue }
-        if (held.has(row._id)) changes += 1
-        if (!isVisible(def, row.data as Data, today)) { ended += 1; continue }
+        // One status for the entry (D113); an entry that ended can still have unpublished changes, and counts in both.
+        const status = statusOfRow(def, row, held.get(row._id), today)
+        if (status.now === 'draft') { drafts += 1; continue }
+        if (status.waiting.some((w) => w.kind === 'unpublished')) changes += 1
+        if (status.now === 'ended') { ended += 1; continue }
         for (const locale of foreign) {
-          const status = leafStatus(schema, key, row, locale)
-          if (status.missing.length || status.outdated.length) translations += 1
+          const leaf = leafStatus(schema, key, row, locale)
+          if (leaf.missing.length || leaf.outdated.length) translations += 1
         }
       }
       out.push({ brick: key, kind: def.kind, count: rows.length, drafts, changes, ended, translations, changedAt })

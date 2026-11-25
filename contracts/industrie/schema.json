@@ -246,10 +246,9 @@
         "title": "text",
         "detail": "until"
       },
-      "visible": {
-        "mode": "until",
+      "showUntil": {
         "field": "until",
-        "deleteExpired": true
+        "thenDelete": true
       },
       "untranslated": "fallback",
       "pos": 1
@@ -467,8 +466,7 @@
         "title": "title",
         "detail": "until"
       },
-      "visible": {
-        "mode": "until",
+      "showUntil": {
         "field": "until"
       },
       "untranslated": "fallback",
@@ -539,8 +537,7 @@
         "title": "title",
         "detail": "when"
       },
-      "visible": {
-        "mode": "until",
+      "showUntil": {
         "field": "when"
       },
       "untranslated": "fallback",

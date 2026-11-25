@@ -240,26 +240,39 @@ export function defaultsFor(fields: Fields, week: SiteWeek): Record<string, Json
   return out
 }
 
-/** One visibility rule for listings, detail pages, URL maps and sitemap. Dates inclusive, in the site's time zone. */
-export function isVisible(brick: Brick, data: Record<string, unknown>, today: string): boolean {
-  const last = visibleUntil(brick, data)
+/** Whether an entry is shown on `today`: the one end rule for listings, detail pages, URL maps and the sitemap. Dates inclusive, in the site's time zone. */
+export function shownOn(brick: Brick, data: Record<string, unknown>, today: string): boolean {
+  const last = shownUntil(brick, data)
   return last === undefined || last >= today
 }
 
 /**
- * The last day an entry shows under `visible: { mode: 'until' }`: the date, or the end `to` of a daterange, plus `days`.
- * `undefined` when the entry has no end: the brick has no `until` rule, or the field is empty.
+ * The bundle without the entries that ended before `today` (`shownOn`): what a page or a server route reads on that
+ * day. `buildBundle` already leaves out what ended before the day it ran, so this matters for a bundle from a cache,
+ * read after midnight.
  */
-export function visibleUntil(brick: Brick, data: Record<string, unknown>): string | undefined {
-  const vis = brick.kind === 'collection' ? brick.visible : undefined
-  if (vis?.mode !== 'until') return undefined
-  const value = data[vis.field]
-  const last = typeof value === 'string' ? value : (value as { to?: unknown } | null | undefined)?.to
-  return typeof last === 'string' ? addDays(last, vis.days ?? 0) : undefined
+export function shownBundle(bundle: Bundle, schema: Schema, today: string): Bundle {
+  const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, value]) => {
+    const def = schema.bricks[key]
+    return [key, value.kind === 'collection' && def ? { ...value, items: value.items.filter((item) => shownOn(def, item.data, today)) } : value]
+  }))
+  return { ...bundle, bricks }
 }
 
-/** Whether the platform deletes the entries of this brick that no longer show (`visible.deleteExpired`). */
-export const deletesExpired = (brick: Brick): boolean => brick.kind === 'collection' && brick.visible?.mode === 'until' && brick.visible.deleteExpired === true
+/**
+ * The last day an entry is shown under `showUntil`: the date, or the end `to` of a daterange, plus `plusDays`.
+ * `undefined` when the entry has no end: the brick has no `showUntil`, or the field is empty.
+ */
+export function shownUntil(brick: Brick, data: Record<string, unknown>): string | undefined {
+  const rule = brick.kind === 'collection' ? brick.showUntil : undefined
+  if (!rule) return undefined
+  const value = data[rule.field]
+  const last = typeof value === 'string' ? value : (value as { to?: unknown } | null | undefined)?.to
+  return typeof last === 'string' ? addDays(last, rule.plusDays ?? 0) : undefined
+}
+
+/** Whether the platform deletes the entries of this brick that ended (`showUntil.thenDelete`). */
+export const deletesEnded = (brick: Brick): boolean => brick.kind === 'collection' && brick.showUntil?.thenDelete === true
 
 /**
  * The entries in the brick's order. With `languages`, a translatable field (a title) sorts by its text in `locale`,
@@ -309,6 +322,11 @@ export interface BuildBundleInput {
   generatedAt: string
   /** Today in the site's time zone (`todayIn`). */
   today: string
+  /**
+   * Keeps the entries that ended, without `urls` (an ended entry has no address, so a link to it stays broken). For the
+   * link checks only, which read the links inside every live entry: an end date moved forward puts them online (D111).
+   */
+  keepEnded?: boolean
 }
 
 /**
@@ -342,7 +360,9 @@ export function buildBundle(input: BuildBundleInput): Bundle {
     const items: BundleItem[] = []
     for (const entry of sortEntries(brick, stored, { locale, main })) {
       const r = resolveEntry(schema, key, entry, ctx)
-      if (r.hidden) continue
+      // An entry outside its life is not in what a page gets, in files and on the platform alike (D111).
+      const ended = !shownOn(brick, r.data, input.today)
+      if (r.hidden || (ended && !input.keepEnded)) continue
       const item: BundleItem = { id: entry.id, data: r.data, fallback: r.fallback }
       // `data` holds the fields only; a file entry's old paths forward to its page in this language.
       if (entry.redirectFrom?.length) item.oldUrls = { [locale]: [...entry.redirectFrom] }
@@ -350,7 +370,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
       // The file of this locale ("edit this page" opens the translation), else the main-language file.
       const source = entry.sources?.[locale] ?? entry.sources?.[main]
       if (source !== undefined) item.source = source
-      if (brick.route && isVisible(brick, r.data, input.today)) item.urls = urlsFor(schema, key, brick, entry)
+      if (brick.route && !ended) item.urls = urlsFor(schema, key, brick, entry)
       items.push(item)
     }
     bricks[key] = { kind: 'collection', items }

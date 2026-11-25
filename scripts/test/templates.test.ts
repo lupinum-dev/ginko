@@ -24,7 +24,7 @@ function repo(change: (files: Record<string, string>) => void = () => {}) {
     'templates/_features/site/content/legal/1.privacy.md': '---\ntitle: Privacy\n---\n',
     'templates/demo/package.json': JSON.stringify({ name: 'demo', dependencies: { '@lupinum/ginko': '^0.4.0', nuxt: '^4.6.1' }, ginko: { sampleAnchor: TODAY, features: ['site'] } }),
     // A config without imports: the check needs only its bricks.
-    'templates/demo/ginko.config.ts': "export default { locales: ['en'], bricks: { events: { visible: { mode: 'until', field: 'when' }, fields: { when: { type: 'daterange' } } } } }\n",
+    'templates/demo/ginko.config.ts': "export default { locales: ['en'], bricks: { events: { showUntil: { field: 'when' }, fields: { when: { type: 'daterange' } } } } }\n",
     'templates/demo/content/events/1.fair.md': '---\nwhen:\n  from: 2027-03-01\n  to: 2027-03-02\n---\n',
   }
   change(files)
@@ -242,7 +242,7 @@ describe('demo-reset --from', () => {
     const original = '---\nwhen:\n  from: 2027-03-01\n  to: 2027-03-02\n---\n'
     mkdirSync(dirname(event), { recursive: true })
     writeFileSync(event, original)
-    writeFileSync(join(site, 'ginko.config.ts'), "export default { site: 'own', locales: ['en'], bricks: { events: { kind: 'collection', visible: { mode: 'until', field: 'when' }, fields: { when: { type: 'daterange' } } } } }\n")
+    writeFileSync(join(site, 'ginko.config.ts'), "export default { site: 'own', locales: ['en'], bricks: { events: { kind: 'collection', showUntil: { field: 'when' }, fields: { when: { type: 'daterange' } } } } }\n")
     // Two weeks before today: the dates move by 14 days.
     const anchor = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10)
     writeFileSync(join(site, 'package.json'), JSON.stringify({ name: 'own-site', ginko: { sampleAnchor: anchor } }))

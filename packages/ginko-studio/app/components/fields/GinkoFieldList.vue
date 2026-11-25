@@ -14,7 +14,8 @@ import { hasTranslation } from '../../utils/content'
 import GinkoField from './GinkoField.vue'
 import GinkoFieldImage, { LIST_ALT_HINT } from './GinkoFieldImage.vue'
 import { messageOf } from '@studio/utils/messageOf'
-import { BLOCKERS, GINKO_ASSETS, TRANSLATION, issuesUnder, ownIssues, type Issue, newRowId, textIn } from '@lupinum/ginko-editor'
+import { BLOCKERS, GINKO_ASSETS, TRANSLATION, issuesUnder, ownIssues, newRowId, textIn } from '@lupinum/ginko-editor'
+import type { FieldIssue } from '@studio/composables/useEntryForm'
 import { ArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, EllipsisIcon, PlusIcon, Trash2Icon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
@@ -32,7 +33,8 @@ const props = defineProps<{
   path: string
   locale: Locale
   locales: readonly Locale[]
-  issues: readonly Issue[]
+  /** Errors, and with `note` what a draft still lacks (D116), shown muted. */
+  issues: readonly FieldIssue[]
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 const blockers = inject(BLOCKERS, undefined)
@@ -90,8 +92,9 @@ const hintId = computed(() => `${props.id}-alt-hint`)
 if (imageKey.value) provide(LIST_ALT_HINT, hintId.value)
 /** The id GinkoField gives a cell (`f-` and its path): the tiles keep it, so the description is `#…-alt` as in a row card. */
 const cellId = (row: Row, key: string) => `f-${`${props.path}.${row._id}.${key}`.replace(/[^a-zA-Z0-9_-]/g, '-')}`
-const cellErrors = (row: Row, key: string) => ownIssues(props.issues, `${props.path}.${row._id}.${key}`, props.locales)
-const tileErrors = (row: Row) => [...rowIssues(row), ...cellErrors(row, imageKey.value!)]
+// A tile shows errors only: its notes (D116) show when the row is opened.
+const cellErrors = (row: Row, key: string) => ownIssues(props.issues, `${props.path}.${row._id}.${key}`, props.locales).filter((i) => !i.note)
+const tileErrors = (row: Row) => [...rowIssues(row).filter((i) => !i.note), ...cellErrors(row, imageKey.value!)]
 
 function rowTitle(row: Row, index: number): string {
   // A row is named by its first text, so "Betriebsurlaub" is found without opening anything.
@@ -213,7 +216,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
 
 <template>
   <div ref="root" class="grid gap-3" role="group" :aria-labelledby="`${id}-label`">
-    <p v-for="e in listIssues" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
+    <p v-for="e in listIssues" :key="e.message" :class="['text-sm', e.note ? 'text-muted-foreground' : 'font-medium text-destructive']" :role="e.note ? undefined : 'alert'">{{ messageOf(e) }}</p>
 
     <!-- A gallery: one tile per photo, its description below, its moves on hover and focus (always on touch). -->
     <div v-if="photoGrid" class="@container">
@@ -277,7 +280,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
       <!-- A short value (time, number, money) keeps its buttons right beside it; a text takes the width the row has. -->
       <li v-for="(row, index) in rows" :key="row._id" class="flex items-start gap-1" :data-row="row._id">
         <div class="grid min-w-0 gap-1" :class="!shortColumn && 'flex-1'">
-          <p v-for="e in rowIssues(row)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
+          <p v-for="e in rowIssues(row)" :key="e.message" :class="['text-sm', e.note ? 'text-muted-foreground' : 'font-medium text-destructive']" :role="e.note ? undefined : 'alert'">{{ messageOf(e) }}</p>
           <GinkoField
             :field="columns[0]![1]" :model-value="row[columns[0]![0]]" :path="`${path}.${row._id}.${columns[0]![0]}`" :locale="locale" :locales="locales" :issues="issues"
             :cell-label="`${labelText(field.itemLabel)} ${index + 1}`" :hint-id="compactHint ? compactHintId : undefined" @update:model-value="setCell(index, columns[0]![0], $event)"
@@ -303,7 +306,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
             <Button type="button" variant="ghost" size="icon" class="hover:text-destructive" data-remove :disabled="rows.length <= min" :aria-label="t('fields.list.remove', { title: rowTitle(row, index) })" @click="removeRow(index)"><Trash2Icon aria-hidden="true" /></Button>
           </div>
         </div>
-        <p v-for="e in rowIssues(row)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
+        <p v-for="e in rowIssues(row)" :key="e.message" :class="['text-sm', e.note ? 'text-muted-foreground' : 'font-medium text-destructive']" :role="e.note ? undefined : 'alert'">{{ messageOf(e) }}</p>
         <div class="grid gap-4">
           <template v-for="[key, sub] in columns" :key="key">
             <div v-if="shown(row, sub)" :class="{ 'rounded-md bg-warning/10 p-3': needsCheck(row, key) }" @focusin="selectPlaceholder(row, key, $event)" @mouseup="holdSelection" @focusout="keepSelection = false">

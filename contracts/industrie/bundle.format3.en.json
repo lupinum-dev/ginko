@@ -92,16 +92,6 @@
           "fallback": [
             "text"
           ]
-        },
-        {
-          "id": "notice-empfang",
-          "data": {
-            "text": "Empfang bis 1. September nur vormittags besetzt.",
-            "until": "2026-09-30"
-          },
-          "fallback": [
-            "text"
-          ]
         }
       ]
     },
@@ -231,62 +221,12 @@
           "fallback": [
             "description"
           ]
-        },
-        {
-          "id": "job-lehre",
-          "data": {
-            "title": "Lehrstelle Werkzeugbau",
-            "kind": "apprenticeship",
-            "location": "Steyr",
-            "salary": {
-              "amount": 105000,
-              "currency": "EUR"
-            },
-            "salaryPeriod": "month",
-            "start": "2027-09-01",
-            "until": "2026-10-01",
-            "description": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Lehre zum Werkzeugmechaniker, vier Jahre."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            },
-            "applyUrl": "https://www.brunner-praezision.example/karriere/lehre"
-          },
-          "fallback": [
-            "title",
-            "description"
-          ]
         }
       ]
     },
     "events": {
       "kind": "collection",
       "items": [
-        {
-          "id": "msg-linz-2025",
-          "data": {
-            "title": "Fachmesse Linz 2025",
-            "when": {
-              "from": "2025-09-01",
-              "to": "2025-09-04"
-            },
-            "location": "Linz",
-            "booth": "A3"
-          },
-          "fallback": [
-            "title"
-          ]
-        },
         {
           "id": "msg-steyr",
           "data": {

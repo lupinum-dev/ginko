@@ -517,15 +517,6 @@
             "until": "2026-10-12"
           },
           "fallback": []
-        },
-        {
-          "id": "nt-fr",
-          "data": {
-            "text": "Neu: Changelog jetzt auch auf Französisch.",
-            "link": "https://taktwerk.example/fr/changelog",
-            "until": "2026-09-30"
-          },
-          "fallback": []
         }
       ]
     },

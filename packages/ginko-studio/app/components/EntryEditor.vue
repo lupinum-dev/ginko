@@ -5,7 +5,7 @@
      away and the form and the preview share the panel. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, slugKeyOf, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, visibleUntil, type Place, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, slugKeyOf, textIn, todayIn, treeFields, treeOf, untranslatedMode, urlsFor, shownUntil, statusOf, type Place, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
@@ -124,7 +124,7 @@ const form = useEntryForm({
     return true
   },
 })
-const { draft, baseline, issues, problem, conflict, busy, offline, waiting, dirty, confirm, localOffer } = form
+const { draft, baseline, issues, fieldIssues, problem, conflict, busy, offline, waiting, dirty, confirm, localOffer } = form
 
 /**
  * A new entry starts like the brick's standard add task (id `add`, D85) in Schnell ändern: its title and its prefill
@@ -302,7 +302,8 @@ function resetForm() {
 const timeZone = computed(() => props.schema.timeZone)
 const offlineable = computed(() => props.brick.kind === 'collection')
 const state = computed(() => props.entry?.state ?? 'live')
-const isDraft = computed(() => (props.entry ? state.value === 'draft' : offlineable.value))
+// A stored entry asks the one status (D113); a new entry of a collection starts as a draft.
+const isDraft = computed(() => (props.entry ? statusOf(props.brick, { data: props.entry.data, state: state.value }, todayIn(timeZone.value)).now === 'draft' : offlineable.value))
 /**
  * Save without publishing: on every live entry and single, Speichern keeps the changes unpublished; Veröffentlichen
  * puts them live (now or later), Verwerfen goes back to the version on the website.
@@ -376,7 +377,7 @@ const groupHasGap = (g: FieldGroup) => g.fields.some(([key]) => gapRoots.value.h
 // A refused save shows the first tab that holds an error.
 watch(issues, () => { const first = mainGroups.value.find(groupHasIssue); if (tabbed.value && first) activeTab.value = first.id })
 const setField = (key: string, value: Json | undefined) => form.setField(key, value)
-const fieldProps = computed(() => ({ all: props.brick.fields, draft: draft.value, baseline: baseline.value, locale: locale.value, locales: props.schema.locales, issues: issues.value, route: props.brick.kind === 'collection' ? props.brick.route : undefined, weeks: (key: string) => weekShortcuts(props.brick, key) }))
+const fieldProps = computed(() => ({ all: props.brick.fields, draft: draft.value, baseline: baseline.value, locale: locale.value, locales: props.schema.locales, issues: fieldIssues.value, route: props.brick.kind === 'collection' ? props.brick.route : undefined, weeks: (key: string) => weekShortcuts(props.brick, key) }))
 
 // The entry limit spans all fields and languages, so no field counter shows it (SPEC 3). Counted as the server does
 // (core entryBytes: the stored text, the draft over the stored data; the prints may lag by a few bytes), after the
@@ -556,7 +557,10 @@ async function doPublish() {
     await ops.publishEntry(props.entry._id, props.entry.lifeRev, { at: ms, rev: ms === undefined ? undefined : form.baseRev.value, task: publishTask.value, timeZone: timeZone.value, main: main.value })
     publishing.value = false
   } catch (error) {
-    publishError.value = opErrorOf(error).message
+    const e = opErrorOf(error)
+    // Refused for its fields: they show what is wrong, an empty required one as an error now, not a note (D116).
+    form.showFieldErrors(e)
+    publishError.value = e.message
   } finally {
     publishBusy.value = false
   }
@@ -656,8 +660,10 @@ const previewUrls = computed(() => {
  * a new entry's address cannot be made yet, or the entry has no page in this language until it is translated.
  */
 const previewNotice = computed(() => {
-  const last = visibleUntil(props.brick, { ...props.entry?.data, ...typed.value })
-  if (last && last < todayIn(timeZone.value)) return t('entry.preview.ended', { date: formatDay(last, format) })
+  // The preview shows the entry as if it were online: it ended when `statusOf` of the typed values says so (D113).
+  const data = { ...props.entry?.data, ...typed.value }
+  const last = shownUntil(props.brick, data)
+  if (last && statusOf(props.brick, { data, state: 'live' }, todayIn(timeZone.value)).now === 'ended') return t('entry.preview.ended', { date: formatDay(last, format) })
   const urls = previewUrls.value
   if (!urls) return undefined
   if (previewWaitsFor.value) return t('entry.preview.needsTitle', { field: previewWaitsFor.value })

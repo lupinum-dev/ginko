@@ -167,7 +167,7 @@ function storedLunchPlans<const A extends AllergenSet>(opts: { allergens?: A; lu
     max: 3,
     order: { field: 'weekOf', dir: 'asc' },
     // A planned week is over on its last day and then removed, so the owner never clears old weeks by hand.
-    visible: { mode: 'until', field: 'weekOf', days: 6, deleteExpired: true },
+    showUntil: { field: 'weekOf', plusDays: 6, thenDelete: true },
     plans: { brick: lunchBrick, field: 'weekOf' },
     tasks: [
       { id: 'planNext', label: both('Nächste Woche planen', 'Plan next week'), kind: 'create', prefill: { weekOf: '@nextWorkWeek' } },

@@ -508,15 +508,6 @@
           "fallback": [
             "text"
           ]
-        },
-        {
-          "id": "nt-fr",
-          "data": {
-            "text": "Nouveau : le changelog est désormais en français.",
-            "link": "https://taktwerk.example/fr/changelog",
-            "until": "2026-09-30"
-          },
-          "fallback": []
         }
       ]
     },

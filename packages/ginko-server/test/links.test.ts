@@ -124,6 +124,21 @@ describe('links when a write is not live yet', () => {
   })
 })
 
+describe('links inside an entry that ended (D111)', () => {
+  // Wrong behaviour caught: the link check read the bundle, which leaves ended entries out, so an ended entry took a
+  // broken link and a later edit that moved its end date forward put the link online unseen. A link TO an ended entry
+  // stays broken: it has no address.
+  it('a save of an ended entry checks the links it adds; a link to an ended entry is broken', async () => {
+    const s = await linkSetup()
+    const past = { from: '2026-10-01', to: '2026-10-02' }
+    const ended = (await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: { title: { de: 'Vorbei' }, when: past, description: { de: 'x' } }, publish: {} })) as { entry: Id<'entries'> }
+    const publish = s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: ended.entry, baseRev: 1, publish: true, fields: { description: { de: '[Weg]($events.gibt-es-nicht)' } }, sentence: 'x' })
+    expect(await errorOf(publish)).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
+    const slug = (await s.t.run((ctx) => ctx.db.get(ended.entry)))!.data.slug as Record<string, string>
+    expect(await errorOf(s.create(`[Vorbei]($events.${slug.de})`, {}))).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
+  })
+})
+
 describe('links of a plan (D106)', () => {
   const HOUR = 60 * 60 * 1000
   /** Draft A links to draft B; B gets `bAt` (or no time), then A is planned for `at`. */
@@ -152,6 +167,37 @@ describe('links of a plan (D106)', () => {
     else expect(await errorOf(s.planA())).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
   })
 
+  // Wrong behaviour caught: a planned draft took a new link to an entry that is not online by its time through a save,
+  // so the plan stopped at night instead of the save being refused.
+  it.each([
+    { name: 'planned earlier', offset: -HOUR, ok: true },
+    { name: 'planned later', offset: HOUR, ok: false },
+    { name: 'a draft without a time', offset: undefined, ok: false },
+  ])('the save of a planned draft may add a link to a draft $name: $ok', async ({ offset, ok }) => {
+    const s = await linkSetup()
+    const at = Date.now() + 2 * HOUR
+    const b = (await s.create('Ziel')) as { entry: Id<'entries'> }
+    if (offset !== undefined) await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: b.entry, lifeRev: 1, at: at + offset })
+    const slug = (await s.t.run((ctx) => ctx.db.get(b.entry)))!.data.slug as Record<string, string>
+    const a = (await s.create('Ohne Link')) as { entry: Id<'entries'> }
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: a.entry, lifeRev: 1, at })
+    const linked = s.save(a.entry, 1, { description: { de: `[Ziel]($events.${slug.de})` } })
+    if (ok) expect(await linked).toMatchObject({ entry: a.entry })
+    else expect(await errorOf(linked)).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
+  })
+
+  // Wrong behaviour caught: an undo of a planned draft brought back a link to an entry that is not online by its time,
+  // so the plan stopped at night instead of the undo being refused.
+  it('the undo of a planned draft that brings back a link to a draft without a time is refused', async () => {
+    const s = await linkSetup()
+    const b = (await s.create('Ziel')) as { entry: Id<'entries'> }
+    const slug = (await s.t.run((ctx) => ctx.db.get(b.entry)))!.data.slug as Record<string, string>
+    const a = (await s.create(`[Ziel]($events.${slug.de})`)) as { entry: Id<'entries'> }
+    const unlinked = (await s.save(a.entry, 1, { description: { de: 'Ohne Link' } })) as { change: string }
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: a.entry, lifeRev: 1, at: Date.now() + 2 * HOUR })
+    expect(await errorOf(s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: unlinked.change }))).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
+  })
+
   // The known edge, kept on purpose: A and B are due together, A's job runs first and counts B as online, then B
   // stops. A is online with a link to a page that does not exist; the cancel and remove screen will name such links.
   it('A and B due together, B stops: A is online with a link to B', async () => {
@@ -177,6 +223,8 @@ describe('restore from the trash (D109)', () => {
     { name: 'passes both checks', breakIt: 'nothing', state: undefined, history: 'history.restored', params: {} },
     { name: 'links to an entry removed meanwhile', breakIt: 'target', state: 'draft', history: 'history.restoredAsDraftBrokenLink', params: { link: expect.stringMatching(/^\$events\./) } },
     { name: 'misses a required field', breakIt: 'field', state: 'draft', history: 'history.restoredAsDraftInvalid', params: { count: 1 } },
+    // Restore fills no `publishedOn`, so an empty required date fails the check instead of counting as filled.
+    { name: 'has an empty required publishedOn date', breakIt: 'publishedOn', state: 'draft', history: 'history.restoredAsDraftInvalid', params: { count: 1, fields: expect.objectContaining({ de: 'Veröffentlicht am' }) } },
   ] as const)('an entry that was online and $name', async ({ breakIt, state, history, params }) => {
     const s = await linkSetup()
     const b = (await s.create(OK, {})) as { entry: Id<'entries'> }
@@ -185,6 +233,13 @@ describe('restore from the trash (D109)', () => {
     const remove = (entry: Id<'entries'>) => s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })
     await remove(a.entry)
     if (breakIt === 'target') await remove(b.entry)
+    if (breakIt === 'publishedOn') {
+      await s.t.run(async (ctx) => {
+        const schema = (await ctx.db.get(s.site))!.schema as { bricks: Record<string, { fields: object }> }
+        const events = schema.bricks.events!
+        await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, events: { ...events, publishedOn: 'postedOn', fields: { ...events.fields, postedOn: { type: 'date', label: { de: 'Veröffentlicht am' } } } } } } as never })
+      })
+    }
     if (breakIt === 'field') {
       await s.t.run(async (ctx) => {
         const { description: _, ...data } = (await ctx.db.get(a.entry))!.data as Record<string, unknown>

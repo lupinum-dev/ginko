@@ -98,11 +98,11 @@ describe('authoring types', () => {
 
   it('tasks, visible and route name what the brick has', () => {
     const fields = { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), until: f.date('Bis') }
-    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', route: { de: '/news/[slug]' }, visible: { mode: 'until', field: 'until' }, tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['title'], prefill: { until: '@today' } }] })
-    // @ts-expect-error the visibility field does not exist
-    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', visible: { mode: 'until', field: 'untill' } })
-    // @ts-expect-error visibility needs a date or daterange field
-    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', visible: { mode: 'until', field: 'title' } })
+    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', route: { de: '/news/[slug]' }, showUntil: { field: 'until' }, tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['title'], prefill: { until: '@today' } }] })
+    // @ts-expect-error the showUntil field does not exist
+    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', showUntil: { field: 'untill' } })
+    // @ts-expect-error showUntil needs a date or daterange field
+    collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', showUntil: { field: 'title' } })
     // @ts-expect-error plans needs a date field
     collection({ label: 'News', listing: { title: 'title' }, fields, max: 5, order: 'manual', plans: { brick: 'lunch', field: 'title' } })
     // @ts-expect-error a task field that does not exist

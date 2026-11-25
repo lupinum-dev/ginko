@@ -13,7 +13,7 @@ function layout(granted: Record<string, string[] | '*'>, rows: Record<string, nu
   const parts = ordered(schema.bricks).flatMap(([key, brick]) => {
     const held = granted[key]
     const tasks = (brick.tasks ?? []).filter((t) => held === '*' || held?.includes(t.id))
-    const timed = brick.kind === 'collection' && !!brick.visible && brick.visible.mode !== 'always'
+    const timed = brick.kind === 'collection' && !!brick.showUntil
     return tasks.length ? [{ key, tasks, removeOnRows: timed && (rows[key] ?? 3) <= 10 }] : []
   })
   return Object.fromEntries(cardsOf(schema, parts).map((card) => [card.key, card.sections.map((x) => ({

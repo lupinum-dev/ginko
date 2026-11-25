@@ -2,7 +2,7 @@
 // The platform computes it from the live entries; the Studio shows it and the weekly reminder mails the due ones.
 import { isTranslatable } from './fields.ts'
 import { entryTitle, textIn } from './list.ts'
-import { isVisible, visibleUntil } from './resolve.ts'
+import { shownOn, shownUntil } from './resolve.ts'
 import { addDays } from './time.ts'
 import type { Brick, Field, FieldType, Json, Locale, Schema } from './types.ts'
 
@@ -87,9 +87,9 @@ export function brickStatus<R extends StatusRules>(
     return answer ? { line: { kind: 'rule', rule: status.rule, today: answer.line } as RuleLine<R>, due: answer.due } : { line: null, due: false }
   }
   if ('count' in status) {
-    const online = live.filter((e) => isVisible(brick, e.data, today))
+    const online = live.filter((e) => shownOn(brick, e.data, today))
     const ending = online.filter((e) => {
-      const until = visibleUntil(brick, e.data)
+      const until = shownUntil(brick, e.data)
       return until !== undefined && until < soon
     }).length
     return { line: { kind: 'count', ending, online: online.length }, due: ending > 0 }

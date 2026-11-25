@@ -180,9 +180,9 @@ describe('shiftDates', () => {
   const site = {
     locales: ['en'],
     bricks: {
-      events: { visible: { mode: 'until', field: 'when' }, fields: { title: { type: 'text' }, when: { type: 'daterange' }, day: { type: 'date' } } },
+      events: { showUntil: { field: 'when' }, fields: { title: { type: 'text' }, when: { type: 'daterange' }, day: { type: 'date' } } },
       posts: { fields: { date: { type: 'date' } } },
-      notices: { visible: { mode: 'always' }, fields: { until: { type: 'date' } } },
+      notices: { fields: { until: { type: 'date' } } },
       lunch: { status: { next: 'week' }, fields: { week: { type: 'date' } } },
       sessions: { fields: { date: { type: 'date' }, from: { type: 'time' } } },
       // The gastro lunch brick: no status or expiry, but a weekly task, so a new site opens with a current week.

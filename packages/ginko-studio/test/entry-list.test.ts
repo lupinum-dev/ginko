@@ -18,7 +18,7 @@ Object.entries({ computed, onBeforeUnmount, ref, watch, useI18n }).forEach(([nam
 const schema = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', week: { firstDay: 'mo', workdays: ['mo', 'tu', 'we', 'th', 'fr'] },
   pages: { home: { de: '/' } },
-  bricks: { dishes: collection({ listing: { title: 'title', detail: 'price' }, label: 'Gerichte', max: 500, order: 'manual', fields: { title: f.text('Name'), price: f.money('Preis', { optional: true }) } }) },
+  bricks: { dishes: collection({ listing: { title: 'title', detail: 'price' }, label: 'Gerichte', max: 500, order: 'manual', showUntil: { field: 'until' }, fields: { title: f.text('Name'), price: f.money('Preis', { optional: true }), until: f.date('Bis', { optional: true }) } }) },
 }))
 const brick = schema.bricks.dishes!
 
@@ -51,7 +51,7 @@ vi.stubGlobal('useConvexQuery', (fn: string, args: () => unknown, options?: { ke
   }, { immediate: true })
   return list
 })
-const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: []; pending?: boolean }[]; total: number }) => {
+const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: []; pending?: { since: number } }[]; total: number }) => {
   list.data.value = page
   list.pending.value = false
   list.isStale.value = false
@@ -156,11 +156,33 @@ test('a live entry with unpublished changes is marked but not greyed out like a 
   list.error.value = undefined
   answer({ rows: [
     { _id: 'e1', title: 'Saibling', state: 'draft', dates: {}, gaps: [] },
-    { _id: 'e2', title: 'Forelle', state: 'live', dates: {}, gaps: [], pending: true },
+    { _id: 'e2', title: 'Forelle', state: 'live', dates: {}, gaps: [], pending: { since: 1 } },
   ], total: 2 })
   await flushPromises()
   const rows = wrapper.findAll('li[class*="group/row"]')
   expect(rows.map((r) => [r.text().includes('Entwurf'), r.text().includes('Unveröffentlichte Änderungen'), r.attributes('data-dim')])).toEqual([
+    [true, false, 'true'],
+    [false, true, undefined],
+  ])
+})
+
+// Wrong behaviour caught (D113): an entry whose date passed with saved changes said "Unveröffentlichte Änderungen" and
+// was not greyed out, while the website no longer shows it; the row's one text follows what visitors see now.
+test('an entry that ended with unpublished changes shows that it ended', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
+    global: { mocks: { shownLabel }, stubs },
+  })
+  await flushPromises()
+  list.error.value = undefined
+  answer({ rows: [
+    { _id: 'e1', title: 'Saibling', state: 'live', dates: { until: '2026-10-14' }, gaps: [] },
+    { _id: 'e2', title: 'Forelle', state: 'live', dates: { until: '2026-10-14' }, gaps: [], pending: { since: 1 } },
+    { _id: 'e3', title: 'Hecht', state: 'live', dates: { until: '2026-10-15' }, gaps: [], pending: { since: 1 } },
+  ], total: 3 })
+  await flushPromises()
+  const rows = wrapper.findAll('li[class*="group/row"]')
+  expect(rows.map((r) => [r.text().includes('abgelaufen am'), r.text().includes('Unveröffentlichte Änderungen'), r.attributes('data-dim')])).toEqual([
+    [true, false, 'true'],
     [true, false, 'true'],
     [false, true, undefined],
   ])

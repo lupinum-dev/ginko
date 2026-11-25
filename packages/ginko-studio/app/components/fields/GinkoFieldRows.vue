@@ -10,7 +10,8 @@ import { isShown, ordered, rowKeysOf, type SiteWeek } from '@lupinum/ginko/inter
 import { hasTranslation, rowLabel } from '../../utils/content'
 import GinkoField from './GinkoField.vue'
 import { messageOf, type Described } from '@studio/utils/messageOf'
-import { BLOCKERS, issuesUnder, type Issue, textIn } from '@lupinum/ginko-editor'
+import { BLOCKERS, issuesUnder, textIn } from '@lupinum/ginko-editor'
+import type { FieldIssue } from '@studio/composables/useEntryForm'
 import { Button } from '@studio/components/ui/button'
 import { useStudioSite } from '../../utils/labels'
 import { useStillRight } from '../../composables/useStillRight'
@@ -26,7 +27,8 @@ const props = defineProps<{
   path: string
   locale: Locale
   locales: readonly Locale[]
-  issues: readonly Issue[]
+  /** Errors, and with `note` what a draft still lacks (D116), shown muted. */
+  issues: readonly FieldIssue[]
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 const blockers = inject(BLOCKERS, undefined)
@@ -124,17 +126,17 @@ function holdSelection(event: MouseEvent) {
 
 const rowIssues = (key: string) => issuesUnder(props.issues, `${props.path}.${key}`).filter((i) => i.path === `${props.path}.${key}`)
 /** A row's own sentence ("the row … is missing") names the row as its heading does (the weekday), not by its key. */
-const rowText = (key: string, e: Issue & Described) => messageOf({ ...e, ...(e.params ? { params: { ...e.params, row: titleOf(key) } } : {}) })
+const rowText = (key: string, e: FieldIssue & Described) => messageOf({ ...e, ...(e.params ? { params: { ...e.params, row: titleOf(key) } } : {}) })
 const fieldIssues = computed(() => props.issues.filter((i) => i.path === props.path))
 </script>
 
 <template>
   <div class="grid gap-3" role="group" :aria-labelledby="`${id}-label`">
-    <p v-for="e in fieldIssues" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
+    <p v-for="e in fieldIssues" :key="e.message" :class="['text-sm', e.note ? 'text-muted-foreground' : 'font-medium text-destructive']" :role="e.note ? undefined : 'alert'">{{ messageOf(e) }}</p>
     <ol class="m-0 grid list-none gap-3 p-0">
       <li v-for="key in keys" :key="key" class="grid gap-4 rounded-lg border bg-card p-3 sm:p-4" :data-row="key">
         <h3 class="m-0 truncate text-sm font-semibold">{{ titleOf(key) }}</h3>
-        <p v-for="e in rowIssues(key)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ rowText(key, e) }}</p>
+        <p v-for="e in rowIssues(key)" :key="e.message" :class="['text-sm', e.note ? 'text-muted-foreground' : 'font-medium text-destructive']" :role="e.note ? undefined : 'alert'">{{ rowText(key, e) }}</p>
         <div class="grid gap-4">
           <template v-for="[column, sub] in columns" :key="column">
             <div v-if="shown(rowOf(key), sub)" :class="{ 'rounded-md bg-warning/10 p-3': needsCheck(key, column) }" @focusin="selectPlaceholder(key, column, $event)" @mouseup="holdSelection" @focusout="keepSelection = false">

@@ -10,7 +10,6 @@ import { useTodayAreas, type TodayFlag } from '../../../composables/useTodayArea
 import { taskRef, titleOf, type Task } from '../../../utils/content'
 import { shownLabel } from '../../../utils/labels'
 import type { OwnRow } from '../../../utils/today'
-import { whenFull } from '../../../utils/when'
 import { useTextOf } from '../../../composables/useTextOf'
 import { api } from '#convex/api'
 import EntryRemoveDialog, { type EntryUses, type TrashOverflow } from '../../../components/EntryRemoveDialog.vue'
@@ -218,7 +217,7 @@ function focusArea(key: string) {
 const labelOf = (key: string) => shownLabel(s.schema.value!.bricks[key]!.label, s.main.value)
 
 // "Wartet auf dich" in words, one action per tile.
-const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone ?? 'UTC', main: s.main.value }))
+const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone, main: s.main.value }))
 const history = computed(() => `/s/${s.slug.value}/history`)
 const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
   switch (item.kind) {
@@ -243,7 +242,7 @@ const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
     }
     case 'notLive': return {
       id: `n-${item.p.proposal}`, kind: 'notLive', title: ownLine(item.p),
-      sub: t('history.notLiveBecause', { when: whenFull(item.p.at!, s.schema.value?.timeZone ?? 'UTC', format), reason: textOf(item.p.reasonMsg, item.p.reason ?? '') }),
+      sub: t('history.notLiveBecause', { when: ownWhen(item.p.at!), reason: textOf(item.p.reasonMsg, item.p.reason ?? '') }),
       action: { label: t('today.waiting.inHistory'), to: history.value },
     }
   }

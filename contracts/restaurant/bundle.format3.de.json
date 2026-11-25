@@ -160,14 +160,6 @@
             "until": "2026-10-16"
           },
           "fallback": []
-        },
-        {
-          "id": "notice-urlaub",
-          "data": {
-            "text": "Betriebsurlaub vom 27. Dezember bis 6. Jänner.",
-            "until": "2026-09-30"
-          },
-          "fallback": []
         }
       ]
     },
@@ -465,34 +457,6 @@
     "events": {
       "kind": "collection",
       "items": [
-        {
-          "id": "sommerfest",
-          "data": {
-            "title": "Sommerfest im Gastgarten",
-            "slug": "sommerfest-gastgarten",
-            "when": {
-              "from": "2026-06-20",
-              "to": "2026-06-21"
-            },
-            "description": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Musik, Grillstation und Kinderprogramm."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            }
-          },
-          "fallback": [],
-          "updatedAt": "2026-10-05T09:00:00.000Z"
-        },
         {
           "id": "weinabend",
           "data": {

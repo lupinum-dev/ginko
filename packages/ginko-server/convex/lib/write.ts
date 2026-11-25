@@ -102,7 +102,8 @@ export interface LiveEdit {
  * Cheap first: without a new link target in the Markdown text no bundle is built. Otherwise the bundles of
  * all languages are built with the new data of every edit in place of the stored one and checked by the core
  * `checkLinks` without a `files` option (the platform does not know the site's public files, so an unknown
- * plain path is not an error). Edits of drafts are not live and must not be passed.
+ * plain path is not an error). A plain draft is not going online and is not passed; a draft that goes online is: the
+ * plan call, the save and undo of a planned draft, with `plannedBy` its time (D106), and publishing at once.
  */
 export async function checkNewLinks(ctx: QueryCtx, site: Doc<'sites'>, edits: LiveEdit[], plannedBy?: number) {
   const issue = await brokenNewLinks(ctx, site, edits, plannedBy)
@@ -125,7 +126,7 @@ export async function brokenNewLinks(ctx: QueryCtx, site: Doc<'sites'>, edits: L
   const schema = site.schema as Schema
   const overrides = new Map(edits.map((e) => [e.entry._id as string, e.after]))
   const items: NewItem[] = edits.filter((e) => e.isNew).map((e) => ({ brick: e.entry.brick, id: e.entry._id, data: e.after }))
-  const bundles = await Promise.all(schema.locales.map((locale) => bundleOf(ctx, site, locale, overrides, items, false, plannedBy)))
+  const bundles = await Promise.all(schema.locales.map((locale) => bundleOf(ctx, site, locale, { overrides, added: items, plannedBy, keepEnded: true })))
   for (const issue of checkLinks(bundles, schema)) {
     if (issue.severity !== 'error') continue
     const edit = edits.find((e) => issue.brick === e.entry.brick && (issue.id === e.entry._id || issue.id === e.entry.brick))

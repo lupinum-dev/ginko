@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
   applyDefaults, bundleFits, f, isBundle, knownBricks, markdownTrees, parseMarkdown, platformMarkdownRef, withMarkdownRefs, wordsOf, type Bundle, type MarkdownTree,
-  buildBundle, servedBundle, type FileInfo, isTranslatable, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
+  buildBundle, servedBundle, type FileInfo, isTranslatable, shownOn, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
   type Brick, type BundleBrick, type BundleItem, type CollectionBrick, type Locale, type Schema, type StoredEntry,
 } from '../../src/core/index.ts'
 
@@ -172,7 +172,7 @@ describe('buildBundle: locales (SPEC 6)', () => {
   })
 })
 
-describe('isVisible: dates are inclusive in the site time zone (SPEC 2.1)', () => {
+describe('shownOn: dates are inclusive in the site time zone (SPEC 2.1)', () => {
   it.each([
     { name: 'an active notice without a date stays visible', brick: 'notices', data: {}, visible: true },
     { name: 'an active notice that ends today is visible', brick: 'notices', data: { until: '2026-10-08' }, visible: true },
@@ -184,21 +184,21 @@ describe('isVisible: dates are inclusive in the site time zone (SPEC 2.1)', () =
     { name: 'an event that ended yesterday is hidden', brick: 'events', data: { when: { from: '2026-10-01', to: '2026-10-07' } }, visible: false },
     { name: 'an event without dates stays visible', brick: 'events', data: {}, visible: true },
   ])('$name', ({ brick, data, visible }) => {
-    expect(isVisible(brickOf(base(), brick), data, TODAY)).toBe(visible)
+    expect(shownOn(brickOf(base(), brick), data, TODAY)).toBe(visible)
   })
 
   // Wrong behaviour caught: `days` only counts for a date field, so a daterange entry disappears on its last day.
   it('adds days to the end of a daterange', () => {
-    const events = { ...brickOf(base(), 'events'), visible: { mode: 'until', field: 'when', days: 2 } } as Brick
-    expect(isVisible(events, { when: { from: '2026-10-01', to: '2026-10-06' } }, TODAY)).toBe(true)
-    expect(isVisible(events, { when: { from: '2026-10-01', to: '2026-10-05' } }, TODAY)).toBe(false)
+    const events = { ...brickOf(base(), 'events'), showUntil: { field: 'when', plusDays: 2 } } as Brick
+    expect(shownOn(events, { when: { from: '2026-10-01', to: '2026-10-06' } }, TODAY)).toBe(true)
+    expect(shownOn(events, { when: { from: '2026-10-01', to: '2026-10-05' } }, TODAY)).toBe(false)
   })
 
   // Wrong behaviour caught: at 00:30 in Vienna a notice that ended yesterday still shows, because the UTC date is one day behind.
   it('decides today in the site time zone, not in UTC', () => {
     const today = todayIn('Europe/Vienna', new Date('2026-10-07T22:30:00Z'))
     expect(today).toBe('2026-10-08')
-    expect(isVisible(brickOf(base(), 'notices'), { until: '2026-10-07' }, today)).toBe(false)
+    expect(shownOn(brickOf(base(), 'notices'), { until: '2026-10-07' }, today)).toBe(false)
   })
 })
 
@@ -290,14 +290,14 @@ describe('retired fields are projected into the bundle (SPEC 2.5)', () => {
   })
 })
 
-describe('collections: hidden entries have no URL (SPEC 2.1, 6)', () => {
-  it('lists a hidden entry without urls and a visible entry with its URL, in when order', () => {
-    const hidden: StoredEntry = { id: 'h1', data: { title: { de: 'Frühlingsfest' }, slug: { de: 'fruehlingsfest' }, when: { from: '2026-10-01', to: '2026-10-02' } } }
+// Wrong behaviour caught: an ended entry stays in the bundle (its text, and a reference to it, reach the page), or a
+// shown one loses its address.
+describe('collections: an entry that ended is not in the bundle (D111)', () => {
+  it('leaves out the ended entry and keeps the shown one with its URL', () => {
+    const ended: StoredEntry = { id: 'h1', data: { title: { de: 'Frühlingsfest' }, slug: { de: 'fruehlingsfest' }, when: { from: '2026-10-01', to: '2026-10-02' } } }
     const shown: StoredEntry = { id: 'v1', data: { title: { de: 'Weinabend' }, slug: { de: 'weinabend' }, when: { from: '2026-10-10', to: '2026-10-10' } } }
-    const items = itemsOf(build(base(), { events: [shown, hidden] }, 'de').bricks.events)
-    expect(items.map((i) => i.id)).toEqual(['h1', 'v1'])
-    expect(items[0]).not.toHaveProperty('urls')
-    expect(items[1]?.urls?.de).toBe('/veranstaltungen/weinabend')
+    const items = itemsOf(build(base(), { events: [shown, ended] }, 'de').bricks.events)
+    expect(items.map((i) => [i.id, i.urls?.de])).toEqual([['v1', '/veranstaltungen/weinabend']])
   })
 })
 

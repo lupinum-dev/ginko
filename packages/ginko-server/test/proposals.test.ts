@@ -104,6 +104,23 @@ describe('when a write needs a yes', () => {
     expect((await s.row(draft.entry as Id<'entries'>))!.state).toBe('live')
   })
 
+  // Wrong behaviour caught (D105): a yes before the time checked the asker's own later edits against the rev they asked
+  // with and refused the plan, naming the asker as the one who changed it; a plan does not freeze the text.
+  it('a plan asked with a time, edited by the asker, and approved before the time is made', async () => {
+    const s = await approvalSetup()
+    const draft = await s.as.owner.mutation(api.entries.create, {
+      site: 'restaurant', opId: opId(), brick: 'menu', data: { category: 'starters', name: { de: 'Neu' }, price: { amount: 900 }, allergens: ['A'], veg: 'none' },
+    })
+    const entry = draft.entry as Id<'entries'>
+    const at = Date.now() + 2 * 60 * 60 * 1000
+    const asked = await s.as.cook.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, lifeRev: 1, at, rev: 1 })
+    expect(asked).toMatchObject({ status: 'open' })
+    await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 950 } }, sentence: 'x' })
+    await s.as.owner.mutation(api.proposals.approve, { proposal: (asked as Proposed).proposal })
+    const row = (await s.row(entry))!
+    expect({ state: row.state, publishAt: row.publishAt, price: (row.data as { price?: unknown }).price }).toEqual({ state: 'draft', publishAt: at, price: { amount: 950 } })
+  })
+
   it('an invalid change is refused when it is proposed, not at approval', async () => {
     const s = await approvalSetup()
     const error = await errorOf(s.cookPrice(s.saibling, -5))

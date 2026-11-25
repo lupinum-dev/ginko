@@ -3,7 +3,7 @@
 import { entryTitle, type Bundle } from './bundle.ts'
 import { factResolver } from './facts.ts'
 import { textBlocks, type MarkdownTree } from './markdown.ts'
-import { isVisible } from './resolve.ts'
+import { shownOn } from './resolve.ts'
 import type { SearchRecord } from './search.ts'
 import type { Schema } from './types.ts'
 
@@ -12,7 +12,7 @@ export interface SearchSectionsOptions {
   schema: Pick<Schema, 'bricks'>
   /** The trees behind `{ ref }` markdown values (withMarkdownRefs); not needed when the bundle holds the trees. */
   trees?: ReadonlyMap<string, MarkdownTree>
-  /** The site's day (`todayIn`): entries past their `visible` date are left out, as on the pages. Unset at build time, where the day is not known. */
+  /** The site's day (`todayIn`): entries that ended (`showUntil`) are left out, as on the pages. Unset at build time, where the day is not known. */
   today?: string
   /** BCP 47 tag for the text of facts (numbers, money, dates); default: the bundle's locale. */
   language?: string
@@ -49,7 +49,7 @@ export function searchSections(bundle: Bundle, options: SearchSectionsOptions): 
     for (const item of entry.items) {
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      if (def && options.today && !isVisible(def, item.data, options.today)) continue
+      if (def && options.today && !shownOn(def, item.data, options.today)) continue
       const title = entryTitle(item, def)
       const intro: string[] = []
       for (const [name, field] of fields) {
