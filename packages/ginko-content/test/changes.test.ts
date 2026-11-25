@@ -98,7 +98,7 @@ describe('$changes in a file', () => {
   it.each([
     ['a field a change may not set', 'set: { slug: neu }', '$changes.0.set.slug', '“Adresse” cannot start on a day: it decides when or where the entry shows.'],
     ['a value the field refuses', 'set: { note: dieser Hinweis ist viel zu lang für das Feld Hinweis }', '$changes.0.set.note.de', 'Change from 2026-11-01: “Hinweis” is too long (at most 40 characters).'],
-    ['an end, which is not built yet', 'until: 2026-12-01\n    set: { price: 10 }', '$changes.0.until', '“until” in a change is not built yet.'],
+    ['an end, which is not available yet', 'until: 2026-12-01\n    set: { price: 10 }', '$changes.0.until', '“until” is not available for a change yet.'],
     // Wrong behaviour caught: a Markdown text in a change of a file is stored as text beside the entry's trees.
     ['a Markdown text', 'set: { story: Neu mit **Kräutern** }', '$changes.0.set.story', '“story” is a Markdown text, and a Markdown text cannot be in a change in a file. Change the text in the file on its day.'],
   ])('refuses the entry for %s and names the change', async (_, change, path, message) => {

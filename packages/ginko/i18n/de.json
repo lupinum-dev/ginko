@@ -55,10 +55,10 @@
     "changeDay": "„{value}“ ist kein Tag. Schreibe „from“ als JJJJ-MM-TT, zum Beispiel 2026-11-01.",
     "changeEmpty": "Eine Änderung braucht in „set“ mindestens ein Feld.",
     "changeKey": "„{key}“ gibt es in einer Änderung nicht: sie hat nur „from“ und „set“.",
-    "changeNotYet": "„{key}“ in einer Änderung ist noch nicht gebaut.",
+    "changeNotYet": "„{key}“ gibt es für eine Änderung noch nicht.",
     "changeTwice": "Zwei Änderungen ab {from} setzen „{label}“.",
     "changeFixed": "„{label}“ kann nicht ab einem Tag gelten: das Feld bestimmt, wann oder wo der Eintrag erscheint.",
-    "changeTranslated": "„{label}“ hat Text pro Sprache. Eine Änderung ab einem Tag ist für ein solches Feld noch nicht gebaut.",
+    "changeTranslated": "„{label}“ hat Text pro Sprache. Für ein solches Feld ist eine Änderung ab einem Tag noch nicht möglich.",
     "changeValue": "Änderung ab {from}: {problem}"
   },
   "file": {

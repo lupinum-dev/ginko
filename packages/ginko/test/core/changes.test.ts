@@ -181,7 +181,7 @@ describe('when on a task (D123)', () => {
   it('refuses a text field on a site with several languages', () => {
     const s = schema({ locales: ['de', 'en'], bricks: { dishes: { ...dishes, untranslated: 'fallback', route: { de: '/karte/[slug]', en: '/menu/[slug]' } }, practice } })
     ;(s.bricks.dishes as { tasks?: unknown }).tasks = [edit(['price', 'note'], { from: 'ask' })]
-    expect(checkSchema(s, statusRules).filter((p) => p.includes('when'))).toEqual(['dishes.price.when: “note” has text per language, and a translated value in a change is not built yet.'])
+    expect(checkSchema(s, statusRules).filter((p) => p.includes('when'))).toEqual(['dishes.price.when: “note” has text per language. A change from a day is not possible for such a field yet.'])
   })
 })
 
