@@ -310,16 +310,22 @@ describe('moving and cancelling', () => {
     expect((await s.row(s.saibling))!.data).toMatchObject({ price: { amount: 1350 } })
   })
 
+  // Wrong behaviour caught: a removed entry keeps its waiting values, which a restore would bring back unasked.
   it('removing the entry cancels its changes with one history row; restoring does not bring them back', async () => {
     const s = await datedSetup()
     await s.plan(1450)
     await s.plan(1490, '2026-12-01')
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.saibling, baseRev: 1, fields: { veg: 'vegan' } })
+    const pending = () => s.t.run((ctx) => ctx.db.query('pendingChanges').withIndex('by_entry', (q) => q.eq('entry', s.saibling)).collect())
+    expect(await pending()).toHaveLength(1)
     const lifeRev = (await s.row(s.saibling))!.lifeRev
     await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev })
     expect(await s.dated(s.saibling)).toEqual([])
+    expect(await pending()).toEqual([])
     expect((await s.history(s.saibling)).filter((c) => c.kind === 'datedCancelled')).toMatchObject([{ msg: { key: 'history.datedCancelledWithEntry', params: { count: 2 } } }])
     await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: s.saibling, lifeRev: lifeRev + 1 })
     expect(await s.dated(s.saibling)).toEqual([])
+    expect(await pending()).toEqual([])
   })
 })
 
