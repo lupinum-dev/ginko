@@ -238,8 +238,10 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) refuseOnlineErrors(await onlineErrors(ctx, actor.site._id, schema, { brick: entry.brick, data }, planDay(schema, entry.publishAt)))
   await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed })
   await checkNewFiles(ctx, actor.site._id, brick.fields, before, data)
-  // A draft and unpublished changes are not online yet: their links are checked when they go live.
+  // A draft and unpublished changes are not online yet: their links are checked when they go live. A planned draft's new
+  // links are checked now against its time (D106), so the plan does not stop at night for a link this save added.
   if (stateOf(entry) === 'live' && !toPending) await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before, after: data }])
+  else if (stateOf(entry) === 'draft' && entry.publishAt !== undefined) await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before, after: data }], entry.publishAt)
 
   const onlyConfirm = Object.keys(args.fields).length === 0
   // Nothing goes online: no proposal, no history line yet (publishing writes it).
@@ -621,6 +623,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed: roots, whole: true })
     await checkNewFiles(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     if (stateOf(entry) === 'live') await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before: entry.data as Data, after: data }])
+    else if (entry.publishAt !== undefined) await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before: entry.data as Data, after: data }], entry.publishAt)
 
     await undoSlugs(ctx, actor, entry, brick, roots, data)
     const followed = await followName(ctx, actor, entry, brick, entry.data as Data, data)

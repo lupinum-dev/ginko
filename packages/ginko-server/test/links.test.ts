@@ -152,6 +152,25 @@ describe('links of a plan (D106)', () => {
     else expect(await errorOf(s.planA())).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
   })
 
+  // Wrong behaviour caught: a planned draft took a new link to an entry that is not online by its time through a save,
+  // so the plan stopped at night instead of the save being refused.
+  it.each([
+    { name: 'planned earlier', offset: -HOUR, ok: true },
+    { name: 'planned later', offset: HOUR, ok: false },
+    { name: 'a draft without a time', offset: undefined, ok: false },
+  ])('the save of a planned draft may add a link to a draft $name: $ok', async ({ offset, ok }) => {
+    const s = await linkSetup()
+    const at = Date.now() + 2 * HOUR
+    const b = (await s.create('Ziel')) as { entry: Id<'entries'> }
+    if (offset !== undefined) await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: b.entry, lifeRev: 1, at: at + offset })
+    const slug = (await s.t.run((ctx) => ctx.db.get(b.entry)))!.data.slug as Record<string, string>
+    const a = (await s.create('Ohne Link')) as { entry: Id<'entries'> }
+    await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: a.entry, lifeRev: 1, at })
+    const linked = s.save(a.entry, 1, { description: { de: `[Ziel]($events.${slug.de})` } })
+    if (ok) expect(await linked).toMatchObject({ entry: a.entry })
+    else expect(await errorOf(linked)).toMatchObject({ code: 'INVALID', key: 'errors.linkBroken' })
+  })
+
   // The known edge, kept on purpose: A and B are due together, A's job runs first and counts B as online, then B
   // stops. A is online with a link to a page that does not exist; the cancel and remove screen will name such links.
   it('A and B due together, B stops: A is online with a link to B', async () => {
