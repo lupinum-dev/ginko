@@ -1,7 +1,10 @@
 // Gasthaus zur Linde: the v1 acceptance target (SPEC 13, DEMOS.md demo 3).
 // Hours, notices, lunch, menu, events and gallery come from the gastro preset; the rest is this house's own.
-import { defineSite, extend, f, single } from '@lupinum/ginko'
+import { defineSite, extend, f, single, type TaskInput } from '@lupinum/ginko'
 import { events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '@lupinum/ginko-preset-gastro'
+
+/** The preset's menu with its own tasks; this house adds two tasks with an end (below). */
+const dishes = menu()
 
 export default defineSite({
   name: 'Gasthaus zur Linde',
@@ -40,7 +43,19 @@ export default defineSite({
     lunch: extend(lunch({ weekOf: '2026-10-05', needsApproval: true }), { preview: 'lunch' }),
     // Lunch weeks planned ahead, shown from their first day of the week (lunchWeekOn).
     lunchPlans: lunchPlans(),
-    menu: extend(menu(), { preview: 'menu' }),
+    // The menu's fields named: the new tasks' `fields` and `set` would otherwise take part in guessing them.
+    menu: extend<typeof dishes.fields>(dishes, {
+      preview: 'menu',
+      tasks: [
+        // A made brick keeps its tasks with plain field names (`Def.tasks`): typed by the menu's fields again here, as
+        // the preset does for its own `soldOut` task.
+        ...((dishes.tasks ?? []) as readonly TaskInput<typeof dishes.fields>[]),
+        // A price for some days; the normal price comes back by itself after the last day.
+        { id: 'offer', label: { de: 'Aktionspreis', en: 'Special price' }, fields: ['price'], when: { from: 'ask', until: 'ask' } },
+        // One press: the dish is off the website today and back tomorrow; the entry keeps "on the menu".
+        { id: 'offToday', label: { de: 'Heute nicht auf der Karte', en: 'Not on the menu today' }, fields: [], when: { from: '@today', until: '@today' }, set: { onMenu: false } },
+      ],
+    }),
     events: events(),
     gallery: extend(gallery(), { preview: 'gallery' }),
     // A rare job (moving, new number): no quick task, found under this label in Alles bearbeiten.
