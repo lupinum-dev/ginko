@@ -1467,6 +1467,25 @@
           }
         },
         {
+          "id": "season",
+          "label": {
+            "de": "Saisongericht",
+            "en": "Seasonal dish"
+          },
+          "kind": "edit",
+          "pick": true,
+          "fields": [],
+          "when": {
+            "from": "ask",
+            "until": "ask",
+            "yearly": "ask",
+            "name": "ask"
+          },
+          "set": {
+            "onMenu": true
+          }
+        },
+        {
           "id": "offToday",
           "label": {
             "de": "Heute nicht auf der Karte",

@@ -52,6 +52,9 @@ export default defineSite({
         ...((dishes.tasks ?? []) as readonly TaskInput<typeof dishes.fields>[]),
         // A price for some days; the normal price comes back by itself after the last day.
         { id: 'offer', label: { de: 'Aktionspreis', en: 'Special price' }, fields: ['price'], when: { from: 'ask', until: 'ask' } },
+        // A dish that is on the menu only in its season: the same days every year, with a name ("Marillenzeit"). The entry
+        // keeps "not on the menu"; the website shows the dish on those days (slice 4).
+        { id: 'season', label: { de: 'Saisongericht', en: 'Seasonal dish' }, fields: [], set: { onMenu: true }, when: { from: 'ask', until: 'ask', yearly: 'ask', name: 'ask' } },
         // One press: the dish is off the website today and back tomorrow; the entry keeps "on the menu". It goes in slice 6,
         // when the preset's "Gericht heute aus" takes this form.
         { id: 'offToday', label: { de: 'Heute nicht auf der Karte', en: 'Not on the menu today' }, fields: [], when: { from: '@today', until: '@today' }, set: { onMenu: false } },
