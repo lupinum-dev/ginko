@@ -6,7 +6,7 @@ export { serializeSchema, platformSchema, migrationFingerprint, checkSchema, che
 export { SITE_BUDGET, byteSize, entryBytes, fitsBudget, largestEntryBytes, largestFieldBytes } from './budget.ts'
 export { parseMarkdown, plainText, wordsOf, textBlocks, URL_PROPS, UNSAFE_LINK, type TextBlock, describeProfile, profileCovers, MARKDOWN_PROFILES, type MarkdownProfile, type AttributeRegistry, type MarkdownToc, type MarkdownTree, type MarkdownValue, type ParsedMarkdown, type ParseOptions, type TocLink } from './markdown.ts'
 export { markdownBlocks, serializeMarkdown, isStableMarkdown, type MarkdownBlock, type MarkdownBlocks, type SerializeOptions } from './markdown-serialize.ts'
-export { validate, isDate, fileProblem, SHAPE_CODES, DRAFT_CODES, type ValidateOptions, type ValidationResult } from './validate.ts'
+export { validate, isDate, fileProblem, SHAPE_CODES, type ValidateOptions, type ValidationResult } from './validate.ts'
 export { diffSchema, type SchemaChange, type SchemaDiff } from './diff.ts'
 export { rowDiffs, keyedRowDiffs, mergeRows, mergeKeyedRows, type RowDiff } from './rows.ts'
 export { releaseData, recheckAll, withPublishedOn, planDay } from './release.ts'

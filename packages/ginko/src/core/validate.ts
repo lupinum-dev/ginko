@@ -16,28 +16,30 @@ import type { Brick, Field, FileField, Fields, Issue, Json, Locale, MarkdownFiel
 export const SHAPE_CODES: ReadonlySet<string> = new Set(['TYPE', 'NOT_OBJECT', 'NOT_LOCALIZED', 'UNKNOWN_FIELD', 'UNKNOWN_LOCALE', 'UNKNOWN_BRICK'])
 
 /**
- * Codes a `draft` check refuses (D115): a value must be well formed to be stored; it need not be complete or good enough
- * for visitors. So a date that is no date, a time that is no time, a row without a proper or with a doubled `_id`, an
- * address that is no address, a picture reference to a file that is no picture are refused; a missing value, a length,
- * a count, a range, a choice that is no option or a reference that leads nowhere only warn.
+ * Codes a `draft` check only warns about (D115): a value must be well formed to be stored; it need not be complete or
+ * good enough for visitors. So a missing value, a length, a format, a count, a range, a step, a choice that is no option,
+ * a reference that leads nowhere and a text the Markdown profile does not allow only warn. Every other code is refused,
+ * a code added later too, until it is listed here: a date that is no date, a time that is no time, a row without a proper
+ * or with a doubled `_id`, an address that is no address, a picture reference to a file that is no picture.
  */
-export const DRAFT_CODES: ReadonlySet<string> = new Set([
-  ...SHAPE_CODES, 'UNKNOWN_ROW', 'DATE', 'TIME', 'ROW_ID', 'SLUG', 'FILE_REF_NOT_IMAGE',
+const DRAFT_WARNINGS: ReadonlySet<string> = new Set([
+  'REQUIRED', 'TOO_LONG', 'FORMAT', 'RANGE', 'STEP', 'DATE_ORDER', 'CHOICE', 'TOO_MANY', 'TOO_FEW', 'REF_MISSING',
+  'FILE_REF_MISSING', 'ALT_REQUIRED', 'MARKDOWN',
 ])
 /**
- * `DUPLICATE` is one code for three things; a draft refuses the two that make a value no set (a choice or an entry
- * twice in one field: `duplicateValues`, `duplicateEntries`) and only warns about the third, a doubled value in a list's
- * `unique` column (`duplicateRowValue`), which is about content. Told apart by the issue's message key.
+ * `DUPLICATE` is one code for three things; a draft only warns about a doubled value in a list's `unique` column
+ * (`duplicateRowValue`), which is about content, and refuses the two that make a value no set (a choice or an entry
+ * twice in one field). Told apart by the issue's message key.
  */
-const DRAFT_DUPLICATES: ReadonlySet<string> = new Set(['issues.duplicateValues', 'issues.duplicateEntries'])
-const refusedInDraft = (i: Issue) => DRAFT_CODES.has(i.code) || (i.code === 'DUPLICATE' && i.key !== undefined && DRAFT_DUPLICATES.has(i.key))
+const warnsInDraft = (i: Issue) => DRAFT_WARNINGS.has(i.code) || (i.code === 'DUPLICATE' && i.key === 'issues.duplicateRowValue')
+const refusedInDraft = (i: Issue) => !warnsInDraft(i)
 
 export interface ValidateOptions {
   /**
    * create/release: everything strict. patch: only paths under `changed` are errors, the rest are warnings.
    * restore (backup import, seed; never a Studio path): only SHAPE_CODES are errors, the rest are warnings.
    * draft (a draft without a time at create, save, copy, undo, revert and in a release, D115): only what is not well
-   * formed is an error (DRAFT_CODES); what is missing or not good enough for visitors is a warning.
+   * formed is an error; what is missing or not good enough for visitors is a warning (DRAFT_WARNINGS).
    * The rules across fields (`ruleIssues`: a plan set by halves, a week that does not start on its first day) bind
    * what is written now: errors in create, and in patch when the save touches one of their fields. Stored data that
    * breaks one (release, restore, draft) only warns.
