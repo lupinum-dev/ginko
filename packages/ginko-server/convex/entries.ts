@@ -352,11 +352,12 @@ async function saveDated(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, 
   if (args.publish || (args.locale !== undefined && args.locale !== schema.locales[0]) || args.confirm?.length) fail('INVALID', 'errors.datedNotWith')
   if (stateOf(entry) !== 'live') fail('INVALID', 'errors.datedOnlyOnline')
   const rows = await datedOf(ctx, entry._id)
-  // "Bearbeiten" on a holding exception edits that row: its end and values may change, its start may not (decision 4).
-  // On a waiting one a save is a change of its own days, as built (H1.4).
-  const edited = until !== undefined && args.change !== undefined ? rows.find((r) => r._id === args.change && isHolding(r)) : undefined
-  if (edited && from !== edited.from) fail('INVALID', 'errors.holdingFromFixed')
-  if (!edited) checkDay(schema, from, { exception: until !== undefined })
+  // "Bearbeiten" on an exception edits that row: its end and values may change (decision 4). A holding one's start may
+  // not; a waiting one is edited while the save keeps its start, and another start is a second exception (H1.4, L7).
+  const named = until !== undefined && args.change !== undefined ? rows.find((r) => r._id === args.change && r.until !== undefined) : undefined
+  if (named && isHolding(named) && from !== named.from) fail('INVALID', 'errors.holdingFromFixed')
+  const edited = named && (isHolding(named) || named.from === from) ? named : undefined
+  if (!edited || !isHolding(edited)) checkDay(schema, from, { exception: until !== undefined })
   if (until !== undefined) checkUntil(schema, from, until)
   refuseTaskWithoutDay(schema, args.task, { from, until })
   // A value is given as for a save of the entry; its other parts are those it has on that day.

@@ -360,6 +360,18 @@ describe('moving and ending (state table: Tage ändern, Änderung aufheben, Jetz
     expect(await errorOf(s.offer(950, '2026-10-09', '2026-11-15', { change: row!._id }))).toMatchObject({ key: 'errors.holdingFromFixed' })
   })
 
+  // Round L7, "Bearbeiten" on a waiting offer. Wrong behaviour caught: a new end for a waiting offer was refused as a
+  // second offer of the same start (errors.datedSameStart). Keep: another start is a second offer (H1.4).
+  it('a save that edits a waiting row with its own start changes that row; another start is a second offer', async () => {
+    const s = await untilSetup()
+    await s.offer(990, '2026-10-20', '2026-10-31')
+    const [row] = await s.dated(s.saibling)
+    await s.offer(950, '2026-10-20', '2026-11-15', { change: row!._id })
+    expect(await s.dated(s.saibling)).toMatchObject([{ _id: row!._id, from: '2026-10-20', until: '2026-11-15', fields: { price: { amount: 950 } } }])
+    await s.offer(900, '2026-10-22', '2026-11-15', { change: row!._id })
+    expect((await s.dated(s.saibling)).map((r) => [r._id === row!._id, r.from, r.until])).toEqual([[true, '2026-10-20', '2026-11-15'], [false, '2026-10-22', '2026-11-15']])
+  })
+
   // Row "Änderung aufheben / Jetzt beenden". Wrong behaviour caught: ending a holding offer leaves the offer on the
   // website until a later refresh, or leaves no trace in the history.
   it('"Jetzt beenden" drops a holding row: the page shows the normal value at once, with a history line', async () => {
