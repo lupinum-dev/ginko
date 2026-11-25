@@ -2,7 +2,7 @@
 import { addDays, todayIn, weekInfo, workWeekOf } from '@lupinum/ginko/internal'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
-import { codeFor, openQuick, resetContent, serverDir } from './local'
+import { codeFor, onlinePrice, openQuick, resetContent, serverDir } from './local'
 
 const today = () => todayIn('Europe/Vienna')
 const asOwner = { storageState: STATE.owner }
@@ -357,7 +357,8 @@ test.describe('Koch', () => {
     await expect(page.getByRole('link', { name: 'Team' })).toHaveCount(0)
   })
 
-  test('4. changes a price found by search; a parallel change by the Wirtin shows as a conflict', async ({ page, browser }) => {
+  // Wrong behaviour caught (I1): "Meine Eingaben behalten" saved at once, or closed the sheet with his price unsaved.
+  test('4. changes a price found by search; a parallel change by the Wirtin shows as a conflict, and his kept input waits for his press', async ({ page, browser }) => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Preis ändern' }).click()
     await page.getByRole('searchbox').fill('schnitz')
@@ -388,9 +389,20 @@ test.describe('Koch', () => {
     await expect(conflict).toContainText('Ein Mitglied hat inzwischen Preis geändert.')
     await expect(conflict).toContainText('23,00')
     await expect(conflict).toContainText('22,50')
-    await conflict.getByRole('button', { name: 'Meine Eingaben speichern' }).click()
-    // The answer repeats what he pressed: the price goes online.
+    // An answer to the conflict only puts his input back in the form (I1): the sheet stays open and says so, nothing
+    // is saved, and the price online is still the Wirtin's.
+    await conflict.getByRole('button', { name: 'Meine Eingaben behalten' }).click()
+    const sheet = page.getByRole('dialog')
+    const merged = sheet.getByText('Deine Eingaben stehen im Formular. Sie sind noch nicht gespeichert.')
+    await expect(merged).toBeVisible()
+    await expect(merged).toBeFocused()
+    await expect(price).toHaveValue('22,50')
+    expect(onlinePrice('Wiener Schnitzel vom Kalb')).toBe(2300)
+    // The primary button says what it does, and a press does it.
+    const primary = sheet.getByRole('button', { name: 'Veröffentlichen', exact: true })
+    await primary.click()
     await expect(toast(page)).toContainText('Veröffentlicht')
+    await expect.poll(() => onlinePrice('Wiener Schnitzel vom Kalb')).toBe(2250)
   })
 })
 

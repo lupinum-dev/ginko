@@ -34,6 +34,14 @@ export function resetAll(): Record<string, string> {
   return Object.fromEntries(json.links.map((l) => [l.email, l.link]))
 }
 
+/** The price of a dish as it is online now (the stored entry, in cents), read from the local backend. */
+export function onlinePrice(dish: string): number | undefined {
+  assertLocal()
+  const rows = execFileSync('npx', ['convex', 'data', 'entries', '--limit', '500', '--format', 'jsonLines'], { cwd: serverDir, encoding: 'utf8' })
+  const entries = rows.trim().split('\n').map((l) => JSON.parse(l) as { brick: string; deletedAt?: number; data: { name?: { de?: string }; price?: { amount: number } } })
+  return entries.find((e) => e.brick === 'menu' && !e.deletedAt && e.data.name?.de === dish)?.data.price?.amount
+}
+
 /** Resets the content only; members stay signed in and keep their rights. `many` adds copies (seed-local `--many`). */
 export function resetContent(many?: { brick: string; count: number }) {
   assertLocal()
