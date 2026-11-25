@@ -63,13 +63,12 @@ export function occurrence(change: Change, day: Day): Time | undefined {
 }
 
 /**
- * A yearly change whose days are a year long or longer: it would never end, so it could not start again. Its first time
- * is not its own days, or its second time starts on the day after its first ends.
+ * A yearly change whose days are a year long or longer: it would never end, so it could not start again. Its `until`
+ * reaches the day before its start of the next year (29 February starts on 1 March in a year without it).
  */
 export function yearTooLong(change: Change & { until: Day }): boolean {
-  const first = occurrence(change, change.from)
-  if (first?.from !== change.from || first.until !== change.until) return true
-  return occurrence(change, addDays(change.until, 1))!.from <= addDays(change.until, 1)
+  const nextStart = firstOnOrAfter(Number(change.from.slice(0, 4)) + 1, change.from.slice(5))
+  return change.until >= addDays(nextStart, -1)
 }
 
 /** The days a change starts on, from its first up to `last` (a yearly one: each year's start). */

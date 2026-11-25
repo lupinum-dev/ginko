@@ -496,6 +496,8 @@ describe('a change that comes back every year (slice 4)', () => {
     ['yearly without an end', [year({ from: '2026-06-01', yearly: true })], [[0, '$changes.0.yearly', 'CHANGE']]],
     ['yearly with another value', [year({ from: '2026-06-01', until: '2026-08-31', yearly: 'ja' as unknown as true })], [[0, '$changes.0.yearly', 'CHANGE']]],
     ['yearly and one year long', [year({ from: '2026-03-01', until: '2027-02-28', yearly: true })], [[0, '$changes.0.until', 'CHANGE']]],
+    // Month and day of `until` after those of `from`, a year later: as month and day alone it looks like one day.
+    ['yearly and a year and a day long', [year({ from: '2026-06-15', until: '2027-06-15', yearly: true })], [[0, '$changes.0.until', 'CHANGE']]],
     ['a name on a change with an end', [year({ from: '2026-11-01', until: '2026-11-30', name: 'Betriebsurlaub' })], []],
     ['a name without an end', [year({ from: '2026-11-01', name: 'Neu' })], [[0, '$changes.0.name', 'CHANGE']]],
     ['an empty name', [year({ from: '2026-11-01', until: '2026-11-30', name: '  ' })], [[0, '$changes.0.name', 'CHANGE']]],
